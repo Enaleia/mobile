@@ -20,9 +20,9 @@ importers:
       '@react-navigation/native':
         specifier: ^6.0.2
         version: 6.1.18(react-native@0.74.5(@babel/core@7.25.7)(@babel/preset-env@7.25.7(@babel/core@7.25.7))(@types/react@18.2.79)(react@18.2.0))(react@18.2.0)
-      '@tanstack/react-query':
-        specifier: ^5.59.9
-        version: 5.59.9(react@18.2.0)
+      '@urql/exchange-graphcache':
+        specifier: ^7.2.0
+        version: 7.2.0(@urql/core@2.3.6(graphql@15.8.0))(graphql@15.8.0)
       expo:
         specifier: ~51.0.28
         version: 51.0.37(@babel/core@7.25.7)(@babel/preset-env@7.25.7(@babel/core@7.25.7))
@@ -80,6 +80,9 @@ importers:
       react-native-web:
         specifier: ~0.19.10
         version: 0.19.12(react-dom@18.2.0(react@18.2.0))(react@18.2.0)
+      urql:
+        specifier: ^4.1.0
+        version: 4.1.0(@urql/core@2.3.6(graphql@15.8.0))(react@18.2.0)
     devDependencies:
       '@babel/core':
         specifier: ^7.20.0
@@ -110,6 +113,14 @@ importers:
         version: 5.3.3
 
 packages:
+
+  '@0no-co/graphql.web@1.0.8':
+    resolution: {integrity: sha512-8BG6woLtDMvXB9Ajb/uE+Zr/U7y4qJ3upXi0JQHZmsKUJa7HjF/gFvmL2f3/mSmfZoQGRr9VoY97LCX2uaFMzA==}
+    peerDependencies:
+      graphql: ^14.0.0 || ^15.0.0 || ^16.0.0
+    peerDependenciesMeta:
+      graphql:
+        optional: true
 
   '@alloc/quick-lru@5.2.0':
     resolution: {integrity: sha512-UrcABB+4bUrFABwbluTIBErXwvbsU/V7TZWfmbgJfbkwiBuziS9gxdODUyuiecfdGQ85jglMW6juS3+z5TsKLw==}
@@ -1389,14 +1400,6 @@ packages:
   '@sinonjs/fake-timers@10.3.0':
     resolution: {integrity: sha512-V4BG07kuYSUkTCSBHG8G8TNhM+F19jXFWnQtzj+we8DrkpSBCee9Z3Ms8yiGer/dlmhe35/Xdgyo3/0rQKg7YA==}
 
-  '@tanstack/query-core@5.59.9':
-    resolution: {integrity: sha512-vFGnblfJOKlOPyTR5M0ohWKb/03eGubh5KuGyzsDfc7VQ6F0nsB75kQIoLpwp3Wfj6fKv0wGoTUX8BsIfhxDfw==}
-
-  '@tanstack/react-query@5.59.9':
-    resolution: {integrity: sha512-g2cbiw/ZIIrnUaQqhGtarTAsuLdKDNLtY5HNfRHVWY9kHDj96M4qs4ygJxHc119tPQpzZe4i9W7d2Gc2Gvng2A==}
-    peerDependencies:
-      react: ^18 || ^19
-
   '@tootallnate/once@2.0.0':
     resolution: {integrity: sha512-XCuKFP5PS55gnMVu3dty8KPatLqUoy/ZYzDzAGCQ8JNFCkLXzmI7vNHCR+XpbZaMWQK/vQubr7PkYq8g470J/A==}
     engines: {node: '>= 10'}
@@ -1483,6 +1486,11 @@ packages:
     resolution: {integrity: sha512-PUxhtBh7/8167HJK6WqBv6Z0piuiaZHQGYbhwpNL9aIQmLROPEdaUYkY4wh45wPQXcTpnd11l0q3Pw+TI11pdw==}
     peerDependencies:
       graphql: ^0.11.0 || ^0.12.0 || ^0.13.0 || ^14.0.0 || ^15.0.0 || ^16.0.0
+
+  '@urql/exchange-graphcache@7.2.0':
+    resolution: {integrity: sha512-NPSfcHyhZnqTuu2OtBTS0b80YMQe1fOEpECZWyRd1A4WSfU/BJjsNSI/AXnG7ABGGCMtLvfTWRSlzsoLwPjwlQ==}
+    peerDependencies:
+      '@urql/core': ^5.0.0
 
   '@urql/exchange-retry@0.3.0':
     resolution: {integrity: sha512-hHqer2mcdVC0eYnVNbWyi28AlGOPb2vjH3lP3/Bc8Lc8BjhMsDwFMm7WhoP5C1+cfbr/QJ6Er3H/L08wznXxfg==}
@@ -4811,6 +4819,12 @@ packages:
   url-parse@1.5.10:
     resolution: {integrity: sha512-WypcfiRhfeUP9vvF0j6rw0J3hrWrw6iZv3+22h6iRMJ/8z1Tj6XfLP4DsUix5MhMPnXpiHDoKyoZ/bdCkwBCiQ==}
 
+  urql@4.1.0:
+    resolution: {integrity: sha512-NfbfTvxy1sM89EQAJWm89qJZihUWk7BSMfrWgfljFXLOf+e7RK7DtV/Tbg2+82HnCG2x3LcEOJenxiFSYEC+bw==}
+    peerDependencies:
+      '@urql/core': ^5.0.0
+      react: '>= 16.8.0'
+
   use-latest-callback@0.2.1:
     resolution: {integrity: sha512-QWlq8Is8BGWBf883QOEQP5HWYX/kMI+JTbJ5rdtvJLmXTIh9XoHIO3PQcmQl8BU44VKxow1kbQUHa6mQSMALDQ==}
     peerDependencies:
@@ -4930,6 +4944,9 @@ packages:
 
   wonka@4.0.15:
     resolution: {integrity: sha512-U0IUQHKXXn6PFo9nqsHphVCE5m3IntqZNB9Jjn7EB1lrR7YTDY3YWgFvEvwniTzXSvOH/XMzAZaIfJF/LvHYXg==}
+
+  wonka@6.3.4:
+    resolution: {integrity: sha512-CjpbqNtBGNAeyNS/9W6q3kSkKE52+FjIj7AkFlLr11s/VWGUu6a2CdYSdGxocIhIVjaW/zchesBQUKPVU69Cqg==}
 
   wrap-ansi@6.2.0:
     resolution: {integrity: sha512-r6lPcBGxZXlIcymEu7InxDMhdW0KDxpLgoFLcguasxCaJ/SOIZwINatK9KY/tf+ZrlywOKU0UDj3ATXUBfxJXA==}
@@ -5067,6 +5084,10 @@ packages:
     resolution: {integrity: sha512-XBx9AXhXktjUqnepgTiE5flcKIYWi/rme0Eaj+5Y0lftuGBq+jyRu/md4WnuxqgP1ubdpNCsYEYPxrzVHD8d6g==}
 
 snapshots:
+
+  '@0no-co/graphql.web@1.0.8(graphql@15.8.0)':
+    optionalDependencies:
+      graphql: 15.8.0
 
   '@alloc/quick-lru@5.2.0': {}
 
@@ -7175,13 +7196,6 @@ snapshots:
     dependencies:
       '@sinonjs/commons': 3.0.1
 
-  '@tanstack/query-core@5.59.9': {}
-
-  '@tanstack/react-query@5.59.9(react@18.2.0)':
-    dependencies:
-      '@tanstack/query-core': 5.59.9
-      react: 18.2.0
-
   '@tootallnate/once@2.0.0': {}
 
   '@types/babel__core@7.20.5':
@@ -7287,6 +7301,14 @@ snapshots:
       '@graphql-typed-document-node/core': 3.2.0(graphql@15.8.0)
       graphql: 15.8.0
       wonka: 4.0.15
+
+  '@urql/exchange-graphcache@7.2.0(@urql/core@2.3.6(graphql@15.8.0))(graphql@15.8.0)':
+    dependencies:
+      '@0no-co/graphql.web': 1.0.8(graphql@15.8.0)
+      '@urql/core': 2.3.6(graphql@15.8.0)
+      wonka: 6.3.4
+    transitivePeerDependencies:
+      - graphql
 
   '@urql/exchange-retry@0.3.0(graphql@15.8.0)':
     dependencies:
@@ -11172,6 +11194,12 @@ snapshots:
       querystringify: 2.2.0
       requires-port: 1.0.0
 
+  urql@4.1.0(@urql/core@2.3.6(graphql@15.8.0))(react@18.2.0):
+    dependencies:
+      '@urql/core': 2.3.6(graphql@15.8.0)
+      react: 18.2.0
+      wonka: 6.3.4
+
   use-latest-callback@0.2.1(react@18.2.0):
     dependencies:
       react: 18.2.0
@@ -11291,6 +11319,8 @@ snapshots:
       isexe: 2.0.0
 
   wonka@4.0.15: {}
+
+  wonka@6.3.4: {}
 
   wrap-ansi@6.2.0:
     dependencies:
