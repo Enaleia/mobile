@@ -1,15 +1,17 @@
 import SafeAreaContent from "@/components/SafeAreaContent";
-import { useTaskActionsQuery } from "@/lib/queries";
-import { useRouter } from "expo-router";
+import { TaskActionQuery } from "@/lib/queries";
 import { StatusBar } from "expo-status-bar";
+import { AnimatePresence, View as MotiView } from "moti";
 import React from "react";
 import { FlatList, Text, View } from "react-native";
-import { AnimatePresence, View as MotiView } from "moti";
+import { useQuery } from "urql";
 
 const App = () => {
-  const router = useRouter();
-  const { data, isLoading, error } = useTaskActionsQuery();
-  if (error && !isLoading) console.log(error);
+  const [result, reexecuteQuery] = useQuery({
+    query: TaskActionQuery,
+  });
+
+  const { data, fetching, error } = result;
 
   return (
     <SafeAreaContent>
@@ -20,7 +22,7 @@ const App = () => {
         </Text>
       </View>
 
-      {isLoading && <Text>Loading task actions...</Text>}
+      {fetching && <Text>Loading task actions...</Text>}
       {error && <Text>Error loading task actions: {error.message}</Text>}
       {data && (
         <AnimatePresence>
