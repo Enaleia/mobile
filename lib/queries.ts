@@ -10,3 +10,22 @@ export const TaskActionQuery = gql`
     }
   }
 `;
+
+export const AllMaterialsQuery = gql`
+  query {
+    Materials {
+      _id
+      material_id
+      Material
+    }
+  }
+`;
+
+export const AllCountriesQuery = gql`
+  query {
+    Country {
+      id
+      Country
+    }
+  }
+`;
