@@ -1,0 +1,239 @@
+schema {
+  query: Query
+  mutation: Mutation
+  subscription: Subscription
+}
+
+type Country {
+  Country: String
+  id: ID!
+}
+
+type Country_aggregated {
+  avg: Country_aggregated_fields
+  avgDistinct: Country_aggregated_fields
+  count: Country_aggregated_count
+  countAll: Int
+  countDistinct: Country_aggregated_count
+  group: JSON
+  max: Country_aggregated_fields
+  min: Country_aggregated_fields
+  sum: Country_aggregated_fields
+  sumDistinct: Country_aggregated_fields
+}
+
+type Country_aggregated_count {
+  Country: Int
+  id: Int
+}
+
+type Country_aggregated_fields {
+  id: Float
+}
+
+input Country_filter {
+  Country: string_filter_operators
+  _and: [Country_filter]
+  _or: [Country_filter]
+  id: number_filter_operators
+}
+
+type Country_mutated {
+  data: Country
+  event: EventEnum
+  key: ID!
+}
+
+"""ISO8601 Date values"""
+scalar Date
+
+enum EventEnum {
+  create
+  delete
+  update
+}
+
+"""A Float or a String"""
+scalar GraphQLStringOrFloat
+
+"""The `JSON` scalar type represents JSON values as specified by [ECMA-404](http://www.ecma-international.org/publications/files/ECMA-ST/ECMA-404.pdf)."""
+scalar JSON
+
+type Mutation {
+  create_Country_item(data: create_Country_input!): Country
+  create_Country_items(data: [create_Country_input!], filter: Country_filter, limit: Int, offset: Int, page: Int, search: String, sort: [String]): [Country!]!
+  create_task_action_item(data: create_task_action_input!): task_action
+  create_task_action_items(data: [create_task_action_input!], filter: task_action_filter, limit: Int, offset: Int, page: Int, search: String, sort: [String]): [task_action!]!
+}
+
+type Query {
+  Country(filter: Country_filter, limit: Int, offset: Int, page: Int, search: String, sort: [String]): [Country!]!
+  Country_aggregated(filter: Country_filter, groupBy: [String], limit: Int, offset: Int, page: Int, search: String, sort: [String]): [Country_aggregated!]!
+  Country_by_id(id: ID!, version: String): Country
+  Country_by_version(id: ID!, version: String!): version_Country
+  task_action(filter: task_action_filter, limit: Int, offset: Int, page: Int, search: String, sort: [String]): [task_action!]!
+  task_action_aggregated(filter: task_action_filter, groupBy: [String], limit: Int, offset: Int, page: Int, search: String, sort: [String]): [task_action_aggregated!]!
+  task_action_by_id(id: ID!, version: String): task_action
+  task_action_by_version(id: ID!, version: String!): version_task_action
+}
+
+type Subscription {
+  Country_mutated(event: EventEnum): Country_mutated
+  task_action_mutated(event: EventEnum): task_action_mutated
+}
+
+input create_Country_input {
+  Country: String
+  id: ID
+}
+
+input create_task_action_input {
+  Task_name: String
+  Task_type: String
+  date_created: Date
+  id: ID
+  srer: String
+  task_role: String
+}
+
+input date_filter_operators {
+  _between: [GraphQLStringOrFloat]
+  _eq: String
+  _gt: String
+  _gte: String
+  _in: [String]
+  _lt: String
+  _lte: String
+  _nbetween: [GraphQLStringOrFloat]
+  _neq: String
+  _nin: [String]
+  _nnull: Boolean
+  _null: Boolean
+}
+
+input datetime_function_filter_operators {
+  day: number_filter_operators
+  hour: number_filter_operators
+  minute: number_filter_operators
+  month: number_filter_operators
+  second: number_filter_operators
+  week: number_filter_operators
+  weekday: number_filter_operators
+  year: number_filter_operators
+}
+
+type datetime_functions {
+  day: Int
+  hour: Int
+  minute: Int
+  month: Int
+  second: Int
+  week: Int
+  weekday: Int
+  year: Int
+}
+
+input number_filter_operators {
+  _between: [GraphQLStringOrFloat]
+  _eq: GraphQLStringOrFloat
+  _gt: GraphQLStringOrFloat
+  _gte: GraphQLStringOrFloat
+  _in: [GraphQLStringOrFloat]
+  _lt: GraphQLStringOrFloat
+  _lte: GraphQLStringOrFloat
+  _nbetween: [GraphQLStringOrFloat]
+  _neq: GraphQLStringOrFloat
+  _nin: [GraphQLStringOrFloat]
+  _nnull: Boolean
+  _null: Boolean
+}
+
+input string_filter_operators {
+  _contains: String
+  _empty: Boolean
+  _ends_with: String
+  _eq: String
+  _icontains: String
+  _iends_with: String
+  _in: [String]
+  _istarts_with: String
+  _ncontains: String
+  _nempty: Boolean
+  _nends_with: String
+  _neq: String
+  _niends_with: String
+  _nin: [String]
+  _nistarts_with: String
+  _nnull: Boolean
+  _nstarts_with: String
+  _null: Boolean
+  _starts_with: String
+}
+
+type task_action {
+  Task_name: String
+  Task_type: String
+  date_created: Date
+  date_created_func: datetime_functions
+  id: ID!
+  srer: String
+  task_role: String
+}
+
+type task_action_aggregated {
+  avg: task_action_aggregated_fields
+  avgDistinct: task_action_aggregated_fields
+  count: task_action_aggregated_count
+  countAll: Int
+  countDistinct: task_action_aggregated_count
+  group: JSON
+  max: task_action_aggregated_fields
+  min: task_action_aggregated_fields
+  sum: task_action_aggregated_fields
+  sumDistinct: task_action_aggregated_fields
+}
+
+type task_action_aggregated_count {
+  Task_name: Int
+  Task_type: Int
+  date_created: Int
+  id: Int
+  srer: Int
+  task_role: Int
+}
+
+type task_action_aggregated_fields {
+  id: Float
+}
+
+input task_action_filter {
+  Task_name: string_filter_operators
+  Task_type: string_filter_operators
+  _and: [task_action_filter]
+  _or: [task_action_filter]
+  date_created: date_filter_operators
+  date_created_func: datetime_function_filter_operators
+  id: number_filter_operators
+  srer: string_filter_operators
+  task_role: string_filter_operators
+}
+
+type task_action_mutated {
+  data: task_action
+  event: EventEnum
+  key: ID!
+}
+
+type version_Country {
+  Country: String
+  id: ID
+}
+
+type version_task_action {
+  Task_name: String
+  Task_type: String
+  date_created: Date
+  id: ID
+  srer: String
+  task_role: String
+}
