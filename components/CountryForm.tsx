@@ -1,9 +1,8 @@
-import { useMutation } from "urql";
 import { z } from "zod";
 import { useForm } from "@tanstack/react-form";
 import { Pressable, Text, TextInput, View } from "react-native";
 import { zodValidator } from "@tanstack/zod-form-adapter";
-import { CreateCountryMutation } from "@/lib/urql";
+import { useAddCountry } from "@/api/country/add-country";
 
 const Country = z.object({
   Country: z.string(),
@@ -12,17 +11,18 @@ const Country = z.object({
 type Country = z.infer<typeof Country>;
 
 const CountryForm = () => {
-  const [_, create_Country_item] = useMutation(CreateCountryMutation);
+  const { mutateAsync } = useAddCountry();
+
   const form = useForm<Country>({
     defaultValues: {
       Country: "",
     },
     onSubmit: async ({ value }) => {
-      const result = await create_Country_item({ Country: value.Country });
-      if (result.error) {
-        console.error("Oh no!", result.error);
-      } else {
-        console.log("New country created:", result.data?.create_Country_item);
+      try {
+        const newCountry = await mutateAsync(value.Country);
+        console.log("New country created:", newCountry);
+      } catch (error) {
+        console.error("Error creating country:", error);
       }
     },
   });

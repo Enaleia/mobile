@@ -1,13 +1,13 @@
-import urqlClient from "@/lib/urql";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Stack } from "expo-router";
-import { Provider } from "urql";
 
 export default function RootLayout() {
+  const queryClient = new QueryClient();
   return (
-    <Provider value={urqlClient}>
+    <QueryClientProvider client={queryClient}>
       <Stack>
         <Stack.Screen name="index" options={{ headerShown: false }} />
       </Stack>
-    </Provider>
+    </QueryClientProvider>
   );
 }

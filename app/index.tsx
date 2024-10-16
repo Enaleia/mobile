@@ -1,21 +1,15 @@
+import { useCountries } from "@/api/country/get-countries";
 import CountryForm from "@/components/CountryForm";
 import SafeAreaContent from "@/components/SafeAreaContent";
-
-import { AllCountriesQuery } from "@/lib/queries";
 
 import { StatusBar } from "expo-status-bar";
 import { AnimatePresence, View as MotiView } from "moti";
 import React from "react";
 import { FlatList, Text, View } from "react-native";
-import { useQuery } from "urql";
 
 const App = () => {
-  const [result, reexecuteQuery] = useQuery({
-    query: AllCountriesQuery,
-  });
-
-  const { data, fetching, error } = result;
-  if (error && !fetching) console.log({ error });
+  const { data, isLoading, error } = useCountries();
+  if (error && !isLoading) console.log({ error });
 
   return (
     <SafeAreaContent>
@@ -26,12 +20,12 @@ const App = () => {
         </Text>
       </View>
 
-      {fetching && <Text>Loading countries...</Text>}
+      {isLoading && <Text>Loading countries...</Text>}
       {error && <Text>Error loading countries: {error.message}</Text>}
       {data && (
         <AnimatePresence>
           <FlatList
-            data={data.Country}
+            data={data}
             keyExtractor={(item) => item.id.toString()}
             renderItem={({ item, index }) => (
               <MotiView
@@ -47,9 +41,7 @@ const App = () => {
           />
         </AnimatePresence>
       )}
-
       <CountryForm />
-
       <StatusBar style="light" />
     </SafeAreaContent>
   );
