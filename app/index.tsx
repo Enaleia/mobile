@@ -25,7 +25,7 @@ const App = () => {
       {data && (
         <AnimatePresence>
           <FlatList
-            data={data}
+            data={data.Country}
             keyExtractor={(item) => item.id.toString()}
             renderItem={({ item, index }) => (
               <MotiView

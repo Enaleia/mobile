@@ -1,4 +1,5 @@
 /* eslint-disable */
+import { DocumentTypeDecoration } from '@graphql-typed-document-node/core';
 export type Maybe<T> = T | null;
 export type InputMaybe<T> = Maybe<T>;
 export type Exact<T extends { [key: string]: unknown }> = { [K in keyof T]: T[K] };
@@ -123,6 +124,18 @@ export type Task_Action_Filter = {
   task_role?: InputMaybe<String_Filter_Operators>;
 };
 
+export type CreateCountryMutationVariables = Exact<{
+  Country: Scalars['String']['input'];
+}>;
+
+
+export type CreateCountryMutation = { __typename?: 'Mutation', create_Country_item?: { __typename: 'Country', id: string, Country?: string | null } | null };
+
+export type AllCountriesQueryVariables = Exact<{ [key: string]: never; }>;
+
+
+export type AllCountriesQuery = { __typename?: 'Query', Country: Array<{ __typename?: 'Country', id: string, Country?: string | null }> };
+
 export class TypedDocumentString<TResult, TVariables>
   extends String
   implements DocumentTypeDecoration<TResult, TVariables>
@@ -137,3 +150,21 @@ export class TypedDocumentString<TResult, TVariables>
     return this.value;
   }
 }
+
+export const CreateCountryDocument = new TypedDocumentString(`
+    mutation CreateCountry($Country: String!) {
+  create_Country_item(data: {Country: $Country}) {
+    __typename
+    id
+    Country
+  }
+}
+    `) as unknown as TypedDocumentString<CreateCountryMutation, CreateCountryMutationVariables>;
+export const AllCountriesDocument = new TypedDocumentString(`
+    query AllCountries {
+  Country {
+    id
+    Country
+  }
+}
+    `) as unknown as TypedDocumentString<AllCountriesQuery, AllCountriesQueryVariables>;

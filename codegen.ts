@@ -6,6 +6,7 @@ const config: CodegenConfig = {
   schema: `${process.env.EXPO_PUBLIC_DEV_API_URL}/graphql`,
   documents: ["app/**/*.tsx", "api/**/*.ts"],
   ignoreNoDocuments: true,
+  watch: true,
   generates: {
     "./api/graphql/": {
       preset: "client",
