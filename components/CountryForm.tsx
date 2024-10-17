@@ -20,7 +20,6 @@ const CountryForm = () => {
     onSubmit: async ({ value }) => {
       try {
         const newCountry = await mutateAsync(value.Country);
-        console.log("New country created:", newCountry);
       } catch (error) {
         console.error("Error creating country:", error);
       }
