@@ -1,6 +1,7 @@
 import { useCountries } from "@/api/country/get-countries";
 import CountryForm from "@/components/CountryForm";
 import SafeAreaContent from "@/components/SafeAreaContent";
+import CurrentLocation from "@/components/current-location";
 
 import { StatusBar } from "expo-status-bar";
 import { AnimatePresence, View as MotiView } from "moti";
@@ -19,6 +20,7 @@ const App = () => {
           Removing plastic from the ocean, one fisherman's boat at a time.
         </Text>
       </View>
+      <CurrentLocation />
 
       {isLoading && <Text>Loading countries...</Text>}
       {error && <Text>Error loading countries: {error.message}</Text>}
