@@ -1,5 +1,6 @@
 import { useCountries } from "@/api/country/get-countries";
 import CountryForm from "@/components/CountryForm";
+import LocationDisplay from "@/components/LocationDisplay";
 import SafeAreaContent from "@/components/SafeAreaContent";
 
 import { StatusBar } from "expo-status-bar";
@@ -19,6 +20,7 @@ const App = () => {
           Removing plastic from the ocean, one fisherman's boat at a time.
         </Text>
       </View>
+      <LocationDisplay />
 
       {isLoading && <Text>Loading countries...</Text>}
       {error && <Text>Error loading countries: {error.message}</Text>}
