@@ -1,6 +1,8 @@
+import { useMaterialsAndActionsByRoles } from "@/api/user/materials_actions";
 import { useForm } from "@tanstack/react-form";
 import { zodValidator } from "@tanstack/zod-form-adapter";
 import { router } from "expo-router";
+import { useState } from "react";
 import { Pressable, Text, TextInput, View } from "react-native";
 import { z } from "zod";
 
@@ -11,7 +13,18 @@ const LoginData = z.object({
 
 type LoginData = z.infer<typeof LoginData>;
 
+// ["Manufacturer", "Administrator", "Internal", "Fisherman", "Recycler", "Port Coordinator"]
+const mockRoleFetch = async () => {
+  await new Promise((resolve) => setTimeout(resolve, 1000));
+};
+
 export default function LoginForm() {
+  const [roles, setRoles] = useState<string[]>([]);
+  const {
+    data: rolesData,
+    isLoading: isLoadingRolesData,
+    refetch: refetchMaterialsAndActions,
+  } = useMaterialsAndActionsByRoles(roles);
   const form = useForm<LoginData>({
     defaultValues: {
       email: "",
@@ -20,12 +33,23 @@ export default function LoginForm() {
     onSubmit: async ({ value }) => {
       if (value.email === "test@test.com" && value.password === "test") {
         console.log("Login successful");
+        mockRoleFetch();
+        setRoles(["Port Coordinator"]);
+        refetchMaterialsAndActions();
         router.replace("/home");
       } else {
         console.log("Login failed");
       }
     },
   });
+
+  if (isLoadingRolesData) {
+    return <Text>Loading roles...</Text>;
+  }
+
+  if (rolesData) {
+    console.log({ rolesData });
+  }
 
   return (
     <View>
