@@ -22,9 +22,15 @@ const getMaterialsAndActionsByRoles = async (roles: string[]) => {
   }
 };
 
-export const useMaterialsAndActionsByRoles = (roles: string[]) =>
-  useQuery({
-    queryKey: ["materialsAndActionsByRoles"],
+export const useMaterialsAndActionsByRoles = (roles: string[]) => {
+  return useQuery({
+    queryKey: ["auth", "roles", "materialsAndActions", ...roles],
     queryFn: () => getMaterialsAndActionsByRoles(roles),
-    enabled: !!roles,
+    enabled: roles.length > 0,
+    placeholderData: {
+      data: null,
+      isLoading: false,
+      refetch: () => {},
+    },
   });
+};
