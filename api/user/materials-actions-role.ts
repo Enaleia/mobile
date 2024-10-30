@@ -32,5 +32,7 @@ export const useMaterialsAndActionsByRoles = (roles: string[]) => {
       isLoading: false,
       refetch: () => {},
     },
+    staleTime: Infinity,
+    gcTime: Infinity,
   });
 };
