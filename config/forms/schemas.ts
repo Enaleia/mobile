@@ -18,3 +18,9 @@ export const observerFormSchema = baseFormSchema.extend({
     longitude: z.number(),
   }),
 });
+
+export type BaseForm = z.infer<typeof baseFormSchema>;
+export type FishermanForm = z.infer<typeof fishermanFormSchema>;
+export type ObserverForm = z.infer<typeof observerFormSchema>;
+
+export type RoleFormType = FishermanForm | ObserverForm;

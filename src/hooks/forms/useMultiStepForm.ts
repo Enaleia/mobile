@@ -9,6 +9,7 @@ export function useMultiStepForm(config: FormConfig) {
   const form = useForm({
     defaultValues: config.initialValues,
     onSubmit: config.onSubmit,
+    validatorAdapter: zodValidator(),
   });
 
   const nextStep = () => {

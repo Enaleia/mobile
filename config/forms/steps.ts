@@ -1,5 +1,5 @@
 import { RoleFormConfig } from "@/types/forms";
-import { fishermanFormSchema, observerFormSchema } from "./schemas";
+import { fishermanFormSchema } from "./schemas";
 
 export const formStepsConfig: RoleFormConfig = {
   fisherman: {
@@ -26,14 +26,30 @@ export const formStepsConfig: RoleFormConfig = {
           licenseNumber: true,
         }),
       },
-      // Additional steps...
+      {
+        id: "catch",
+        title: "Catch Information",
+        fields: [
+          {
+            name: "catchType",
+            type: "select",
+            label: "Catch Type",
+            required: true,
+            options: [
+              { label: "Fish", value: "fish" },
+              { label: "Shellfish", value: "shellfish" },
+            ],
+          },
+        ],
+      },
     ],
     initialValues: {
       vesselName: "",
       licenseNumber: "",
+      catchType: "",
     },
     onSubmit: async (values) => {
-      // Submit logic
+      console.log(values);
     },
   },
 };

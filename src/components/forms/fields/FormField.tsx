@@ -1,8 +1,9 @@
 import { FormField as FormFieldType } from "@/types/forms";
-import { FieldApi } from "@tanstack/react-form";
-import { zodValidator } from "@tanstack/zod-form-adapter";
+import { FieldApi, FormApi } from "@tanstack/react-form";
+import { type ZodValidator, zodValidator } from "@tanstack/zod-form-adapter";
 import { Text, View } from "react-native";
 import { DynamicInput } from "./DynamicInput";
+import { RoleFormType } from "@/config/forms/schemas";
 
 interface FormFieldProps {
   field: FormFieldType;
