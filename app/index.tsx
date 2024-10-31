@@ -1,20 +1,14 @@
-import { useCountries } from "@/api/country/get-countries";
-import CountryForm from "@/components/CountryForm";
-import LocationDisplay from "@/components/LocationDisplay";
+import LoginForm from "@/components/LoginForm";
 import SafeAreaContent from "@/components/SafeAreaContent";
 import QRCodeScanner from "@/components/QRCodeScanner";
-
+import LocationDisplay from "@/components/LocationDisplay";
 import { StatusBar } from "expo-status-bar";
-import { AnimatePresence, View as MotiView } from "moti";
-import React, { useState } from "react";
-import { FlatList, Text, View, Button } from "react-native";
+import { useState } from "react";
+import { Text, View, Button } from "react-native";
 
 const App = () => {
-  const { data, isLoading, error } = useCountries();
   const [showScanner, setShowScanner] = useState(false);
   const [scannedData, setScannedData] = useState<string | null>(null);
-
-  if (error && !isLoading) console.log({ error });
 
   const handleScan = (data: string) => {
     setScannedData(data);
@@ -37,6 +31,7 @@ const App = () => {
             </Text>
           </View>
           <LocationDisplay />
+          <LoginForm />
 
           <View className="my-4">
             <Button title="Scan QR Code" onPress={() => setShowScanner(true)} />
@@ -47,34 +42,6 @@ const App = () => {
               Scanned QR Code: {scannedData}
             </Text>
           )}
-
-          {isLoading && <Text className="mt-4">Loading countries...</Text>}
-          {error && (
-            <Text className="mt-4 text-red-500">
-              Error loading countries: {error.message}
-            </Text>
-          )}
-          {data && (
-            <AnimatePresence>
-              <FlatList
-                className="mt-4"
-                data={data.Country}
-                keyExtractor={(item) => item.id.toString()}
-                renderItem={({ item, index }) => (
-                  <MotiView
-                    from={{ opacity: 0, translateX: -10 }}
-                    animate={{ translateX: 0, opacity: 1 }}
-                    exit={{ opacity: 0, translateX: -10 }}
-                    transition={{ delay: index * 60, type: "spring" }}
-                    className="mb-2"
-                  >
-                    <Text className="font-bold text-lg">{item.Country}</Text>
-                  </MotiView>
-                )}
-              />
-            </AnimatePresence>
-          )}
-          <CountryForm />
         </View>
       )}
       <StatusBar style="light" />
