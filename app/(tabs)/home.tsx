@@ -1,4 +1,5 @@
 import SafeAreaContent from "@/components/SafeAreaContent";
+import { router } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { Text, TouchableOpacity, View } from "react-native";
 
@@ -18,7 +19,10 @@ export default function Home() {
         <Text>Active attestations</Text>
       </View>
       <View className="flex-row items-center justify-center w-full p-0 m-0">
-        <TouchableOpacity className="w-full bg-blue-600 rounded-md flex flex-row items-center justify-center gap-2 py-3 mt-2">
+        <TouchableOpacity
+          className="w-full bg-blue-600 rounded-md flex flex-row items-center justify-center gap-2 py-3 mt-2"
+          onPress={() => router.push("/new-collection")}
+        >
           <Text className="text-white font-semibold h-full flex items-center justify-center">
             Add new attestation
           </Text>
