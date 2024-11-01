@@ -29,7 +29,6 @@ export default function LoginForm() {
 
   return (
     <View>
-      <Text className="font-bold text-lg">Login</Text>
       <form.Field
         name="email"
         validators={{
@@ -39,7 +38,7 @@ export default function LoginForm() {
       >
         {(field) => (
           <>
-            <Text>Name</Text>
+            <Text>Email</Text>
             <TextInput
               autoCapitalize="words"
               keyboardType="default"
@@ -60,6 +59,8 @@ export default function LoginForm() {
           </>
         )}
       </form.Field>
+
+      <View className="p-2" />
 
       <form.Field
         name="password"
@@ -96,7 +97,7 @@ export default function LoginForm() {
         onPress={() => form.handleSubmit()}
         className="flex flex-row items-center justify-center px-2 py-3 mt-2 bg-blue-700 rounded-md"
       >
-        <Text className="text-white font-bold">Login</Text>
+        <Text className="text-white font-bold text-lg">Login</Text>
       </Pressable>
     </View>
   );
