@@ -1,3 +1,4 @@
+import QRTextInput from "@/components/forms/QRTextInput";
 import {
   collectionFormSchema,
   CollectionFormType,
@@ -5,25 +6,27 @@ import {
 import { useForm } from "@tanstack/react-form";
 import { zodValidator } from "@tanstack/zod-form-adapter";
 import { Pressable, Text, View } from "react-native";
-import QRTextInput from "@/components/forms/QRTextInput";
-
-const collectionForm = useForm<CollectionFormType>({
-  defaultValues: {
-    collectorId: "",
-    collectionBatch: "",
-    materials: [],
-    totalWeightInKilograms: 0,
-  },
-});
 
 const CollectionForm = () => {
+  const collectionForm = useForm<CollectionFormType>({
+    defaultValues: {
+      collectorId: "",
+      collectionBatch: "",
+      materials: [],
+      totalWeightInKilograms: 0,
+    },
+  });
+
   return (
     <View>
       <Text className="font-bold text-lg">New collection</Text>
       <collectionForm.Field
         name="collectorId"
         validators={{
-          onChange: collectionFormSchema.shape.collectorId.parse,
+          onChange: collectionFormSchema.shape.collectorId.refine(
+            (value) => value.length > 0,
+            "Collector ID is required"
+          ),
         }}
         validatorAdapter={zodValidator()}
       >
