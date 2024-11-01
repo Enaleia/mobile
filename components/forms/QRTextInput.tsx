@@ -1,7 +1,7 @@
-import React, { useState } from "react";
-import { View, TextInput, TouchableOpacity, Modal } from "react-native";
-import { Ionicons } from "@expo/vector-icons";
 import QRCodeScanner from "@/components/QRCodeScanner";
+import { Ionicons } from "@expo/vector-icons";
+import React, { useState } from "react";
+import { Modal, TextInput, TouchableOpacity, View } from "react-native";
 
 interface QRTextInputProps {
   value: string;
@@ -21,9 +21,17 @@ const QRTextInput: React.FC<QRTextInputProps> = ({
 
   // Handler for QR scan results
   const handleQRScan = (scannedData: any) => {
-    onChangeText(scannedData);
-    console.log({ scannedData });
-    setIsQRScannerVisible(false);
+    try {
+      const textValue =
+        typeof scannedData === "object"
+          ? scannedData.data || String(scannedData)
+          : String(scannedData);
+
+      onChangeText(textValue);
+      setIsQRScannerVisible(false);
+    } catch (error) {
+      console.error("Error processing QR data:", error);
+    }
   };
 
   return (
