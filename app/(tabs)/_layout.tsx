@@ -19,7 +19,7 @@ const TabsLayout = () => {
           ),
         }}
       />
-      <Tabs.Screen
+      {/* <Tabs.Screen
         name="attestations"
         options={{
           tabBarLabel: "Attestations",
@@ -27,7 +27,7 @@ const TabsLayout = () => {
             <Ionicons name="document-text-outline" size={24} color={color} />
           ),
         }}
-      />
+      /> */}
     </Tabs>
   );
 };
