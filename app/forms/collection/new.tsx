@@ -6,7 +6,7 @@ import { useForm } from "@tanstack/react-form";
 import { zodValidator } from "@tanstack/zod-form-adapter";
 import React from "react";
 import { Pressable, Text, View } from "react-native";
-import QRTextInput from "@/components/forms/QRTextInput";
+import QRTextInput from "@/components/QRTextInput";
 
 export default function NewCollection() {
   const collectionForm = useForm<CollectionFormType>({
