@@ -1,7 +1,7 @@
 import { Stack } from "expo-router";
 import React from "react";
 
-export default function FormsLayout() {
+const FormsLayout = () => {
   return (
     <Stack>
       <Stack.Screen
@@ -13,14 +13,16 @@ export default function FormsLayout() {
           },
           animation: "simple_push",
           headerStyle: {
-            backgroundColor: "#1a4ba7", // Darker blue with better contrast
+            backgroundColor: "#24548b", // Darker blue with better contrast
           },
           headerTintColor: "#ffffff",
-          statusBarColor: "#1a4ba7",
+          statusBarColor: "#24548b",
           statusBarStyle: "inverted",
         }}
       />
       {/* Add other form routes here as needed */}
     </Stack>
   );
-}
+};
+
+export default FormsLayout;
