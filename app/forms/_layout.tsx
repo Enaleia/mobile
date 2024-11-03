@@ -5,7 +5,7 @@ const FormsLayout = () => {
   return (
     <Stack>
       <Stack.Screen
-        name="new-collection"
+        name="collection/new"
         options={{
           title: "New Collection",
           headerTitleStyle: {
