@@ -1,4 +1,5 @@
 import FormSection from "@/components/FormSection";
+import MaterialsSelect from "@/components/MaterialsSelect";
 import QRTextInput from "@/components/QRTextInput";
 import {
   collectionFormSchema,
@@ -81,6 +82,15 @@ export default function NewCollection() {
                 </Text>
               ) : null}
             </View>
+          )}
+        </collectionForm.Field>
+
+        <collectionForm.Field name="materials">
+          {(field) => (
+            <MaterialsSelect
+              selectedMaterials={field.state.value}
+              setSelectedMaterials={field.handleChange}
+            />
           )}
         </collectionForm.Field>
       </FormSection>
