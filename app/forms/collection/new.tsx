@@ -1,31 +1,29 @@
+import FieldInfo from "@/components/FieldInfo";
 import FormSection from "@/components/FormSection";
 import MaterialsSelect from "@/components/MaterialsSelect";
 import QRTextInput from "@/components/QRTextInput";
-import {
-  collectionFormSchema,
-  CollectionFormType,
-} from "@/config/forms/schemas";
+import { collectionFormSchema } from "@/config/forms/schemas";
 import { useForm } from "@tanstack/react-form";
 import { zodValidator } from "@tanstack/zod-form-adapter";
 import React, { useState } from "react";
 import {
-  Pressable,
-  Text,
-  View,
   ActivityIndicator,
+  Pressable,
   ScrollView,
+  Text,
   TextInput,
+  View,
 } from "react-native";
 
 export default function NewCollection() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
 
-  const collectionForm = useForm<CollectionFormType>({
+  const collectionForm = useForm({
     defaultValues: {
       collectorId: "",
       collectionBatch: "",
-      materials: [],
+      materials: [] as string[],
       totalWeightInKilograms: "",
     },
     onSubmit: async ({ value }) => {
@@ -56,6 +54,10 @@ export default function NewCollection() {
         setIsSubmitting(false);
       }
     },
+    validatorAdapter: zodValidator(),
+    validators: {
+      onChange: collectionFormSchema,
+    },
   });
 
   return (
@@ -63,9 +65,6 @@ export default function NewCollection() {
       <FormSection>
         <collectionForm.Field
           name="collectorId"
-          validators={{
-            onBlur: collectionFormSchema.shape.collectorId.parse,
-          }}
           validatorAdapter={zodValidator()}
         >
           {(field) => (
@@ -90,20 +89,13 @@ export default function NewCollection() {
                     : "border-slate-300"
                 }
               />
-              {field.state.meta.errors.length > 0 && (
-                <Text className="text-red-500 text-sm mt-1">
-                  {field.state.meta.errors.join(", ")}
-                </Text>
-              )}
+              <FieldInfo field={field} />
             </View>
           )}
         </collectionForm.Field>
 
         <collectionForm.Field
           name="collectionBatch"
-          validators={{
-            onBlur: collectionFormSchema.shape.collectionBatch.parse,
-          }}
           validatorAdapter={zodValidator()}
         >
           {(field) => (
@@ -127,16 +119,12 @@ export default function NewCollection() {
                     : "border-slate-300"
                 }
               />
-              {field.state.meta.errors.length > 0 && (
-                <Text className="text-red-500 text-sm mt-1">
-                  {field.state.meta.errors.join(", ")}
-                </Text>
-              )}
+              <FieldInfo field={field} />
             </View>
           )}
         </collectionForm.Field>
 
-        <collectionForm.Field name="materials">
+        <collectionForm.Field name="materials" mode="array">
           {(field) => (
             <View className="mb-4">
               <MaterialsSelect
@@ -146,11 +134,7 @@ export default function NewCollection() {
                   setSubmitError(null);
                 }}
               />
-              {field.state.meta.errors.length > 0 && (
-                <Text className="text-red-500 text-sm mt-1">
-                  {field.state.meta.errors.join(", ")}
-                </Text>
-              )}
+              <FieldInfo field={field} />
             </View>
           )}
         </collectionForm.Field>
@@ -170,6 +154,7 @@ export default function NewCollection() {
                 placeholder="Enter total weight in kilograms"
                 keyboardType="decimal-pad"
                 className={`border rounded-lg p-2 px-3 ${
+                  field.state.meta.isTouched &&
                   field.state.meta.errors.length > 0
                     ? "border-red-500"
                     : field.state.value
@@ -177,11 +162,7 @@ export default function NewCollection() {
                     : "border-slate-300"
                 }`}
               />
-              {field.state.meta.errors.length > 0 && (
-                <Text className="text-red-500 text-sm mt-1">
-                  {field.state.meta.errors.join(", ")}
-                </Text>
-              )}
+              <FieldInfo field={field} />
             </View>
           )}
         </collectionForm.Field>
