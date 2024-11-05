@@ -1,7 +1,7 @@
-import FieldInfo from "@/components/FieldInfo";
-import FormSection from "@/components/FormSection";
-import MaterialsSelect from "@/components/MaterialsSelect";
-import QRTextInput from "@/components/QRTextInput";
+import FieldInfo from "@/components/forms/FieldInfo";
+import FormSection from "@/components/forms/FormSection";
+import MaterialsSelect from "@/components/forms/MaterialsSelect";
+import QRTextInput from "@/components/forms/QRTextInput";
 import { collectionFormSchema } from "@/config/forms/schemas";
 import { useForm } from "@tanstack/react-form";
 import { zodValidator } from "@tanstack/zod-form-adapter";
