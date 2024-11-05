@@ -7,49 +7,94 @@ import {
 } from "@/config/forms/schemas";
 import { useForm } from "@tanstack/react-form";
 import { zodValidator } from "@tanstack/zod-form-adapter";
-import React from "react";
-import { Pressable, Text, View } from "react-native";
+import React, { useState } from "react";
+import {
+  Pressable,
+  Text,
+  View,
+  ActivityIndicator,
+  ScrollView,
+  TextInput,
+} from "react-native";
 
 export default function NewCollection() {
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
+
   const collectionForm = useForm<CollectionFormType>({
     defaultValues: {
       collectorId: "",
       collectionBatch: "",
       materials: [],
-      totalWeightInKilograms: 0,
+      totalWeightInKilograms: "",
+    },
+    onSubmit: async ({ value }) => {
+      console.log({ value });
+      setSubmitError(null);
+      setIsSubmitting(true);
+
+      try {
+        const {
+          data: parsedData,
+          error: parseError,
+          success: parseSuccess,
+        } = collectionFormSchema.safeParse(value);
+
+        if (!parseSuccess) {
+          setSubmitError("Please fix the form errors before submitting");
+          console.error("Form validation errors:", parseError);
+          return;
+        }
+
+        // Log the validated data
+        console.log("Valid form data:", parsedData);
+        // Add your submission logic here
+      } catch (error) {
+        setSubmitError("An error occurred while submitting the form");
+        console.error("Error submitting form:", error);
+      } finally {
+        setIsSubmitting(false);
+      }
     },
   });
 
   return (
-    <View className="flex-1 bg-white">
+    <ScrollView className="flex-1 bg-white">
       <FormSection>
         <collectionForm.Field
           name="collectorId"
           validators={{
-            onChange: collectionFormSchema.shape.collectorId.parse,
+            onBlur: collectionFormSchema.shape.collectorId.parse,
           }}
           validatorAdapter={zodValidator()}
         >
           {(field) => (
-            <View>
-              <Text className="text-lg text-gray-700 font-medium">
+            <View className="mb-4">
+              <Text className="text-lg text-gray-700 font-medium mb-2">
                 Collector ID
               </Text>
               <QRTextInput
+                id="collector-id-input"
                 value={field.state.value}
-                onChangeText={field.handleChange}
+                onChangeText={(text: string) => {
+                  console.log("text", text);
+                  field.handleChange(text);
+                  setSubmitError(null);
+                }}
                 placeholder="Enter or scan collector ID QR"
                 className={
                   field.state.meta.errors.length > 0
-                    ? "border-red-600"
-                    : "border-slate-800"
+                    ? "border-red-500"
+                    : field.state.value
+                    ? "border-green-500"
+                    : "border-slate-300"
                 }
               />
-              {field.state.meta.errors.length > 0 ? (
-                <Text className="text-red-600 font-semibold">
+              {field.state.meta.errors.length > 0 && (
+                <Text className="text-red-500 text-sm mt-1">
                   {field.state.meta.errors.join(", ")}
                 </Text>
-              ) : null}
+              )}
             </View>
           )}
         </collectionForm.Field>
@@ -57,52 +102,153 @@ export default function NewCollection() {
         <collectionForm.Field
           name="collectionBatch"
           validators={{
-            onChange: collectionFormSchema.shape.collectionBatch.parse,
+            onBlur: collectionFormSchema.shape.collectionBatch.parse,
           }}
           validatorAdapter={zodValidator()}
         >
           {(field) => (
-            <View>
-              <Text className="text-lg text-gray-700 font-medium">
+            <View className="mb-4">
+              <Text className="text-lg text-gray-700 font-medium mb-2">
                 Collection Batch
               </Text>
               <QRTextInput
+                id="collection-batch-input"
                 value={field.state.value}
-                onChangeText={field.handleChange}
+                onChangeText={(text) => {
+                  field.handleChange(text);
+                  setSubmitError(null);
+                }}
                 placeholder="Enter or scan collection batch QR"
                 className={
                   field.state.meta.errors.length > 0
-                    ? "border-red-600"
-                    : "border-slate-800"
+                    ? "border-red-500"
+                    : field.state.value
+                    ? "border-green-500"
+                    : "border-slate-300"
                 }
               />
-              {field.state.meta.errors.length > 0 ? (
-                <Text className="text-red-600 font-semibold">
+              {field.state.meta.errors.length > 0 && (
+                <Text className="text-red-500 text-sm mt-1">
                   {field.state.meta.errors.join(", ")}
                 </Text>
-              ) : null}
+              )}
             </View>
           )}
         </collectionForm.Field>
 
         <collectionForm.Field name="materials">
           {(field) => (
-            <MaterialsSelect
-              selectedMaterials={field.state.value}
-              setSelectedMaterials={field.handleChange}
-            />
+            <View className="mb-4">
+              <MaterialsSelect
+                selectedMaterials={field.state.value}
+                setSelectedMaterials={(materials) => {
+                  field.handleChange(materials);
+                  setSubmitError(null);
+                }}
+              />
+              {field.state.meta.errors.length > 0 && (
+                <Text className="text-red-500 text-sm mt-1">
+                  {field.state.meta.errors.join(", ")}
+                </Text>
+              )}
+            </View>
+          )}
+        </collectionForm.Field>
+
+        <collectionForm.Field name="totalWeightInKilograms">
+          {(field) => (
+            <View className="mb-4">
+              <Text className="text-lg text-gray-700 font-medium mb-2">
+                Total Weight (kg)
+              </Text>
+              <TextInput
+                value={field.state.value}
+                onChangeText={(text) => {
+                  field.handleChange(text);
+                  setSubmitError(null);
+                }}
+                placeholder="Enter total weight in kilograms"
+                keyboardType="decimal-pad"
+                className={`border rounded-lg p-2 px-3 ${
+                  field.state.meta.errors.length > 0
+                    ? "border-red-500"
+                    : field.state.value
+                    ? "border-green-500"
+                    : "border-slate-300"
+                }`}
+              />
+              {field.state.meta.errors.length > 0 && (
+                <Text className="text-red-500 text-sm mt-1">
+                  {field.state.meta.errors.join(", ")}
+                </Text>
+              )}
+            </View>
           )}
         </collectionForm.Field>
       </FormSection>
 
+      <FormSection>
+        <collectionForm.Subscribe>
+          {(state) => (
+            <View className="p-4 bg-gray-100 rounded-lg">
+              <Text className="font-bold mb-2">Form State:</Text>
+              {/* Display form values */}
+              <View className="mb-4">
+                <Text className="font-medium">Values:</Text>
+                {Object.entries(state.values).map(([key, value]) => (
+                  <View key={key} className="ml-4 my-1">
+                    <Text>
+                      {key}:{" "}
+                      {Array.isArray(value) ? value.join(", ") : String(value)}
+                    </Text>
+                  </View>
+                ))}
+              </View>
+
+              {/* Display errors if any */}
+              <View>
+                <Text className="font-medium">Errors:</Text>
+                {Object.entries(state.errors).map(([key, error]) =>
+                  error && error.length > 0 ? (
+                    <View key={key} className="ml-4 my-1">
+                      <Text className="text-red-500">
+                        {key}: {error}
+                      </Text>
+                    </View>
+                  ) : null
+                )}
+              </View>
+            </View>
+          )}
+        </collectionForm.Subscribe>
+      </FormSection>
+
       <View className="px-4 pb-8">
-        <Pressable
-          onPress={() => collectionForm.handleSubmit()}
-          className="flex flex-row items-center justify-center px-2 py-3 bg-blue-600 rounded-md"
+        {submitError && (
+          <Text className="text-red-500 text-center mb-2">{submitError}</Text>
+        )}
+
+        <collectionForm.Subscribe
+          selector={(state) => [state.canSubmit, state.isSubmitting]}
         >
-          <Text className="text-white text-lg font-bold">Add Collection</Text>
-        </Pressable>
+          {([canSubmit, isSubmitting]) => (
+            <Pressable
+              onPress={() => collectionForm.handleSubmit()}
+              disabled={!canSubmit}
+              className={`flex flex-row items-center justify-center px-2 py-3 rounded-md ${
+                isSubmitting ? "bg-blue-400" : "bg-blue-600"
+              }`}
+            >
+              {isSubmitting ? (
+                <ActivityIndicator color="white" className="mr-2" />
+              ) : null}
+              <Text className="text-white text-lg font-bold">
+                {isSubmitting ? "Adding Collection..." : "Add Collection"}
+              </Text>
+            </Pressable>
+          )}
+        </collectionForm.Subscribe>
       </View>
-    </View>
+    </ScrollView>
   );
 }

@@ -1,13 +1,15 @@
 import QRCodeScanner from "@/components/QRCodeScanner";
 import { Ionicons } from "@expo/vector-icons";
 import React, { useState } from "react";
-import { Modal, TextInput, TouchableOpacity, View } from "react-native";
+import { Modal, TextInput, TouchableOpacity, View, Text } from "react-native";
 
 interface QRTextInputProps {
   value: string;
   onChangeText: (text: string) => void;
   placeholder?: string;
   className?: string;
+  ref?: React.RefObject<TextInput>;
+  id?: string;
 }
 
 const QRTextInput: React.FC<QRTextInputProps> = ({
@@ -15,49 +17,94 @@ const QRTextInput: React.FC<QRTextInputProps> = ({
   onChangeText,
   placeholder = "Enter or scan text...",
   className = "",
+  id = "default",
 }) => {
-  // State to control the QR scanner modal
-  const [isQRScannerVisible, setIsQRScannerVisible] = useState(false);
+  const [scannerStates, setScannerStates] = useState<{
+    [key: string]: { isVisible: boolean; error: string | null };
+  }>({});
 
-  // Handler for QR scan results
-  const handleQRScan = (scannedData: any) => {
+  const currentState = scannerStates[id] || { isVisible: false, error: null };
+
+  const setScanner = (isVisible: boolean) => {
+    setScannerStates((prev) => ({
+      ...prev,
+      [id]: { ...prev[id], isVisible },
+    }));
+  };
+
+  const setError = (error: string | null) => {
+    setScannerStates((prev) => ({
+      ...prev,
+      [id]: { ...prev[id], error },
+    }));
+  };
+
+  const handleQRScan = (scannedData: unknown) => {
     try {
-      const textValue =
-        typeof scannedData === "object"
-          ? scannedData.data || String(scannedData)
-          : String(scannedData);
+      let textValue: string;
 
-      onChangeText(textValue);
-      setIsQRScannerVisible(false);
+      if (typeof scannedData === "string") {
+        textValue = scannedData;
+      } else if (
+        scannedData &&
+        typeof scannedData === "object" &&
+        "data" in scannedData
+      ) {
+        textValue = String(scannedData.data);
+      } else {
+        throw new Error("Invalid QR code data format");
+      }
+
+      if (!textValue.trim()) {
+        throw new Error("QR code data is empty");
+      }
+
+      onChangeText(textValue.trim());
+      setError(null);
+      setScanner(false);
     } catch (error) {
+      setError(
+        error instanceof Error ? error.message : "Failed to process QR code"
+      );
       console.error("Error processing QR data:", error);
     }
   };
 
   return (
-    <View className="relative flex-row items-center">
-      <TextInput
-        value={value}
-        onChangeText={onChangeText}
-        placeholder={placeholder}
-        className={`flex-1 border rounded-lg p-2 px-3 ${className}`}
-      />
-      <TouchableOpacity
-        onPress={() => setIsQRScannerVisible(true)}
-        className="absolute right-2"
-      >
-        <Ionicons name="qr-code-outline" size={24} color="black" />
-      </TouchableOpacity>
+    <View>
+      <View className="relative flex-row items-center">
+        <TextInput
+          value={value}
+          onChangeText={(text) => {
+            setError(null);
+            onChangeText(text);
+          }}
+          placeholder={placeholder}
+          className={`flex-1 border rounded-lg p-2 px-3 ${className}`}
+        />
+        <TouchableOpacity
+          onPress={() => {
+            setError(null);
+            setScanner(true);
+          }}
+          className="absolute right-2"
+        >
+          <Ionicons name="qr-code-outline" size={24} color="black" />
+        </TouchableOpacity>
+      </View>
 
-      {/* QR Scanner Modal */}
+      {currentState.error && (
+        <Text className="text-red-500 text-sm mt-1">{currentState.error}</Text>
+      )}
+
       <Modal
-        visible={isQRScannerVisible}
+        visible={currentState.isVisible}
         animationType="slide"
-        onRequestClose={() => setIsQRScannerVisible(false)}
+        onRequestClose={() => setScanner(false)}
       >
         <QRCodeScanner
           onScan={handleQRScan}
-          onClose={() => setIsQRScannerVisible(false)}
+          onClose={() => setScanner(false)}
         />
       </Modal>
     </View>

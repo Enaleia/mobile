@@ -11,7 +11,7 @@ import { View } from "react-native";
 
 function FormSection({ children }: { children: React.ReactNode }) {
   return (
-    <View className="flex-1 px-4 py-6 justify-end">
+    <View className="flex-1 px-4 py-6">
       {React.Children.map(children, (child) => (
         <View className="mb-4">{child}</View>
       ))}

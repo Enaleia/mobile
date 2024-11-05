@@ -11,7 +11,10 @@ const QRCodeScanner: React.FC<QRCodeScannerProps> = ({ onScan, onClose }) => {
   const [permission, requestPermission] = useCameraPermissions();
 
   const handleBarCodeScanned = ({ data }: { data: string }) => {
-    onScan(data);
+    if (data) {
+      onScan(data);
+      onClose();
+    }
   };
 
   if (!permission) {
