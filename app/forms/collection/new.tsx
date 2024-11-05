@@ -106,7 +106,7 @@ export default function NewCollection() {
               <QRTextInput
                 id="collection-batch-input"
                 value={field.state.value}
-                onChangeText={(text) => {
+                onChangeText={(text: string) => {
                   field.handleChange(text);
                   setSubmitError(null);
                 }}

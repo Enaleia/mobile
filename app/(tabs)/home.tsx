@@ -1,7 +1,8 @@
 import SafeAreaContent from "@/components/SafeAreaContent";
+import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
 import { StatusBar } from "expo-status-bar";
-import { Text, TouchableOpacity, View } from "react-native";
+import { Pressable, Text, View } from "react-native";
 
 export default function Home() {
   return (
@@ -18,15 +19,16 @@ export default function Home() {
       <View className="flex-1 items-center justify-center bg-neutral-50 rounded-lg border-[1.5px] border-neutral-200">
         <Text>Active attestations</Text>
       </View>
-      <View className="flex-row items-center justify-center w-full p-0 m-0">
-        <TouchableOpacity
-          className="w-full bg-[#24548b] rounded-md flex flex-row items-center justify-center gap-2 py-3 mt-2"
+      <View className="flex-row items-center justify-center w-full p-0 m-0 mt-2">
+        <Pressable
+          className="w-full bg-[#24548b] rounded-md flex flex-row items-center justify-center px-2 py-3"
           onPress={() => router.push("/forms/collection/new")}
         >
-          <Text className="text-white font-semibold h-full flex items-center justify-center">
+          <Ionicons name="add-circle" size={18} color="white" />
+          <Text className="text-white font-semibold ml-1">
             Add new attestation
           </Text>
-        </TouchableOpacity>
+        </Pressable>
       </View>
       <StatusBar style="dark" />
     </SafeAreaContent>
