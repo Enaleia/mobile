@@ -80,7 +80,10 @@ const QRTextInput: React.FC<QRTextInputProps> = ({
             onChangeText(text);
           }}
           placeholder={placeholder}
-          className={`flex-1 border rounded-lg p-2 px-3 ${className}`}
+          accessibilityLabel={placeholder}
+          accessibilityRole="text"
+          accessibilityState={{ selected: !!value }}
+          className={`flex-1 border-[1.5px] border-neutral-300 rounded-lg p-2 px-3 focus:border-blue-600 focus:shadow-outline focus:ring-offset-2 ${className}`}
         />
         <TouchableOpacity
           onPress={() => {

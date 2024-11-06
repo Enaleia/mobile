@@ -64,6 +64,35 @@ export default function NewCollection() {
     <ScrollView className="flex-1 bg-white">
       <FormSection>
         <collectionForm.Field
+          name="collectionBatch"
+          validatorAdapter={zodValidator()}
+        >
+          {(field) => (
+            <View className="mb-4">
+              <Text className="text-lg text-gray-700 font-medium mb-2">
+                Collection Batch
+              </Text>
+              <QRTextInput
+                id="collection-batch-input"
+                value={field.state.value}
+                onChangeText={(text: string) => {
+                  field.handleChange(text);
+                  setSubmitError(null);
+                }}
+                placeholder="Enter or scan collection batch QR"
+                className={
+                  field.state.meta.errors.length > 0
+                    ? "border-red-500"
+                    : field.state.value
+                    ? "border-green-500"
+                    : "border-slate-300"
+                }
+              />
+              <FieldInfo field={field} />
+            </View>
+          )}
+        </collectionForm.Field>
+        <collectionForm.Field
           name="collectorId"
           validatorAdapter={zodValidator()}
         >
@@ -81,36 +110,6 @@ export default function NewCollection() {
                   setSubmitError(null);
                 }}
                 placeholder="Enter or scan collector ID QR"
-                className={
-                  field.state.meta.errors.length > 0
-                    ? "border-red-500"
-                    : field.state.value
-                    ? "border-green-500"
-                    : "border-slate-300"
-                }
-              />
-              <FieldInfo field={field} />
-            </View>
-          )}
-        </collectionForm.Field>
-
-        <collectionForm.Field
-          name="collectionBatch"
-          validatorAdapter={zodValidator()}
-        >
-          {(field) => (
-            <View className="mb-4">
-              <Text className="text-lg text-gray-700 font-medium mb-2">
-                Collection Batch
-              </Text>
-              <QRTextInput
-                id="collection-batch-input"
-                value={field.state.value}
-                onChangeText={(text: string) => {
-                  field.handleChange(text);
-                  setSubmitError(null);
-                }}
-                placeholder="Enter or scan collection batch QR"
                 className={
                   field.state.meta.errors.length > 0
                     ? "border-red-500"
@@ -153,7 +152,7 @@ export default function NewCollection() {
                 }}
                 placeholder="Enter total weight in kilograms"
                 keyboardType="decimal-pad"
-                className={`border rounded-lg p-2 px-3 ${
+                className={`border-[1.5px] border-neutral-300 rounded-lg p-2 px-3 focus:border-blue-600 focus:shadow-outline focus:ring-offset-2 ${
                   field.state.meta.isTouched &&
                   field.state.meta.errors.length > 0
                     ? "border-red-500"

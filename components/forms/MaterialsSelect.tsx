@@ -23,8 +23,11 @@ const Chip = ({
 }) => {
   return (
     <Pressable
-      className={`bg-neutral-100 px-2 py-1 rounded-lg flex flex-row items-center mx-1 my-1 border border-transparent ${
-        selectedMaterials.includes(value) ? "border-blue-500 bg-blue-50" : ""
+      accessibilityLabel={label}
+      accessibilityRole="button"
+      accessibilityState={{ selected: selectedMaterials.includes(value) }}
+      className={`bg-neutral-50 px-2 py-1 rounded-lg flex flex-row items-center mx-1 my-1 border-[1.5px] border-neutral-300 ${
+        selectedMaterials.includes(value) ? "border-blue-600 bg-blue-50" : ""
       }`}
       onPress={() => {
         selectedMaterials.includes(value)
@@ -33,11 +36,23 @@ const Chip = ({
       }}
     >
       <Ionicons
-        name={selectedMaterials.includes(value) ? "checkmark" : "add"}
-        size={18}
-        color={selectedMaterials.includes(value) ? "blue" : "gray"}
+        name={
+          selectedMaterials.includes(value)
+            ? "checkmark-circle"
+            : "add-circle-outline"
+        }
+        size={20}
+        color={selectedMaterials.includes(value) ? "#007AFF" : "gray"}
       />
-      <Text className="ml-1">{label}</Text>
+      <Text
+        className={`ml-1 ${
+          selectedMaterials.includes(value)
+            ? "text-blue-800"
+            : "text-neutral-600"
+        }`}
+      >
+        {label}
+      </Text>
     </Pressable>
   );
 };
