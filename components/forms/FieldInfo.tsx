@@ -3,12 +3,15 @@ import { View, Text } from "react-native";
 
 export default function FieldInfo({
   field,
+  showErrors = false,
 }: {
   field: FieldApi<any, any, any, any>;
+  showErrors?: boolean;
 }) {
   return (
     <View>
-      {field.state.meta.isTouched && field.state.meta.errors.length ? (
+      {(field.state.meta.isTouched || showErrors) &&
+      field.state.meta.errors.length ? (
         <Text className="text-red-500 text-sm mt-1">
           {field.state.meta.errors.join(",")}
         </Text>

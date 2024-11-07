@@ -1,7 +1,7 @@
 import QRCodeScanner from "@/components/QRCodeScanner";
 import { Ionicons } from "@expo/vector-icons";
 import React, { useState } from "react";
-import { Modal, TextInput, TouchableOpacity, View, Text } from "react-native";
+import { Modal, Pressable, Text, TextInput, View } from "react-native";
 
 interface QRTextInputProps {
   value: string;
@@ -83,17 +83,18 @@ const QRTextInput: React.FC<QRTextInputProps> = ({
           accessibilityLabel={placeholder}
           accessibilityRole="text"
           accessibilityState={{ selected: !!value }}
-          className={`flex-1 border-[1.5px] border-neutral-300 rounded-lg p-2 px-3 focus:border-blue-600 focus:shadow-outline focus:ring-offset-2 ${className}`}
+          className={`flex-1 border-[1.5px] border-neutral-300 rounded-lg p-2 pr-12 px-3 focus:border-blue-600 focus:shadow-outline focus:ring-offset-2 ${className}`}
         />
-        <TouchableOpacity
+        <Pressable
+          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
           onPress={() => {
             setError(null);
             setScanner(true);
           }}
-          className="absolute right-2"
+          className="absolute right-2.5 z-10"
         >
           <Ionicons name="qr-code-outline" size={24} color="black" />
-        </TouchableOpacity>
+        </Pressable>
       </View>
 
       {currentState.error && (

@@ -3,8 +3,10 @@ import FormSection from "@/components/forms/FormSection";
 import MaterialsSelect from "@/components/forms/MaterialsSelect";
 import QRTextInput from "@/components/forms/QRTextInput";
 import { collectionFormSchema } from "@/config/forms/schemas";
+import { Ionicons } from "@expo/vector-icons";
 import { useForm } from "@tanstack/react-form";
 import { zodValidator } from "@tanstack/zod-form-adapter";
+import { AnimatePresence, MotiView } from "moti";
 import React, { useState } from "react";
 import {
   ActivityIndicator,
@@ -14,10 +16,12 @@ import {
   TextInput,
   View,
 } from "react-native";
+import { FadeInUp, FadeOutUp } from "react-native-reanimated";
 
 export default function NewCollection() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
+  const [hasAttemptedSubmit, setHasAttemptedSubmit] = useState(false);
 
   const collectionForm = useForm({
     defaultValues: {
@@ -27,7 +31,7 @@ export default function NewCollection() {
       totalWeightInKilograms: "",
     },
     onSubmit: async ({ value }) => {
-      console.log({ value });
+      setHasAttemptedSubmit(true);
       setSubmitError(null);
       setIsSubmitting(true);
 
@@ -44,9 +48,7 @@ export default function NewCollection() {
           return;
         }
 
-        // Log the validated data
         console.log("Valid form data:", parsedData);
-        // Add your submission logic here
       } catch (error) {
         setSubmitError("An error occurred while submitting the form");
         console.error("Error submitting form:", error);
@@ -83,12 +85,10 @@ export default function NewCollection() {
                 className={
                   field.state.meta.errors.length > 0
                     ? "border-red-500"
-                    : field.state.value
-                    ? "border-green-500"
                     : "border-slate-300"
                 }
               />
-              <FieldInfo field={field} />
+              <FieldInfo field={field} showErrors={hasAttemptedSubmit} />
             </View>
           )}
         </collectionForm.Field>
@@ -105,20 +105,15 @@ export default function NewCollection() {
                 id="collector-id-input"
                 value={field.state.value}
                 onChangeText={(text: string) => {
-                  console.log("text", text);
                   field.handleChange(text);
                   setSubmitError(null);
                 }}
                 placeholder="Enter or scan collector ID QR"
                 className={
-                  field.state.meta.errors.length > 0
-                    ? "border-red-500"
-                    : field.state.value
-                    ? "border-green-500"
-                    : "border-slate-300"
+                  field.state.meta.errors.length > 0 ? "border-red-500" : ""
                 }
               />
-              <FieldInfo field={field} />
+              <FieldInfo field={field} showErrors={hasAttemptedSubmit} />
             </View>
           )}
         </collectionForm.Field>
@@ -133,7 +128,7 @@ export default function NewCollection() {
                   setSubmitError(null);
                 }}
               />
-              <FieldInfo field={field} />
+              <FieldInfo field={field} showErrors={hasAttemptedSubmit} />
             </View>
           )}
         </collectionForm.Field>
@@ -142,7 +137,7 @@ export default function NewCollection() {
           {(field) => (
             <View className="mb-4">
               <Text className="text-lg text-gray-700 font-medium mb-2">
-                Total Weight (kg)
+                Total Weight (in kg)
               </Text>
               <TextInput
                 value={field.state.value}
@@ -150,29 +145,57 @@ export default function NewCollection() {
                   field.handleChange(text);
                   setSubmitError(null);
                 }}
-                placeholder="Enter total weight in kilograms"
+                onBlur={() => {
+                  field.handleChange(
+                    isNaN(parseFloat(field.state.value))
+                      ? field.state.value
+                      : parseFloat(field.state.value).toFixed(2)
+                  );
+                }}
+                placeholder="0.00"
                 keyboardType="decimal-pad"
-                className={`border-[1.5px] border-neutral-300 rounded-lg p-2 px-3 focus:border-blue-600 focus:shadow-outline focus:ring-offset-2 ${
-                  field.state.meta.isTouched &&
-                  field.state.meta.errors.length > 0
-                    ? "border-red-500"
-                    : field.state.value
-                    ? "border-green-500"
-                    : "border-slate-300"
+                className={`flex-1 border-[1.5px] rounded-lg p-2 px-3 border-neutral-300 focus:border-blue-600 focus:shadow-outline focus:ring-offset-2 ${
+                  field.state.meta.errors.length > 0 && "border-red-500"
                 }`}
               />
-              <FieldInfo field={field} />
+              <FieldInfo field={field} showErrors={hasAttemptedSubmit} />
+              {field.state.value &&
+                !field.state.meta.errors.length &&
+                field.state.value !==
+                  parseFloat(field.state.value).toFixed(2) && (
+                  <AnimatePresence>
+                    <MotiView
+                      entering={FadeInUp.springify().damping(20).stiffness(100)}
+                      exiting={FadeOutUp.springify().damping(20).stiffness(100)}
+                      transition={{
+                        type: "spring",
+                        damping: 10,
+                        stiffness: 100,
+                      }}
+                      className="flex flex-row items-center gap-1 mt-0.5"
+                    >
+                      <Ionicons
+                        name="swap-horizontal"
+                        size={16}
+                        color="#a3a3a3"
+                      />
+                      <Text className="text-neutral-600 text-sm font-semibold">
+                        {parseFloat(field.state.value).toFixed(2)}kg
+                      </Text>
+                    </MotiView>
+                  </AnimatePresence>
+                )}
             </View>
           )}
         </collectionForm.Field>
       </FormSection>
 
-      <FormSection>
+      {/* <FormSection>
         <collectionForm.Subscribe>
           {(state) => (
             <View className="p-4 bg-gray-100 rounded-lg">
               <Text className="font-bold mb-2">Form State:</Text>
-              {/* Display form values */}
+              Display form values
               <View className="mb-4">
                 <Text className="font-medium">Values:</Text>
                 {Object.entries(state.values).map(([key, value]) => (
@@ -185,7 +208,7 @@ export default function NewCollection() {
                 ))}
               </View>
 
-              {/* Display errors if any */}
+              Display errors if any
               <View>
                 <Text className="font-medium">Errors:</Text>
                 {Object.entries(state.errors).map(([key, error]) =>
@@ -201,10 +224,10 @@ export default function NewCollection() {
             </View>
           )}
         </collectionForm.Subscribe>
-      </FormSection>
+      </FormSection> */}
 
       <View className="px-4 pb-8">
-        {submitError && (
+        {submitError && isSubmitting && (
           <Text className="text-red-500 text-center mb-2">{submitError}</Text>
         )}
 

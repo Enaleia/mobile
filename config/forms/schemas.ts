@@ -7,7 +7,10 @@ export const collectionFormSchema = z.object({
   totalWeightInKilograms: z
     .string()
     .min(1, "Total weight is required")
-    .refine((val) => !isNaN(parseFloat(val)), "Please enter a valid number")
+    .refine(
+      (val) => val !== "" && !isNaN(parseFloat(val)),
+      "Please enter a number"
+    )
     .transform((val) => parseFloat(val).toFixed(2)),
 });
 
