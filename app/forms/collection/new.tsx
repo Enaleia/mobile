@@ -1,3 +1,4 @@
+import { useCreateCollectionEvent } from "@/api/collections/new";
 import FieldInfo from "@/components/forms/FieldInfo";
 import FormSection from "@/components/forms/FormSection";
 import MaterialsSelect from "@/components/forms/MaterialsSelect";
@@ -23,8 +24,11 @@ export default function NewCollection() {
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [hasAttemptedSubmit, setHasAttemptedSubmit] = useState(false);
 
+  const { mutateAsync: createCollectionEvent } = useCreateCollectionEvent();
+
   const collectionForm = useForm({
     defaultValues: {
+      action: 1,
       collectorId: "",
       collectionBatch: "",
       materials: [] as string[],
@@ -49,6 +53,13 @@ export default function NewCollection() {
         }
 
         console.log("Valid form data:", parsedData);
+
+        try {
+          await createCollectionEvent(parsedData);
+        } catch (error) {
+          console.error("Failed to create collection event:", error);
+          throw error; // Re-throw to be caught by outer catch block
+        }
       } catch (error) {
         setSubmitError("An error occurred while submitting the form");
         console.error("Error submitting form:", error);
