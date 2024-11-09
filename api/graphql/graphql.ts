@@ -2603,6 +2603,13 @@ export type CreateEventsInputMutationVariables = Exact<{
 
 export type CreateEventsInputMutation = { __typename?: 'Mutation', create_Events_Input_item?: { __typename?: 'Events_Input', event_input_id: string } | null };
 
+export type CreateEventsOutputMutationVariables = Exact<{
+  data: Create_Events_Output_Input;
+}>;
+
+
+export type CreateEventsOutputMutation = { __typename?: 'Mutation', create_Events_Output_item?: { __typename?: 'Events_Output', event_output_id: string } | null };
+
 export type CreateEventsMutationVariables = Exact<{
   data: Create_Events_Input;
 }>;
@@ -2632,6 +2639,13 @@ export const CreateEventsInputDocument = new TypedDocumentString(`
   }
 }
     `) as unknown as TypedDocumentString<CreateEventsInputMutation, CreateEventsInputMutationVariables>;
+export const CreateEventsOutputDocument = new TypedDocumentString(`
+    mutation CreateEventsOutput($data: create_Events_Output_input!) {
+  create_Events_Output_item(data: $data) {
+    event_output_id
+  }
+}
+    `) as unknown as TypedDocumentString<CreateEventsOutputMutation, CreateEventsOutputMutationVariables>;
 export const CreateEventsDocument = new TypedDocumentString(`
     mutation CreateEvents($data: create_Events_input!) {
   create_Events_item(data: $data) {

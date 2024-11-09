@@ -16,6 +16,7 @@ import * as types from './graphql';
  */
 const documents = {
     "\n  mutation CreateEventsInput($data: create_Events_Input_input!) {\n    create_Events_Input_item(data: $data) {\n      event_input_id\n    }\n  }\n": types.CreateEventsInputDocument,
+    "\n  mutation CreateEventsOutput($data: create_Events_Output_input!) {\n    create_Events_Output_item(data: $data) {\n      event_output_id\n    }\n  }\n": types.CreateEventsOutputDocument,
     "\n  mutation CreateEvents($data: create_Events_input!) {\n    create_Events_item(data: $data) {\n      event_id\n    }\n  }\n": types.CreateEventsDocument,
 };
 
@@ -23,6 +24,10 @@ const documents = {
  * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
  */
 export function graphql(source: "\n  mutation CreateEventsInput($data: create_Events_Input_input!) {\n    create_Events_Input_item(data: $data) {\n      event_input_id\n    }\n  }\n"): typeof import('./graphql').CreateEventsInputDocument;
+/**
+ * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
+ */
+export function graphql(source: "\n  mutation CreateEventsOutput($data: create_Events_Output_input!) {\n    create_Events_Output_item(data: $data) {\n      event_output_id\n    }\n  }\n"): typeof import('./graphql').CreateEventsOutputDocument;
 /**
  * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
  */
