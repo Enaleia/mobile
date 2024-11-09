@@ -2,12 +2,15 @@
   "extends": "expo/tsconfig.base",
   "compilerOptions": {
     "strict": true,
+    "typeRoots": [
+      "./types"
+    ],
     "paths": {
       "@/*": [
         "./*"
-      ]
+      ],
     },
-		"plugins": [
+    "plugins": [
       {
         "name": "@0no-co/graphqlsp",
         "schema": "./schema.graphql"
