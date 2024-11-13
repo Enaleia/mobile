@@ -25,6 +25,10 @@ export async function execute<TResult, TVariables>(
     const result = await response.json();
 
     if (result.errors) {
+      console.log({
+        executeError: result.errors,
+        executeExtensions: result.errors[0].extensions,
+      });
       throw new Error(result.errors.map((e: any) => e.message).join(", "));
     }
 
