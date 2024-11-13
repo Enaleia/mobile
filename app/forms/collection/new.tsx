@@ -1,14 +1,16 @@
-import { useCreateCollectionEvent } from "@/api/collections/new";
+import { useCreateActivity } from "@/api/activity/new";
 import FieldInfo from "@/components/forms/FieldInfo";
 import FormSection from "@/components/forms/FormSection";
 import MaterialsSelect from "@/components/forms/MaterialsSelect";
 import QRTextInput from "@/components/forms/QRTextInput";
 import { collectionFormSchema } from "@/config/forms/schemas";
+import { ActivityType } from "@/types/activity";
 import { Ionicons } from "@expo/vector-icons";
 import { useForm } from "@tanstack/react-form";
 import { zodValidator } from "@tanstack/zod-form-adapter";
 import { AnimatePresence, MotiView } from "moti";
 import React, { useState } from "react";
+import { Picker } from "@react-native-picker/picker";
 import {
   ActivityIndicator,
   Pressable,
@@ -24,11 +26,12 @@ export default function NewCollection() {
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [hasAttemptedSubmit, setHasAttemptedSubmit] = useState(false);
 
-  const { mutateAsync: createCollectionEvent } = useCreateCollectionEvent();
+  // const { mutateAsync: createCollectionEvent } = useCreateCollectionEvent();
+  const { mutateAsync: createActivity } = useCreateActivity();
 
   const collectionForm = useForm({
     defaultValues: {
-      action: 1,
+      action: "litter_filtering",
       collectorId: "",
       collectionBatch: "",
       materials: [] as string[],
@@ -55,7 +58,17 @@ export default function NewCollection() {
         console.log("Valid form data:", parsedData);
 
         try {
-          await createCollectionEvent(parsedData);
+          // await createCollectionEvent(parsedData);
+          await createActivity({
+            type: parsedData.action,
+            location: {
+              type: "Point",
+              coordinates: [
+                -73.935242, // random longitude
+                40.73061, // random latitude
+              ],
+            },
+          });
         } catch (error) {
           console.error("Failed to create collection event:", error);
           throw error; // Re-throw to be caught by outer catch block
@@ -76,6 +89,40 @@ export default function NewCollection() {
   return (
     <ScrollView className="flex-1 bg-white">
       <FormSection>
+        <collectionForm.Field name="action" validatorAdapter={zodValidator()}>
+          {(field) => (
+            <View className="mb-4">
+              <Text className="text-lg text-gray-700 font-medium mb-2">
+                Activity Type
+              </Text>
+              <View className="flex-1 border-[1.5px] rounded-lg p-2 border-neutral-300 focus:border-blue-600 focus:shadow-outline focus:ring-offset-2">
+                <Picker
+                  selectedValue={field.state.value}
+                  onValueChange={(value) => {
+                    field.handleChange(value);
+                    setSubmitError(null);
+                  }}
+                  style={{ padding: 0, height: "auto" }}
+                >
+                  {ActivityType.map((type) => (
+                    <Picker.Item
+                      key={type}
+                      label={type
+                        .replace("_", " ")
+                        .split(" ")
+                        .map(
+                          (word) => word.charAt(0).toUpperCase() + word.slice(1)
+                        )
+                        .join(" ")}
+                      value={type}
+                    />
+                  ))}
+                </Picker>
+              </View>
+              <FieldInfo field={field} showErrors={hasAttemptedSubmit} />
+            </View>
+          )}
+        </collectionForm.Field>
         <collectionForm.Field
           name="collectionBatch"
           validatorAdapter={zodValidator()}
