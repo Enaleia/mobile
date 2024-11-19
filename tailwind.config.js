@@ -8,10 +8,10 @@ module.exports = {
 	theme: {
 			extend: {
 					fontFamily: {
-							sans: ['DMSans-Regular', 'system-ui', 'sans-serif'],
-							medium: ['DMSans-Medium', 'system-ui', 'sans-serif'],
-							semibold: ['DMSans-SemiBold', 'system-ui', 'sans-serif'],
-							bold: ['DMSans-Bold', 'system-ui', 'sans-serif'],
+							'dm-regular': ['DMSans-Regular', 'system-ui', 'sans-serif'],
+							'dm-medium': ['DMSans-Medium', 'system-ui', 'sans-serif'],
+							'dm-semibold': ['DMSans-SemiBold', 'system-ui', 'sans-serif'],
+							'dm-bold': ['DMSans-Bold', 'system-ui', 'sans-serif'],
 					},
 			},
 	},
