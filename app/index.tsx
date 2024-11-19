@@ -23,7 +23,7 @@ const App = () => {
           onClose={() => setShowScanner(false)}
         />
       ) : (
-        <View className="p-4">
+        <View className="p-4 font-sans">
           <View className="mb-4">
             <Text className="text-3xl font-bold mb-2">ENALEIA</Text>
             <Text className="text-lg">

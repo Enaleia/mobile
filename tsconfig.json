@@ -5,9 +5,10 @@
     "paths": {
       "@/*": [
         "./*"
-      ]
+      ],
+      "@assets/*": ["./assets/*"]
     },
-		"plugins": [
+    "plugins": [
       {
         "name": "@0no-co/graphqlsp",
         "schema": "./schema.graphql"
