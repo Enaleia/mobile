@@ -1,10 +1,11 @@
-import LoginForm from "@/components/LoginForm";
-import SafeAreaContent from "@/components/SafeAreaContent";
-import QRCodeScanner from "@/components/QRCodeScanner";
 import LocationDisplay from "@/components/LocationDisplay";
+import LoginForm from "@/components/LoginForm";
+import QRCodeScanner from "@/components/QRCodeScanner";
+import SafeAreaContent from "@/components/SafeAreaContent";
+import { Link } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { useState } from "react";
-import { Text, View, Button } from "react-native";
+import { Button, Text, View } from "react-native";
 
 const App = () => {
   const [showScanner, setShowScanner] = useState(false);
@@ -23,10 +24,15 @@ const App = () => {
           onClose={() => setShowScanner(false)}
         />
       ) : (
-        <View className="p-4 font-sans">
+        <View className="p-4 font-dm-regular">
           <View className="mb-4">
-            <Text className="text-3xl font-bold mb-2">ENALEIA</Text>
-            <Text className="text-lg">
+            <Text
+              className="text-3xl font-dm-bold"
+              style={{ letterSpacing: -1.5 }}
+            >
+              Enaleia
+            </Text>
+            <Text className="text-base" style={{ lineHeight: 24 }}>
               Removing plastic from the ocean, one fisherman's boat at a time.
             </Text>
           </View>
@@ -42,9 +48,11 @@ const App = () => {
               Scanned QR Code: {scannedData}
             </Text>
           )}
+
+          <Link href="/login">Login</Link>
         </View>
       )}
-      <StatusBar style="light" />
+      <StatusBar style="auto" />
     </SafeAreaContent>
   );
 };
