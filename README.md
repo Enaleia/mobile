@@ -1,4 +1,32 @@
-# Welcome to your Expo app 👋
+# Intro
+
+The mobile app for Enaleia's operation and its partners, including recyclers and manufacturers, streamlines waste management and data tracking across the operational chain.
+
+### Operational Flow
+**1. At the Port:**
+- Port coordinators weigh the fisherman’s waste collection and scan their Enaleia ID card.
+- Data is submitted and attested using the port coordinator’s wallet, with transaction fees sponsored by a master wallet.
+
+**2. Waste Collection Transportation:**
+- When onsite containers reach capacity, the waste is shipped to the recycler.
+
+**3. At the Recycler:**
+- The recycler weighs the container using a weighbridge, generating a weight slip.
+- The recycler sorts the materials and logs the sorted data with identifier codes in the app, submitting the data with an attestation.
+- When raw materials like pellets are produced, the recycler records the quantity and makes a final attestation.
+
+**4. To the Manufacturer:**
+- Pellets are shipped to the manufacturer.
+- The manufacturer records the production of end-user products, entering data and making attestations.
+
+### Design Principles
+
+The Enaleia Hub mobile app is designed with the users’ physical and digital constraints in mind:
+- Offline-first approach: Recognizing limited internet access at many sites, the app operates offline, storing data locally until a connection is available for submission and attestation.
+- Flexible UX: With operational workflows varying across countries, the user experience is designed to be generic, ensuring adaptability to different scenarios.
+
+
+---------------------
 
 This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
 

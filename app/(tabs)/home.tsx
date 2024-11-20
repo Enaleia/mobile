@@ -8,7 +8,7 @@ export default function Home() {
   return (
     <SafeAreaContent>
       <View className="flex-row items-start justify-between pb-2">
-        <Text className="text-sm font-semibold text-neutral-600 uppercase">
+        <Text className="text-sm font-medium text-neutral-600 uppercase">
           Enaleia
         </Text>
         <View className="flex-row items-center justify-center gap-1 bg-green-50 rounded-full pb-1 px-2 border border-green-500">
@@ -17,7 +17,7 @@ export default function Home() {
         </View>
       </View>
       <View className="flex-1 items-center justify-center bg-neutral-50 rounded-lg border-[1.5px] border-neutral-200">
-        <Text>Active attestations</Text>
+        <Text className="font-medium">Active attestations</Text>
       </View>
       <View className="flex-row items-center justify-center w-full p-0 m-0 mt-2">
         <Pressable
