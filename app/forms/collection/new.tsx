@@ -1,4 +1,4 @@
-import { useCreateActivity } from "@/api/activity/new";
+// import { useCreateActivity } from "@/api/activity/new";
 import FieldInfo from "@/components/forms/FieldInfo";
 import FormSection from "@/components/forms/FormSection";
 import MaterialsSelect from "@/components/forms/MaterialsSelect";
@@ -20,18 +20,19 @@ import {
   View,
 } from "react-native";
 import { FadeInUp, FadeOutUp } from "react-native-reanimated";
+import { useCreateCollectionEvent } from "@/api/collections/new";
 
 export default function NewCollection() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [hasAttemptedSubmit, setHasAttemptedSubmit] = useState(false);
 
-  // const { mutateAsync: createCollectionEvent } = useCreateCollectionEvent();
-  const { mutateAsync: createActivity } = useCreateActivity();
+  const { mutateAsync: createCollectionEvent } = useCreateCollectionEvent();
+  // const { mutateAsync: createActivity } = useCreateActivity();
 
   const collectionForm = useForm({
     defaultValues: {
-      action: "litter_filtering",
+      action: 1,
       collectorId: "",
       collectionBatch: "",
       materials: [] as string[],
@@ -58,17 +59,17 @@ export default function NewCollection() {
         console.log("Valid form data:", parsedData);
 
         try {
-          // await createCollectionEvent(parsedData);
-          await createActivity({
-            type: parsedData.action,
-            location: {
-              type: "Point",
-              coordinates: [
-                -73.935242, // random longitude
-                40.73061, // random latitude
-              ],
-            },
-          });
+          await createCollectionEvent(parsedData);
+          // await createActivity({
+          //   type: parsedData.action,
+          //   location: {
+          //     type: "Point",
+          //     coordinates: [
+          //       -73.935242, // random longitude
+          //       40.73061, // random latitude
+          //     ],
+          //   },
+          // });
         } catch (error) {
           console.error("Failed to create collection event:", error);
           throw error; // Re-throw to be caught by outer catch block
@@ -89,7 +90,7 @@ export default function NewCollection() {
   return (
     <ScrollView className="flex-1 bg-white">
       <FormSection>
-        <collectionForm.Field name="action" validatorAdapter={zodValidator()}>
+        {/* <collectionForm.Field name="action" validatorAdapter={zodValidator()}>
           {(field) => (
             <View className="mb-4">
               <Text className="text-lg text-gray-700 font-medium mb-2">
@@ -122,7 +123,7 @@ export default function NewCollection() {
               <FieldInfo field={field} showErrors={hasAttemptedSubmit} />
             </View>
           )}
-        </collectionForm.Field>
+        </collectionForm.Field> */}
         <collectionForm.Field
           name="collectionBatch"
           validatorAdapter={zodValidator()}

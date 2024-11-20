@@ -1,4 +1,4 @@
-import { ActivityType } from "@/types/activity";
+// import { ActivityType } from "@/types/activity";
 import { z } from "zod";
 
 // Define reusable validation messages
@@ -9,7 +9,7 @@ const VALIDATION_MESSAGES = {
 } as const;
 
 // Define activity types schema
-const activityTypeSchema = z.enum(ActivityType);
+// const activityTypeSchema = z.enum(ActivityType);
 
 // Define weight validation schema
 const weightSchema = z
@@ -28,7 +28,7 @@ const materialsSchema = z
 
 // Main collection form schema
 export const collectionFormSchema = z.object({
-  action: activityTypeSchema,
+  action: z.number(),
   collectorId: z.string().min(1, VALIDATION_MESSAGES.REQUIRED),
   collectionBatch: z.string().min(1, VALIDATION_MESSAGES.REQUIRED),
   materials: materialsSchema,
