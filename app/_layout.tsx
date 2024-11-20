@@ -31,18 +31,11 @@ export default function RootLayout() {
 
   return (
     <QueryClientProvider client={queryClient}>
-      <Stack>
-        <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-        <Stack.Screen name="index" options={{ headerShown: false }} />
-        <Stack.Screen
-          name="(auth)/login"
-          options={{
-            headerShown: false,
-            statusBarStyle: "light",
-            statusBarBackgroundColor: "#183F92",
-          }}
-        />
-        <Stack.Screen name="forms" options={{ headerShown: false }} />
+      <Stack screenOptions={{ headerShown: false }}>
+        <Stack.Screen name="(tabs)" />
+        <Stack.Screen name="index" />
+        <Stack.Screen name="(auth)/login" />
+        <Stack.Screen name="forms" />
       </Stack>
     </QueryClientProvider>
   );
