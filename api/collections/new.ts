@@ -27,9 +27,8 @@ export const useCreateCollectionEvent = () => {
   const createMainEvent = async (data: CollectionFormType) => {
     const eventData: Create_Events_Input = {
       action: data.action,
-      collector: data.collectorId,
+      // collector: data.collectorId,
     };
-    console.log("eventData", eventData);
     const result = await execute(CREATE_EVENTS_MUTATION, {
       data: eventData,
     });
@@ -59,7 +58,7 @@ export const useCreateCollectionEvent = () => {
   ) => {
     return await createEventOutput({
       output_material: 8, // TODO: update this to use the materials
-      output_weight: Number(data.totalWeightInKilograms),
+      output_weight: data.totalWeightInKilograms,
       output_code: data.collectionBatch,
       event_id: {
         event_id: eventId,
@@ -86,21 +85,13 @@ export const useCreateCollectionEvent = () => {
           createCollectionEventOutput(formData, eventId),
         ]);
 
-        if (!inputResult?.create_Events_Input_item?.event_input_id) {
-          throw new Error("Failed to create input record - no ID returned");
-        }
-
-        if (!outputResult?.create_Events_Output_item?.event_output_id) {
-          throw new Error("Failed to create output record - no ID returned");
-        }
-
         console.log("inputResult", inputResult);
         console.log("outputResult", outputResult);
 
         return {
           eventId,
-          inputId: inputResult.create_Events_Input_item.event_input_id,
-          outputId: outputResult.create_Events_Output_item.event_output_id,
+          inputItem: inputResult?.create_Events_Input_item || null,
+          outputItem: outputResult?.create_Events_Output_item || null,
         };
       } catch (error) {
         console.error("Error creating input/output records:", error);

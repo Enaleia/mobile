@@ -1,16 +1,12 @@
-// import { useCreateActivity } from "@/api/activity/new";
+import { useCreateCollectionEvent } from "@/api/collections/new";
 import FieldInfo from "@/components/forms/FieldInfo";
 import FormSection from "@/components/forms/FormSection";
 import MaterialsSelect from "@/components/forms/MaterialsSelect";
 import QRTextInput from "@/components/forms/QRTextInput";
 import { collectionFormSchema } from "@/config/forms/schemas";
-import { ActivityType } from "@/types/activity";
-import { Ionicons } from "@expo/vector-icons";
 import { useForm } from "@tanstack/react-form";
 import { zodValidator } from "@tanstack/zod-form-adapter";
-import { AnimatePresence, MotiView } from "moti";
 import React, { useState } from "react";
-import { Picker } from "@react-native-picker/picker";
 import {
   ActivityIndicator,
   Pressable,
@@ -19,8 +15,6 @@ import {
   TextInput,
   View,
 } from "react-native";
-import { FadeInUp, FadeOutUp } from "react-native-reanimated";
-import { useCreateCollectionEvent } from "@/api/collections/new";
 
 export default function NewCollection() {
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -28,7 +22,6 @@ export default function NewCollection() {
   const [hasAttemptedSubmit, setHasAttemptedSubmit] = useState(false);
 
   const { mutateAsync: createCollectionEvent } = useCreateCollectionEvent();
-  // const { mutateAsync: createActivity } = useCreateActivity();
 
   const collectionForm = useForm({
     defaultValues: {
@@ -60,16 +53,6 @@ export default function NewCollection() {
 
         try {
           await createCollectionEvent(parsedData);
-          // await createActivity({
-          //   type: parsedData.action,
-          //   location: {
-          //     type: "Point",
-          //     coordinates: [
-          //       -73.935242, // random longitude
-          //       40.73061, // random latitude
-          //     ],
-          //   },
-          // });
         } catch (error) {
           console.error("Failed to create collection event:", error);
           throw error; // Re-throw to be caught by outer catch block
@@ -90,40 +73,6 @@ export default function NewCollection() {
   return (
     <ScrollView className="flex-1 bg-white">
       <FormSection>
-        {/* <collectionForm.Field name="action" validatorAdapter={zodValidator()}>
-          {(field) => (
-            <View className="mb-4">
-              <Text className="text-lg text-gray-700 font-medium mb-2">
-                Activity Type
-              </Text>
-              <View className="flex-1 border-[1.5px] rounded-lg p-2 border-neutral-300 focus:border-blue-600 focus:shadow-outline focus:ring-offset-2">
-                <Picker
-                  selectedValue={field.state.value}
-                  onValueChange={(value) => {
-                    field.handleChange(value);
-                    setSubmitError(null);
-                  }}
-                  style={{ padding: 0, height: "auto" }}
-                >
-                  {ActivityType.map((type) => (
-                    <Picker.Item
-                      key={type}
-                      label={type
-                        .replace("_", " ")
-                        .split(" ")
-                        .map(
-                          (word) => word.charAt(0).toUpperCase() + word.slice(1)
-                        )
-                        .join(" ")}
-                      value={type}
-                    />
-                  ))}
-                </Picker>
-              </View>
-              <FieldInfo field={field} showErrors={hasAttemptedSubmit} />
-            </View>
-          )}
-        </collectionForm.Field> */}
         <collectionForm.Field
           name="collectionBatch"
           validatorAdapter={zodValidator()}
@@ -199,91 +148,22 @@ export default function NewCollection() {
                 Total Weight (in kg)
               </Text>
               <TextInput
-                value={field.state.value}
+                value={field.state.value.toString()}
                 onChangeText={(text) => {
                   field.handleChange(text);
                   setSubmitError(null);
                 }}
-                onBlur={() => {
-                  field.handleChange(
-                    isNaN(parseFloat(field.state.value))
-                      ? field.state.value
-                      : parseFloat(field.state.value).toFixed(2)
-                  );
-                }}
-                placeholder="0.00"
-                keyboardType="decimal-pad"
+                placeholder="0"
+                inputMode="numeric"
                 className={`flex-1 border-[1.5px] rounded-lg p-2 px-3 border-neutral-300 focus:border-blue-600 focus:shadow-outline focus:ring-offset-2 ${
                   field.state.meta.errors.length > 0 && "border-red-500"
                 }`}
               />
               <FieldInfo field={field} showErrors={hasAttemptedSubmit} />
-              {field.state.value &&
-                !field.state.meta.errors.length &&
-                field.state.value !==
-                  parseFloat(field.state.value).toFixed(2) && (
-                  <AnimatePresence>
-                    <MotiView
-                      entering={FadeInUp.springify().damping(20).stiffness(100)}
-                      exiting={FadeOutUp.springify().damping(20).stiffness(100)}
-                      transition={{
-                        type: "spring",
-                        damping: 10,
-                        stiffness: 100,
-                      }}
-                      className="flex flex-row items-center gap-1 mt-0.5"
-                    >
-                      <Ionicons
-                        name="swap-horizontal"
-                        size={16}
-                        color="#a3a3a3"
-                      />
-                      <Text className="text-neutral-600 text-sm font-semibold">
-                        {parseFloat(field.state.value).toFixed(2)}kg
-                      </Text>
-                    </MotiView>
-                  </AnimatePresence>
-                )}
             </View>
           )}
         </collectionForm.Field>
       </FormSection>
-
-      {/* <FormSection>
-        <collectionForm.Subscribe>
-          {(state) => (
-            <View className="p-4 bg-gray-100 rounded-lg">
-              <Text className="font-bold mb-2">Form State:</Text>
-              Display form values
-              <View className="mb-4">
-                <Text className="font-medium">Values:</Text>
-                {Object.entries(state.values).map(([key, value]) => (
-                  <View key={key} className="ml-4 my-1">
-                    <Text>
-                      {key}:{" "}
-                      {Array.isArray(value) ? value.join(", ") : String(value)}
-                    </Text>
-                  </View>
-                ))}
-              </View>
-
-              Display errors if any
-              <View>
-                <Text className="font-medium">Errors:</Text>
-                {Object.entries(state.errors).map(([key, error]) =>
-                  error && error.length > 0 ? (
-                    <View key={key} className="ml-4 my-1">
-                      <Text className="text-red-500">
-                        {key}: {error}
-                      </Text>
-                    </View>
-                  ) : null
-                )}
-              </View>
-            </View>
-          )}
-        </collectionForm.Subscribe>
-      </FormSection> */}
 
       <View className="px-4 pb-8">
         {submitError && isSubmitting && (

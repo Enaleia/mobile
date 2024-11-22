@@ -1,4 +1,3 @@
-// import { ActivityType } from "@/types/activity";
 import { z } from "zod";
 
 // Define reusable validation messages
@@ -8,18 +7,10 @@ const VALIDATION_MESSAGES = {
   MIN_MATERIALS: "Select at least one material",
 } as const;
 
-// Define activity types schema
-// const activityTypeSchema = z.enum(ActivityType);
-
 // Define weight validation schema
 const weightSchema = z
-  .string()
-  .min(1, VALIDATION_MESSAGES.REQUIRED)
-  .refine(
-    (val) => val !== "" && !isNaN(parseFloat(val)),
-    VALIDATION_MESSAGES.INVALID_NUMBER
-  )
-  .transform((val) => parseFloat(val).toFixed(2));
+  .number({ coerce: true, message: VALIDATION_MESSAGES.INVALID_NUMBER })
+  .min(1, VALIDATION_MESSAGES.REQUIRED);
 
 // Define materials schema
 const materialsSchema = z
