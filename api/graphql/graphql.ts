@@ -99,46 +99,12 @@ export enum EventEnum {
   Update = 'update'
 }
 
-export type Events_Input_Filter = {
-  _and?: InputMaybe<Array<InputMaybe<Events_Input_Filter>>>;
-  _or?: InputMaybe<Array<InputMaybe<Events_Input_Filter>>>;
-  date_created?: InputMaybe<Date_Filter_Operators>;
-  date_created_func?: InputMaybe<Datetime_Function_Filter_Operators>;
-  date_updated?: InputMaybe<Date_Filter_Operators>;
-  date_updated_func?: InputMaybe<Datetime_Function_Filter_Operators>;
-  event_id?: InputMaybe<Events_Filter>;
-  event_input_id?: InputMaybe<Number_Filter_Operators>;
-  input_Material?: InputMaybe<Materials_Filter>;
-  input_code?: InputMaybe<String_Filter_Operators>;
-  input_weight?: InputMaybe<Number_Filter_Operators>;
-  sort?: InputMaybe<Number_Filter_Operators>;
-  status?: InputMaybe<String_Filter_Operators>;
-  user_created?: InputMaybe<Directus_Users_Filter>;
-  user_updated?: InputMaybe<Directus_Users_Filter>;
-};
-
-export type Events_Output_Filter = {
-  _and?: InputMaybe<Array<InputMaybe<Events_Output_Filter>>>;
-  _or?: InputMaybe<Array<InputMaybe<Events_Output_Filter>>>;
-  date_created?: InputMaybe<Date_Filter_Operators>;
-  date_created_func?: InputMaybe<Datetime_Function_Filter_Operators>;
-  date_updated?: InputMaybe<Date_Filter_Operators>;
-  date_updated_func?: InputMaybe<Datetime_Function_Filter_Operators>;
-  event_id?: InputMaybe<Events_Filter>;
-  event_output_id?: InputMaybe<Number_Filter_Operators>;
-  output_code?: InputMaybe<String_Filter_Operators>;
-  output_material?: InputMaybe<Materials_Filter>;
-  output_weight?: InputMaybe<Number_Filter_Operators>;
-  sort?: InputMaybe<Number_Filter_Operators>;
-  status?: InputMaybe<String_Filter_Operators>;
-  user_created?: InputMaybe<Directus_Users_Filter>;
-  user_updated?: InputMaybe<Directus_Users_Filter>;
-};
-
 export type Events_Filter = {
   EAS_UID?: InputMaybe<String_Filter_Operators>;
   EAS_timestamp?: InputMaybe<Date_Filter_Operators>;
   EAS_timestamp_func?: InputMaybe<Datetime_Function_Filter_Operators>;
+  Inputs?: InputMaybe<String_Filter_Operators>;
+  Inputs_func?: InputMaybe<Count_Function_Filter_Operators>;
   _and?: InputMaybe<Array<InputMaybe<Events_Filter>>>;
   _or?: InputMaybe<Array<InputMaybe<Events_Filter>>>;
   action?: InputMaybe<Actions_Filter>;
@@ -148,10 +114,10 @@ export type Events_Filter = {
   date_updated?: InputMaybe<Date_Filter_Operators>;
   date_updated_func?: InputMaybe<Datetime_Function_Filter_Operators>;
   event_id?: InputMaybe<Number_Filter_Operators>;
-  event_input_id?: InputMaybe<Events_Input_Filter>;
+  event_input_id?: InputMaybe<String_Filter_Operators>;
   event_input_id_func?: InputMaybe<Count_Function_Filter_Operators>;
   event_location?: InputMaybe<String_Filter_Operators>;
-  event_output_id?: InputMaybe<Events_Output_Filter>;
+  event_output_id?: InputMaybe<String_Filter_Operators>;
   event_output_id_func?: InputMaybe<Count_Function_Filter_Operators>;
   event_timestamp?: InputMaybe<Date_Filter_Operators>;
   event_timestamp_func?: InputMaybe<Datetime_Function_Filter_Operators>;
@@ -188,8 +154,6 @@ export type Materials_Filter = {
   sort?: InputMaybe<Number_Filter_Operators>;
   status?: InputMaybe<String_Filter_Operators>;
   user_created?: InputMaybe<Directus_Users_Filter>;
-  user_role?: InputMaybe<Materials_Directus_Roles_Filter>;
-  user_role_func?: InputMaybe<Count_Function_Filter_Operators>;
   user_updated?: InputMaybe<Directus_Users_Filter>;
 };
 
@@ -275,6 +239,7 @@ export type Create_Events_Input_Input = {
   date_updated?: InputMaybe<Scalars['Date']['input']>;
   event_id?: InputMaybe<Create_Events_Input>;
   event_input_id?: InputMaybe<Scalars['ID']['input']>;
+  event_timestamp?: InputMaybe<Scalars['Date']['input']>;
   input_Material?: InputMaybe<Scalars['Int']['input']>;
   input_code?: InputMaybe<Scalars['String']['input']>;
   input_weight?: InputMaybe<Scalars['Int']['input']>;
@@ -301,6 +266,7 @@ export type Create_Events_Output_Input = {
 export type Create_Events_Input = {
   EAS_UID?: InputMaybe<Scalars['String']['input']>;
   EAS_timestamp?: InputMaybe<Scalars['Date']['input']>;
+  Inputs?: InputMaybe<Scalars['JSON']['input']>;
   /** Select type of action, whether its fishing for litter...etc. */
   action?: InputMaybe<Scalars['Int']['input']>;
   /** This to give credit to WHO collect the waste. You can skip this if the action is for recycler. */
@@ -396,6 +362,7 @@ export type Directus_Roles_Filter = {
 };
 
 export type Directus_Users_Filter = {
+  Collector_ID?: InputMaybe<String_Filter_Operators>;
   Country?: InputMaybe<String_Filter_Operators>;
   Country_func?: InputMaybe<Count_Function_Filter_Operators>;
   _and?: InputMaybe<Array<InputMaybe<Directus_Users_Filter>>>;
@@ -441,8 +408,6 @@ export type Directus_Users_Filter = {
   token?: InputMaybe<Hash_Filter_Operators>;
   user_city?: InputMaybe<String_Filter_Operators>;
   user_country?: InputMaybe<String_Filter_Operators>;
-  vessel_ID?: InputMaybe<String_Filter_Operators>;
-  vessel_identifier?: InputMaybe<Number_Filter_Operators>;
   vessel_type?: InputMaybe<String_Filter_Operators>;
   wallet_address?: InputMaybe<String_Filter_Operators>;
 };
@@ -518,14 +483,14 @@ export type CreateEventsInputMutationVariables = Exact<{
 }>;
 
 
-export type CreateEventsInputMutation = { __typename?: 'Mutation', create_Events_Input_item?: { __typename?: 'Events_Input', event_input_id: string } | null };
+export type CreateEventsInputMutation = { __typename?: 'Mutation', create_Events_Input_item?: boolean | null };
 
 export type CreateEventsOutputMutationVariables = Exact<{
   data: Create_Events_Output_Input;
 }>;
 
 
-export type CreateEventsOutputMutation = { __typename?: 'Mutation', create_Events_Output_item?: { __typename?: 'Events_Output', event_output_id: string } | null };
+export type CreateEventsOutputMutation = { __typename?: 'Mutation', create_Events_Output_item?: boolean | null };
 
 export type CreateEventsMutationVariables = Exact<{
   data: Create_Events_Input;
@@ -551,16 +516,12 @@ export class TypedDocumentString<TResult, TVariables>
 
 export const CreateEventsInputDocument = new TypedDocumentString(`
     mutation CreateEventsInput($data: create_Events_Input_input!) {
-  create_Events_Input_item(data: $data) {
-    event_input_id
-  }
+  create_Events_Input_item(data: $data)
 }
     `) as unknown as TypedDocumentString<CreateEventsInputMutation, CreateEventsInputMutationVariables>;
 export const CreateEventsOutputDocument = new TypedDocumentString(`
     mutation CreateEventsOutput($data: create_Events_Output_input!) {
-  create_Events_Output_item(data: $data) {
-    event_output_id
-  }
+  create_Events_Output_item(data: $data)
 }
     `) as unknown as TypedDocumentString<CreateEventsOutputMutation, CreateEventsOutputMutationVariables>;
 export const CreateEventsDocument = new TypedDocumentString(`
