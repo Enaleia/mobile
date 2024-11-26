@@ -29,7 +29,6 @@ export default function LoginForm() {
 
   return (
     <View>
-      <Text className="font-bold text-lg">Login</Text>
       <form.Field
         name="email"
         validators={{
@@ -39,17 +38,16 @@ export default function LoginForm() {
       >
         {(field) => (
           <>
-            <Text>Name</Text>
+            <Text className="font-medium mb-2">Email</Text>
             <TextInput
-              autoCapitalize="words"
-              keyboardType="default"
+              autoCapitalize="none"
+              autoComplete="email"
+              inputMode="email"
               value={field.state.value}
               onChangeText={field.handleChange}
               onBlur={field.handleBlur}
-              className={`border py-2 px-3 rounded-lg ${
-                field.state.meta.errors.length > 0
-                  ? "border-red-600"
-                  : "border-slate-800"
+              className={`border-[1.5px] rounded-lg p-2 px-3 border-neutral-300 focus:border-blue-600 focus:shadow-outline focus:ring-offset-2 ${
+                field.state.meta.errors.length > 0 && "border-red-500"
               }`}
             />
             {field.state.meta.errors.length > 0 ? (
@@ -61,6 +59,8 @@ export default function LoginForm() {
         )}
       </form.Field>
 
+      <View className="p-2" />
+
       <form.Field
         name="password"
         validators={{
@@ -69,19 +69,17 @@ export default function LoginForm() {
         validatorAdapter={zodValidator()}
       >
         {(field) => (
-          <>
-            <Text>Password</Text>
+          <View>
+            <Text className="font-medium mb-2">Password</Text>
             <TextInput
-              secureTextEntry={true}
+              secureTextEntry
               autoCapitalize="none"
-              keyboardType="default"
+              autoComplete="password"
               value={field.state.value}
               onChangeText={field.handleChange}
               onBlur={field.handleBlur}
-              className={`border py-2 px-3 rounded-lg ${
-                field.state.meta.errors.length > 0
-                  ? "border-red-600"
-                  : "border-slate-800"
+              className={`border-[1.5px] rounded-lg p-2 px-3 border-neutral-300 focus:border-blue-600 focus:shadow-outline focus:ring-offset-2 ${
+                field.state.meta.errors.length > 0 && "border-red-500"
               }`}
             />
             {field.state.meta.errors.length > 0 ? (
@@ -89,14 +87,14 @@ export default function LoginForm() {
                 {field.state.meta.errors.join(", ")}
               </Text>
             ) : null}
-          </>
+          </View>
         )}
       </form.Field>
       <Pressable
         onPress={() => form.handleSubmit()}
         className="flex flex-row items-center justify-center px-2 py-3 mt-2 bg-blue-700 rounded-md"
       >
-        <Text className="text-white font-bold">Login</Text>
+        <Text className="text-white font-bold text-lg">Login</Text>
       </Pressable>
     </View>
   );

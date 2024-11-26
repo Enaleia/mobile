@@ -1,5 +1,5 @@
 import { CameraView, useCameraPermissions } from "expo-camera";
-import React, { useEffect } from "react";
+import React from "react";
 import { Button, Text, View } from "react-native";
 
 interface QRCodeScannerProps {
@@ -10,14 +10,11 @@ interface QRCodeScannerProps {
 const QRCodeScanner: React.FC<QRCodeScannerProps> = ({ onScan, onClose }) => {
   const [permission, requestPermission] = useCameraPermissions();
 
-  useEffect(() => {
-    if (!permission) {
-      requestPermission();
-    }
-  }, [permission, requestPermission]);
-
   const handleBarCodeScanned = ({ data }: { data: string }) => {
-    onScan(data);
+    if (data) {
+      onScan(data);
+      onClose();
+    }
   };
 
   if (!permission) {
@@ -28,7 +25,12 @@ const QRCodeScanner: React.FC<QRCodeScannerProps> = ({ onScan, onClose }) => {
 
   if (!permission.granted) {
     return (
-      <Text className="text-center p-4 text-red-500">No access to camera</Text>
+      <View className="flex-1 flex-col justify-center items-center">
+        <Text className="text-center p-4">
+          We need your permission to show the camera
+        </Text>
+        <Button onPress={requestPermission} title="grant permission" />
+      </View>
     );
   }
 
