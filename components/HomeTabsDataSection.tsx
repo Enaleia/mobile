@@ -1,126 +1,127 @@
-import { AnimatedActivityCardList } from "@/components/ActivityCard";
+import {
+  AnimatedActivityCardList,
+  UIActivity,
+} from "@/components/ActivityCard";
 import Tabs from "@/components/generic/Tabs";
-import { useState } from "react";
-import { ScrollView, View } from "react-native";
+import { mockActivities } from "@/data/mockActivities";
+import { MotiView } from "moti";
+import { useMemo, useState } from "react";
+import { ScrollView, Text, View, ViewStyle } from "react-native";
 
-const mockActivities = [
-  {
-    title: "Fishing for litter",
-    date: "2024-11-26",
-    status: "In Progress",
-    location: "Paris, France",
-  },
-  {
-    title: "Manufacturing",
-    date: "2024-12-15",
-    status: "Pending",
-    location: "London, UK",
-  },
-  {
-    title: "Prevention",
-    date: "2024-11-26",
-    status: "Complete",
-    location: "Santa Monica, California",
-  },
-  {
-    title: "Shredding",
-    date: "2024-12-01",
-    status: "Complete",
-    location: "Miami, Florida",
-  },
-  {
-    title: "Washing",
-    date: "2024-12-10",
-    status: "In Progress",
-    location: "Seattle, WA",
-  },
-  {
-    title: "Batch",
-    date: "2024-12-20",
-    status: "Pending",
-    location: "Austin, Texas",
-  },
-];
+const EmptyState = ({
+  style,
+  activeTab,
+}: {
+  style: ViewStyle;
+  activeTab: string;
+}) => (
+  <MotiView
+    from={{
+      opacity: 0,
+      translateY: 20,
+    }}
+    animate={{
+      opacity: 1,
+      translateY: 0,
+    }}
+    transition={{
+      type: "timing",
+      duration: 500,
+    }}
+    className="bg-neutral-50 p-3 flex-1 items-center rounded-lg border border-neutral-200 justify-center"
+    style={style}
+  >
+    <Text className="text-neutral-500">
+      No activities {activeTab.replace("-", " ")}
+    </Text>
+  </MotiView>
+);
+
+interface TabContentProps {
+  activities: UIActivity[];
+  isActive: boolean;
+  activeTab: string;
+}
+
+const TabContent = ({ activities, isActive, activeTab }: TabContentProps) => {
+  if (activities.length === 0) {
+    return (
+      <EmptyState
+        style={{ display: isActive ? "flex" : "none" }}
+        activeTab={activeTab}
+      />
+    );
+  }
+
+  return (
+    <MotiView
+      animate={{
+        opacity: isActive ? 1 : 0,
+      }}
+      transition={{
+        type: "timing",
+        duration: 200,
+      }}
+      style={{
+        flex: 1,
+        position: "absolute",
+        width: "100%",
+        height: "100%",
+      }}
+    >
+      {isActive && (
+        <ScrollView showsVerticalScrollIndicator={false}>
+          <AnimatedActivityCardList activities={activities} />
+        </ScrollView>
+      )}
+    </MotiView>
+  );
+};
 
 function HomeTabsDataSection() {
-  const [activeTab, setActiveTab] = useState("recent");
+  const [activeTab, setActiveTab] = useState("pending");
+
+  const activitiesByStatus = useMemo(() => {
+    //! TODO: Replace with actual data
+    return mockActivities.reduce((acc, activity) => {
+      const key = activity.status.toLowerCase().replace(" ", "-");
+      acc[key] = acc[key] || [];
+      acc[key].push(activity);
+      return acc;
+    }, {} as Record<string, UIActivity[]>);
+  }, []);
+
+  const tabs = [
+    {
+      label: "Pending",
+      value: "pending",
+      count: activitiesByStatus.pending?.length || 0,
+    },
+    {
+      label: "In Progress",
+      value: "in-progress",
+      count: activitiesByStatus["in-progress"]?.length || 0,
+    },
+    {
+      label: "Complete",
+      value: "complete",
+      count: activitiesByStatus.complete?.length || 0,
+    },
+  ];
 
   return (
     <View className="flex-1">
-      <Tabs
-        tabs={[
-          { label: "Recent", value: "recent", count: mockActivities.length },
-          {
-            label: "Pending",
-            value: "pending",
-            count: mockActivities.filter(
-              (activity) => activity.status === "Pending"
-            ).length,
-          },
-          {
-            label: "In Progress",
-            value: "in-progress",
-            count: mockActivities.filter(
-              (activity) => activity.status === "In Progress"
-            ).length,
-          },
-          {
-            label: "Complete",
-            value: "complete",
-            count: mockActivities.filter(
-              (activity) => activity.status === "Complete"
-            ).length,
-          },
-        ]}
-        activeTab={activeTab}
-        onTabChange={setActiveTab}
-      />
+      <Tabs tabs={tabs} activeTab={activeTab} onTabChange={setActiveTab} />
 
       <View className="flex-1">
-        {activeTab === "recent" && (
-          <ScrollView
-            showsVerticalScrollIndicator={false}
-            style={{ display: activeTab === "recent" ? "flex" : "none" }}
-          >
-            <AnimatedActivityCardList activities={mockActivities} />
-          </ScrollView>
-        )}
-        {activeTab === "pending" && (
-          <ScrollView
-            showsVerticalScrollIndicator={false}
-            style={{ display: activeTab === "pending" ? "flex" : "none" }}
-          >
-            <AnimatedActivityCardList
-              activities={mockActivities.filter(
-                (activity) => activity.status === "Pending"
-              )}
-            />
-          </ScrollView>
-        )}
-        {activeTab === "in-progress" && (
-          <ScrollView
-            showsVerticalScrollIndicator={false}
-            style={{ display: activeTab === "in-progress" ? "flex" : "none" }}
-          >
-            <AnimatedActivityCardList
-              activities={mockActivities.filter(
-                (activity) => activity.status === "In Progress"
-              )}
-            />
-          </ScrollView>
-        )}
-        {activeTab === "complete" && (
-          <ScrollView
-            showsVerticalScrollIndicator={false}
-            style={{ display: activeTab === "complete" ? "flex" : "none" }}
-          >
-            <AnimatedActivityCardList
-              activities={mockActivities.filter(
-                (activity) => activity.status === "Complete"
-              )}
-            />
-          </ScrollView>
-        )}
+        {tabs.map((tab) => (
+          <TabContent
+            key={tab.value}
+            activities={activitiesByStatus[tab.value] || []}
+            isActive={activeTab === tab.value}
+            activeTab={activeTab}
+          />
+        ))}
       </View>
     </View>
   );

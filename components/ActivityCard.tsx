@@ -1,25 +1,28 @@
-import { Ionicons } from "@expo/vector-icons";
-import { Image, Text, View } from "react-native";
-import Chip from "./generic/Chip";
-import { MotiView } from "moti";
+import Chip from "@/components/generic/Chip";
 import actionIcons from "@/constants/ActionIcons";
+import { Ionicons } from "@expo/vector-icons";
+import { MotiView } from "moti";
+import { Image, Text, View } from "react-native";
 
-type ActivityCardProps = {
+export interface UIActivity {
   date: string;
-  status: string;
+  status: "Pending" | "In Progress" | "Complete";
   location: string;
   title: string;
-};
+}
 
-// Helper function to create staggered animations for activity cards
+/**
+ * A list of animated activity cards
+ * @param activities - The activities to display
+ */
 function AnimatedActivityCardList({
   activities,
 }: {
-  activities: ActivityCardProps[];
+  activities: UIActivity[];
 }) {
   return activities.map((activity, index) => (
     <MotiView
-      key={index}
+      key={activity.status + index}
       className="mb-2 last-of-type:mb-0"
       from={{
         opacity: 0,
@@ -66,7 +69,7 @@ const activityTitleIcons = {
  * @param location - The location of the activity
  * @param title - The title of the activity
  */
-function ActivityCard({ title, date, status, location }: ActivityCardProps) {
+function ActivityCard({ title, date, status, location }: UIActivity) {
   const statusClasses = {
     Pending: "bg-neutral-100 border-neutral-300",
     "In Progress": "bg-yellow-300 border-yellow-500",
@@ -80,7 +83,7 @@ function ActivityCard({ title, date, status, location }: ActivityCardProps) {
           <Text className="font-dm-medium text-lg tracking-tighter leading-[22px]">
             {title}
           </Text>
-          <Text className="text-xs font-dm-medium text-neutral-500">
+          <Text className="text-xs font-dm-medium text-neutral-500 uppercase">
             {new Date(date).toLocaleDateString("en-US", {
               day: "2-digit",
               month: "short",
@@ -122,4 +125,4 @@ function ActivityCard({ title, date, status, location }: ActivityCardProps) {
   );
 }
 
-export { ActivityCard as default, AnimatedActivityCardList };
+export { AnimatedActivityCardList, ActivityCard as default };
