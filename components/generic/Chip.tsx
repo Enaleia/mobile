@@ -2,10 +2,10 @@ import { Text, View } from "react-native";
 
 type ChipProps = {
   label: string;
-  // color?: string;
   textColor?: string;
   icon?: React.ReactNode;
-  extraClassName?: string;
+  bgColor?: string;
+  borderColor?: string;
 };
 
 /**
@@ -13,20 +13,31 @@ type ChipProps = {
  * @param label - The text to display in the chip
  * @param textColor - Color of the text (optional)
  * @param icon - Optional icon component to display
- * @param extraClassName - Additional CSS classes to apply to the chip (optional)
+ * @param bgColor - Background color of the chip (optional)
+ * @param borderColor - Border color of the chip (optional)
  */
 export default function Chip({
   label,
   textColor = "text-neutral-700",
   icon,
-  extraClassName,
+  bgColor,
+  borderColor,
 }: ChipProps) {
   return (
     <View
-      className={`flex-row items-center px-1 py-0.5 rounded-lg border border-neutral-300 bg-neutral-100 ${extraClassName}`}
+      className={[
+        "flex-row items-center px-1 py-0.5 rounded-md border-[1.5px]",
+        bgColor ?? "bg-neutral-100",
+        borderColor ?? "border-neutral-300",
+      ].join(" ")}
     >
       {icon && <View className="mr-1">{icon}</View>}
-      <Text className={`text-xs font-dm-medium tracking-tight ${textColor}`}>
+      <Text
+        className={[
+          "text-xs font-dm-medium tracking-tight",
+          textColor ?? "text-neutral-600",
+        ].join(" ")}
+      >
         {label}
       </Text>
     </View>

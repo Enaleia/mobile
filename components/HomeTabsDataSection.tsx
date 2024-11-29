@@ -1,12 +1,16 @@
-import {
-  AnimatedActivityCardList,
-  UIActivity,
-} from "@/components/ActivityCard";
+import { AnimatedActivityCardList } from "@/components/ActivityCard";
 import Tabs from "@/components/generic/Tabs";
 import { mockActivities } from "@/data/mockActivities";
+import { UIActivity } from "@/types/activity";
 import { MotiView } from "moti";
-import { useMemo, useState } from "react";
-import { ScrollView, Text, View, ViewStyle } from "react-native";
+import { useEffect, useMemo, useState } from "react";
+import {
+  ActivityIndicator,
+  ScrollView,
+  Text,
+  View,
+  ViewStyle,
+} from "react-native";
 
 const EmptyState = ({
   style,
@@ -64,7 +68,7 @@ const TabContent = ({ activities, isActive, activeTab }: TabContentProps) => {
       }}
       style={{
         flex: 1,
-        position: "absolute",
+        display: isActive ? "flex" : "none",
         width: "100%",
         height: "100%",
       }}
@@ -80,6 +84,7 @@ const TabContent = ({ activities, isActive, activeTab }: TabContentProps) => {
 
 function HomeTabsDataSection() {
   const [activeTab, setActiveTab] = useState("pending");
+  const [isLoading, setIsLoading] = useState(true);
 
   const activitiesByStatus = useMemo(() => {
     //! TODO: Replace with actual data
@@ -108,6 +113,31 @@ function HomeTabsDataSection() {
       count: activitiesByStatus.complete?.length || 0,
     },
   ];
+
+  useEffect(() => {
+    // Simulate loading data
+    const timer = setTimeout(() => {
+      setIsLoading(false);
+    }, 1000);
+
+    return () => clearTimeout(timer);
+  }, []);
+
+  if (isLoading) {
+    return (
+      <View className="flex-1 items-center justify-center">
+        <ActivityIndicator size="large" color="#24548b" />
+      </View>
+    );
+  }
+
+  if (Object.keys(activitiesByStatus).length === 0) {
+    return (
+      <View className="flex-1 items-center justify-center">
+        <Text className="text-neutral-500">No activities</Text>
+      </View>
+    );
+  }
 
   return (
     <View className="flex-1">
