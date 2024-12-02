@@ -35,7 +35,7 @@ export default function Home() {
       <View className="flex-row items-center justify-center w-full p-0 m-0 mt-2">
         <Pressable
           className="w-full bg-[#24548b] rounded-md flex flex-row items-center justify-center px-2 py-3"
-          onPress={() => router.push("/forms/collection/new")}
+          onPress={() => router.push("/attest/home")}
         >
           <Ionicons name="add-circle" size={18} color="white" />
           <Text className="text-white font-semibold ml-1">

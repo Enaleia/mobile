@@ -16,7 +16,6 @@ const FormsLayout = () => {
             backgroundColor: "#24548b", // Darker blue with better contrast
           },
           headerTintColor: "#ffffff",
-          statusBarColor: "#24548b",
           statusBarStyle: "inverted",
         }}
       />

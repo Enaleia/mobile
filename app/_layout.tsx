@@ -36,6 +36,8 @@ export default function RootLayout() {
         <Stack.Screen name="index" />
         <Stack.Screen name="(auth)/login" />
         <Stack.Screen name="forms" />
+        <Stack.Screen name="attest/home" />
+        <Stack.Screen name="attest/new/[type]" />
       </Stack>
     </QueryClientProvider>
   );
