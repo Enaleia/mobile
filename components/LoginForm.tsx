@@ -3,7 +3,8 @@ import { zodValidator } from "@tanstack/zod-form-adapter";
 import { router } from "expo-router";
 import { Pressable, Text, TextInput, View } from "react-native";
 import { z } from "zod";
-
+import { useLingui } from "@lingui/react/macro";
+import { Trans } from "@lingui/react/macro";
 const LoginData = z.object({
   email: z.string().email(),
   password: z.string(),
@@ -12,6 +13,7 @@ const LoginData = z.object({
 type LoginData = z.infer<typeof LoginData>;
 
 export default function LoginForm() {
+  const { t } = useLingui();
   const form = useForm<LoginData>({
     defaultValues: {
       email: "",
@@ -32,13 +34,18 @@ export default function LoginForm() {
       <form.Field
         name="email"
         validators={{
-          onChange: z.string().trim().min(1, "Please enter your email"),
+          onChange: z
+            .string()
+            .trim()
+            .min(1, t`Please enter your email`),
         }}
         validatorAdapter={zodValidator()}
       >
         {(field) => (
           <>
-            <Text className="font-medium mb-2">Email</Text>
+            <Text className="font-medium mb-2">
+              <Trans>Email</Trans>
+            </Text>
             <TextInput
               autoCapitalize="none"
               autoComplete="email"
@@ -52,7 +59,7 @@ export default function LoginForm() {
             />
             {field.state.meta.errors.length > 0 ? (
               <Text className="text-red-600 font-semibold">
-                {field.state.meta.errors.join(", ")}
+                <Trans>{field.state.meta.errors.join(", ")}</Trans>
               </Text>
             ) : null}
           </>
@@ -64,13 +71,18 @@ export default function LoginForm() {
       <form.Field
         name="password"
         validators={{
-          onChange: z.string().trim().min(1, "Please enter your password"),
+          onChange: z
+            .string()
+            .trim()
+            .min(1, t`Please enter your password`),
         }}
         validatorAdapter={zodValidator()}
       >
         {(field) => (
           <View>
-            <Text className="font-medium mb-2">Password</Text>
+            <Text className="font-medium mb-2">
+              <Trans>Password</Trans>
+            </Text>
             <TextInput
               secureTextEntry
               autoCapitalize="none"
@@ -84,7 +96,7 @@ export default function LoginForm() {
             />
             {field.state.meta.errors.length > 0 ? (
               <Text className="text-red-600 font-semibold">
-                {field.state.meta.errors.join(", ")}
+                <Trans>{field.state.meta.errors.join(", ")}</Trans>
               </Text>
             ) : null}
           </View>
@@ -94,7 +106,9 @@ export default function LoginForm() {
         onPress={() => form.handleSubmit()}
         className="flex flex-row items-center justify-center px-2 py-3 mt-2 bg-blue-700 rounded-md"
       >
-        <Text className="text-white font-bold text-lg">Login</Text>
+        <Text className="text-white font-bold text-lg">
+          <Trans>Login</Trans>
+        </Text>
       </Pressable>
     </View>
   );

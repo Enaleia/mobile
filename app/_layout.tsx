@@ -1,14 +1,39 @@
+import "@expo/metro-runtime";
+
+import "@formatjs/intl-locale/polyfill-force";
+import "@formatjs/intl-pluralrules/locale-data/ar";
+import "@formatjs/intl-pluralrules/locale-data/el";
+import "@formatjs/intl-pluralrules/locale-data/en";
+import "@formatjs/intl-pluralrules/polyfill-force";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { useFonts } from "expo-font";
 import { Stack } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import { useEffect } from "react";
 
+import { i18n } from "@lingui/core";
+import { I18nProvider, TransRenderProps } from "@lingui/react";
+import { Text } from "react-native";
+
+import * as Localization from "expo-localization";
+
+import { defaultLocale, dynamicActivate } from "@/lib/i18n";
+
 // Prevent the splash screen from auto-hiding
 SplashScreen.preventAutoHideAsync();
 
+const DefaultComponent = (props: TransRenderProps) => {
+  return <Text>{props.children}</Text>;
+};
+
 export default function RootLayout() {
   const queryClient = new QueryClient();
+
+  const locale = Localization.getLocales()[0]?.languageCode || defaultLocale;
+
+  useEffect(() => {
+    dynamicActivate(locale);
+  }, [locale]);
 
   const [fontsLoaded, fontError] = useFonts({
     // Add your local fonts here - adjust the paths and names based on your actual font files
@@ -31,12 +56,14 @@ export default function RootLayout() {
 
   return (
     <QueryClientProvider client={queryClient}>
-      <Stack screenOptions={{ headerShown: false }}>
-        <Stack.Screen name="(tabs)" />
-        <Stack.Screen name="index" />
-        <Stack.Screen name="(auth)/login" />
-        <Stack.Screen name="forms" />
-      </Stack>
+      <I18nProvider i18n={i18n} defaultComponent={DefaultComponent}>
+        <Stack screenOptions={{ headerShown: false }}>
+          <Stack.Screen name="(tabs)" />
+          <Stack.Screen name="index" />
+          <Stack.Screen name="(auth)/login" />
+          <Stack.Screen name="forms" />
+        </Stack>
+      </I18nProvider>
     </QueryClientProvider>
   );
 }

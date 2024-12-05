@@ -1,0 +1,42 @@
+msgid ""
+msgstr ""
+"POT-Creation-Date: 2024-12-05 08:27-0500\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"X-Generator: @lingui/cli\n"
+"Language: en\n"
+
+#. placeholder {0}: field.state.meta.errors.join(", ")
+#: components/LoginForm.tsx:62
+#: components/LoginForm.tsx:99
+msgid "{0}"
+msgstr "{0}"
+
+#: components/LoginForm.tsx:47
+msgid "Email"
+msgstr "Email"
+
+#: app/(auth)/login.tsx:54
+msgid "Enaleia Hub is invite-only for ecosystem partners. Need help logging in? Contact support."
+msgstr "Enaleia Hub is invite-only for ecosystem partners. Need help logging in? Contact support."
+
+#: components/LoginForm.tsx:110
+msgid "Login"
+msgstr "Login"
+
+#: components/LoginForm.tsx:84
+msgid "Password"
+msgstr "Password"
+
+#: components/LoginForm.tsx:40
+msgid "Please enter your email"
+msgstr "Please enter your email"
+
+#: components/LoginForm.tsx:77
+msgid "Please enter your password"
+msgstr "Please enter your password"
+
+#: app/(auth)/login.tsx:46
+msgid "Welcome to Enaleia Hub"
+msgstr "Welcome to Enaleia Hub"
