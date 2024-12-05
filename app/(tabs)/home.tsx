@@ -1,9 +1,7 @@
-import HomeTabsDataSection from "@/components/HomeTabsDataSection";
+import HomeActionSelection from "@/components/HomeActionSelection";
 import SafeAreaContent from "@/components/SafeAreaContent";
 import { Ionicons } from "@expo/vector-icons";
-import { router } from "expo-router";
-import { StatusBar } from "expo-status-bar";
-import { Pressable, Text, View } from "react-native";
+import { Text, View } from "react-native";
 
 export default function Home() {
   return (
@@ -28,22 +26,10 @@ export default function Home() {
       </View>
       <View className="flex-1 mt-4">
         <Text className="text-3xl font-dm-regular text-neutral-800 tracking-[-1px] mb-3">
-          Your activities
+          Choose an action below to record
         </Text>
-        <HomeTabsDataSection />
+        <HomeActionSelection />
       </View>
-      <View className="flex-row items-center justify-center w-full p-0 m-0 mt-2">
-        <Pressable
-          className="w-full bg-[#24548b] rounded-md flex flex-row items-center justify-center px-2 py-3"
-          onPress={() => router.push("/forms/collection/new")}
-        >
-          <Ionicons name="add-circle" size={18} color="white" />
-          <Text className="text-white font-semibold ml-1">
-            Add new attestation
-          </Text>
-        </Pressable>
-      </View>
-      <StatusBar style="light" />
     </SafeAreaContent>
   );
 }
