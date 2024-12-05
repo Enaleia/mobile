@@ -6,8 +6,13 @@
       "@/*": [
         "./*"
       ],
-      "@assets/*": ["./assets/*"]
+      "@assets/*": ["./assets/*"],
+      "@types/*": ["./types/*"]
     },
+    "typeRoots": [
+      "./types",
+      "./node_modules/@types"
+    ],
     "plugins": [
       {
         "name": "@0no-co/graphqlsp",
@@ -19,6 +24,8 @@
     "**/*.ts",
     "**/*.tsx",
     ".expo/types/**/*.ts",
-    "expo-env.d.ts"
+    "expo-env.d.ts",
+    "types/**/*.d.ts",
+    "types/**/*.ts"
   ]
 }

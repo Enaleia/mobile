@@ -1,0 +1,35 @@
+import { ImageSourcePropType } from "react-native";
+
+export interface UIActivity {
+  date: string;
+  status: ActionStatus;
+  location: string;
+  title: ActionTitle;
+  id: string;
+  asLink?: boolean;
+}
+
+// TODO: Re-assess if this is needed
+export type ActionStatus = "Pending" | "In Progress" | "Complete";
+
+export type ActionTitle =
+  | "Fishing for litter"
+  | "Manufacturing"
+  | "Prevention"
+  | "Shredding"
+  | "Sorting"
+  | "Washing"
+  | "Batch"
+  | "Beach Cleanup"
+  | "Ad-hoc"
+  | "Pelletizing";
+
+export type ActionCategory =
+  | "Collection"
+  | "Transport"
+  | "Recycling"
+  | "Manufacturing";
+
+export type ActionIcon = Record<ActionTitle, ImageSourcePropType>;
+export type ActionColor = Record<ActionTitle, string>;
+export type ActionCategories = Record<ActionCategory, ActionTitle[]>;
