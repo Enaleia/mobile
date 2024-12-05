@@ -9,6 +9,7 @@ import {
   Text,
   View,
 } from "react-native";
+import { Trans } from "@lingui/react/macro";
 
 export default function LoginScreen() {
   const navigation = useNavigation();
@@ -42,7 +43,7 @@ export default function LoginScreen() {
               delay: 200,
             }}
           >
-            Welcome to Enaleia Hub
+            <Trans>Welcome to Enaleia Hub</Trans>
           </MotiText>
         </AnimatePresence>
         <LoginForm />
@@ -50,8 +51,10 @@ export default function LoginScreen() {
           className="text-sm text-gray-600 font-dm-regular"
           style={{ letterSpacing: 0.025 }}
         >
-          Enaleia Hub is invite-only for ecosystem partners. Need help logging
-          in? Contact support.
+          <Trans>
+            Enaleia Hub is invite-only for ecosystem partners. Need help logging
+            in? Contact support.
+          </Trans>
         </Text>
       </View>
     </KeyboardAvoidingView>
