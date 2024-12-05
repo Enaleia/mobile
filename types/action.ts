@@ -1,6 +1,6 @@
 import { ImageSourcePropType } from "react-native";
 
-export interface UIActivity {
+export interface UIAction {
   date: string;
   status: ActionStatus;
   location: string;
@@ -25,8 +25,8 @@ export type ActionTitle =
   | "Pelletizing";
 
 export type ActionCategory =
-  | "Collection"
-  | "Transport"
+  | "Collecting"
+  | "Transporting"
   | "Recycling"
   | "Manufacturing";
 
