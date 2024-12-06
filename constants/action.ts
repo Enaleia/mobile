@@ -1,4 +1,9 @@
-import { ActionCategories, ActionColor, ActionIcon } from "@/types/action";
+import {
+  ActionCategories,
+  ActionColor,
+  ActionIcon,
+  ActionSlug,
+} from "@/types/action";
 
 const actionIcons = {
   "Ad-hoc": require("@assets/images/action-icons/Ad-hoc.webp"),
@@ -26,6 +31,19 @@ const actionIcons = {
 //   Sorting: "#82CC97",
 //   Washing: "#A7C8DE",
 // } as const;
+
+export const ACTION_SLUGS: ActionSlug = {
+  "Ad-hoc": "adhoc",
+  Batch: "batch",
+  "Beach Cleanup": "beach-cleanup",
+  "Fishing for litter": "fishing-for-litter",
+  Manufacturing: "manufacturing",
+  Pelletizing: "pelletizing",
+  Prevention: "prevention",
+  Shredding: "shredding",
+  Sorting: "sorting",
+  Washing: "washing",
+} as const;
 
 // AA Accessible colors
 export const ACTION_COLORS: ActionColor = {

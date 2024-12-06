@@ -1,25 +1,6 @@
-import {
-  ACTION_CATEGORIES,
-  ACTION_COLORS,
-  ACTION_ICONS,
-} from "@/constants/action";
-import { ActionTitle } from "@/types/action";
-import { Image, Pressable, ScrollView, Text, View } from "react-native";
-
-const ActionButton = ({ title }: { title: ActionTitle }) => {
-  return (
-    <Pressable
-      className="items-center justify-center px-2 py-3 rounded-md w-[48%] mr-1 mb-1 active:opacity-70 transition-opacity duration-200 active:scale-95 ease-out"
-      style={{ backgroundColor: ACTION_COLORS[title] }}
-      // onPress={() => router.push(`/forms/${title.toLowerCase()}`)}
-    >
-      <Image source={ACTION_ICONS[title]} className="w-16 h-16" />
-      <Text className="text-base font-dm-medium tracking-[-0.25px]">
-        {title}
-      </Text>
-    </Pressable>
-  );
-};
+import { ACTION_CATEGORIES } from "@/constants/action";
+import { ScrollView, Text, View } from "react-native";
+import ActionButton from "@/components/ActionButton";
 
 export default function HomeActionSelection() {
   return (

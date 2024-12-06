@@ -33,3 +33,4 @@ export type ActionCategory =
 export type ActionIcon = Record<ActionTitle, ImageSourcePropType>;
 export type ActionColor = Record<ActionTitle, string>;
 export type ActionCategories = Record<ActionCategory, ActionTitle[]>;
+export type ActionSlug = Record<ActionTitle, string>;
