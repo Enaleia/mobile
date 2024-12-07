@@ -1,32 +1,25 @@
 import { Ionicons } from "@expo/vector-icons";
 import { Pressable, Text, View } from "react-native";
+import { MATERIAL_OPTIONS } from "@/constants/material";
+import { MaterialNames } from "@/types/material";
 
-const Materials = [
-  { label: "Metal", value: "metal" },
-  { label: "PP", value: "pp" },
-  { label: "PET", value: "pet" },
-  { label: "HDPE", value: "hdpe" },
-  { label: "LDPE", value: "ldpe" },
-  { label: "PS", value: "ps" },
-];
-
-const Chip = ({
+const MaterialChip = ({
   label,
   value,
   selectedMaterials,
   setSelectedMaterials,
 }: {
-  label: string;
-  value: string;
-  selectedMaterials: string[];
-  setSelectedMaterials: (materials: string[]) => void;
+  label: MaterialNames;
+  value: number;
+  selectedMaterials: number[];
+  setSelectedMaterials: (materials: number[]) => void;
 }) => {
   return (
     <Pressable
       accessibilityLabel={label}
       accessibilityRole="button"
       accessibilityState={{ selected: selectedMaterials.includes(value) }}
-      className={`bg-neutral-50 px-2 py-1 rounded-lg flex flex-row items-center mx-1 my-1 border-[1.5px] border-neutral-300 ${
+      className={`bg-neutral-50 px-2 py-1 rounded-xl flex flex-row items-center mx-1 my-1 border-[1.5px] border-neutral-300 ${
         selectedMaterials.includes(value) ? "border-blue-600 bg-blue-50" : ""
       }`}
       onPress={() => {
@@ -58,8 +51,8 @@ const Chip = ({
 };
 
 interface MaterialsSelectProps {
-  selectedMaterials: string[];
-  setSelectedMaterials: (materials: string[]) => void;
+  selectedMaterials: number[];
+  setSelectedMaterials: (materials: number[]) => void;
 }
 
 const MaterialsSelect = ({
@@ -68,10 +61,9 @@ const MaterialsSelect = ({
 }: MaterialsSelectProps) => {
   return (
     <View>
-      <Text className="text-lg text-gray-700 font-medium">Materials</Text>
       <View className="flex flex-row flex-wrap">
-        {Materials.map((material) => (
-          <Chip
+        {MATERIAL_OPTIONS.map((material) => (
+          <MaterialChip
             key={material.value}
             label={material.label}
             value={material.value}
