@@ -1,10 +1,13 @@
 import ActionButton from "@/components/ActionButton";
+import MaterialPickerModal from "@/components/MaterialPickerModal";
 import SafeAreaContent from "@/components/SafeAreaContent";
+import MaterialsSelect from "@/components/forms/MaterialsSelect";
 import QRTextInput from "@/components/forms/QRTextInput";
 import { ACTION_SLUGS } from "@/constants/action";
 import { ActionTitle } from "@/types/action";
 import { Ionicons } from "@expo/vector-icons";
 import { Link, useLocalSearchParams } from "expo-router";
+import { useState } from "react";
 import { Pressable, Text, TextInput, View } from "react-native";
 
 export default function NewActionScreen() {
@@ -13,6 +16,12 @@ export default function NewActionScreen() {
   const title = Object.keys(ACTION_SLUGS).find(
     (key) => ACTION_SLUGS[key as ActionTitle] === type
   ) as ActionTitle;
+
+  const [selectedMaterials, setSelectedMaterials] = useState<number[]>([]);
+  const [
+    isIncomingMaterialsPickerVisible,
+    setIsIncomingMaterialsPickerVisible,
+  ] = useState(false);
 
   return (
     <SafeAreaContent>
@@ -25,22 +34,18 @@ export default function NewActionScreen() {
       <ActionButton title={title} presentation="banner" />
 
       <View className="mt-6">
-        <Text className="text-lg font-dm-medium text-neutral-600 tracking-tighter">
+        <Text className="text-lg font-dm-medium text-neutral-600 tracking-tighter mb-2">
           Incoming materials
         </Text>
-        <View className="px-0.5 bg-neutral-50 p-1">
+        <View className="bg-neutral-50 p-1">
           <Text className="text-sm font-dm-medium text-neutral-600 mb-1">
             Mixed Materials
           </Text>
           <View className="flex-row gap-1">
-            <View className="flex-1 min-w-[100px] min-h-[40px]">
-              <QRTextInput
-                value=""
-                onChangeText={() => {}}
-                className="h-full"
-              />
+            <View className="flex-1 min-w-[100px] h-40">
+              <QRTextInput value="" onChangeText={() => {}} />
             </View>
-            <View className="min-w-[100px] min-h-[40px]">
+            <View className="min-w-[100px]">
               <TextInput
                 inputMode="numeric"
                 placeholder="Weight in kg"
@@ -49,9 +54,21 @@ export default function NewActionScreen() {
             </View>
           </View>
         </View>
-        <Pressable className="flex-row items-center justify-center mt-2 bg-slate-300 p-3 rounded-md">
+        <MaterialPickerModal
+          isVisible={isIncomingMaterialsPickerVisible}
+          onClose={() => setIsIncomingMaterialsPickerVisible(false)}
+          type="incoming"
+          selectedMaterials={selectedMaterials}
+          setSelectedMaterials={setSelectedMaterials}
+        />
+        <Pressable
+          className="flex-row items-center justify-center mt-2 bg-slate-300 p-3 rounded-md"
+          onPress={() => setIsIncomingMaterialsPickerVisible(true)}
+        >
           <Text className="text-sm font-dm-medium text-neutral-600">
-            Add new
+            {selectedMaterials?.length > 0
+              ? "Update materials"
+              : "Add materials"}
           </Text>
         </Pressable>
       </View>
