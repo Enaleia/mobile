@@ -1,21 +1,23 @@
 import {
   MATERIAL_CATEGORIES,
-  MATERIAL_ID_MAP,
+  MATERIAL_NAME_TO_ID,
   MATERIAL_OPTIONS,
 } from "@/constants/material";
-import { MaterialNames } from "@/types/material";
+import { MaterialDetails, MaterialNames } from "@/types/material";
 import { Ionicons } from "@expo/vector-icons";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import {
-  View,
-  Text,
-  Pressable,
-  Modal,
   KeyboardAvoidingView,
+  Modal,
   Platform,
+  Pressable,
   ScrollView,
+  Text,
   TextInput,
+  View,
 } from "react-native";
+import FormSection from "@/components/forms/FormSection";
+import QRTextInput from "@/components/forms/QRTextInput";
 
 const SelectMaterialChip = ({
   label,
@@ -25,34 +27,35 @@ const SelectMaterialChip = ({
 }: {
   label: MaterialNames;
   value: number;
-  selectedMaterials: number[];
+  selectedMaterials: MaterialDetails;
   goNext: (materialId: number) => void;
 }) => {
+  const isSelected = useMemo(() => {
+    if (!selectedMaterials[value]) return false;
+    const isWeightSelected = selectedMaterials[value]?.weight > 0;
+    const isCodeSelected = selectedMaterials[value]?.code !== "";
+    return isWeightSelected || isCodeSelected;
+  }, [selectedMaterials, value]);
+
   return (
     <Pressable
       accessibilityLabel={label}
       accessibilityRole="button"
-      accessibilityState={{ selected: selectedMaterials.includes(value) }}
+      accessibilityState={{ selected: isSelected }}
       className={`bg-white px-2 py-1 rounded-xl flex flex-row items-center mx-1 my-1 border-[1.5px] border-slate-300 ${
-        selectedMaterials.includes(value) ? "border-blue-600 bg-blue-50" : ""
+        isSelected ? "border-blue-600 bg-blue-50" : ""
       }`}
       onPress={() => {
         goNext(value);
       }}
     >
       <Ionicons
-        name={
-          selectedMaterials.includes(value)
-            ? "checkmark-circle"
-            : "add-circle-outline"
-        }
+        name={isSelected ? "checkmark-circle" : "add-circle-outline"}
         size={20}
-        color={selectedMaterials.includes(value) ? "#007AFF" : "#64748B"}
+        color={isSelected ? "#007AFF" : "#64748B"}
       />
       <Text
-        className={`ml-1 ${
-          selectedMaterials.includes(value) ? "text-blue-800" : "text-slate-700"
-        }`}
+        className={`ml-1 ${isSelected ? "text-blue-800" : "text-slate-700"}`}
       >
         {label}
       </Text>
@@ -65,7 +68,7 @@ function SelectMaterial({
   goNext,
   type,
 }: {
-  selectedMaterials: number[];
+  selectedMaterials: MaterialDetails;
   goNext: (materialId: number) => void;
   type: "incoming" | "outgoing";
 }) {
@@ -83,7 +86,7 @@ function SelectMaterial({
                 <SelectMaterialChip
                   key={material}
                   label={material}
-                  value={MATERIAL_ID_MAP[material]}
+                  value={MATERIAL_NAME_TO_ID[material]}
                   selectedMaterials={selectedMaterials}
                   goNext={goNext}
                 />
@@ -106,8 +109,14 @@ const MaterialForm = ({
   hasBack = true,
 }: {
   materialId: number | null;
-  selectedMaterials: number[];
-  handleAddMaterial: () => void;
+  selectedMaterials: MaterialDetails;
+  handleAddMaterial: ({
+    weight,
+    code,
+  }: {
+    weight: number;
+    code: string;
+  }) => void;
   goBack: () => void;
   type: "incoming" | "outgoing";
   handleRemoveMaterial: () => void;
@@ -118,7 +127,17 @@ const MaterialForm = ({
   const materialName =
     MATERIAL_OPTIONS.find((m) => m.value === materialId)?.label || "";
 
-  const isSelected = selectedMaterials.includes(materialId);
+  const isSelected =
+    selectedMaterials[materialId] !== undefined &&
+    (selectedMaterials[materialId]?.weight > 0 ||
+      selectedMaterials[materialId]?.code !== null);
+
+  const [currentWeight, setCurrentWeight] = useState(
+    selectedMaterials[materialId]?.weight || 0
+  );
+  const [currentCode, setCurrentCode] = useState(
+    selectedMaterials[materialId]?.code || ""
+  );
 
   return (
     <View>
@@ -128,19 +147,37 @@ const MaterialForm = ({
         hasBack={hasBack}
         goBack={goBack}
       />
-      <View className="flex-col justify-between">
-        <Text className="text-base font-dm-medium text-slate-600 tracking-tighter my-2">
-          Weight
-        </Text>
-        <TextInput
-          className="border-[1.5px] border-slate-300 rounded-md"
-          placeholder="Weight in kg"
-          inputMode="numeric"
+      <FormSection>
+        <View className="flex-col justify-between">
+          <Text className="text-base font-dm-medium text-slate-600 tracking-tighter my-2">
+            Weight
+          </Text>
+          <TextInput
+            value={currentWeight.toString()}
+            onChangeText={(text) => {
+              const parsed = parseInt(text, 10);
+              setCurrentWeight(isNaN(parsed) ? 0 : parsed);
+            }}
+            className="border-[1.5px] border-slate-300 rounded-md"
+            placeholder="Weight in kg"
+            inputMode="numeric"
+          />
+        </View>
+
+        <QRTextInput
+          value={currentCode}
+          onChangeText={(text) => {
+            setCurrentCode(text);
+          }}
+          placeholder="Code"
         />
-      </View>
+      </FormSection>
+
       <View className="gap-2 my-2">
         <Pressable
-          onPress={handleAddMaterial}
+          onPress={() => {
+            handleAddMaterial({ weight: currentWeight, code: currentCode });
+          }}
           className="p-4 rounded-md bg-blue-600"
         >
           <Text className="text-base text-center font-dm-bold text-white tracking-tighter">
@@ -208,8 +245,8 @@ export default function AddMaterialModal({
 }: {
   isVisible: boolean;
   onClose: () => void;
-  selectedMaterials: number[];
-  setSelectedMaterials: (materials: number[]) => void;
+  selectedMaterials: MaterialDetails;
+  setSelectedMaterials: (materials: MaterialDetails) => void;
   type: "incoming" | "outgoing";
 }) {
   const [currentPage, setCurrentPage] = useState(0);
@@ -230,9 +267,18 @@ export default function AddMaterialModal({
     onClose();
   };
 
-  const handleAddMaterial = () => {
+  const handleAddMaterial = ({
+    weight,
+    code,
+  }: {
+    weight: number;
+    code: string;
+  }) => {
     if (chosenMaterialId) {
-      setSelectedMaterials([...selectedMaterials, chosenMaterialId]);
+      setSelectedMaterials({
+        ...selectedMaterials,
+        [chosenMaterialId]: { weight, code },
+      });
     }
     if (currentPage === 1) {
       handleClose();
@@ -242,7 +288,11 @@ export default function AddMaterialModal({
   const handleRemoveMaterial = () => {
     if (chosenMaterialId) {
       setSelectedMaterials(
-        selectedMaterials.filter((id) => id !== chosenMaterialId)
+        Object.fromEntries(
+          Object.entries(selectedMaterials).filter(
+            ([id]) => parseInt(id, 10) !== chosenMaterialId
+          )
+        )
       );
     }
   };
