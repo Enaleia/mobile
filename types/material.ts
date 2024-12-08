@@ -22,6 +22,11 @@ export type MaterialOption = {
   value: number;
 };
 
+export type MaterialCategories =
+  | "Plastics"
+  | "Nets and Ropes"
+  | "Other Materials";
+
 export type MaterialOptions = MaterialOption[];
 
 export type MaterialIdMap = Record<MaterialNames, number>;

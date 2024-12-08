@@ -1,8 +1,21 @@
 import {
+  MaterialCategories,
   MaterialIdMap,
   MaterialNames,
   MaterialOptions,
 } from "@/types/material";
+
+const MATERIAL_CATEGORIES: Record<MaterialCategories, MaterialNames[]> = {
+  Plastics: ["Mixed Plastics", "PP", "LDPE", "PE", "PS", "HDPE", "PET", "PA"],
+  "Nets and Ropes": ["Prevention Nets", "Ghost Nets", "Nets", "Ropes"],
+  "Other Materials": [
+    "Mixed Materials",
+    "Rubbers",
+    "Non-Recyclables",
+    "Metals",
+    "Others",
+  ],
+} as const;
 
 const MATERIAL_ID_MAP: MaterialIdMap = {
   "Mixed Plastics": 1,
@@ -31,4 +44,4 @@ const MATERIAL_OPTIONS: MaterialOptions = Object.entries(MATERIAL_ID_MAP).map(
   })
 );
 
-export { MATERIAL_ID_MAP, MATERIAL_OPTIONS };
+export { MATERIAL_CATEGORIES, MATERIAL_ID_MAP, MATERIAL_OPTIONS };
