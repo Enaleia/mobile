@@ -1,6 +1,7 @@
 import ActionButton from "@/components/ActionButton";
 import MaterialPickerModal from "@/components/MaterialPickerModal";
 import SafeAreaContent from "@/components/SafeAreaContent";
+import AddMaterialModal from "@/components/forms/AddMaterialModal";
 import MaterialsSelect from "@/components/forms/MaterialsSelect";
 import QRTextInput from "@/components/forms/QRTextInput";
 import { ACTION_SLUGS } from "@/constants/action";
@@ -18,6 +19,19 @@ export default function NewActionScreen() {
   ) as ActionTitle;
 
   const [selectedMaterials, setSelectedMaterials] = useState<number[]>([]);
+  const [selectedMaterialDetails, setSelectedMaterialDetails] = useState<{
+    materialId: number;
+    weight: number;
+  } | null>(null);
+
+  const handleUpdateMaterialDetails = (
+    materialId: number,
+    weight: number = 0
+  ) => {
+    setSelectedMaterials((prev) => [...prev, materialId]);
+    setSelectedMaterialDetails({ materialId, weight });
+  };
+
   const [
     isIncomingMaterialsPickerVisible,
     setIsIncomingMaterialsPickerVisible,
@@ -54,12 +68,12 @@ export default function NewActionScreen() {
             </View>
           </View>
         </View>
-        <MaterialPickerModal
+        <AddMaterialModal
           isVisible={isIncomingMaterialsPickerVisible}
           onClose={() => setIsIncomingMaterialsPickerVisible(false)}
-          type="incoming"
           selectedMaterials={selectedMaterials}
           setSelectedMaterials={setSelectedMaterials}
+          type="incoming"
         />
         <Pressable
           className="flex-row items-center justify-center mt-2 bg-slate-300 p-3 rounded-md"
