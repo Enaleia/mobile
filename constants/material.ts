@@ -17,7 +17,7 @@ const MATERIAL_CATEGORIES: Record<MaterialCategories, MaterialNames[]> = {
   ],
 } as const;
 
-const MATERIAL_ID_MAP: MaterialIdMap = {
+const MATERIAL_NAME_TO_ID: MaterialIdMap = {
   "Mixed Plastics": 1,
   Metals: 2,
   PP: 6,
@@ -37,11 +37,20 @@ const MATERIAL_ID_MAP: MaterialIdMap = {
   "Mixed Materials": 47,
 } as const;
 
-const MATERIAL_OPTIONS: MaterialOptions = Object.entries(MATERIAL_ID_MAP).map(
-  ([name, id]) => ({
-    label: name as MaterialNames,
-    value: id,
-  })
+const MATERIAL_ID_TO_NAME = Object.fromEntries(
+  Object.entries(MATERIAL_NAME_TO_ID).map(([name, id]) => [id, name])
 );
 
-export { MATERIAL_CATEGORIES, MATERIAL_ID_MAP, MATERIAL_OPTIONS };
+const MATERIAL_OPTIONS: MaterialOptions = Object.entries(
+  MATERIAL_NAME_TO_ID
+).map(([name, id]) => ({
+  label: name as MaterialNames,
+  value: id,
+}));
+
+export {
+  MATERIAL_CATEGORIES,
+  MATERIAL_NAME_TO_ID,
+  MATERIAL_ID_TO_NAME,
+  MATERIAL_OPTIONS,
+};
