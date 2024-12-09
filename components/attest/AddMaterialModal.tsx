@@ -7,6 +7,7 @@ import { MaterialDetails, MaterialNames } from "@/types/material";
 import { Ionicons } from "@expo/vector-icons";
 import { useMemo, useState } from "react";
 import {
+  Keyboard,
   KeyboardAvoidingView,
   Modal,
   Platform,
@@ -75,6 +76,10 @@ function SelectMaterial({
   return (
     <View>
       <ModalHeader title="Choose Material" type={type} />
+      <Text className="text-sm font-dm-regular text-slate-700 my-2 border-l-2 rounded-l-sm border-slate-300 pl-2 py-0.5">
+        You can return to this screen anytime to add or update materials. Tap a
+        selected item to update or remove it.
+      </Text>
       <View className="p-1">
         {Object.entries(MATERIAL_CATEGORIES).map(([category, materials]) => (
           <View key={category} className="mb-2 pb-2">
@@ -147,10 +152,10 @@ const MaterialForm = ({
         hasBack={hasBack}
         goBack={goBack}
       />
-      <FormSection>
+      <View className="flex-1 px-4 py-6 space-y-4">
         <View className="flex-col justify-between">
           <Text className="text-base font-dm-medium text-slate-600 tracking-tighter my-2">
-            Weight
+            Weight (kg)
           </Text>
           <TextInput
             value={currentWeight.toString()}
@@ -158,25 +163,31 @@ const MaterialForm = ({
               const parsed = parseInt(text, 10);
               setCurrentWeight(isNaN(parsed) ? 0 : parsed);
             }}
-            className="border-[1.5px] border-slate-300 rounded-md"
+            className="border-[1.5px] border-slate-300 rounded-md px-3"
             placeholder="Weight in kg"
             inputMode="numeric"
           />
         </View>
+        <View className="flex-col justify-between">
+          <Text className="text-base font-dm-medium text-slate-600 tracking-tighter my-2">
+            Code
+          </Text>
+          <QRTextInput
+            value={currentCode}
+            onChangeText={(text) => {
+              setCurrentCode(text);
+            }}
+            placeholder="Code"
+          />
+        </View>
+      </View>
 
-        <QRTextInput
-          value={currentCode}
-          onChangeText={(text) => {
-            setCurrentCode(text);
-          }}
-          placeholder="Code"
-        />
-      </FormSection>
-
-      <View className="gap-2 my-2">
+      <View className="gap-2">
         <Pressable
           onPress={() => {
-            handleAddMaterial({ weight: currentWeight, code: currentCode });
+            if (currentWeight > 0 || currentCode !== "") {
+              handleAddMaterial({ weight: currentWeight, code: currentCode });
+            }
           }}
           className="p-4 rounded-md bg-blue-600"
         >
@@ -223,7 +234,7 @@ const ModalHeader = ({
         </Pressable>
       )}
       <View className="py-2">
-        <Text className="text-xs font-dm-medium text-slate-600 uppercase tracking-widest">
+        <Text className="text-xs font-dm-medium text-blue-700 uppercase tracking-widest">
           {type} materials
         </Text>
         <View className="flex-row justify-between items-center gap-1">
@@ -275,14 +286,16 @@ export default function AddMaterialModal({
     code: string;
   }) => {
     if (chosenMaterialId) {
-      setSelectedMaterials({
-        ...selectedMaterials,
-        [chosenMaterialId]: { weight, code },
-      });
+      // only add if it has a weight or code
+      if (weight > 0 || code !== "") {
+        setSelectedMaterials({
+          ...selectedMaterials,
+          [chosenMaterialId]: { weight, code },
+        });
+      }
     }
-    if (currentPage === 1) {
-      handleClose();
-    }
+    Keyboard.dismiss();
+    goBack();
   };
 
   const handleRemoveMaterial = () => {
@@ -295,6 +308,8 @@ export default function AddMaterialModal({
         )
       );
     }
+
+    goBack();
   };
 
   const pages = [
