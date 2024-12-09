@@ -1,7 +1,7 @@
 import { useCreateCollectionEvent } from "@/api/collections/new";
 import FieldInfo from "@/components/forms/FieldInfo";
 import FormSection from "@/components/forms/FormSection";
-import MaterialsSelect from "@/components/forms/MaterialsSelect";
+// import MaterialsSelect from "@/components/forms/MaterialsSelect";
 import QRTextInput from "@/components/forms/QRTextInput";
 import { collectionFormSchema } from "@/config/forms/schemas";
 import { useForm } from "@tanstack/react-form";
@@ -129,13 +129,13 @@ export default function NewCollection() {
         <collectionForm.Field name="materials" mode="array">
           {(field) => (
             <View className="mb-4">
-              <MaterialsSelect
+              {/* <MaterialsSelect
                 selectedMaterials={field.state.value}
                 setSelectedMaterials={(materials) => {
                   field.handleChange(materials);
                   setSubmitError(null);
                 }}
-              />
+              /> */}
               <FieldInfo field={field} showErrors={hasAttemptedSubmit} />
             </View>
           )}

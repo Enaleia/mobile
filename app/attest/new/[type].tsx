@@ -33,6 +33,8 @@ export default function NewActionScreen() {
     setIsOutgoingMaterialsPickerVisible,
   ] = useState(false);
 
+  // TODO: Add a button to save the action
+  // TODO: Refactor incoming and outgoing materials to be the same component
   return (
     <SafeAreaContent>
       <Link href="/home" asChild>
@@ -57,7 +59,7 @@ export default function NewActionScreen() {
               </Text>
             </View>
             <View className="flex-col items-center justify-center max-h-[300px]">
-              {selectedIncomingMaterialDetails ? (
+              {Object.keys(selectedIncomingMaterialDetails).length > 0 ? (
                 <ScrollView className="w-full rounded-lg overflow-clip border-[1.5px] border-slate-200">
                   {Object.entries(selectedIncomingMaterialDetails).map(
                     ([materialId, { weight, code }]) => (
@@ -110,13 +112,7 @@ export default function NewActionScreen() {
                     )
                   )}
                 </ScrollView>
-              ) : (
-                <View className="bg-slate-50 rounded-lg p-2">
-                  <Text className="text-sm font-dm-medium text-neutral-600">
-                    No materials selected
-                  </Text>
-                </View>
-              )}
+              ) : null}
             </View>
             <AddMaterialModal
               isVisible={isIncomingMaterialsPickerVisible}
@@ -149,7 +145,7 @@ export default function NewActionScreen() {
               </Text>
             </View>
             <View className="flex-col items-center justify-center max-h-[300px]">
-              {selectedOutgoingMaterialDetails ? (
+              {Object.keys(selectedOutgoingMaterialDetails).length > 0 ? (
                 <ScrollView className="w-full rounded-lg overflow-clip border-[1.5px] border-slate-200">
                   {Object.entries(selectedOutgoingMaterialDetails).map(
                     ([materialId, { weight, code }]) => (
@@ -202,13 +198,7 @@ export default function NewActionScreen() {
                     )
                   )}
                 </ScrollView>
-              ) : (
-                <View className="bg-slate-50 rounded-lg p-2">
-                  <Text className="text-sm font-dm-medium text-neutral-600">
-                    No materials selected
-                  </Text>
-                </View>
-              )}
+              ) : null}
             </View>
             <AddMaterialModal
               isVisible={isOutgoingMaterialsPickerVisible}
