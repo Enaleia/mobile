@@ -1,11 +1,11 @@
 msgid ""
 msgstr ""
-"POT-Creation-Date: 2024-12-05 08:27-0500\n"
+"POT-Creation-Date: 2024-12-06 13:09-0500\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=utf-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 "X-Generator: @lingui/cli\n"
-"Language: el\n"
+"Language: ar-EG\n"
 "Project-Id-Version: \n"
 "Report-Msgid-Bugs-To: \n"
 "PO-Revision-Date: \n"
@@ -17,32 +17,32 @@ msgstr ""
 #: components/LoginForm.tsx:62
 #: components/LoginForm.tsx:99
 msgid "{0}"
-msgstr "{0}"
+msgstr ""
 
 #: components/LoginForm.tsx:47
 msgid "Email"
-msgstr "Ηλεκτρονικό ταχυδρομείο"
+msgstr ""
 
 #: app/(auth)/login.tsx:54
 msgid "Enaleia Hub is invite-only for ecosystem partners. Need help logging in? Contact support."
-msgstr "Το Enaleia Hub είναι διαθέσιμο μόνο με πρόσκληση για συνεργάτες του οικοσυστήματος. Χρειάζεστε βοήθεια για σύνδεση; Επικοινωνήστε με την υποστήριξη."
+msgstr ""
 
 #: components/LoginForm.tsx:110
 msgid "Login"
-msgstr "Σύνδεση"
+msgstr ""
 
 #: components/LoginForm.tsx:84
 msgid "Password"
-msgstr "Κωδικός πρόσβασης"
+msgstr ""
 
 #: components/LoginForm.tsx:40
 msgid "Please enter your email"
-msgstr "Παρακαλώ εισάγετε το email σας"
+msgstr ""
 
 #: components/LoginForm.tsx:77
 msgid "Please enter your password"
-msgstr "Παρακαλώ εισάγετε τον κωδικό σας"
+msgstr ""
 
 #: app/(auth)/login.tsx:46
 msgid "Welcome to Enaleia Hub"
-msgstr "Καλώς ήρθατε στο Enaleia Hub"
+msgstr ""

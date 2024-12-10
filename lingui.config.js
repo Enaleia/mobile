@@ -5,7 +5,7 @@ export default defineConfig({
   fallbackLocales: {
     default: "en",
   },
-  locales: ["en", "el", "ar"],
+  locales: ["en", "el", "ar-EG"],
   catalogs: [
     {
       path: "<rootDir>/lib/locales/{locale}/messages",
