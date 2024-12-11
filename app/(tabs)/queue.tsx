@@ -1,14 +1,17 @@
 import SafeAreaContent from "@/components/SafeAreaContent";
 import { ACTION_COLORS, ACTION_ICONS } from "@/constants/action";
 import { ActionTitle } from "@/types/action";
+import { Ionicons } from "@expo/vector-icons";
 import { useNavigation } from "expo-router";
 import { useEffect } from "react";
 import { Image, ScrollView, Text, View } from "react-native";
 
+type QueueStatus = "Awaiting network" | "Uploading" | "Completed";
+
 const QUEUE_ACTIONS: {
   title: ActionTitle;
   date: string;
-  status: "Awaiting network" | "Uploading" | "Completed";
+  status: QueueStatus;
 }[] = [
   { title: "Fishing for litter", date: "Dec 15, 2024", status: "Uploading" },
   { title: "Sorting", date: "Jan 3, 2025", status: "Awaiting network" },
@@ -18,6 +21,15 @@ const QUEUE_ACTIONS: {
   { title: "Prevention", date: "Jan 20, 2025", status: "Uploading" },
   { title: "Manufacturing", date: "Nov 10, 2024", status: "Awaiting network" },
 ];
+
+const QUEUE_STATUS_CATEGORIES: Record<QueueStatus, typeof QUEUE_ACTIONS> = {
+  "Awaiting network": QUEUE_ACTIONS.filter(
+    (action) => action.status === "Awaiting network"
+  ),
+  Uploading: QUEUE_ACTIONS.filter((action) => action.status === "Uploading"),
+  Completed: QUEUE_ACTIONS.filter((action) => action.status === "Completed"),
+};
+
 const INCOMPLETE_ACTIONS = QUEUE_ACTIONS.filter(
   (action) => action.status !== "Completed"
 ).length;
@@ -35,7 +47,7 @@ const QueuedAction = ({
 }: {
   title: ActionTitle;
   date: string;
-  status: "Awaiting network" | "Uploading" | "Completed";
+  status: QueueStatus;
 }) => {
   return (
     <View
@@ -83,12 +95,33 @@ const QueueScreen = () => {
       <Text className="text-3xl font-dm-regular text-neutral-800 tracking-[-1px] mb-3">
         Queue
       </Text>
-      <View className="flex-1 bg-slate-50 rounded-md overflow-hidden">
-        <ScrollView>
-          {QUEUE_ACTIONS_SORTED.map((action) => (
-            <QueuedAction key={action.title} {...action} />
-          ))}
-        </ScrollView>
+      <View className="flex-1">
+        {QUEUE_ACTIONS_SORTED.length > 0 ? (
+          Object.entries(QUEUE_STATUS_CATEGORIES).map(
+            ([status, actions]) =>
+              actions.length > 0 && (
+                <View key={status}>
+                  <Text className="text-base font-dm-medium text-slate-600 tracking-tight mb-3">
+                    {status}
+                  </Text>
+                  <View className="bg-slate-50 rounded-md overflow-hidden mb-6">
+                    <ScrollView>
+                      {actions.map((action) => (
+                        <QueuedAction key={action.title} {...action} />
+                      ))}
+                    </ScrollView>
+                  </View>
+                </View>
+              )
+          )
+        ) : (
+          <View className="flex-1 items-center justify-center">
+            <Ionicons name="albums-outline" size={64} color="#475569" />
+            <Text className="text-lg font-dm-medium text-slate-600 tracking-tight">
+              No actions in queue
+            </Text>
+          </View>
+        )}
       </View>
     </SafeAreaContent>
   );
