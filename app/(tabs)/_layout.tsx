@@ -19,6 +19,15 @@ const TabsLayout = () => {
           ),
         }}
       />
+      <Tabs.Screen
+        name="queue"
+        options={{
+          tabBarLabel: "Queue",
+          tabBarIcon: ({ color }) => (
+            <Ionicons name="albums-outline" size={24} color={color} />
+          ),
+        }}
+      />
       {/* <Tabs.Screen
         name="attestations"
         options={{

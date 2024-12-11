@@ -19,6 +19,7 @@ const App = () => {
           </Text>
         </View>
         <Link href="/login">Login</Link>
+        <Link href="/queue">Queue</Link>
       </View>
       <StatusBar style="dark" />
     </SafeAreaContent>
