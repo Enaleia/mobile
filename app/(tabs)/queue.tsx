@@ -101,7 +101,7 @@ const QueueScreen = () => {
             ([status, actions]) =>
               actions.length > 0 && (
                 <View key={status}>
-                  <Text className="text-base font-dm-medium text-slate-600 tracking-tight mb-3">
+                  <Text className="text-base font-dm-medium text-slate-600 tracking-tight mb-1">
                     {status}
                   </Text>
                   <View className="bg-slate-50 rounded-md overflow-hidden mb-6">
