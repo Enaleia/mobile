@@ -30,9 +30,9 @@ const QUEUE_STATUS_CATEGORIES: Record<QueueStatus, typeof QUEUE_ACTIONS> = {
   Completed: QUEUE_ACTIONS.filter((action) => action.status === "Completed"),
 };
 
-const INCOMPLETE_ACTIONS = QUEUE_ACTIONS.filter(
+export const INCOMPLETE_ACTIONS = QUEUE_ACTIONS.filter(
   (action) => action.status !== "Completed"
-).length;
+);
 
 const QUEUE_ACTION_STATUS_COLORS = {
   "Awaiting network": "bg-amber-200 text-amber-600 border-amber-300",
@@ -82,7 +82,8 @@ const QueueScreen = () => {
   useEffect(() => {
     // Update the tab bar badge with number of incomplete actions
     navigation.setOptions({
-      tabBarBadge: INCOMPLETE_ACTIONS > 0 ? INCOMPLETE_ACTIONS : undefined,
+      tabBarBadge:
+        INCOMPLETE_ACTIONS.length > 0 ? INCOMPLETE_ACTIONS.length : undefined,
     });
   }, [INCOMPLETE_ACTIONS]);
 
