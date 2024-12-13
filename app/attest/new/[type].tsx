@@ -7,12 +7,38 @@ import { MATERIAL_ID_TO_NAME } from "@/constants/material";
 import { ActionTitle } from "@/types/action";
 import { MaterialDetails } from "@/types/material";
 import { Ionicons } from "@expo/vector-icons";
+import { useForm } from "@tanstack/react-form";
+import { useMutation } from "@tanstack/react-query";
+import { zodValidator } from "@tanstack/zod-form-adapter";
 import { Link, useLocalSearchParams } from "expo-router";
 import { useState } from "react";
 import { Pressable, ScrollView, Text, TextInput, View } from "react-native";
+import { z } from "zod";
+
+const actionFormSchema = z.object({
+  location: z.string().min(1),
+  date: z.string().min(1),
+  incomingMaterials: z.array(z.string()),
+  outgoingMaterials: z.array(z.string()),
+  manufacturing: z.object({
+    weight: z.number().min(0),
+    quantity: z.number().min(0),
+    product: z.string().min(1),
+  }),
+});
+
+type ActionFormData = z.infer<typeof actionFormSchema>;
 
 export default function NewActionScreen() {
   const { type } = useLocalSearchParams(); // slug format
+
+  const actionForm = useForm({
+    validatorAdapter: zodValidator(),
+    validators: {
+      onChange: actionFormSchema,
+    },
+  });
+
   const [selectedIncomingMaterialDetails, setSelectedIncomingMaterialDetails] =
     useState<MaterialDetails>({});
 
