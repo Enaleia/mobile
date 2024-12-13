@@ -1,8 +1,15 @@
 import { Ionicons } from "@expo/vector-icons";
+import { useQuery } from "@tanstack/react-query";
 import { Tabs } from "expo-router";
 import React from "react";
+import { INCOMPLETE_ACTIONS } from "./queue";
 
 const TabsLayout = () => {
+  const { data: incompleteActions } = useQuery({
+    queryKey: ["incompleteActions"],
+    queryFn: () => Promise.resolve(INCOMPLETE_ACTIONS),
+  });
+
   return (
     <Tabs
       screenOptions={{
@@ -23,6 +30,10 @@ const TabsLayout = () => {
         name="queue"
         options={{
           tabBarLabel: "Queue",
+          tabBarBadge:
+            incompleteActions?.length && incompleteActions?.length > 0
+              ? incompleteActions?.length
+              : undefined,
           tabBarIcon: ({ color }) => (
             <Ionicons name="albums-outline" size={24} color={color} />
           ),
