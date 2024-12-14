@@ -68,10 +68,12 @@ function SelectMaterial({
   selectedMaterials,
   goNext,
   type,
+  handleClose,
 }: {
   selectedMaterials: MaterialDetails;
   goNext: (materialId: number) => void;
   type: "incoming" | "outgoing";
+  handleClose: () => void;
 }) {
   return (
     <View>
@@ -99,6 +101,11 @@ function SelectMaterial({
             </View>
           </View>
         ))}
+        <Pressable onPress={handleClose} className="p-4 rounded-md bg-blue-600">
+          <Text className="text-base text-center font-dm-bold text-white tracking-tighter">
+            Done
+          </Text>
+        </Pressable>
       </View>
     </View>
   );
@@ -163,9 +170,9 @@ const MaterialForm = ({
               const parsed = parseInt(text, 10);
               setCurrentWeight(isNaN(parsed) ? 0 : parsed);
             }}
-            className="border-[1.5px] border-slate-300 rounded-md px-3"
-            placeholder="Weight in kg"
+            placeholder="0"
             inputMode="numeric"
+            className={`flex-1 border-[1.5px] rounded-lg p-2 px-3 border-neutral-300 focus:border-blue-600 focus:shadow-outline focus:ring-offset-2`}
           />
         </View>
         <View className="flex-col justify-between">
@@ -318,6 +325,7 @@ export default function AddMaterialModal({
       selectedMaterials={selectedMaterials}
       goNext={goNext}
       type={type}
+      handleClose={handleClose}
     />,
     <MaterialForm
       key="details"
