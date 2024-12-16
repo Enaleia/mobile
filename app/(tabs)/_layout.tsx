@@ -1,13 +1,16 @@
+import { IEvent } from "@/api/events/new";
 import { Ionicons } from "@expo/vector-icons";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Tabs } from "expo-router";
-import React from "react";
-import { INCOMPLETE_ACTIONS } from "./queue";
 
 const TabsLayout = () => {
+  const queryClient = useQueryClient();
   const { data: incompleteActions } = useQuery({
-    queryKey: ["incompleteActions"],
-    queryFn: () => Promise.resolve(INCOMPLETE_ACTIONS),
+    queryKey: ["events"],
+    queryFn: () =>
+      queryClient
+        .getQueryData<IEvent[]>(["events"])
+        ?.filter((event) => event.isNotSynced) || [],
   });
 
   return (
@@ -30,24 +33,12 @@ const TabsLayout = () => {
         name="queue"
         options={{
           tabBarLabel: "Queue",
-          tabBarBadge:
-            incompleteActions?.length && incompleteActions?.length > 0
-              ? incompleteActions?.length
-              : undefined,
+          tabBarBadge: incompleteActions?.length || undefined,
           tabBarIcon: ({ color }) => (
             <Ionicons name="albums-outline" size={24} color={color} />
           ),
         }}
       />
-      {/* <Tabs.Screen
-        name="attestations"
-        options={{
-          tabBarLabel: "Attestations",
-          tabBarIcon: ({ color }) => (
-            <Ionicons name="document-text-outline" size={24} color={color} />
-          ),
-        }}
-      /> */}
     </Tabs>
   );
 };
