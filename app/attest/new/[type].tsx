@@ -11,6 +11,7 @@ import { useForm } from "@tanstack/react-form";
 import { zodValidator } from "@tanstack/zod-form-adapter";
 import { Link, useLocalSearchParams } from "expo-router";
 import { useState } from "react";
+import uuid from "react-native-uuid";
 import {
   ActivityIndicator,
   Pressable,
@@ -20,6 +21,7 @@ import {
   View,
 } from "react-native";
 import { z } from "zod";
+import { useCreateEvent } from "@/api/events/new";
 
 // TODO: Setup form inputs
 // TODO: Update validation so that atleast one incoming or outgoing material is required
@@ -28,7 +30,7 @@ const eventFormSchema = z.object({
     .string()
     .refine((value) => Object.keys(ACTION_SLUGS).includes(value), {
       message: "Please select an action that exists",
-    }),
+    }) as z.ZodType<ActionTitle>,
   location: z.string().min(1),
   date: z.string().min(1),
   incomingMaterials: z
@@ -59,8 +61,11 @@ const eventFormSchema = z.object({
 });
 
 export type EventFormType = z.infer<typeof eventFormSchema>;
-export default function NewActionScreen() {
+
+const NewActionScreen = () => {
   const { type } = useLocalSearchParams(); // slug format
+  const { mutateAsync: createEvent } = useCreateEvent();
+
   const title = Object.keys(ACTION_SLUGS).find(
     (key) => ACTION_SLUGS[key as ActionTitle] === type
   ) as ActionTitle;
@@ -100,12 +105,23 @@ export default function NewActionScreen() {
           return;
         }
 
+        const formDataWithLocalId = {
+          ...value,
+          localId: uuid.v4() as string,
+          date: new Date().toISOString(),
+        };
+
         try {
           // TODO: Implement API call
-          console.log(
-            "Form submitted with values:",
-            JSON.stringify(value, null, 2)
-          );
+          // console.log(
+          //   "Form submitted with values:",
+          //   JSON.stringify(formDataWithLocalId, null, 2)
+          // );
+          await createEvent({
+            ...formDataWithLocalId,
+            isNotSynced: true,
+          });
+          // console.log({ response });
         } catch (error) {
           console.error("Failed to create action:", error);
           throw error;
@@ -122,22 +138,6 @@ export default function NewActionScreen() {
       onChange: eventFormSchema,
     },
   });
-
-  // const [selectedIncomingMaterialDetails, setSelectedIncomingMaterialDetails] =
-  //   useState<MaterialDetails>({});
-
-  // const [selectedOutgoingMaterialDetails, setSelectedOutgoingMaterialDetails] =
-  //   useState<MaterialDetails>({});
-
-  // const [manufacturingData, setManufacturingData] = useState<{
-  //   weight: number;
-  //   quantity: number;
-  //   product: string;
-  // }>({
-  //   weight: 0,
-  //   quantity: 0,
-  //   product: "",
-  // });
 
   const [
     isIncomingMaterialsPickerVisible,
@@ -334,7 +334,7 @@ export default function NewActionScreen() {
       </View>
     </SafeAreaContent>
   );
-}
+};
 
 const MaterialSection = ({
   category,
@@ -435,3 +435,5 @@ const MaterialSection = ({
     </View>
   );
 };
+
+export default NewActionScreen;
