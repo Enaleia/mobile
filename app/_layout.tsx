@@ -6,8 +6,9 @@ import "@formatjs/intl-pluralrules/locale-data/el";
 import "@formatjs/intl-pluralrules/locale-data/en";
 import "@formatjs/intl-pluralrules/polyfill-force";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import NetInfo from "@react-native-community/netinfo";
 import { createAsyncStoragePersister } from "@tanstack/query-async-storage-persister";
-import { QueryClient } from "@tanstack/react-query";
+import { QueryClient, onlineManager } from "@tanstack/react-query";
 import { PersistQueryClientProvider } from "@tanstack/react-query-persist-client";
 import { useFonts } from "expo-font";
 import { Stack } from "expo-router";
@@ -48,6 +49,13 @@ export default function RootLayout() {
     dynamicActivate(locale);
   }, [locale]);
 
+  useEffect(() => {
+    return NetInfo.addEventListener((state) => {
+      const status = !!state.isConnected;
+      onlineManager.setOnline(status);
+    });
+  }, []);
+
   const [fontsLoaded, fontError] = useFonts({
     // Add your local fonts here - adjust the paths and names based on your actual font files
     "DMSans-Bold": require("../assets/fonts/DMSans-Bold.ttf"),
@@ -71,6 +79,11 @@ export default function RootLayout() {
     <PersistQueryClientProvider
       client={queryClient}
       persistOptions={{ persister: asyncStoragePersister }}
+      onSuccess={() =>
+        queryClient
+          .resumePausedMutations()
+          .then(() => queryClient.invalidateQueries())
+      }
     >
       <I18nProvider i18n={i18n} defaultComponent={DefaultComponent}>
         <Stack screenOptions={{ headerShown: false }}>
