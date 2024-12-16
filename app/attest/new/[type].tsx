@@ -22,8 +22,8 @@ import {
 import { z } from "zod";
 
 // TODO: Setup form inputs
-
-const actionFormSchema = z.object({
+// TODO: Update validation so that atleast one incoming or outgoing material is required
+const eventFormSchema = z.object({
   type: z
     .string()
     .refine((value) => Object.keys(ACTION_SLUGS).includes(value), {
@@ -35,8 +35,8 @@ const actionFormSchema = z.object({
     .record(
       z.string(),
       z.object({
-        weight: z.number().min(0),
-        code: z.string().min(1),
+        weight: z.number().min(0).optional(),
+        code: z.string().min(0).optional(),
       })
     )
     .optional(),
@@ -44,20 +44,21 @@ const actionFormSchema = z.object({
     .record(
       z.string(),
       z.object({
-        weight: z.number().min(0),
-        code: z.string().min(1),
+        weight: z.number().min(0).optional(),
+        code: z.string().min(0).optional(),
       })
     )
     .optional(),
   manufacturing: z
     .object({
-      weightInKg: z.number().min(0),
-      quantity: z.number().min(0),
-      product: z.string().min(1),
+      weightInKg: z.number().min(0).optional(),
+      quantity: z.number().min(0).optional(),
+      product: z.string().min(0).optional(),
     })
     .optional(),
 });
 
+export type EventFormType = z.infer<typeof eventFormSchema>;
 export default function NewActionScreen() {
   const { type } = useLocalSearchParams(); // slug format
   const title = Object.keys(ACTION_SLUGS).find(
@@ -91,15 +92,13 @@ export default function NewActionScreen() {
           data: parsedData,
           error: parseError,
           success: parseSuccess,
-        } = actionFormSchema.safeParse(value);
+        } = eventFormSchema.safeParse(value);
 
         if (!parseSuccess) {
           setSubmitError("Please fix the form errors before submitting");
           console.error("Form validation errors:", parseError);
           return;
         }
-
-        console.log("Valid form data:", parsedData);
 
         try {
           // TODO: Implement API call
@@ -120,7 +119,7 @@ export default function NewActionScreen() {
     },
     validatorAdapter: zodValidator(),
     validators: {
-      onChange: actionFormSchema,
+      onChange: eventFormSchema,
     },
   });
 
@@ -300,22 +299,34 @@ export default function NewActionScreen() {
                   {submitError}
                 </Text>
               )}
-              <form.Subscribe selector={(state) => state.errors}>
-                {(errors) =>
-                  errors.length > 0 && (
-                    <View className="mt-2 p-2 bg-red-50 rounded border-[1.5px] border-red-200">
-                      {/* Display form validation errors */}
-                      {errors.map((error, i) => (
-                        <Text
-                          key={i}
-                          className="text-sm font-dm-regular text-red-600"
-                        >
-                          • {error}
+              <form.Subscribe selector={(state) => state.errorMap}>
+                {(errorMap) => {
+                  return Object.entries(errorMap).map(
+                    ([validationType, errors]) => {
+                      if (
+                        typeof errors === "object" &&
+                        errors !== null &&
+                        "fields" in errors
+                      ) {
+                        return Object.entries(errors.fields).map(
+                          ([fieldName, error]) => (
+                            <Text
+                              key={`${validationType}-${fieldName}`}
+                              className="text-red-600"
+                            >
+                              {fieldName}: {String(error)}
+                            </Text>
+                          )
+                        );
+                      }
+                      return (
+                        <Text key={validationType} className="text-red-600">
+                          {validationType}: {String(errors)}
                         </Text>
-                      ))}
-                    </View>
-                  )
-                }
+                      );
+                    }
+                  );
+                }}
               </form.Subscribe>
             </View>
           </View>
