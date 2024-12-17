@@ -1,8 +1,18 @@
+import { IEvent } from "@/api/events/new";
 import { Ionicons } from "@expo/vector-icons";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Tabs } from "expo-router";
-import React from "react";
 
 const TabsLayout = () => {
+  const queryClient = useQueryClient();
+  const { data: incompleteActions } = useQuery({
+    queryKey: ["events"],
+    queryFn: () =>
+      queryClient
+        .getQueryData<IEvent[]>(["events"])
+        ?.filter((event) => event.isNotSynced) || [],
+  });
+
   return (
     <Tabs
       screenOptions={{
@@ -19,15 +29,16 @@ const TabsLayout = () => {
           ),
         }}
       />
-      {/* <Tabs.Screen
-        name="attestations"
+      <Tabs.Screen
+        name="queue"
         options={{
-          tabBarLabel: "Attestations",
+          tabBarLabel: "Queue",
+          tabBarBadge: incompleteActions?.length || undefined,
           tabBarIcon: ({ color }) => (
-            <Ionicons name="document-text-outline" size={24} color={color} />
+            <Ionicons name="albums-outline" size={24} color={color} />
           ),
         }}
-      /> */}
+      />
     </Tabs>
   );
 };
