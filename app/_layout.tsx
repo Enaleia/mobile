@@ -51,6 +51,7 @@ const queryClient = new QueryClient({
 
 export default function RootLayout() {
   const [appIsReady, setAppIsReady] = useState(false);
+  const [loaded, error] = useFonts(preloadedFonts);
 
   const asyncStoragePersister = createAsyncStoragePersister({
     storage: AsyncStorage,
@@ -59,35 +60,6 @@ export default function RootLayout() {
   });
 
   const locale = Localization.getLocales()[0]?.languageCode || defaultLocale;
-
-  useEffect(() => {
-    dynamicActivate(locale);
-  }, [locale]);
-
-  useEffect(() => {
-    return NetInfo.addEventListener((state) => {
-      const status = !!state.isConnected;
-      onlineManager.setOnline(status);
-    });
-  }, []);
-
-  useEffect(() => {
-    async function prepareFonts() {
-      try {
-        await Promise.all([useFonts(preloadedFonts)]);
-      } catch (error) {
-        console.warn(error);
-      } finally {
-        setAppIsReady(true);
-        await SplashScreen.hideAsync();
-      }
-    }
-    prepareFonts();
-  }, []);
-
-  if (!appIsReady) {
-    return null;
-  }
 
   const stackScreens = useMemo(
     () => (
@@ -101,6 +73,28 @@ export default function RootLayout() {
     ),
     []
   );
+
+  useEffect(() => {
+    dynamicActivate(locale);
+  }, [locale]);
+
+  useEffect(() => {
+    return NetInfo.addEventListener((state) => {
+      const status = !!state.isConnected;
+      onlineManager.setOnline(status);
+    });
+  }, []);
+
+  useEffect(() => {
+    if (loaded || error) {
+      setAppIsReady(true);
+      SplashScreen.hideAsync();
+    }
+  }, [loaded, error]);
+
+  if (!appIsReady) {
+    return null;
+  }
 
   return (
     <PersistQueryClientProvider
