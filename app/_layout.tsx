@@ -27,6 +27,7 @@ SplashScreen.preventAutoHideAsync();
 
 const preloadedFonts = {
   "DMSans-Bold": require("../assets/fonts/DMSans-Bold.ttf"),
+  "DMSans-Light": require("../assets/fonts/DMSans-Light.ttf"),
   "DMSans-Medium": require("../assets/fonts/DMSans-Medium.ttf"),
   "DMSans-Regular": require("../assets/fonts/DMSans-Regular.ttf"),
 };

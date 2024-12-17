@@ -10,6 +10,7 @@ import {
   View,
 } from "react-native";
 import { Trans } from "@lingui/react/macro";
+import SafeAreaContent from "@/components/SafeAreaContent";
 
 export default function LoginScreen() {
   const navigation = useNavigation();
@@ -19,21 +20,28 @@ export default function LoginScreen() {
   }, [navigation]);
 
   return (
-    <KeyboardAvoidingView
-      behavior={Platform.OS === "ios" ? "padding" : "height"}
-      className="flex-1 bg-neutral-50"
-    >
-      <View className="flex-1 justify-end px-5 space-y-4 pb-8">
-        <View className="relative mb-16">
-          <Image
-            source={require("@/assets/images/icon.png")}
-            className="w-24 h-24 rounded-full mb-15"
-          />
-        </View>
+    <SafeAreaContent>
+      <View className="absolute top-36 right-[-30px] bg-white-sand">
+        <Image
+          source={require("@/assets/images/animals/Turtle.png")}
+          className="w-[223px] h-[228px]"
+        />
+      </View>
+      <View className="mb-8">
+        <Image
+          source={require("@/assets/images/logo-gray.webp")}
+          className="w-[86px] h-[89px] rounded-full"
+        />
+      </View>
+      <KeyboardAvoidingView
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
+        keyboardVerticalOffset={Platform.OS === "ios" ? 0 : 100}
+        className="flex-1 justify-end"
+      >
         <AnimatePresence presenceAffectsLayout>
           <MotiText
-            className="text-5xl font-dm-bold mb-5"
-            style={{ letterSpacing: -2.25, lineHeight: 48 }}
+            className="text-3xl font-dm-bold"
+            style={{ letterSpacing: -1, lineHeight: 31.35008 }}
             from={{ opacity: 0, translateY: 10 }}
             animate={{ opacity: 1, translateY: 0 }}
             transition={{
@@ -46,17 +54,20 @@ export default function LoginScreen() {
             <Trans>Welcome to Enaleia Hub</Trans>
           </MotiText>
         </AnimatePresence>
-        <LoginForm />
-        <Text
-          className="text-sm text-gray-600 font-dm-regular"
-          style={{ letterSpacing: 0.025 }}
-        >
-          <Trans>
-            Enaleia Hub is invite-only for ecosystem partners. Need help logging
-            in? Contact support.
-          </Trans>
+        <Text className="text-base font-dm-light">
+          Please sign in with the provided credential
         </Text>
-      </View>
-    </KeyboardAvoidingView>
+        <View className="flex-1">
+          <LoginForm />
+        </View>
+      </KeyboardAvoidingView>
+      <Text className="text-sm text-grey-8 font-dm-light">
+        <Trans>
+          The Enaleia Hub is an invite-only application designed for ecosystem
+          partners to securely submit data to the blockchain. If you have lost
+          your login information, please click here to contact support.
+        </Trans>
+      </Text>
+    </SafeAreaContent>
   );
 }

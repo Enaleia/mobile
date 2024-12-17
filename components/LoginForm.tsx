@@ -42,27 +42,28 @@ export default function LoginForm() {
         validatorAdapter={zodValidator()}
       >
         {(field) => (
-          <>
-            <Text className="font-medium mb-2">
+          <View className="bg-white p-2 rounded-xl h-[100px]">
+            <Text className="font-dm-light text-grey-6 text-sm">
               <Trans>Email</Trans>
             </Text>
             <TextInput
               autoCapitalize="none"
               autoComplete="email"
+              placeholder="email@email.com"
               inputMode="email"
               value={field.state.value}
               onChangeText={field.handleChange}
               onBlur={field.handleBlur}
-              className={`border-[1.5px] rounded-lg p-2 px-3 border-neutral-300 focus:border-blue-600 focus:shadow-outline focus:ring-offset-2 ${
+              className={`h-12 border-neutral-300 focus:border-blue-600 focus:shadow-outline focus:ring-offset-2 font-dm-bold text-[20px] ${
                 field.state.meta.errors.length > 0 && "border-red-500"
               }`}
             />
             {field.state.meta.errors.length > 0 ? (
-              <Text className="text-red-600 font-semibold">
+              <Text className="text-red-600 font-dm-regular text-xs">
                 <Trans>{field.state.meta.errors.join(", ")}</Trans>
               </Text>
             ) : null}
-          </>
+          </View>
         )}
       </form.Field>
 
@@ -79,23 +80,24 @@ export default function LoginForm() {
         validatorAdapter={zodValidator()}
       >
         {(field) => (
-          <View>
-            <Text className="font-medium mb-2">
+          <View className="space-y-0.5 bg-white p-2 rounded-xl">
+            <Text className="font-dm-light text-grey-6 text-sm">
               <Trans>Password</Trans>
             </Text>
             <TextInput
               secureTextEntry
               autoCapitalize="none"
+              placeholder="********"
               autoComplete="password"
               value={field.state.value}
               onChangeText={field.handleChange}
               onBlur={field.handleBlur}
-              className={`border-[1.5px] rounded-lg p-2 px-3 border-neutral-300 focus:border-blue-600 focus:shadow-outline focus:ring-offset-2 ${
+              className={`h-12 border-neutral-300 focus:border-blue-600 focus:shadow-outline focus:ring-offset-2 font-dm-bold text-[20px] ${
                 field.state.meta.errors.length > 0 && "border-red-500"
               }`}
             />
             {field.state.meta.errors.length > 0 ? (
-              <Text className="text-red-600 font-semibold">
+              <Text className="text-red-600 font-dm-regular text-xs">
                 <Trans>{field.state.meta.errors.join(", ")}</Trans>
               </Text>
             ) : null}
@@ -104,9 +106,9 @@ export default function LoginForm() {
       </form.Field>
       <Pressable
         onPress={() => form.handleSubmit()}
-        className="flex flex-row items-center justify-center px-2 py-3 mt-2 bg-blue-700 rounded-md"
+        className="flex flex-row items-center justify-center p-2 mt-2 bg-blue-ocean rounded-full tracking-tight"
       >
-        <Text className="text-white font-bold text-lg">
+        <Text className="text-white font-dm-regular text-base">
           <Trans>Login</Trans>
         </Text>
       </Pressable>
