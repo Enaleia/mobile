@@ -13,7 +13,7 @@ import { PersistQueryClientProvider } from "@tanstack/react-query-persist-client
 import { useFonts } from "expo-font";
 import { Stack } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
-import { useEffect } from "react";
+import { memo, useEffect, useMemo, useState } from "react";
 
 import { i18n } from "@lingui/core";
 import { I18nProvider, TransRenderProps } from "@lingui/react";
@@ -23,24 +23,39 @@ import * as Localization from "expo-localization";
 
 import { defaultLocale, dynamicActivate } from "@/lib/i18n";
 
-// Prevent the splash screen from auto-hiding
 SplashScreen.preventAutoHideAsync();
 
-const DefaultComponent = (props: TransRenderProps) => {
-  return <Text>{props.children}</Text>;
+const preloadedFonts = {
+  "DMSans-Bold": require("../assets/fonts/DMSans-Bold.ttf"),
+  "DMSans-Medium": require("../assets/fonts/DMSans-Medium.ttf"),
+  "DMSans-Regular": require("../assets/fonts/DMSans-Regular.ttf"),
 };
 
-export default function RootLayout() {
-  const queryClient = new QueryClient({
-    defaultOptions: {
-      queries: {
-        gcTime: 1000 * 60 * 60 * 24, // 24 hours
-      },
+const DefaultComponent = memo((props: TransRenderProps) => {
+  return <Text>{props.children}</Text>;
+});
+
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      gcTime: 1000 * 60 * 60 * 24, // 24 hours
+      retry: 3,
+      refetchOnWindowFocus: false,
     },
-  });
+    mutations: {
+      retry: 3,
+      gcTime: Infinity,
+    },
+  },
+});
+
+export default function RootLayout() {
+  const [appIsReady, setAppIsReady] = useState(false);
 
   const asyncStoragePersister = createAsyncStoragePersister({
     storage: AsyncStorage,
+    key: "enaleia-cache-v0",
+    throttleTime: 2000,
   });
 
   const locale = Localization.getLocales()[0]?.languageCode || defaultLocale;
@@ -56,24 +71,36 @@ export default function RootLayout() {
     });
   }, []);
 
-  const [fontsLoaded, fontError] = useFonts({
-    // Add your local fonts here - adjust the paths and names based on your actual font files
-    "DMSans-Bold": require("../assets/fonts/DMSans-Bold.ttf"),
-    "DMSans-Medium": require("../assets/fonts/DMSans-Medium.ttf"),
-    "DMSans-Regular": require("../assets/fonts/DMSans-Regular.ttf"),
-  });
-
   useEffect(() => {
-    if (fontsLoaded || fontError) {
-      // Hide the splash screen after the fonts have loaded (or an error was encountered)
-      SplashScreen.hideAsync();
+    async function prepareFonts() {
+      try {
+        await Promise.all([useFonts(preloadedFonts)]);
+      } catch (error) {
+        console.warn(error);
+      } finally {
+        setAppIsReady(true);
+        await SplashScreen.hideAsync();
+      }
     }
-  }, [fontsLoaded, fontError]);
+    prepareFonts();
+  }, []);
 
-  // Don't render anything until the fonts are loaded
-  if (!fontsLoaded && !fontError) {
+  if (!appIsReady) {
     return null;
   }
+
+  const stackScreens = useMemo(
+    () => (
+      <Stack screenOptions={{ headerShown: false }}>
+        <Stack.Screen name="(tabs)" />
+        <Stack.Screen name="index" />
+        <Stack.Screen name="(auth)/login" />
+        <Stack.Screen name="forms" />
+        <Stack.Screen name="attest/new/[type]" />
+      </Stack>
+    ),
+    []
+  );
 
   return (
     <PersistQueryClientProvider
@@ -86,13 +113,7 @@ export default function RootLayout() {
       }
     >
       <I18nProvider i18n={i18n} defaultComponent={DefaultComponent}>
-        <Stack screenOptions={{ headerShown: false }}>
-          <Stack.Screen name="(tabs)" />
-          <Stack.Screen name="index" />
-          <Stack.Screen name="(auth)/login" />
-          <Stack.Screen name="forms" />
-          <Stack.Screen name="attest/new/[type]" />
-        </Stack>
+        {stackScreens}
       </I18nProvider>
     </PersistQueryClientProvider>
   );
