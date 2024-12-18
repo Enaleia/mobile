@@ -1,6 +1,7 @@
 import HomeActionSelection from "@/components/HomeActionSelection";
 import SafeAreaContent from "@/components/SafeAreaContent";
 import { Ionicons } from "@expo/vector-icons";
+import { Trans } from "@lingui/react";
 import { Text, View } from "react-native";
 
 export default function Home() {
@@ -8,25 +9,23 @@ export default function Home() {
     <SafeAreaContent>
       <View className="flex-row items-start justify-between pb-2 font-dm-regular">
         <View className="flex-row items-center justify-center gap-0.5">
-          <Ionicons name="location" size={16} color="#24548b" />
-          <Text className="text-sm font-medium text-neutral-600">Skyplast</Text>
+          <Ionicons name="person-circle-outline" size={24} color="#0D0D0D" />
+          <Text className="text-sm font-bold text-enaleia-black">
+            East Alexandria
+          </Text>
         </View>
-        <View className="flex-row items-center justify-center space-x-2">
-          <View className="flex-row items-center justify-center px-1.5 py-0.5 space-x-1 bg-green-50 rounded-full border border-green-400">
-            <View className="w-2 h-2 rounded-full bg-green-500" />
-            <Text className="text-xs font-semibold text-neutral-600">
-              Online
-            </Text>
-          </View>
-          <View className="flex-row items-center justify-center gap-1">
-            <Ionicons name="notifications" size={18} color="#24548b" />
-            <Ionicons name="settings" size={18} color="#24548b" />
-          </View>
+        <View className="flex-row items-center justify-center px-1.5 py-0.5 space-x-1 bg-sand-beige rounded-full">
+          <View className="w-2 h-2 rounded-full bg-green-500" />
+          <Text className="text-xs font-dm-medium text-enaleia-black">
+            Online
+          </Text>
         </View>
       </View>
       <View className="flex-1 mt-4">
-        <Text className="text-3xl font-dm-regular text-neutral-800 tracking-[-1px] mb-3">
-          Choose an action below to record
+        <Text className="text-3xl font-dm-bold tracking-[-1.5px] mb-2 text-enaleia-black">
+          <Trans id="home.welcome_message">
+            Hello, what action will you be doing today?
+          </Trans>
         </Text>
         <HomeActionSelection />
       </View>

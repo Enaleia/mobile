@@ -8,14 +8,12 @@ export default function HomeActionSelection() {
       {Object.entries(ACTION_CATEGORIES).map(([category, actions]) => (
         <View
           key={category}
-          className="pb-2 mb-3 border-b-[1.5px] border-neutral-200 last-of-type:border-b-0"
+          className="py-5 border-b-[1.5px] border-neutral-200 last-of-type:border-b-0"
         >
-          <View className="flex-row items-center justify-between mb-2 w-full">
-            <Text className="text-sm font-dm-medium text-neutral-600 w-full tracking-tight">
-              {category}
-            </Text>
-          </View>
-          <View className="flex-row flex-wrap px-0.5">
+          <Text className="text-[18px] mb-3 font-dm-bold text-enaleia-black w-full tracking-tight">
+            {category}
+          </Text>
+          <View className="flex-row flex-wrap">
             {actions.map((action) => (
               <ActionButton key={action} title={action} />
             ))}
