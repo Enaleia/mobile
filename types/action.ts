@@ -13,7 +13,7 @@ export interface UIAction {
 export type ActionStatus = "Pending" | "In Progress" | "Complete";
 
 export type ActionTitle =
-  | "Fishing for litter"
+  | "Fishing for Litter"
   | "Manufacturing"
   | "Prevention"
   | "Shredding"
