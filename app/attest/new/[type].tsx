@@ -156,7 +156,7 @@ const NewActionScreen = () => {
 
   return (
     <SafeAreaContent>
-      <View className="absolute top-20 right-[-30px] bg-white-sand">
+      <View className="absolute top-20 right-[-30px] bg-white-sand opacity-20">
         <Image
           source={require("@/assets/images/animals/Turtle.png")}
           className="w-[223px] h-[228px]"
@@ -199,17 +199,19 @@ const NewActionScreen = () => {
                 />
               )}
             </form.Field>
-            <form.Field name="outgoingMaterials">
-              {(field) => (
-                <MaterialSection
-                  category="outgoing"
-                  isModalVisible={isOutgoingMaterialsPickerVisible}
-                  setModalVisible={setIsOutgoingMaterialsPickerVisible}
-                  selectedMaterials={field.state.value as MaterialDetail[]}
-                  setSelectedMaterials={field.handleChange}
-                />
-              )}
-            </form.Field>
+            {title !== "Manufacturing" && (
+              <form.Field name="outgoingMaterials">
+                {(field) => (
+                  <MaterialSection
+                    category="outgoing"
+                    isModalVisible={isOutgoingMaterialsPickerVisible}
+                    setModalVisible={setIsOutgoingMaterialsPickerVisible}
+                    selectedMaterials={field.state.value as MaterialDetail[]}
+                    setSelectedMaterials={field.handleChange}
+                  />
+                )}
+              </form.Field>
+            )}
             {title === "Manufacturing" && (
               <View className="mt-10 rounded-lg">
                 <View className="flex-row items-center space-x-0.5">
