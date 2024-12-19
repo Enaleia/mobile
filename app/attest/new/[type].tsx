@@ -372,6 +372,7 @@ const MaterialSection = ({
   const title = category === "incoming" ? "Incoming" : "Outgoing";
   const icon = category === "incoming" ? "arrow-down" : "arrow-up";
   const iconRotation = category === "incoming" ? "-rotate-45" : "rotate-45";
+  const [isDeleting, setIsDeleting] = useState<number | null>(null);
 
   const handleRemoveMaterial = (index: number) => {
     const newMaterials = [...selectedMaterials];
@@ -398,11 +399,50 @@ const MaterialSection = ({
                   <Text className="text-base font-dm-bold text-enaleia-black tracking-[-0.5px]">
                     {MATERIAL_ID_TO_NAME[id]}
                   </Text>
-                  <Pressable
-                    onPress={() => handleRemoveMaterial(materialIndex)}
-                  >
-                    <Ionicons name="trash-outline" size={24} color="#8E8E93" />
-                  </Pressable>
+                  {isDeleting === materialIndex ? (
+                    <View className="flex-row gap-2">
+                      <Pressable
+                        onPress={() => setIsDeleting(null)}
+                        className="active:opacity-70 bg-white rounded-full px-2 py-1 flex-row items-center justify-center space-x-1"
+                      >
+                        <Text className="text-xs font-dm-regular text-enaleia-black tracking-tighter">
+                          Cancel
+                        </Text>
+                        <Ionicons
+                          name="close-outline"
+                          size={16}
+                          color="#8E8E93"
+                        />
+                      </Pressable>
+                      <Pressable
+                        onPress={() => {
+                          handleRemoveMaterial(materialIndex);
+                          setIsDeleting(null);
+                        }}
+                        className="active:opacity-70 bg-red-500 rounded-full px-2 py-1 flex-row items-center justify-center space-x-1"
+                      >
+                        <Text className="text-xs font-dm-regular text-white tracking-tighter">
+                          Delete
+                        </Text>
+                        <Ionicons
+                          name="trash-outline"
+                          size={16}
+                          color="white"
+                        />
+                      </Pressable>
+                    </View>
+                  ) : (
+                    <Pressable
+                      onPress={() => setIsDeleting(materialIndex)}
+                      className="active:opacity-70"
+                    >
+                      <Ionicons
+                        name="trash-outline"
+                        size={24}
+                        color="#8E8E93"
+                      />
+                    </Pressable>
+                  )}
                 </View>
                 <View className="flex-row items-center justify-between w-full rounded-lg">
                   <View className="flex-1 border-[1.5px] border-grey-3 rounded-l-2xl p-2 bg-white">
