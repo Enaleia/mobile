@@ -3,6 +3,7 @@ import SafeAreaContent from "@/components/SafeAreaContent";
 import { ACTION_ICONS } from "@/constants/action";
 import { ActionTitle } from "@/types/action";
 import { Ionicons } from "@expo/vector-icons";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigation } from "expo-router";
 import { useEffect } from "react";
@@ -56,6 +57,23 @@ const QueueScreen = () => {
   const QUEUE_ACTIONS_SORTED = (incompleteActions || []).sort((a, b) => {
     return new Date(b.date).getTime() - new Date(a.date).getTime();
   });
+
+  // TODO: This is a temporary fix to clear the cache when the queue is too large
+  useEffect(() => {
+    // If there are more than 30 queued actions, invalidate and clear the cache
+    if (QUEUE_ACTIONS_SORTED.length > 30) {
+      // Clear the AsyncStorage cache
+      AsyncStorage.removeItem("enaleia-cache-v0")
+        .then(() => {
+          // Invalidate and reset the query client
+          queryClient.invalidateQueries({ queryKey: ["events"] });
+          queryClient.resetQueries({ queryKey: ["events"] });
+        })
+        .catch((error) => {
+          console.error("Error clearing queue cache:", error);
+        });
+    }
+  }, [QUEUE_ACTIONS_SORTED.length]);
 
   return (
     <SafeAreaContent>
