@@ -13,9 +13,14 @@ msgstr ""
 "Language-Team: \n"
 "Plural-Forms: \n"
 
+#. js-lingui-explicit-id
+#: app/(tabs)/home.tsx:26
+msgid "home.welcome_message"
+msgstr "Hello, what action will you be doing today?"
+
 #. placeholder {0}: field.state.meta.errors.join(", ")
-#: components/LoginForm.tsx:62
-#: components/LoginForm.tsx:99
+#: components/LoginForm.tsx:63
+#: components/LoginForm.tsx:101
 msgid "{0}"
 msgstr "{0}"
 
@@ -23,15 +28,11 @@ msgstr "{0}"
 msgid "Email"
 msgstr "Email"
 
-#: app/(auth)/login.tsx:54
-msgid "Enaleia Hub is invite-only for ecosystem partners. Need help logging in? Contact support."
-msgstr "Enaleia Hub is invite-only for ecosystem partners. Need help logging in? Contact support."
-
-#: components/LoginForm.tsx:110
+#: components/LoginForm.tsx:112
 msgid "Login"
 msgstr "Login"
 
-#: components/LoginForm.tsx:84
+#: components/LoginForm.tsx:85
 msgid "Password"
 msgstr "Password"
 
@@ -39,10 +40,14 @@ msgstr "Password"
 msgid "Please enter your email"
 msgstr "Please enter your email"
 
-#: components/LoginForm.tsx:77
+#: components/LoginForm.tsx:78
 msgid "Please enter your password"
 msgstr "Please enter your password"
 
-#: app/(auth)/login.tsx:46
+#: app/(auth)/login.tsx:80
+msgid "The Enaleia Hub is an invite-only application designed for ecosystem partners to securely submit data to the blockchain. If you have lost your login information, please click here to contact support."
+msgstr "The Enaleia Hub is an invite-only application designed for ecosystem partners to securely submit data to the blockchain. If you have lost your login information, please click here to contact support."
+
+#: app/(auth)/login.tsx:63
 msgid "Welcome to Enaleia Hub"
 msgstr "Welcome to Enaleia Hub"
