@@ -1,6 +1,7 @@
 import { MATERIAL_OPTIONS } from "@/constants/material";
 import { MaterialDetail, MaterialNames } from "@/types/material";
 import { Ionicons } from "@expo/vector-icons";
+import React, { useCallback } from "react";
 import {
   Keyboard,
   KeyboardAvoidingView,
@@ -12,56 +13,62 @@ import {
   View,
 } from "react-native";
 
-const SelectMaterialChip = ({
-  label,
-  value,
-  handleAddMaterial,
-}: {
-  label: MaterialNames;
-  value: number;
-  handleAddMaterial: (materialId: number) => void;
-}) => {
-  return (
-    <Pressable
-      accessibilityLabel={label}
-      accessibilityRole="button"
-      className={`bg-white min-w-[60px] px-3 py-2 rounded-3xl flex flex-row items-center justify-center mx-1 my-1 border-[1.5px] border-grey-3`}
-      onPress={() => {
-        handleAddMaterial(value);
-      }}
-    >
-      <Text className="text-sm font-dm-bold text-enaleia-black tracking-tighter">
-        {label}
-      </Text>
-    </Pressable>
-  );
-};
+const SelectMaterialChip = React.memo(
+  ({
+    label,
+    value,
+    handleAddMaterial,
+  }: {
+    label: MaterialNames;
+    value: number;
+    handleAddMaterial: (materialId: number) => void;
+  }) => {
+    const handlePress = useCallback(() => {
+      handleAddMaterial(value);
+    }, [value, handleAddMaterial]);
 
-function SelectMaterial({
-  handleAddMaterial,
-}: {
-  handleAddMaterial: (materialId: number) => void;
-}) {
-  return (
-    <View>
-      <Text className="text-xl font-dm-bold text-enaleia-black tracking-tighter text-center">
-        Select Material
-      </Text>
-      <View className="p-1 mt-5">
-        <View className="flex-row flex-wrap gap-2 justify-center">
-          {MATERIAL_OPTIONS.map(({ label, value }) => (
-            <SelectMaterialChip
-              key={value}
-              label={label}
-              value={value}
-              handleAddMaterial={handleAddMaterial}
-            />
-          ))}
+    return (
+      <Pressable
+        accessibilityLabel={label}
+        accessibilityRole="button"
+        className={`bg-white min-w-[60px] px-3 py-2 rounded-3xl flex flex-row items-center justify-center mx-1 my-1 border-[1.5px] border-grey-3`}
+        onPress={handlePress}
+      >
+        <Text className="text-sm font-dm-bold text-enaleia-black tracking-tighter">
+          {label}
+        </Text>
+      </Pressable>
+    );
+  }
+);
+
+const SelectMaterial = React.memo(
+  ({
+    handleAddMaterial,
+  }: {
+    handleAddMaterial: (materialId: number) => void;
+  }) => {
+    return (
+      <View>
+        <Text className="text-xl font-dm-bold text-enaleia-black tracking-tighter text-center">
+          Select Material
+        </Text>
+        <View className="p-1 mt-5">
+          <View className="flex-row flex-wrap gap-2 justify-center">
+            {MATERIAL_OPTIONS.map(({ label, value }) => (
+              <SelectMaterialChip
+                key={value}
+                label={label}
+                value={value}
+                handleAddMaterial={handleAddMaterial}
+              />
+            ))}
+          </View>
         </View>
       </View>
-    </View>
-  );
-}
+    );
+  }
+);
 
 export default function AddMaterialModal({
   isVisible,
