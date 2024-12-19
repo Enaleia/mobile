@@ -15,7 +15,7 @@ interface QRTextInputProps {
 const QRTextInput: React.FC<QRTextInputProps> = ({
   value,
   onChangeText,
-  placeholder = "Enter or scan text...",
+  placeholder = "",
   className = "",
   id = "default",
 }) => {
@@ -72,7 +72,7 @@ const QRTextInput: React.FC<QRTextInputProps> = ({
 
   return (
     <View>
-      <View className="relative flex-row items-center">
+      <View className="relative flex-row items-center gap-2">
         <TextInput
           value={value}
           onChangeText={(text) => {
@@ -83,7 +83,7 @@ const QRTextInput: React.FC<QRTextInputProps> = ({
           accessibilityLabel={placeholder}
           accessibilityRole="text"
           accessibilityState={{ selected: !!value }}
-          className={`flex-1 border-[1.5px] border-neutral-300 rounded-lg p-2 pr-12 px-3 focus:border-blue-600 focus:shadow-outline focus:ring-offset-2 ${className}`}
+          className={`w-[100px] h-[28px] overflow-hidden my-0 py-0 font-dm-bold tracking-tighter text-enaleia-black text-xl ${className}`}
         />
         <Pressable
           hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
@@ -91,9 +91,9 @@ const QRTextInput: React.FC<QRTextInputProps> = ({
             setError(null);
             setScanner(true);
           }}
-          className="absolute right-2.5 z-10"
+          className="absolute right-2.5 z-10 active:scale-75"
         >
-          <Ionicons name="qr-code-outline" size={24} color="black" />
+          <Ionicons name="qr-code-outline" size={24} color="#8E8E93" />
         </Pressable>
       </View>
 
