@@ -31,7 +31,8 @@ export type MaterialOptions = MaterialOption[];
 
 export type MaterialIdMap = Record<MaterialNames, number>;
 
-export type MaterialDetails = Record<
-  number,
-  { weight: number; code: string | null }
->;
+export type MaterialDetail = {
+  id: number;
+  weight: number;
+  code: string | null;
+};
