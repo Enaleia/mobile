@@ -19,7 +19,7 @@ export type ActionTitle =
   | "Shredding"
   | "Sorting"
   | "Washing"
-  | "Batch"
+  | "Collection Batch"
   | "Beach Cleanup"
   | "Ad-hoc"
   | "Pelletizing";
