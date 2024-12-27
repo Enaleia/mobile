@@ -1,6 +1,6 @@
 import LoginForm from "@/components/LoginForm";
 import SafeAreaContent from "@/components/SafeAreaContent";
-import { Trans } from "@lingui/react/macro";
+import { Link } from "expo-router";
 import { AnimatePresence, MotiText } from "moti";
 import React from "react";
 import {
@@ -68,21 +68,17 @@ export default function LoginScreen() {
             </Text>
             <LoginForm />
             <Text className="text-sm text-grey-8 font-dm-light mt-6 leading-[16.8px]">
-              {/* TODO: Add link to support. example: */}
-              {/* <Link
-                href="/support"
-                className="text-blue-ocean font-dm-bold"
-                accessibilityLabel="Link to support"
+              The Enaleia Hub is an invite-only application designed for
+              ecosystem partners to securely submit data to the blockchain. If
+              you have lost your login information, please{" "}
+              <Link
+                href="mailto:enaleia@pollenlabs.org"
+                className="text-blue-ocean font-dm-bold underline"
+                accessibilityLabel="Email support"
                 accessibilityRole="link"
               >
-                <Trans>Contact support</Trans>
-              </Link> */}
-              <Trans>
-                The Enaleia Hub is an invite-only application designed for
-                ecosystem partners to securely submit data to the blockchain. If
-                you have lost your login information, please click here to
-                contact support.
-              </Trans>
+                <Text>contact support</Text>
+              </Link>
             </Text>
           </View>
         </ScrollView>
