@@ -3,6 +3,7 @@ import SafeAreaContent from "@/components/SafeAreaContent";
 import AddMaterialModal from "@/components/attest/AddMaterialModal";
 import FormSection from "@/components/forms/FormSection";
 import QRTextInput from "@/components/forms/QRTextInput";
+import { SentToQueueModal } from "@/components/modals/SentToQueueModal";
 import { ACTION_SLUGS } from "@/constants/action";
 import { MATERIAL_ID_TO_NAME } from "@/constants/material";
 import { ActionTitle } from "@/types/action";
@@ -24,7 +25,6 @@ import {
 import uuid from "react-native-uuid";
 import { z } from "zod";
 
-// TODO: Setup form inputs
 // TODO: Update validation so that atleast one incoming or outgoing material is required
 const eventFormSchema = z.object({
   type: z
@@ -70,7 +70,7 @@ export type EventFormType = z.infer<typeof eventFormSchema>;
 const NewActionScreen = () => {
   const { type } = useLocalSearchParams(); // slug format
   const { mutateAsync: createEvent } = useCreateEvent();
-
+  const [isSentToQueue, setIsSentToQueue] = useState(false);
   const title = Object.keys(ACTION_SLUGS).find(
     (key) => ACTION_SLUGS[key as ActionTitle] === type
   ) as ActionTitle;
@@ -136,6 +136,7 @@ const NewActionScreen = () => {
         console.error("Error submitting form:", error);
       } finally {
         setIsSubmitting(false);
+        setIsSentToQueue(true);
       }
     },
     validatorAdapter: zodValidator(),
@@ -352,6 +353,9 @@ const NewActionScreen = () => {
           </View>
         </ScrollView>
       </View>
+      {isSentToQueue && (
+        <SentToQueueModal isVisible={isSentToQueue} onClose={() => {}} />
+      )}
     </SafeAreaContent>
   );
 };
