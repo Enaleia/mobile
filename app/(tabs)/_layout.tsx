@@ -35,7 +35,7 @@ const TabsLayout = () => {
           tabBarLabel: "Queue",
           tabBarBadge: incompleteActions?.length || undefined,
           tabBarIcon: ({ color }) => (
-            <Ionicons name="albums-outline" size={24} color={color} />
+            <Ionicons name="archive-outline" size={24} color={color} />
           ),
         }}
       />
