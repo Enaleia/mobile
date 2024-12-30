@@ -11,21 +11,20 @@ import { Image, Text, View } from "react-native";
 
 const QueuedAction = ({ type, date }: { type: ActionTitle; date: string }) => {
   return (
-    <View
-      className="flex-row items-center justify-between px-3 py-2 border-b border-neutral-200"
-      style={{ borderLeftWidth: 4 }}
-    >
+    <View className="flex-row items-center justify-between px-3 py-2 border-b border-neutral-200">
       <View className="flex-row items-center justify-center gap-2">
         <Image source={ACTION_ICONS[type]} className="w-8 h-8" />
         <View className="space-y-0.5">
-          <Text className="text-base font-dm-bold text-neutral-800 tracking-tighter">
+          <Text className="text-base font-dm-bold text-slate-800 tracking-tighter">
             {type}
           </Text>
-          <Text className="text-xs font-dm-regular text-neutral-600 uppercase w-full">
+          <Text className="text-xs font-dm-medium text-slate-500 uppercase w-full">
             {new Intl.DateTimeFormat("en-US", {
               month: "short",
               day: "numeric",
               year: "numeric",
+              hour: "numeric",
+              minute: "numeric",
             }).format(new Date(date))}
           </Text>
         </View>
@@ -77,10 +76,13 @@ const QueueScreen = () => {
 
   return (
     <SafeAreaContent>
-      <Text className="text-3xl font-dm-regular text-neutral-800 tracking-[-1px] mb-3">
+      <Text className="text-3xl font-dm-bold text-neutral-800 tracking-[-1px] mb-3">
         Queue
       </Text>
-      <View className="flex-1">
+      <Text className="text-base font-dm-regular text-neutral-600 tracking-tighter">
+        Sorted by most recent
+      </Text>
+      <View className="h-max bg-white rounded-lg overflow-hidden">
         {QUEUE_ACTIONS_SORTED.length > 0 ? (
           QUEUE_ACTIONS_SORTED.map((action) => (
             <QueuedAction
