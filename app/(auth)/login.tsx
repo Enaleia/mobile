@@ -60,7 +60,7 @@ export default function LoginScreen() {
                   delay: 200,
                 }}
               >
-                <Trans>Welcome to Enaleia Hub</Trans>
+                Welcome to Enaleia Hub
               </MotiText>
             </AnimatePresence>
             <Text className="text-base font-dm-light mb-3">
