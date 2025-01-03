@@ -1,6 +1,18 @@
 import { graphql } from "@/api/graphql";
 import { EventFormType } from "@/app/attest/new/[type]";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import {
+  useMutation,
+  useQueryClient,
+  onlineManager,
+  QueryClient,
+} from "@tanstack/react-query";
+import { execute } from "../graphql/execute";
+import { Create_Events_Input } from "../graphql/graphql";
+import {
+  CREATE_EVENTS_INPUT_MUTATION,
+  useCreateEventsInput,
+} from "../events-input/new";
+import { useCreateEventsOutput } from "../events-output/new";
 
 export const CREATE_EVENTS_MUTATION = graphql(`
   mutation CreateEvents($data: create_Events_input!) {
@@ -15,10 +27,61 @@ export type IEvent = EventFormType & {
   isNotSynced: boolean;
 };
 
+const createEventWithIO = async (data: IEvent) => {
+  // First create the main event
+  // TODO: We need data transformations here to match API but I cant see the fields as of writing this
+  const eventResponse = await execute(CREATE_EVENTS_MUTATION, {
+    data: {
+      action: 1, // TODO: get action from data
+      // event_location: data.event_location, // TODO: get event_location from data
+    },
+  });
+
+  const eventId = eventResponse.create_Events_item?.event_id;
+
+  // Process incoming materials (inputs)
+  if (data.incomingMaterials?.length) {
+    for (const material of data.incomingMaterials) {
+      await execute(CREATE_EVENTS_INPUT_MUTATION, {
+        data: {
+          ...material,
+          event_id: eventId,
+          date: data.date,
+          // Add other necessary fields
+        },
+      });
+    }
+  }
+
+  // Process outgoing materials (outputs)
+  if (data.outgoingMaterials?.length) {
+    for (const material of data.outgoingMaterials) {
+      await execute(CREATE_EVENTS_OUTPUT_MUTATION, {
+        data: {
+          ...material,
+          event_id: eventId,
+          date: data.date,
+          // Add other necessary fields
+        },
+      });
+    }
+  }
+
+  return eventResponse;
+};
+
 const addEvent = async (data: IEvent): Promise<IEvent> => {
-  console.log({ data }, "add event");
-  // const response = await execute(CREATE_EVENTS_MUTATION, { data: mutationData });
-  return data; // Return the event data
+  if (!onlineManager.isOnline()) {
+    return { ...data, isNotSynced: true };
+  }
+
+  try {
+    await createEventWithIO(data);
+    return { ...data, isNotSynced: false };
+  } catch (error) {
+    console.error("Failed to create event:", error);
+    return { ...data, isNotSynced: true };
+  }
 };
 
 export const useCreateEvent = () => {
@@ -26,27 +89,49 @@ export const useCreateEvent = () => {
 
   return useMutation({
     mutationFn: addEvent,
-    // Use the context pattern for better type safety
     onMutate: async (newEvent) => {
-      // Save previous state for rollback
+      await queryClient.cancelQueries({ queryKey: ["events"] });
       const previousEvents = queryClient.getQueryData<IEvent[]>(["events"]);
-
-      // Optimistic update
       queryClient.setQueryData<IEvent[]>(["events"], (old) => [
         ...(old || []),
         newEvent,
       ]);
-
-      // Return context for potential rollback
       return { previousEvents };
     },
     onError: (err, newEvent, context) => {
-      // Rollback on error
-      queryClient.setQueryData<IEvent[]>(["events"], context?.previousEvents);
+      queryClient.setQueryData(["events"], context?.previousEvents);
     },
     onSettled: () => {
-      // Always refetch after error or success
       queryClient.invalidateQueries({ queryKey: ["events"] });
     },
   });
+};
+
+// Function to process queued events
+export const processQueue = async () => {
+  if (!onlineManager.isOnline()) return;
+
+  const queryClient = new QueryClient();
+  const events = queryClient.getQueryData<IEvent[]>(["events"]) || [];
+  const queuedEvents = events.filter((event) => event.isNotSynced);
+
+  for (const event of queuedEvents) {
+    try {
+      // Use the same addEvent function for consistency
+      const processedEvent = await addEvent(event);
+
+      if (!processedEvent.isNotSynced) {
+        // Update the event's sync status only if successful
+        queryClient.setQueryData<IEvent[]>(["events"], (old) =>
+          (old || []).map((e) =>
+            e.localId === event.localId ? processedEvent : e
+          )
+        );
+      }
+    } catch (error) {
+      console.error("Failed to process queued event:", error);
+    }
+  }
+
+  queryClient.invalidateQueries({ queryKey: ["events"] });
 };
