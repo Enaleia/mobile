@@ -1,4 +1,4 @@
-import ModalBase from "@/components/modals/ModalBase";
+import ModalBase from "@/components/shared/ModalBase";
 import { router } from "expo-router";
 import { View } from "moti";
 import { Image, Pressable, Text } from "react-native";

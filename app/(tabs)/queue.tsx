@@ -1,5 +1,5 @@
 import { IEvent } from "@/api/events/new";
-import SafeAreaContent from "@/components/SafeAreaContent";
+import SafeAreaContent from "@/components/shared/SafeAreaContent";
 import { ACTION_ICONS } from "@/constants/action";
 import { ActionTitle } from "@/types/action";
 import { Ionicons } from "@expo/vector-icons";

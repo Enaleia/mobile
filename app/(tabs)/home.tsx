@@ -1,5 +1,5 @@
-import HomeActionSelection from "@/components/HomeActionSelection";
-import SafeAreaContent from "@/components/SafeAreaContent";
+import ActionSelection from "@/components/features/home/ActionSelect";
+import SafeAreaContent from "@/components/shared/SafeAreaContent";
 import { Ionicons } from "@expo/vector-icons";
 import { Trans } from "@lingui/react";
 import { Text, View } from "react-native";
@@ -27,7 +27,7 @@ export default function Home() {
             Hello, what action will you be doing today?
           </Trans>
         </Text>
-        <HomeActionSelection />
+        <ActionSelection />
       </View>
     </SafeAreaContent>
   );

@@ -1,9 +1,9 @@
 import { useCreateEvent } from "@/api/events/new";
-import SafeAreaContent from "@/components/SafeAreaContent";
-import AddMaterialModal from "@/components/attest/AddMaterialModal";
-import FormSection from "@/components/forms/FormSection";
-import QRTextInput from "@/components/forms/QRTextInput";
-import { SentToQueueModal } from "@/components/modals/SentToQueueModal";
+import SafeAreaContent from "@/components/shared/SafeAreaContent";
+import AddMaterialModal from "@/components/features/attest/AddMaterialModal";
+import FormSection from "@/components/shared/FormSection";
+import QRTextInput from "@/components/features/scanning/QRTextInput";
+import { SentToQueueModal } from "@/components/features/attest/SentToQueueModal";
 import { ACTION_SLUGS } from "@/constants/action";
 import { MATERIAL_ID_TO_NAME } from "@/constants/material";
 import { ActionTitle } from "@/types/action";

@@ -1,5 +1,5 @@
-import LoginForm from "@/components/LoginForm";
-import SafeAreaContent from "@/components/SafeAreaContent";
+import LoginForm from "@/components/features/auth/LoginForm";
+import SafeAreaContent from "@/components/shared/SafeAreaContent";
 import { Link } from "expo-router";
 import { AnimatePresence, MotiText } from "moti";
 import React from "react";

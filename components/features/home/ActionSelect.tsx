@@ -1,8 +1,8 @@
 import { ACTION_CATEGORIES } from "@/constants/action";
 import { ScrollView, Text, View } from "react-native";
-import ActionButton from "@/components/ActionButton";
+import ActionButton from "@/components/features/home/ActionButton";
 
-export default function HomeActionSelection() {
+export default function ActionSelection() {
   return (
     <ScrollView>
       {Object.entries(ACTION_CATEGORIES).map(([category, actions]) => (

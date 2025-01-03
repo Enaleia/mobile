@@ -1,4 +1,4 @@
-import QRCodeScanner from "@/components/QRCodeScanner";
+import QRCodeScanner from "@/components/features/scanning/QRCodeScanner";
 import { Ionicons } from "@expo/vector-icons";
 import React, { useCallback, useReducer } from "react";
 import { Modal, Pressable, Text, TextInput, View } from "react-native";
