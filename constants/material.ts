@@ -5,18 +5,6 @@ import {
   MaterialOptions,
 } from "@/types/material";
 
-const MATERIAL_CATEGORIES: Record<MaterialCategories, MaterialNames[]> = {
-  Plastics: ["Mixed Plastics", "PP", "LDPE", "PE", "PS", "HDPE", "PET", "PA"],
-  "Nets and Ropes": ["Prevention Nets", "Ghost Nets", "Nets", "Ropes"],
-  "Other Materials": [
-    "Mixed Materials",
-    "Rubbers",
-    "Non-Recyclables",
-    "Metals",
-    "Others",
-  ],
-} as const;
-
 const MATERIAL_NAME_TO_ID: MaterialIdMap = {
   "Mixed Plastics": 1,
   Metals: 2,
@@ -48,9 +36,4 @@ const MATERIAL_OPTIONS: MaterialOptions = Object.entries(
   value: id,
 }));
 
-export {
-  MATERIAL_CATEGORIES,
-  MATERIAL_NAME_TO_ID,
-  MATERIAL_ID_TO_NAME,
-  MATERIAL_OPTIONS,
-};
+export { MATERIAL_NAME_TO_ID, MATERIAL_ID_TO_NAME, MATERIAL_OPTIONS };

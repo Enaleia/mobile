@@ -13,9 +13,14 @@ msgstr ""
 "Language-Team: \n"
 "Plural-Forms: \n"
 
+#. js-lingui-explicit-id
+#: app/(tabs)/home.tsx:26
+msgid "home.welcome_message"
+msgstr ""
+
 #. placeholder {0}: field.state.meta.errors.join(", ")
-#: components/LoginForm.tsx:62
-#: components/LoginForm.tsx:99
+#: components/LoginForm.tsx:63
+#: components/LoginForm.tsx:101
 msgid "{0}"
 msgstr "{0}"
 
@@ -23,15 +28,11 @@ msgstr "{0}"
 msgid "Email"
 msgstr "Ηλεκτρονικό ταχυδρομείο"
 
-#: app/(auth)/login.tsx:54
-msgid "Enaleia Hub is invite-only for ecosystem partners. Need help logging in? Contact support."
-msgstr "Το Enaleia Hub είναι διαθέσιμο μόνο με πρόσκληση για συνεργάτες του οικοσυστήματος. Χρειάζεστε βοήθεια για σύνδεση; Επικοινωνήστε με την υποστήριξη."
-
-#: components/LoginForm.tsx:110
+#: components/LoginForm.tsx:112
 msgid "Login"
 msgstr "Σύνδεση"
 
-#: components/LoginForm.tsx:84
+#: components/LoginForm.tsx:85
 msgid "Password"
 msgstr "Κωδικός πρόσβασης"
 
@@ -39,10 +40,14 @@ msgstr "Κωδικός πρόσβασης"
 msgid "Please enter your email"
 msgstr "Παρακαλώ εισάγετε το email σας"
 
-#: components/LoginForm.tsx:77
+#: components/LoginForm.tsx:78
 msgid "Please enter your password"
 msgstr "Παρακαλώ εισάγετε τον κωδικό σας"
 
-#: app/(auth)/login.tsx:46
+#: app/(auth)/login.tsx:80
+msgid "The Enaleia Hub is an invite-only application designed for ecosystem partners to securely submit data to the blockchain. If you have lost your login information, please click here to contact support."
+msgstr ""
+
+#: app/(auth)/login.tsx:63
 msgid "Welcome to Enaleia Hub"
 msgstr "Καλώς ήρθατε στο Enaleia Hub"

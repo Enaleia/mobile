@@ -1,62 +1,88 @@
-import LoginForm from "@/components/LoginForm";
-import { useNavigation } from "expo-router";
+import LoginForm from "@/components/features/auth/LoginForm";
+import SafeAreaContent from "@/components/shared/SafeAreaContent";
+import { Link } from "expo-router";
 import { AnimatePresence, MotiText } from "moti";
-import React, { useEffect } from "react";
+import React from "react";
 import {
   Image,
   KeyboardAvoidingView,
   Platform,
+  ScrollView,
   Text,
   View,
 } from "react-native";
-import { Trans } from "@lingui/react/macro";
+
+const KEYBOARD_OFFSET = Platform.OS === "ios" ? 0 : 500;
+const KEYBOARD_BEHAVIOR = Platform.OS === "ios" ? "padding" : "height";
 
 export default function LoginScreen() {
-  const navigation = useNavigation();
-
-  useEffect(() => {
-    navigation.setOptions({ statusBarStyle: "dark" });
-  }, [navigation]);
-
   return (
-    <KeyboardAvoidingView
-      behavior={Platform.OS === "ios" ? "padding" : "height"}
-      className="flex-1 bg-neutral-50"
-    >
-      <View className="flex-1 justify-end px-5 space-y-4 pb-8">
-        <View className="relative mb-16">
-          <Image
-            source={require("@/assets/images/icon.png")}
-            className="w-24 h-24 rounded-full mb-15"
-          />
-        </View>
-        <AnimatePresence presenceAffectsLayout>
-          <MotiText
-            className="text-5xl font-dm-bold mb-5"
-            style={{ letterSpacing: -2.25, lineHeight: 48 }}
-            from={{ opacity: 0, translateY: 10 }}
-            animate={{ opacity: 1, translateY: 0 }}
-            transition={{
-              type: "spring",
-              damping: 20,
-              stiffness: 100,
-              delay: 200,
-            }}
-          >
-            <Trans>Welcome to Enaleia Hub</Trans>
-          </MotiText>
-        </AnimatePresence>
-        <LoginForm />
-        <Text
-          className="text-sm text-gray-600 font-dm-regular"
-          style={{ letterSpacing: 0.025 }}
-        >
-          <Trans>
-            Enaleia Hub is invite-only for ecosystem partners. Need help logging
-            in? Contact support.
-          </Trans>
-        </Text>
+    <SafeAreaContent>
+      <View className="absolute top-36 right-[-30px] bg-white-sand">
+        <Image
+          source={require("@/assets/images/animals/Turtle.png")}
+          className="w-[223px] h-[228px]"
+          accessibilityLabel="Decorative turtle illustration"
+          accessibilityRole="image"
+        />
       </View>
-    </KeyboardAvoidingView>
+      <KeyboardAvoidingView
+        behavior={KEYBOARD_BEHAVIOR}
+        keyboardVerticalOffset={KEYBOARD_OFFSET}
+        className="flex-1"
+      >
+        <ScrollView
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={{
+            flexGrow: 1,
+            justifyContent: "space-between",
+          }}
+        >
+          <View className="mb-8 relative">
+            <Image
+              source={require("@/assets/images/logo-gray.webp")}
+              className="w-[86px] h-[89px] rounded-full"
+              accessibilityLabel="Enaleia Hub logo"
+              accessibilityRole="image"
+            />
+          </View>
+          <View className="">
+            <AnimatePresence presenceAffectsLayout>
+              <MotiText
+                className="text-3xl font-dm-bold"
+                style={{ letterSpacing: -1, lineHeight: 31.35008 }}
+                from={{ opacity: 0, translateY: 10 }}
+                animate={{ opacity: 1, translateY: 0 }}
+                transition={{
+                  type: "spring",
+                  damping: 20,
+                  stiffness: 100,
+                  delay: 200,
+                }}
+              >
+                Welcome to Enaleia Hub
+              </MotiText>
+            </AnimatePresence>
+            <Text className="text-base font-dm-light mb-3">
+              Please sign in with the provided credential
+            </Text>
+            <LoginForm />
+            <Text className="text-sm text-grey-8 font-dm-light mt-6 leading-[16.8px]">
+              The Enaleia Hub is an invite-only application designed for
+              ecosystem partners to securely submit data to the blockchain. If
+              you have lost your login information, please{" "}
+              <Link
+                href="mailto:enaleia@pollenlabs.org"
+                className="text-blue-ocean font-dm-bold underline"
+                accessibilityLabel="Email support"
+                accessibilityRole="link"
+              >
+                <Text>contact support</Text>
+              </Link>
+            </Text>
+          </View>
+        </ScrollView>
+      </KeyboardAvoidingView>
+    </SafeAreaContent>
   );
 }

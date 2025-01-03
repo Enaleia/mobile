@@ -1,29 +1,30 @@
-import ActionButton from "@/components/ActionButton";
-import SafeAreaContent from "@/components/SafeAreaContent";
-import AddMaterialModal from "@/components/attest/AddMaterialModal";
-import FormSection from "@/components/forms/FormSection";
+import { useCreateEvent } from "@/api/events/new";
+import SafeAreaContent from "@/components/shared/SafeAreaContent";
+import AddMaterialModal from "@/components/features/attest/AddMaterialModal";
+import FormSection from "@/components/shared/FormSection";
+import QRTextInput from "@/components/features/scanning/QRTextInput";
+import { SentToQueueModal } from "@/components/features/attest/SentToQueueModal";
 import { ACTION_SLUGS } from "@/constants/action";
 import { MATERIAL_ID_TO_NAME } from "@/constants/material";
 import { ActionTitle } from "@/types/action";
-import { MaterialDetails } from "@/types/material";
+import { MaterialDetail } from "@/types/material";
 import { Ionicons } from "@expo/vector-icons";
 import { useForm } from "@tanstack/react-form";
 import { zodValidator } from "@tanstack/zod-form-adapter";
-import { Link, useLocalSearchParams } from "expo-router";
+import { router, useLocalSearchParams } from "expo-router";
 import { useState } from "react";
-import uuid from "react-native-uuid";
 import {
   ActivityIndicator,
+  Image,
   Pressable,
   ScrollView,
   Text,
   TextInput,
   View,
 } from "react-native";
+import uuid from "react-native-uuid";
 import { z } from "zod";
-import { useCreateEvent } from "@/api/events/new";
 
-// TODO: Setup form inputs
 // TODO: Update validation so that atleast one incoming or outgoing material is required
 const eventFormSchema = z.object({
   type: z
@@ -34,23 +35,27 @@ const eventFormSchema = z.object({
   location: z.string().min(1),
   date: z.string().min(1),
   incomingMaterials: z
-    .record(
-      z.string(),
-      z.object({
-        weight: z.number().min(0).optional(),
-        code: z.string().min(0).optional(),
-      })
+    .array(
+      z
+        .object({
+          id: z.number(),
+          weight: z.number().min(0).optional(),
+          code: z.string().min(0).optional(),
+        })
+        .optional()
     )
-    .optional(),
+    .optional() as z.ZodType<MaterialDetail[]>,
   outgoingMaterials: z
-    .record(
-      z.string(),
-      z.object({
-        weight: z.number().min(0).optional(),
-        code: z.string().min(0).optional(),
-      })
+    .array(
+      z
+        .object({
+          id: z.number(),
+          weight: z.number().min(0).optional(),
+          code: z.string().min(0).optional(),
+        })
+        .optional()
     )
-    .optional(),
+    .optional() as z.ZodType<MaterialDetail[]>,
   manufacturing: z
     .object({
       weightInKg: z.number().min(0).optional(),
@@ -65,7 +70,7 @@ export type EventFormType = z.infer<typeof eventFormSchema>;
 const NewActionScreen = () => {
   const { type } = useLocalSearchParams(); // slug format
   const { mutateAsync: createEvent } = useCreateEvent();
-
+  const [isSentToQueue, setIsSentToQueue] = useState(false);
   const title = Object.keys(ACTION_SLUGS).find(
     (key) => ACTION_SLUGS[key as ActionTitle] === type
   ) as ActionTitle;
@@ -79,8 +84,8 @@ const NewActionScreen = () => {
       type: title as ActionTitle,
       location: "Durban, South Africa",
       date: new Date().toISOString(),
-      incomingMaterials: {},
-      outgoingMaterials: {},
+      incomingMaterials: [] as MaterialDetail[],
+      outgoingMaterials: [] as MaterialDetail[],
       manufacturing: {
         product: "",
         quantity: 0,
@@ -131,6 +136,7 @@ const NewActionScreen = () => {
         console.error("Error submitting form:", error);
       } finally {
         setIsSubmitting(false);
+        setIsSentToQueue(true);
       }
     },
     validatorAdapter: zodValidator(),
@@ -149,20 +155,24 @@ const NewActionScreen = () => {
     setIsOutgoingMaterialsPickerVisible,
   ] = useState(false);
 
-  // TODO: Add a button to save the action
-  // TODO: Refactor incoming and outgoing materials to be the same component
   return (
     <SafeAreaContent>
-      <Link href="/home" asChild>
-        <Pressable className="flex-row items-center gap-0.5 mb-4 justify-start active:translate-x-1 transition-transform duration-200 ease-out">
-          <Ionicons name="chevron-back" size={16} color="#24548b" />
-          <Text className="text-sm font-dm-medium text-neutral-600">Home</Text>
+      <View className="absolute top-20 right-[-30px] bg-white-sand opacity-20">
+        <Image
+          source={require("@/assets/images/animals/Turtle.png")}
+          className="w-[223px] h-[228px]"
+          accessibilityLabel="Decorative turtle illustration"
+          accessibilityRole="image"
+        />
+      </View>
+      <View className="flex-row items-center justify-end">
+        <Pressable onPress={() => router.back()}>
+          <Ionicons name="close" size={24} color="#0D0D0D" />
         </Pressable>
-      </Link>
-      <Text className="text-3xl font-dm-medium text-slate-600 tracking-[-1px] mb-2">
-        Add new action
+      </View>
+      <Text className="text-3xl font-dm-bold text-enaleia-black tracking-[-1px] mb-2">
+        {title}
       </Text>
-      <ActionButton title={title} presentation="banner" />
       <View className="flex-1 py-1">
         <ScrollView
           showsVerticalScrollIndicator={false}
@@ -175,6 +185,7 @@ const NewActionScreen = () => {
               e.stopPropagation();
               form.handleSubmit();
             }}
+            className="flex-1space-y-4"
           >
             <form.Field name="incomingMaterials">
               {(field) => (
@@ -182,31 +193,40 @@ const NewActionScreen = () => {
                   category="incoming"
                   isModalVisible={isIncomingMaterialsPickerVisible}
                   setModalVisible={setIsIncomingMaterialsPickerVisible}
-                  selectedMaterials={field.state.value as MaterialDetails}
-                  setSelectedMaterials={field.handleChange}
+                  selectedMaterials={field.state.value as MaterialDetail[]}
+                  setSelectedMaterials={(materials: MaterialDetail[]) =>
+                    field.handleChange(materials)
+                  }
                 />
               )}
             </form.Field>
-            <form.Field name="outgoingMaterials">
-              {(field) => (
-                <MaterialSection
-                  category="outgoing"
-                  isModalVisible={isOutgoingMaterialsPickerVisible}
-                  setModalVisible={setIsOutgoingMaterialsPickerVisible}
-                  selectedMaterials={field.state.value as MaterialDetails}
-                  setSelectedMaterials={field.handleChange}
-                />
-              )}
-            </form.Field>
+            {title !== "Manufacturing" && (
+              <form.Field name="outgoingMaterials">
+                {(field) => (
+                  <MaterialSection
+                    category="outgoing"
+                    isModalVisible={isOutgoingMaterialsPickerVisible}
+                    setModalVisible={setIsOutgoingMaterialsPickerVisible}
+                    selectedMaterials={field.state.value as MaterialDetail[]}
+                    setSelectedMaterials={field.handleChange}
+                  />
+                )}
+              </form.Field>
+            )}
             {title === "Manufacturing" && (
-              <View className="mt-6 bg-slate-50 rounded-lg">
-                <Text className="text-base font-dm-bold text-slate-600 tracking-tighter mb-2 px-3 pt-3">
-                  Manufacturing details
-                </Text>
+              <View className="mt-10 rounded-lg">
+                <View className="flex-row items-center space-x-0.5">
+                  <Text className="text-xl font-dm-light text-enaleia-black tracking-tighter">
+                    Manufacturing informations
+                  </Text>
+                  <View className="-rotate-45">
+                    <Ionicons name="arrow-down" size={24} color="#8E8E93" />
+                  </View>
+                </View>
 
                 <FormSection>
                   <View className="space-y-0.5">
-                    <Text className="text-base font-dm-medium text-slate-600 tracking-tighter mb-2">
+                    <Text className="text-base font-dm-bold text-enaleia-black tracking-tighter mb-2">
                       Choose product
                     </Text>
                     <form.Field name="manufacturing.product">
@@ -216,7 +236,7 @@ const NewActionScreen = () => {
                           onChangeText={(text) => {
                             field.handleChange(text);
                           }}
-                          className="flex-1 border-[1.5px] border-slate-300 rounded-md px-3"
+                          className="flex-1 rounded-md px-3 bg-white"
                           placeholder="Product name"
                         />
                       )}
@@ -225,7 +245,7 @@ const NewActionScreen = () => {
                   <form.Field name="manufacturing.quantity">
                     {(field) => (
                       <View className="space-y-0.5">
-                        <Text className="text-base font-dm-medium text-slate-600 tracking-tighter mb-2">
+                        <Text className="text-base font-dm-bold text-enaleia-black tracking-tighter mb-2">
                           Quantity
                         </Text>
                         <TextInput
@@ -233,7 +253,7 @@ const NewActionScreen = () => {
                           onChangeText={(text) => {
                             field.handleChange(Number(text));
                           }}
-                          className="flex-1 border-[1.5px] border-slate-300 rounded-md px-3"
+                          className="flex-1 rounded-md px-3 bg-white"
                           placeholder="Quantity"
                           inputMode="numeric"
                         />
@@ -244,7 +264,7 @@ const NewActionScreen = () => {
                     name="manufacturing.weightInKg"
                     children={(field) => (
                       <View className="space-y-0.5">
-                        <Text className="text-base font-dm-medium text-slate-600 tracking-tighter mb-2">
+                        <Text className="text-base font-dm-bold text-enaleia-black tracking-tighter mb-2">
                           Weight
                         </Text>
                         <TextInput
@@ -252,7 +272,7 @@ const NewActionScreen = () => {
                           onChangeText={(text) => {
                             field.handleChange(Number(text));
                           }}
-                          className="flex-1 border-[1.5px] border-slate-300 rounded-md px-3"
+                          className="flex-1 rounded-md px-3 bg-white"
                           placeholder="Weight in kg"
                           inputMode="numeric"
                         />
@@ -273,19 +293,20 @@ const NewActionScreen = () => {
                     form.handleSubmit();
                   }}
                   // disabled={!canSubmit || isSubmitting}
-                  className={`flex-row items-center justify-center mt-4 px-3 py-2 rounded-md border-[1.5px] border-slate-300 ${
-                    !canSubmit || isSubmitting ? "bg-blue-400" : "bg-blue-600"
+                  className={`flex-row items-center justify-center mt-4 p-3 rounded-full ${
+                    !canSubmit || isSubmitting ? "bg-blue-400" : "bg-blue-ocean"
                   }`}
                 >
                   {isSubmitting ? (
                     <ActivityIndicator color="white" className="mr-2" />
                   ) : null}
                   <Text className="text-base font-dm-medium text-slate-50 tracking-tight">
-                    {isSubmitting ? "Adding action..." : "Add action"}
+                    {isSubmitting ? "Submitting..." : "Submit Attestation"}
                   </Text>
                 </Pressable>
               )}
             </form.Subscribe>
+            {/* DEBUG SECTION */}
             <View className="px-4 mt-4">
               <form.Subscribe selector={(state) => state.values}>
                 {(values) => (
@@ -332,6 +353,9 @@ const NewActionScreen = () => {
           </View>
         </ScrollView>
       </View>
+      {isSentToQueue && (
+        <SentToQueueModal isVisible={isSentToQueue} onClose={() => {}} />
+      )}
     </SafeAreaContent>
   );
 };
@@ -346,83 +370,145 @@ const MaterialSection = ({
   category: "incoming" | "outgoing";
   isModalVisible: boolean;
   setModalVisible: (visible: boolean) => void;
-  selectedMaterials: MaterialDetails;
-  setSelectedMaterials: (materials: MaterialDetails) => void;
+  selectedMaterials: MaterialDetail[];
+  setSelectedMaterials: (materials: MaterialDetail[]) => void;
 }) => {
+  const title = category === "incoming" ? "Incoming" : "Outgoing";
+  const icon = category === "incoming" ? "arrow-down" : "arrow-up";
+  const iconRotation = category === "incoming" ? "-rotate-45" : "rotate-45";
+  const [isDeleting, setIsDeleting] = useState<number | null>(null);
+
+  const handleRemoveMaterial = (index: number) => {
+    const newMaterials = [...selectedMaterials];
+    newMaterials.splice(index, 1);
+    setSelectedMaterials(newMaterials);
+  };
+
   return (
     <View className="mt-6">
-      <View className="flex-row items-center justify-between px-1">
-        <Text className="text-base font-dm-bold text-slate-600 tracking-tighter mb-2">
-          {category === "incoming" ? "Incoming" : "Outgoing"} materials
+      <View className="flex-row items-start space-x-1 mb-4">
+        <Text className="text-[20px] font-dm-regular text-enaleia-black tracking-tighter">
+          {title}
         </Text>
-        <Text className="text-sm font-dm-medium text-slate-600 tracking-tighter bg-slate-200 px-1 py-0.5 rounded-full min-w-6 min-h-6 flex-row items-center justify-center">
-          {Object.keys(selectedMaterials)?.length || 0}
-        </Text>
+        <View className={iconRotation}>
+          <Ionicons name={icon} size={24} color="#8E8E93" />
+        </View>
       </View>
-      <View className="flex-col items-center justify-center max-h-[300px]">
-        {Object.keys(selectedMaterials).length > 0 ? (
-          <ScrollView className="w-full rounded-lg overflow-clip border-[1.5px] border-slate-200">
-            {Object.entries(selectedMaterials).map(
-              ([materialId, { weight, code }]) => (
-                <View
-                  key={materialId}
-                  className="border-b-[1.5px] last-of-type:border-b-0 border-slate-200"
-                >
-                  <View className="bg-slate-50 w-full">
-                    <Text className="text-base font-dm-bold tracking-tight text-slate-950 bg-slate-50 px-3 py-2">
-                      {MATERIAL_ID_TO_NAME[materialId]}
+      <View className="flex-col items-center justify-center">
+        {selectedMaterials.length > 0 ? (
+          <View className="w-full">
+            {selectedMaterials.map(({ id, weight, code }, materialIndex) => (
+              <View key={materialIndex} className="mb-5">
+                <View className="flex-row items-center justify-between w-full mb-1">
+                  <Text className="text-base font-dm-bold text-enaleia-black tracking-[-0.5px]">
+                    {MATERIAL_ID_TO_NAME[id]}
+                  </Text>
+                  {isDeleting === materialIndex ? (
+                    <View className="flex-row gap-2">
+                      <Pressable
+                        onPress={() => setIsDeleting(null)}
+                        className="active:opacity-70 bg-white rounded-full px-2 py-1 flex-row items-center justify-center space-x-1"
+                      >
+                        <Text className="text-xs font-dm-regular text-enaleia-black tracking-tighter">
+                          Cancel
+                        </Text>
+                        <Ionicons
+                          name="close-outline"
+                          size={16}
+                          color="#8E8E93"
+                        />
+                      </Pressable>
+                      <Pressable
+                        onPress={() => {
+                          handleRemoveMaterial(materialIndex);
+                          setIsDeleting(null);
+                        }}
+                        className="active:opacity-70 bg-red-500 rounded-full px-2 py-1 flex-row items-center justify-center space-x-1"
+                      >
+                        <Text className="text-xs font-dm-regular text-white tracking-tighter">
+                          Delete
+                        </Text>
+                        <Ionicons
+                          name="trash-outline"
+                          size={16}
+                          color="white"
+                        />
+                      </Pressable>
+                    </View>
+                  ) : (
+                    <Pressable
+                      onPress={() => setIsDeleting(materialIndex)}
+                      className="active:opacity-70"
+                    >
+                      <Ionicons
+                        name="trash-outline"
+                        size={24}
+                        color="#8E8E93"
+                      />
+                    </Pressable>
+                  )}
+                </View>
+                <View className="flex-row items-center justify-between w-full rounded-lg">
+                  <View className="flex-1 border-[1.5px] border-grey-3 rounded-l-2xl p-2 bg-white">
+                    <Text className="text-sm font-dm-bold text-grey-6 tracking-tighter">
+                      Code
                     </Text>
-                    <View className="flex-row justify-between px-3 pb-2">
-                      {weight && (
-                        <View className="flex-row items-center justify-center space-x-1">
-                          <View className="bg-slate-200 rounded-full p-1 h-6 w-6 flex-row items-center justify-center">
-                            <Ionicons
-                              name="scale-outline"
-                              size={14}
-                              color="#24548b"
-                            />
-                          </View>
-                          <View className="flex-row items-baseline gap-1">
-                            <Text className="text-sm font-dm-medium text-slate-500">
-                              {weight}
-                            </Text>
-                            <Text className="text-xs font-dm-medium text-slate-500">
-                              kg
-                            </Text>
-                          </View>
-                        </View>
-                      )}
-                      {code && (
-                        <View className="flex-row items-center justify-center gap-1">
-                          <View className="bg-slate-200 rounded-full p-1 h-6 w-6 flex-row items-center justify-center">
-                            <Ionicons
-                              name="barcode-outline"
-                              size={14}
-                              color="#24548b"
-                            />
-                          </View>
-                          <Text className="font-mono text-sm text-slate-500 bg-slate-200 px-1 py-0.5 rounded-md">
-                            {code}
-                          </Text>
-                        </View>
-                      )}
+                    <QRTextInput
+                      value={code || ""}
+                      onChangeText={(text) => {
+                        setSelectedMaterials(
+                          selectedMaterials.map((material, index) =>
+                            index === materialIndex
+                              ? { ...material, code: text }
+                              : material
+                          )
+                        );
+                      }}
+                    />
+                  </View>
+                  <View className="flex-1 border-[1.5px] border-grey-3 border-l-0 rounded-r-2xl p-2 bg-white justify-end">
+                    <Text className="w-full text-sm font-dm-bold text-grey-6 tracking-tighter text-right">
+                      Weight
+                    </Text>
+                    <View className="flex-row items-center">
+                      <TextInput
+                        value={weight.toString()}
+                        className="flex-1 h-[28px] py-0 font-dm-bold tracking-tighter text-enaleia-black text-xl text-right"
+                        onChangeText={(text) => {
+                          const parsedWeight = Number(text);
+                          setSelectedMaterials(
+                            selectedMaterials.map((material, index) =>
+                              index === materialIndex
+                                ? {
+                                    ...material,
+                                    weight: isNaN(parsedWeight)
+                                      ? 0
+                                      : parsedWeight,
+                                  }
+                                : material
+                            )
+                          );
+                        }}
+                        keyboardType="numeric"
+                      />
+                      <Text className="flex-[0.2] text-sm font-dm-bold text-grey-6 tracking-tighter text-right">
+                        kg
+                      </Text>
                     </View>
                   </View>
-                  <View className="py-1 bg-slate-50" />
                 </View>
-              )
-            )}
-          </ScrollView>
+              </View>
+            ))}
+          </View>
         ) : null}
       </View>
       <Pressable
-        className="flex-row items-center justify-center mt-2 bg-blue-100 px-3 py-2 rounded-md border-[1.5px] border-slate-300"
+        className="flex-row items-center justify-center mt-2 bg-white px-3 py-2 rounded-full border-[1.5px] border-grey-3"
         onPress={() => setModalVisible(true)}
       >
-        <Text className="text-base font-dm-medium text-slate-600 tracking-tight">
-          {Object.keys(selectedMaterials).length > 0
-            ? `Update ${category} materials`
-            : `Add ${category} materials`}
+        <Ionicons name="add-outline" size={24} color="#8E8E93" />
+        <Text className="text-sm font-dm-bold text-slate-600 tracking-tight">
+          Add {category}
         </Text>
       </Pressable>
       <AddMaterialModal
@@ -430,7 +516,6 @@ const MaterialSection = ({
         onClose={() => setModalVisible(false)}
         selectedMaterials={selectedMaterials}
         setSelectedMaterials={setSelectedMaterials}
-        type={category}
       />
     </View>
   );

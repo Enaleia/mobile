@@ -3,8 +3,6 @@ import { zodValidator } from "@tanstack/zod-form-adapter";
 import { router } from "expo-router";
 import { Pressable, Text, TextInput, View } from "react-native";
 import { z } from "zod";
-import { useLingui } from "@lingui/react/macro";
-import { Trans } from "@lingui/react/macro";
 const LoginData = z.object({
   email: z.string().email(),
   password: z.string(),
@@ -13,7 +11,6 @@ const LoginData = z.object({
 type LoginData = z.infer<typeof LoginData>;
 
 export default function LoginForm() {
-  const { t } = useLingui();
   const form = useForm<LoginData>({
     defaultValues: {
       email: "",
@@ -34,35 +31,31 @@ export default function LoginForm() {
       <form.Field
         name="email"
         validators={{
-          onChange: z
-            .string()
-            .trim()
-            .min(1, t`Please enter your email`),
+          onChange: z.string().trim().min(1, "Please enter your email"),
         }}
         validatorAdapter={zodValidator()}
       >
         {(field) => (
-          <>
-            <Text className="font-medium mb-2">
-              <Trans>Email</Trans>
-            </Text>
+          <View className="bg-white p-2 rounded-xl h-[100px]">
+            <Text className="font-dm-light text-grey-6 text-sm">Email</Text>
             <TextInput
               autoCapitalize="none"
               autoComplete="email"
+              placeholder="email@email.com"
               inputMode="email"
               value={field.state.value}
               onChangeText={field.handleChange}
               onBlur={field.handleBlur}
-              className={`border-[1.5px] rounded-lg p-2 px-3 border-neutral-300 focus:border-blue-600 focus:shadow-outline focus:ring-offset-2 ${
+              className={`h-12 border-neutral-300 focus:border-blue-600 focus:shadow-outline focus:ring-offset-2 font-dm-bold text-[20px] ${
                 field.state.meta.errors.length > 0 && "border-red-500"
               }`}
             />
             {field.state.meta.errors.length > 0 ? (
-              <Text className="text-red-600 font-semibold">
-                <Trans>{field.state.meta.errors.join(", ")}</Trans>
+              <Text className="text-red-600 font-dm-regular text-xs">
+                {field.state.meta.errors.join(", ")}
               </Text>
             ) : null}
-          </>
+          </View>
         )}
       </form.Field>
 
@@ -71,32 +64,28 @@ export default function LoginForm() {
       <form.Field
         name="password"
         validators={{
-          onChange: z
-            .string()
-            .trim()
-            .min(1, t`Please enter your password`),
+          onChange: z.string().trim().min(1, "Please enter your password"),
         }}
         validatorAdapter={zodValidator()}
       >
         {(field) => (
-          <View>
-            <Text className="font-medium mb-2">
-              <Trans>Password</Trans>
-            </Text>
+          <View className="space-y-0.5 bg-white p-2 rounded-xl">
+            <Text className="font-dm-light text-grey-6 text-sm">Password</Text>
             <TextInput
               secureTextEntry
               autoCapitalize="none"
+              placeholder="********"
               autoComplete="password"
               value={field.state.value}
               onChangeText={field.handleChange}
               onBlur={field.handleBlur}
-              className={`border-[1.5px] rounded-lg p-2 px-3 border-neutral-300 focus:border-blue-600 focus:shadow-outline focus:ring-offset-2 ${
+              className={`h-12 border-neutral-300 focus:border-blue-600 focus:shadow-outline focus:ring-offset-2 font-dm-bold text-[20px] ${
                 field.state.meta.errors.length > 0 && "border-red-500"
               }`}
             />
             {field.state.meta.errors.length > 0 ? (
-              <Text className="text-red-600 font-semibold">
-                <Trans>{field.state.meta.errors.join(", ")}</Trans>
+              <Text className="text-red-600 font-dm-regular text-xs">
+                {field.state.meta.errors.join(", ")}
               </Text>
             ) : null}
           </View>
@@ -104,11 +93,9 @@ export default function LoginForm() {
       </form.Field>
       <Pressable
         onPress={() => form.handleSubmit()}
-        className="flex flex-row items-center justify-center px-2 py-3 mt-2 bg-blue-700 rounded-md"
+        className="flex flex-row items-center justify-center p-2 mt-2 bg-blue-ocean rounded-full tracking-tight"
       >
-        <Text className="text-white font-bold text-lg">
-          <Trans>Login</Trans>
-        </Text>
+        <Text className="text-white font-dm-regular text-base">Login</Text>
       </Pressable>
     </View>
   );
