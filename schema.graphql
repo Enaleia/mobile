@@ -6,19 +6,16 @@ schema {
 
 type Actions {
   action_description: String
+  action_group: String
   action_id: ID!
   action_name: String
   date_created: Date
   date_created_func: datetime_functions
   date_updated: Date
   date_updated_func: datetime_functions
-  roles: JSON
-  roles_func: count_functions
   sort: Int
   status: String
   user_created(filter: directus_users_filter, limit: Int, offset: Int, page: Int, search: String, sort: [String]): directus_users
-  user_role(filter: Actions_directus_roles_filter, limit: Int, offset: Int, page: Int, search: String, sort: [String]): [Actions_directus_roles]
-  user_role_func: count_functions
   user_updated(filter: directus_users_filter, limit: Int, offset: Int, page: Int, search: String, sort: [String]): directus_users
 }
 
@@ -37,15 +34,14 @@ type Actions_aggregated {
 
 type Actions_aggregated_count {
   action_description: Int
+  action_group: Int
   action_id: Int
   action_name: Int
   date_created: Int
   date_updated: Int
-  roles: Int
   sort: Int
   status: Int
   user_created: Int
-  user_role: Int
   user_updated: Int
 }
 
@@ -54,67 +50,20 @@ type Actions_aggregated_fields {
   sort: Float
 }
 
-type Actions_directus_roles {
-  Actions_action_id(filter: Actions_filter, limit: Int, offset: Int, page: Int, search: String, sort: [String]): Actions
-  directus_roles_id(filter: directus_roles_filter, limit: Int, offset: Int, page: Int, search: String, sort: [String]): directus_roles
-  id: ID!
-}
-
-type Actions_directus_roles_aggregated {
-  avg: Actions_directus_roles_aggregated_fields
-  avgDistinct: Actions_directus_roles_aggregated_fields
-  count: Actions_directus_roles_aggregated_count
-  countAll: Int
-  countDistinct: Actions_directus_roles_aggregated_count
-  group: JSON
-  max: Actions_directus_roles_aggregated_fields
-  min: Actions_directus_roles_aggregated_fields
-  sum: Actions_directus_roles_aggregated_fields
-  sumDistinct: Actions_directus_roles_aggregated_fields
-}
-
-type Actions_directus_roles_aggregated_count {
-  Actions_action_id: Int
-  directus_roles_id: Int
-  id: Int
-}
-
-type Actions_directus_roles_aggregated_fields {
-  Actions_action_id: Float
-  id: Float
-}
-
-input Actions_directus_roles_filter {
-  Actions_action_id: Actions_filter
-  _and: [Actions_directus_roles_filter]
-  _or: [Actions_directus_roles_filter]
-  directus_roles_id: directus_roles_filter
-  id: number_filter_operators
-}
-
-type Actions_directus_roles_mutated {
-  data: Actions_directus_roles
-  event: EventEnum
-  key: ID!
-}
-
 input Actions_filter {
   _and: [Actions_filter]
   _or: [Actions_filter]
   action_description: string_filter_operators
+  action_group: string_filter_operators
   action_id: number_filter_operators
   action_name: string_filter_operators
   date_created: date_filter_operators
   date_created_func: datetime_function_filter_operators
   date_updated: date_filter_operators
   date_updated_func: datetime_function_filter_operators
-  roles: string_filter_operators
-  roles_func: count_function_filter_operators
   sort: number_filter_operators
   status: string_filter_operators
   user_created: directus_users_filter
-  user_role: Actions_directus_roles_filter
-  user_role_func: count_function_filter_operators
   user_updated: directus_users_filter
 }
 
@@ -124,95 +73,29 @@ type Actions_mutated {
   key: ID!
 }
 
-type Aggregates {
-  active_vessels: Int
-  date_updated: Date
-  date_updated_func: datetime_functions
-  id: ID!
-  total_countries: Int
-  total_fishermen_actions: Int
-  total_materials_recycled: Int
-  total_ports: Int
-  user_updated(filter: directus_users_filter, limit: Int, offset: Int, page: Int, search: String, sort: [String]): directus_users
-}
-
-type Aggregates_aggregated {
-  avg: Aggregates_aggregated_fields
-  avgDistinct: Aggregates_aggregated_fields
-  count: Aggregates_aggregated_count
-  countAll: Int
-  countDistinct: Aggregates_aggregated_count
-  group: JSON
-  max: Aggregates_aggregated_fields
-  min: Aggregates_aggregated_fields
-  sum: Aggregates_aggregated_fields
-  sumDistinct: Aggregates_aggregated_fields
-}
-
-type Aggregates_aggregated_count {
-  active_vessels: Int
-  date_updated: Int
-  id: Int
-  total_countries: Int
-  total_fishermen_actions: Int
-  total_materials_recycled: Int
-  total_ports: Int
-  user_updated: Int
-}
-
-type Aggregates_aggregated_fields {
-  active_vessels: Float
-  id: Float
-  total_countries: Float
-  total_fishermen_actions: Float
-  total_materials_recycled: Float
-  total_ports: Float
-}
-
-input Aggregates_filter {
-  _and: [Aggregates_filter]
-  _or: [Aggregates_filter]
-  active_vessels: number_filter_operators
-  date_updated: date_filter_operators
-  date_updated_func: datetime_function_filter_operators
-  id: number_filter_operators
-  total_countries: number_filter_operators
-  total_fishermen_actions: number_filter_operators
-  total_materials_recycled: number_filter_operators
-  total_ports: number_filter_operators
-  user_updated: directus_users_filter
-}
-
-type Aggregates_mutated {
-  data: Aggregates
-  event: EventEnum
-  key: ID!
-}
-
 type Collectors {
-  collector_country: String
+  collector_company_name: String
   collector_id: ID!
-  """This usually use for Vessel name, or Ad-hoc collector name"""
-  collector_name: String
-  """If vessel is part of company, you can enter it here"""
-  company_name: String
+  """This is the number that we will print on the fisherman's ID card"""
+  collector_identity: String
   contact_person: String
+  country(filter: countries_filter, limit: Int, offset: Int, page: Int, search: String, sort: [String]): countries
   date_created: Date
   date_created_func: datetime_functions
   date_updated: Date
   date_updated_func: datetime_functions
   fishing_season: JSON
   fishing_season_func: count_functions
-  """Is the collector active or not?"""
+  fishing_zone: GraphQLGeoJSON
+  """Is the collector active?"""
   is_active: Boolean
-  place_origin_temp: String
-  place_vessel_temp: String
+  registered_port: Int
   sort: Int
   status: String
   user_created(filter: directus_users_filter, limit: Int, offset: Int, page: Int, search: String, sort: [String]): directus_users
   user_updated(filter: directus_users_filter, limit: Int, offset: Int, page: Int, search: String, sort: [String]): directus_users
-  vessel_type: JSON
-  vessel_type_func: count_functions
+  vessel_name: String
+  vessel_type(filter: Vessels_Type_filter, limit: Int, offset: Int, page: Int, search: String, sort: [String]): Vessels_Type
 }
 
 type Collectors_aggregated {
@@ -229,55 +112,58 @@ type Collectors_aggregated {
 }
 
 type Collectors_aggregated_count {
-  collector_country: Int
+  collector_company_name: Int
   collector_id: Int
-  """This usually use for Vessel name, or Ad-hoc collector name"""
-  collector_name: Int
-  """If vessel is part of company, you can enter it here"""
-  company_name: Int
+  """This is the number that we will print on the fisherman's ID card"""
+  collector_identity: Int
   contact_person: Int
+  country: Int
   date_created: Int
   date_updated: Int
   fishing_season: Int
-  """Is the collector active or not?"""
+  fishing_zone: Int
+  """Is the collector active?"""
   is_active: Int
-  place_origin_temp: Int
-  place_vessel_temp: Int
+  registered_port: Int
   sort: Int
   status: Int
   user_created: Int
   user_updated: Int
+  vessel_name: Int
   vessel_type: Int
 }
 
 type Collectors_aggregated_fields {
   collector_id: Float
+  country: Float
+  registered_port: Float
   sort: Float
+  vessel_type: Float
 }
 
 input Collectors_filter {
   _and: [Collectors_filter]
   _or: [Collectors_filter]
-  collector_country: string_filter_operators
+  collector_company_name: string_filter_operators
   collector_id: number_filter_operators
-  collector_name: string_filter_operators
-  company_name: string_filter_operators
+  collector_identity: string_filter_operators
   contact_person: string_filter_operators
+  country: countries_filter
   date_created: date_filter_operators
   date_created_func: datetime_function_filter_operators
   date_updated: date_filter_operators
   date_updated_func: datetime_function_filter_operators
   fishing_season: string_filter_operators
   fishing_season_func: count_function_filter_operators
+  fishing_zone: geometry_filter_operators
   is_active: boolean_filter_operators
-  place_origin_temp: string_filter_operators
-  place_vessel_temp: string_filter_operators
+  registered_port: number_filter_operators
   sort: number_filter_operators
   status: string_filter_operators
   user_created: directus_users_filter
   user_updated: directus_users_filter
-  vessel_type: string_filter_operators
-  vessel_type_func: count_function_filter_operators
+  vessel_name: string_filter_operators
+  vessel_type: Vessels_Type_filter
 }
 
 type Collectors_mutated {
@@ -296,40 +182,203 @@ enum EventEnum {
 }
 
 type Events {
+  """The UID from EAS. DO NOT edit this field."""
   EAS_UID: String
+  """This is when the data has submitted to the blockchain. DO NOT edit."""
   EAS_timestamp: Date
   EAS_timestamp_func: datetime_functions
-  Inputs: JSON
-  Inputs_func: count_functions
   action(filter: Actions_filter, limit: Int, offset: Int, page: Int, search: String, sort: [String]): Actions
-  collector(filter: directus_users_filter, limit: Int, offset: Int, page: Int, search: String, sort: [String]): directus_users
+  collector_name(filter: Collectors_filter, limit: Int, offset: Int, page: Int, search: String, sort: [String]): Collectors
+  company: Int
   date_created: Date
   date_created_func: datetime_functions
   date_updated: Date
   date_updated_func: datetime_functions
   """This should be system autogenerated"""
   event_id: ID!
-  """This is capture how much weight and its code input to the event."""
-  event_input_id: String
+  event_input_id(filter: Events_Input_filter, limit: Int, offset: Int, page: Int, search: String, sort: [String]): [Events_Input]
   event_input_id_func: count_functions
   """This is WHERE the event happen. It should be feeded by the mobile app."""
   event_location: String
-  """This is capture how much weight and its code output to the event."""
-  event_output_id: String
+  event_output_id(filter: Events_Output_filter, limit: Int, offset: Int, page: Int, search: String, sort: [String]): [Events_Output]
   event_output_id_func: count_functions
-  """This is to capture when the action is taken place."""
+  """The date and time at which the action occurred."""
   event_timestamp: Date
   event_timestamp_func: datetime_functions
+  """Just tag things so its easy to find."""
   internal_tag: JSON
   internal_tag_func: count_functions
-  on_behalf_of(filter: directus_users_filter, limit: Int, offset: Int, page: Int, search: String, sort: [String]): directus_users
-  production_id: String
-  production_id_func: count_functions
   sort: Int
   sponsor_id(filter: Sponsors_filter, limit: Int, offset: Int, page: Int, search: String, sort: [String]): Sponsors
   status: String
   user_created(filter: directus_users_filter, limit: Int, offset: Int, page: Int, search: String, sort: [String]): directus_users
   user_updated(filter: directus_users_filter, limit: Int, offset: Int, page: Int, search: String, sort: [String]): directus_users
+  """This is for internal operation, so they can refer the event to a weight slip."""
+  weight_slip_ref: Int
+}
+
+type Events_Input {
+  date_created: Date
+  date_created_func: datetime_functions
+  date_updated: Date
+  date_updated_func: datetime_functions
+  event_id(filter: Events_filter, limit: Int, offset: Int, page: Int, search: String, sort: [String]): Events
+  event_input_id: ID!
+  input_Material(filter: Materials_filter, limit: Int, offset: Int, page: Int, search: String, sort: [String]): Materials
+  """The QR code on the incoming material. Exception: If the Action is collection, then it represent the Collector ID card number."""
+  input_code: String
+  """The weight of the incoming material"""
+  input_weight: Int
+  sort: Int
+  status: String
+  user_created(filter: directus_users_filter, limit: Int, offset: Int, page: Int, search: String, sort: [String]): directus_users
+  user_updated(filter: directus_users_filter, limit: Int, offset: Int, page: Int, search: String, sort: [String]): directus_users
+}
+
+type Events_Input_aggregated {
+  avg: Events_Input_aggregated_fields
+  avgDistinct: Events_Input_aggregated_fields
+  count: Events_Input_aggregated_count
+  countAll: Int
+  countDistinct: Events_Input_aggregated_count
+  group: JSON
+  max: Events_Input_aggregated_fields
+  min: Events_Input_aggregated_fields
+  sum: Events_Input_aggregated_fields
+  sumDistinct: Events_Input_aggregated_fields
+}
+
+type Events_Input_aggregated_count {
+  date_created: Int
+  date_updated: Int
+  event_id: Int
+  event_input_id: Int
+  """The incoming material type"""
+  input_Material: Int
+  """The QR code on the incoming material. Exception: If the Action is collection, then it represent the Collector ID card number."""
+  input_code: Int
+  """The weight of the incoming material"""
+  input_weight: Int
+  sort: Int
+  status: Int
+  user_created: Int
+  user_updated: Int
+}
+
+type Events_Input_aggregated_fields {
+  event_id: Float
+  event_input_id: Float
+  """The incoming material type"""
+  input_Material: Float
+  """The weight of the incoming material"""
+  input_weight: Float
+  sort: Float
+}
+
+input Events_Input_filter {
+  _and: [Events_Input_filter]
+  _or: [Events_Input_filter]
+  date_created: date_filter_operators
+  date_created_func: datetime_function_filter_operators
+  date_updated: date_filter_operators
+  date_updated_func: datetime_function_filter_operators
+  event_id: Events_filter
+  event_input_id: number_filter_operators
+  input_Material: Materials_filter
+  input_code: string_filter_operators
+  input_weight: number_filter_operators
+  sort: number_filter_operators
+  status: string_filter_operators
+  user_created: directus_users_filter
+  user_updated: directus_users_filter
+}
+
+type Events_Input_mutated {
+  data: Events_Input
+  event: EventEnum
+  key: ID!
+}
+
+type Events_Output {
+  date_created: Date
+  date_created_func: datetime_functions
+  date_updated: Date
+  date_updated_func: datetime_functions
+  event_id(filter: Events_filter, limit: Int, offset: Int, page: Int, search: String, sort: [String]): Events
+  event_output_id: ID!
+  """The QR code on the outgoing material. Exception: If the Action is manufacturing, this field should remain empty."""
+  output_code: String
+  output_material(filter: Materials_filter, limit: Int, offset: Int, page: Int, search: String, sort: [String]): Materials
+  """The weight of the outgoing material"""
+  output_weight: Int
+  sort: Int
+  status: String
+  user_created(filter: directus_users_filter, limit: Int, offset: Int, page: Int, search: String, sort: [String]): directus_users
+  user_updated(filter: directus_users_filter, limit: Int, offset: Int, page: Int, search: String, sort: [String]): directus_users
+}
+
+type Events_Output_aggregated {
+  avg: Events_Output_aggregated_fields
+  avgDistinct: Events_Output_aggregated_fields
+  count: Events_Output_aggregated_count
+  countAll: Int
+  countDistinct: Events_Output_aggregated_count
+  group: JSON
+  max: Events_Output_aggregated_fields
+  min: Events_Output_aggregated_fields
+  sum: Events_Output_aggregated_fields
+  sumDistinct: Events_Output_aggregated_fields
+}
+
+type Events_Output_aggregated_count {
+  date_created: Int
+  date_updated: Int
+  event_id: Int
+  event_output_id: Int
+  """The QR code on the outgoing material. Exception: If the Action is manufacturing, this field should remain empty."""
+  output_code: Int
+  """The outgoing material type"""
+  output_material: Int
+  """The weight of the outgoing material"""
+  output_weight: Int
+  sort: Int
+  status: Int
+  user_created: Int
+  user_updated: Int
+}
+
+type Events_Output_aggregated_fields {
+  event_id: Float
+  event_output_id: Float
+  """The outgoing material type"""
+  output_material: Float
+  """The weight of the outgoing material"""
+  output_weight: Float
+  sort: Float
+}
+
+input Events_Output_filter {
+  _and: [Events_Output_filter]
+  _or: [Events_Output_filter]
+  date_created: date_filter_operators
+  date_created_func: datetime_function_filter_operators
+  date_updated: date_filter_operators
+  date_updated_func: datetime_function_filter_operators
+  event_id: Events_filter
+  event_output_id: number_filter_operators
+  output_code: string_filter_operators
+  output_material: Materials_filter
+  output_weight: number_filter_operators
+  sort: number_filter_operators
+  status: string_filter_operators
+  user_created: directus_users_filter
+  user_updated: directus_users_filter
+}
+
+type Events_Output_mutated {
+  data: Events_Output
+  event: EventEnum
+  key: ID!
 }
 
 type Events_aggregated {
@@ -346,77 +395,81 @@ type Events_aggregated {
 }
 
 type Events_aggregated_count {
+  """The UID from EAS. DO NOT edit this field."""
   EAS_UID: Int
+  """This is when the data has submitted to the blockchain. DO NOT edit."""
   EAS_timestamp: Int
-  Inputs: Int
-  """Select type of action, whether its fishing for litter...etc."""
+  """The action type. ex. Fishing for litter, Sorting, Pelletizing, Manufacturing ..."""
   action: Int
-  """This to give credit to WHO collect the waste. You can skip this if the action is for recycler."""
-  collector: Int
+  collector_name: Int
+  company: Int
   date_created: Int
   date_updated: Int
   """This should be system autogenerated"""
   event_id: Int
-  """This is capture how much weight and its code input to the event."""
+  """Use this section to enter Incoming: Material(s), QR Number(s) and Weight(s)"""
   event_input_id: Int
   """This is WHERE the event happen. It should be feeded by the mobile app."""
   event_location: Int
-  """This is capture how much weight and its code output to the event."""
+  """Use this section to enter Outgoing: Material(s), QR Number(s) and Weight(s)"""
   event_output_id: Int
-  """This is to capture when the action is taken place."""
+  """The date and time at which the action occurred."""
   event_timestamp: Int
+  """Just tag things so its easy to find."""
   internal_tag: Int
-  """This field is reserved for Enaleia internal, when team need to enter data on behalf of port coordinator"""
-  on_behalf_of: Int
-  production_id: Int
   sort: Int
+  """The sponsor for the Action. """
   sponsor_id: Int
   status: Int
   user_created: Int
   user_updated: Int
+  """This is for internal operation, so they can refer the event to a weight slip."""
+  weight_slip_ref: Int
 }
 
 type Events_aggregated_fields {
-  """Select type of action, whether its fishing for litter...etc."""
+  """The action type. ex. Fishing for litter, Sorting, Pelletizing, Manufacturing ..."""
   action: Float
+  collector_name: Float
+  company: Float
   """This should be system autogenerated"""
   event_id: Float
   sort: Float
+  """The sponsor for the Action. """
   sponsor_id: Float
+  """This is for internal operation, so they can refer the event to a weight slip."""
+  weight_slip_ref: Float
 }
 
 input Events_filter {
   EAS_UID: string_filter_operators
   EAS_timestamp: date_filter_operators
   EAS_timestamp_func: datetime_function_filter_operators
-  Inputs: string_filter_operators
-  Inputs_func: count_function_filter_operators
   _and: [Events_filter]
   _or: [Events_filter]
   action: Actions_filter
-  collector: directus_users_filter
+  collector_name: Collectors_filter
+  company: number_filter_operators
   date_created: date_filter_operators
   date_created_func: datetime_function_filter_operators
   date_updated: date_filter_operators
   date_updated_func: datetime_function_filter_operators
   event_id: number_filter_operators
-  event_input_id: string_filter_operators
+  event_input_id: Events_Input_filter
   event_input_id_func: count_function_filter_operators
   event_location: string_filter_operators
-  event_output_id: string_filter_operators
+  event_output_id: Events_Output_filter
   event_output_id_func: count_function_filter_operators
   event_timestamp: date_filter_operators
   event_timestamp_func: datetime_function_filter_operators
   internal_tag: string_filter_operators
   internal_tag_func: count_function_filter_operators
-  on_behalf_of: directus_users_filter
-  production_id: string_filter_operators
-  production_id_func: count_function_filter_operators
   sort: number_filter_operators
   sponsor_id: Sponsors_filter
   status: string_filter_operators
   user_created: directus_users_filter
   user_updated: directus_users_filter
+  weight_slip_ref: number_filter_operators
 }
 
 type Events_mutated {
@@ -481,50 +534,6 @@ type Materials_aggregated_fields {
   sort: Float
 }
 
-type Materials_directus_roles {
-  Materials_material_id(filter: Materials_filter, limit: Int, offset: Int, page: Int, search: String, sort: [String]): Materials
-  directus_roles_id(filter: directus_roles_filter, limit: Int, offset: Int, page: Int, search: String, sort: [String]): directus_roles
-  id: ID!
-}
-
-type Materials_directus_roles_aggregated {
-  avg: Materials_directus_roles_aggregated_fields
-  avgDistinct: Materials_directus_roles_aggregated_fields
-  count: Materials_directus_roles_aggregated_count
-  countAll: Int
-  countDistinct: Materials_directus_roles_aggregated_count
-  group: JSON
-  max: Materials_directus_roles_aggregated_fields
-  min: Materials_directus_roles_aggregated_fields
-  sum: Materials_directus_roles_aggregated_fields
-  sumDistinct: Materials_directus_roles_aggregated_fields
-}
-
-type Materials_directus_roles_aggregated_count {
-  Materials_material_id: Int
-  directus_roles_id: Int
-  id: Int
-}
-
-type Materials_directus_roles_aggregated_fields {
-  Materials_material_id: Float
-  id: Float
-}
-
-input Materials_directus_roles_filter {
-  Materials_material_id: Materials_filter
-  _and: [Materials_directus_roles_filter]
-  _or: [Materials_directus_roles_filter]
-  directus_roles_id: directus_roles_filter
-  id: number_filter_operators
-}
-
-type Materials_directus_roles_mutated {
-  data: Materials_directus_roles
-  event: EventEnum
-  key: ID!
-}
-
 input Materials_filter {
   _and: [Materials_filter]
   _or: [Materials_filter]
@@ -548,21 +557,45 @@ type Materials_mutated {
 }
 
 type Mutation {
-  create_Events_Input_item(data: create_Events_Input_input!): Boolean
-  create_Events_Input_items(data: [create_Events_Input_input!]): Boolean
-  create_Events_Output_item(data: create_Events_Output_input!): Boolean
-  create_Events_Output_items(data: [create_Events_Output_input!]): Boolean
+  create_Events_Input_item(data: create_Events_Input_input!): Events_Input
+  create_Events_Input_items(data: [create_Events_Input_input!], filter: Events_Input_filter, limit: Int, offset: Int, page: Int, search: String, sort: [String]): [Events_Input!]!
+  create_Events_Output_item(data: create_Events_Output_input!): Events_Output
+  create_Events_Output_items(data: [create_Events_Output_input!], filter: Events_Output_filter, limit: Int, offset: Int, page: Int, search: String, sort: [String]): [Events_Output!]!
   create_Events_item(data: create_Events_input!): Events
   create_Events_items(data: [create_Events_input!], filter: Events_filter, limit: Int, offset: Int, page: Int, search: String, sort: [String]): [Events!]!
+  create_Production_item(data: create_Production_input!): Production
+  create_Production_items(data: [create_Production_input!], filter: Production_filter, limit: Int, offset: Int, page: Int, search: String, sort: [String]): [Production!]!
+  create_Vessels_Type_item(data: create_Vessels_Type_input!): Vessels_Type
+  create_Vessels_Type_items(data: [create_Vessels_Type_input!], filter: Vessels_Type_filter, limit: Int, offset: Int, page: Int, search: String, sort: [String]): [Vessels_Type!]!
   create_activity_item(data: create_activity_input!): activity
   create_activity_items(data: [create_activity_input!], filter: activity_filter, limit: Int, offset: Int, page: Int, search: String, sort: [String]): [activity!]!
   create_resource_item(data: create_resource_input!): resource
   create_resource_items(data: [create_resource_input!], filter: resource_filter, limit: Int, offset: Int, page: Int, search: String, sort: [String]): [resource!]!
+  delete_Vessels_Type_item(id: ID!): delete_one
+  delete_Vessels_Type_items(ids: [ID]!): delete_many
+  update_Events_Input_batch(data: [update_Events_Input_input!], filter: Events_Input_filter, limit: Int, offset: Int, page: Int, search: String, sort: [String]): [Events_Input!]!
+  update_Events_Input_item(data: update_Events_Input_input!, id: ID!): Events_Input
+  update_Events_Input_items(data: update_Events_Input_input!, filter: Events_Input_filter, ids: [ID]!, limit: Int, offset: Int, page: Int, search: String, sort: [String]): [Events_Input!]!
+  update_Events_Output_batch(data: [update_Events_Output_input!], filter: Events_Output_filter, limit: Int, offset: Int, page: Int, search: String, sort: [String]): [Events_Output!]!
+  update_Events_Output_item(data: update_Events_Output_input!, id: ID!): Events_Output
+  update_Events_Output_items(data: update_Events_Output_input!, filter: Events_Output_filter, ids: [ID]!, limit: Int, offset: Int, page: Int, search: String, sort: [String]): [Events_Output!]!
+  update_Events_batch(data: [update_Events_input!], filter: Events_filter, limit: Int, offset: Int, page: Int, search: String, sort: [String]): [Events!]!
+  update_Events_item(data: update_Events_input!, id: ID!): Events
+  update_Events_items(data: update_Events_input!, filter: Events_filter, ids: [ID]!, limit: Int, offset: Int, page: Int, search: String, sort: [String]): [Events!]!
+  update_Production_batch(data: [update_Production_input!], filter: Production_filter, limit: Int, offset: Int, page: Int, search: String, sort: [String]): [Production!]!
+  update_Production_item(data: update_Production_input!, id: ID!): Production
+  update_Production_items(data: update_Production_input!, filter: Production_filter, ids: [ID]!, limit: Int, offset: Int, page: Int, search: String, sort: [String]): [Production!]!
+  update_Vessels_Type_batch(data: [update_Vessels_Type_input!], filter: Vessels_Type_filter, limit: Int, offset: Int, page: Int, search: String, sort: [String]): [Vessels_Type!]!
+  update_Vessels_Type_item(data: update_Vessels_Type_input!, id: ID!): Vessels_Type
+  update_Vessels_Type_items(data: update_Vessels_Type_input!, filter: Vessels_Type_filter, ids: [ID]!, limit: Int, offset: Int, page: Int, search: String, sort: [String]): [Vessels_Type!]!
 }
 
 type Production {
+  """The NFT link for this product."""
   NFT_link: String
+  """The batch data identifier. Format: YYYYMMDD. ex. 20241209"""
   batch_identifier: String
+  """The number of items manufactured in this batch."""
   batch_quantity: Int
   date_created: Date
   date_created_func: datetime_functions
@@ -571,6 +604,7 @@ type Production {
   event_id(filter: Events_filter, limit: Int, offset: Int, page: Int, search: String, sort: [String]): Events
   product_id(filter: Products_filter, limit: Int, offset: Int, page: Int, search: String, sort: [String]): Products
   production_id: ID!
+  """The URL for this product. Format: https://enaleia-hub.com/product?user_id=user_id&product_id:=product_id&batch_identifier=YYYYMMDD"""
   production_url: String
   sort: Int
   status: String
@@ -592,14 +626,19 @@ type Production_aggregated {
 }
 
 type Production_aggregated_count {
+  """The NFT link for this product."""
   NFT_link: Int
+  """The batch data identifier. Format: YYYYMMDD. ex. 20241209"""
   batch_identifier: Int
+  """The number of items manufactured in this batch."""
   batch_quantity: Int
   date_created: Int
   date_updated: Int
   event_id: Int
+  """The product type that was manufactured"""
   product_id: Int
   production_id: Int
+  """The URL for this product. Format: https://enaleia-hub.com/product?user_id=user_id&product_id:=product_id&batch_identifier=YYYYMMDD"""
   production_url: Int
   sort: Int
   status: Int
@@ -608,8 +647,10 @@ type Production_aggregated_count {
 }
 
 type Production_aggregated_fields {
+  """The number of items manufactured in this batch."""
   batch_quantity: Float
   event_id: Float
+  """The product type that was manufactured"""
   product_id: Float
   production_id: Float
   sort: Float
@@ -648,9 +689,10 @@ type Products {
   date_updated_func: datetime_functions
   manufactured_by(filter: directus_users_filter, limit: Int, offset: Int, page: Int, search: String, sort: [String]): directus_users
   product_id: ID!
+  product_images: String
+  product_images_func: count_functions
   product_name: String
-  product_type: JSON
-  product_type_func: count_functions
+  product_type: String
   product_weight: Int
   section_title: String
   sort: Int
@@ -677,6 +719,7 @@ type Products_aggregated_count {
   date_updated: Int
   manufactured_by: Int
   product_id: Int
+  product_images: Int
   product_name: Int
   product_type: Int
   product_weight: Int
@@ -702,9 +745,10 @@ input Products_filter {
   date_updated_func: datetime_function_filter_operators
   manufactured_by: directus_users_filter
   product_id: number_filter_operators
+  product_images: string_filter_operators
+  product_images_func: count_function_filter_operators
   product_name: string_filter_operators
   product_type: string_filter_operators
-  product_type_func: count_function_filter_operators
   product_weight: number_filter_operators
   section_title: string_filter_operators
   sort: number_filter_operators
@@ -724,19 +768,19 @@ type Query {
   Actions_aggregated(filter: Actions_filter, groupBy: [String], limit: Int, offset: Int, page: Int, search: String, sort: [String]): [Actions_aggregated!]!
   Actions_by_id(id: ID!, version: String): Actions
   Actions_by_version(id: ID!, version: String!): version_Actions
-  Actions_directus_roles(filter: Actions_directus_roles_filter, limit: Int, offset: Int, page: Int, search: String, sort: [String]): [Actions_directus_roles!]!
-  Actions_directus_roles_aggregated(filter: Actions_directus_roles_filter, groupBy: [String], limit: Int, offset: Int, page: Int, search: String, sort: [String]): [Actions_directus_roles_aggregated!]!
-  Actions_directus_roles_by_id(id: ID!, version: String): Actions_directus_roles
-  Actions_directus_roles_by_version(id: ID!, version: String!): version_Actions_directus_roles
-  Aggregates(filter: Aggregates_filter, limit: Int, offset: Int, page: Int, search: String, sort: [String]): [Aggregates!]!
-  Aggregates_aggregated(filter: Aggregates_filter, groupBy: [String], limit: Int, offset: Int, page: Int, search: String, sort: [String]): [Aggregates_aggregated!]!
-  Aggregates_by_id(id: ID!, version: String): Aggregates
-  Aggregates_by_version(id: ID!, version: String!): version_Aggregates
   Collectors(filter: Collectors_filter, limit: Int, offset: Int, page: Int, search: String, sort: [String]): [Collectors!]!
   Collectors_aggregated(filter: Collectors_filter, groupBy: [String], limit: Int, offset: Int, page: Int, search: String, sort: [String]): [Collectors_aggregated!]!
   Collectors_by_id(id: ID!, version: String): Collectors
   Collectors_by_version(id: ID!, version: String!): version_Collectors
   Events(filter: Events_filter, limit: Int, offset: Int, page: Int, search: String, sort: [String]): [Events!]!
+  Events_Input(filter: Events_Input_filter, limit: Int, offset: Int, page: Int, search: String, sort: [String]): [Events_Input!]!
+  Events_Input_aggregated(filter: Events_Input_filter, groupBy: [String], limit: Int, offset: Int, page: Int, search: String, sort: [String]): [Events_Input_aggregated!]!
+  Events_Input_by_id(id: ID!, version: String): Events_Input
+  Events_Input_by_version(id: ID!, version: String!): version_Events_Input
+  Events_Output(filter: Events_Output_filter, limit: Int, offset: Int, page: Int, search: String, sort: [String]): [Events_Output!]!
+  Events_Output_aggregated(filter: Events_Output_filter, groupBy: [String], limit: Int, offset: Int, page: Int, search: String, sort: [String]): [Events_Output_aggregated!]!
+  Events_Output_by_id(id: ID!, version: String): Events_Output
+  Events_Output_by_version(id: ID!, version: String!): version_Events_Output
   Events_aggregated(filter: Events_filter, groupBy: [String], limit: Int, offset: Int, page: Int, search: String, sort: [String]): [Events_aggregated!]!
   Events_by_id(id: ID!, version: String): Events
   Events_by_version(id: ID!, version: String!): version_Events
@@ -744,10 +788,6 @@ type Query {
   Materials_aggregated(filter: Materials_filter, groupBy: [String], limit: Int, offset: Int, page: Int, search: String, sort: [String]): [Materials_aggregated!]!
   Materials_by_id(id: ID!, version: String): Materials
   Materials_by_version(id: ID!, version: String!): version_Materials
-  Materials_directus_roles(filter: Materials_directus_roles_filter, limit: Int, offset: Int, page: Int, search: String, sort: [String]): [Materials_directus_roles!]!
-  Materials_directus_roles_aggregated(filter: Materials_directus_roles_filter, groupBy: [String], limit: Int, offset: Int, page: Int, search: String, sort: [String]): [Materials_directus_roles_aggregated!]!
-  Materials_directus_roles_by_id(id: ID!, version: String): Materials_directus_roles
-  Materials_directus_roles_by_version(id: ID!, version: String!): version_Materials_directus_roles
   Production(filter: Production_filter, limit: Int, offset: Int, page: Int, search: String, sort: [String]): [Production!]!
   Production_aggregated(filter: Production_filter, groupBy: [String], limit: Int, offset: Int, page: Int, search: String, sort: [String]): [Production_aggregated!]!
   Production_by_id(id: ID!, version: String): Production
@@ -760,10 +800,18 @@ type Query {
   Sponsors_aggregated(filter: Sponsors_filter, groupBy: [String], limit: Int, offset: Int, page: Int, search: String, sort: [String]): [Sponsors_aggregated!]!
   Sponsors_by_id(id: ID!, version: String): Sponsors
   Sponsors_by_version(id: ID!, version: String!): version_Sponsors
+  Vessels_Type(filter: Vessels_Type_filter, limit: Int, offset: Int, page: Int, search: String, sort: [String]): [Vessels_Type!]!
+  Vessels_Type_aggregated(filter: Vessels_Type_filter, groupBy: [String], limit: Int, offset: Int, page: Int, search: String, sort: [String]): [Vessels_Type_aggregated!]!
+  Vessels_Type_by_id(id: ID!, version: String): Vessels_Type
+  Vessels_Type_by_version(id: ID!, version: String!): version_Vessels_Type
   activity(filter: activity_filter, limit: Int, offset: Int, page: Int, search: String, sort: [String]): [activity!]!
   activity_aggregated(filter: activity_filter, groupBy: [String], limit: Int, offset: Int, page: Int, search: String, sort: [String]): [activity_aggregated!]!
   activity_by_id(id: ID!, version: String): activity
   activity_by_version(id: ID!, version: String!): version_activity
+  countries(filter: countries_filter, limit: Int, offset: Int, page: Int, search: String, sort: [String]): [countries!]!
+  countries_aggregated(filter: countries_filter, groupBy: [String], limit: Int, offset: Int, page: Int, search: String, sort: [String]): [countries_aggregated!]!
+  countries_by_id(id: ID!, version: String): countries
+  countries_by_version(id: ID!, version: String!): version_countries
   resource(filter: resource_filter, limit: Int, offset: Int, page: Int, search: String, sort: [String]): [resource!]!
   resource_aggregated(filter: resource_filter, groupBy: [String], limit: Int, offset: Int, page: Int, search: String, sort: [String]): [resource_aggregated!]!
   resource_by_id(id: ID!, version: String): resource
@@ -776,6 +824,7 @@ type Sponsors {
   date_updated: Date
   date_updated_func: datetime_functions
   sort: Int
+  sponsor_contact: String
   sponsor_id: ID!
   sponsor_name: String
   status: String
@@ -800,6 +849,7 @@ type Sponsors_aggregated_count {
   date_created: Int
   date_updated: Int
   sort: Int
+  sponsor_contact: Int
   sponsor_id: Int
   sponsor_name: Int
   status: Int
@@ -820,6 +870,7 @@ input Sponsors_filter {
   date_updated: date_filter_operators
   date_updated_func: datetime_function_filter_operators
   sort: number_filter_operators
+  sponsor_contact: string_filter_operators
   sponsor_id: number_filter_operators
   sponsor_name: string_filter_operators
   status: string_filter_operators
@@ -834,21 +885,92 @@ type Sponsors_mutated {
 }
 
 type Subscription {
-  Actions_directus_roles_mutated(event: EventEnum): Actions_directus_roles_mutated
   Actions_mutated(event: EventEnum): Actions_mutated
-  Aggregates_mutated(event: EventEnum): Aggregates_mutated
   Collectors_mutated(event: EventEnum): Collectors_mutated
+  Events_Input_mutated(event: EventEnum): Events_Input_mutated
+  Events_Output_mutated(event: EventEnum): Events_Output_mutated
   Events_mutated(event: EventEnum): Events_mutated
-  Materials_directus_roles_mutated(event: EventEnum): Materials_directus_roles_mutated
   Materials_mutated(event: EventEnum): Materials_mutated
   Production_mutated(event: EventEnum): Production_mutated
   Products_mutated(event: EventEnum): Products_mutated
   Sponsors_mutated(event: EventEnum): Sponsors_mutated
+  Vessels_Type_mutated(event: EventEnum): Vessels_Type_mutated
   activity_mutated(event: EventEnum): activity_mutated
+  countries_mutated(event: EventEnum): countries_mutated
   directus_access_mutated(event: EventEnum): directus_access_mutated
+  directus_operations_mutated(event: EventEnum): directus_operations_mutated
   directus_roles_mutated(event: EventEnum): directus_roles_mutated
   directus_users_mutated(event: EventEnum): directus_users_mutated
   resource_mutated(event: EventEnum): resource_mutated
+}
+
+type Vessels_Type {
+  Description: String
+  Greek: String
+  Vessels_type: String
+  date_created: Date
+  date_created_func: datetime_functions
+  date_updated: Date
+  date_updated_func: datetime_functions
+  id: ID!
+  sort: Int
+  status: String
+  user_created(filter: directus_users_filter, limit: Int, offset: Int, page: Int, search: String, sort: [String]): directus_users
+  user_updated(filter: directus_users_filter, limit: Int, offset: Int, page: Int, search: String, sort: [String]): directus_users
+}
+
+type Vessels_Type_aggregated {
+  avg: Vessels_Type_aggregated_fields
+  avgDistinct: Vessels_Type_aggregated_fields
+  count: Vessels_Type_aggregated_count
+  countAll: Int
+  countDistinct: Vessels_Type_aggregated_count
+  group: JSON
+  max: Vessels_Type_aggregated_fields
+  min: Vessels_Type_aggregated_fields
+  sum: Vessels_Type_aggregated_fields
+  sumDistinct: Vessels_Type_aggregated_fields
+}
+
+type Vessels_Type_aggregated_count {
+  Description: Int
+  Greek: Int
+  Vessels_type: Int
+  date_created: Int
+  date_updated: Int
+  id: Int
+  sort: Int
+  status: Int
+  user_created: Int
+  user_updated: Int
+}
+
+type Vessels_Type_aggregated_fields {
+  id: Float
+  sort: Float
+}
+
+input Vessels_Type_filter {
+  Description: string_filter_operators
+  Greek: string_filter_operators
+  Vessels_type: string_filter_operators
+  _and: [Vessels_Type_filter]
+  _or: [Vessels_Type_filter]
+  date_created: date_filter_operators
+  date_created_func: datetime_function_filter_operators
+  date_updated: date_filter_operators
+  date_updated_func: datetime_function_filter_operators
+  id: number_filter_operators
+  sort: number_filter_operators
+  status: string_filter_operators
+  user_created: directus_users_filter
+  user_updated: directus_users_filter
+}
+
+type Vessels_Type_mutated {
+  data: Vessels_Type
+  event: EventEnum
+  key: ID!
 }
 
 type activity {
@@ -907,14 +1029,82 @@ type count_functions {
   count: Int
 }
 
+type countries {
+  country_color: String
+  country_id: ID!
+  country_name: String
+  date_created: Date
+  date_created_func: datetime_functions
+  date_updated: Date
+  date_updated_func: datetime_functions
+  sort: Int
+  status: String
+  user_created(filter: directus_users_filter, limit: Int, offset: Int, page: Int, search: String, sort: [String]): directus_users
+  user_updated(filter: directus_users_filter, limit: Int, offset: Int, page: Int, search: String, sort: [String]): directus_users
+}
+
+type countries_aggregated {
+  avg: countries_aggregated_fields
+  avgDistinct: countries_aggregated_fields
+  count: countries_aggregated_count
+  countAll: Int
+  countDistinct: countries_aggregated_count
+  group: JSON
+  max: countries_aggregated_fields
+  min: countries_aggregated_fields
+  sum: countries_aggregated_fields
+  sumDistinct: countries_aggregated_fields
+}
+
+type countries_aggregated_count {
+  country_color: Int
+  country_id: Int
+  country_name: Int
+  date_created: Int
+  date_updated: Int
+  sort: Int
+  status: Int
+  user_created: Int
+  user_updated: Int
+}
+
+type countries_aggregated_fields {
+  country_id: Float
+  sort: Float
+}
+
+input countries_filter {
+  _and: [countries_filter]
+  _or: [countries_filter]
+  country_color: string_filter_operators
+  country_id: number_filter_operators
+  country_name: string_filter_operators
+  date_created: date_filter_operators
+  date_created_func: datetime_function_filter_operators
+  date_updated: date_filter_operators
+  date_updated_func: datetime_function_filter_operators
+  sort: number_filter_operators
+  status: string_filter_operators
+  user_created: directus_users_filter
+  user_updated: directus_users_filter
+}
+
+type countries_mutated {
+  data: countries
+  event: EventEnum
+  key: ID!
+}
+
 input create_Events_Input_input {
   date_created: Date
   date_updated: Date
   event_id: create_Events_input
   event_input_id: ID
-  event_timestamp: Date
+  """The incoming material type"""
   input_Material: Int
+  """The QR code on the incoming material. Exception: If the Action is collection, then it represent the Collector ID card number."""
   input_code: String
+  """The weight of the incoming material"""
   input_weight: Int
   sort: Int
   status: String
@@ -927,8 +1117,11 @@ input create_Events_Output_input {
   date_updated: Date
   event_id: create_Events_input
   event_output_id: ID
+  """The QR code on the outgoing material. Exception: If the Action is manufacturing, this field should remain empty."""
   output_code: String
+  """The outgoing material type"""
   output_material: Int
+  """The weight of the outgoing material"""
   output_weight: Int
   sort: Int
   status: String
@@ -937,13 +1130,14 @@ input create_Events_Output_input {
 }
 
 input create_Events_input {
+  """The UID from EAS. DO NOT edit this field."""
   EAS_UID: String
+  """This is when the data has submitted to the blockchain. DO NOT edit."""
   EAS_timestamp: Date
-  Inputs: JSON
-  """Select type of action, whether its fishing for litter...etc."""
+  """The action type. ex. Fishing for litter, Sorting, Pelletizing, Manufacturing ..."""
   action: Int
-  """This to give credit to WHO collect the waste. You can skip this if the action is for recycler."""
-  collector: String
+  collector_name: Int
+  company: Int
   date_created: Date
   date_updated: Date
   """This should be system autogenerated"""
@@ -952,14 +1146,49 @@ input create_Events_input {
   """This is WHERE the event happen. It should be feeded by the mobile app."""
   event_location: String
   event_output_id: [create_Events_Output_input]
-  """This is to capture when the action is taken place."""
+  """The date and time at which the action occurred."""
   event_timestamp: Date
+  """Just tag things so its easy to find."""
   internal_tag: JSON
-  """This field is reserved for Enaleia internal, when team need to enter data on behalf of port coordinator"""
-  on_behalf_of: String
-  production_id: String
   sort: Int
+  """The sponsor for the Action. """
   sponsor_id: Int
+  status: String
+  user_created: String
+  user_updated: String
+  """This is for internal operation, so they can refer the event to a weight slip."""
+  weight_slip_ref: Int
+}
+
+input create_Production_input {
+  """The NFT link for this product."""
+  NFT_link: String
+  """The batch data identifier. Format: YYYYMMDD. ex. 20241209"""
+  batch_identifier: String
+  """The number of items manufactured in this batch."""
+  batch_quantity: Int
+  date_created: Date
+  date_updated: Date
+  event_id: create_Events_input
+  """The product type that was manufactured"""
+  product_id: Int
+  production_id: ID
+  """The URL for this product. Format: https://enaleia-hub.com/product?user_id=user_id&product_id:=product_id&batch_identifier=YYYYMMDD"""
+  production_url: String
+  sort: Int
+  status: String
+  user_created: String
+  user_updated: String
+}
+
+input create_Vessels_Type_input {
+  Description: String
+  Greek: String
+  Vessels_type: String
+  date_created: Date
+  date_updated: Date
+  id: ID
+  sort: Int
   status: String
   user_created: String
   user_updated: String
@@ -1018,6 +1247,14 @@ type datetime_functions {
   year: Int
 }
 
+type delete_many {
+  ids: [ID]!
+}
+
+type delete_one {
+  id: ID!
+}
+
 type directus_access {
   id: ID!
   policy: String!
@@ -1042,6 +1279,48 @@ type directus_access_mutated {
   key: ID!
 }
 
+type directus_operations {
+  date_created: Date
+  date_created_func: datetime_functions
+  flow: String!
+  id: ID!
+  key: String!
+  name: String
+  options: JSON
+  options_func: count_functions
+  position_x: Int!
+  position_y: Int!
+  reject(filter: directus_operations_filter, limit: Int, offset: Int, page: Int, search: String, sort: [String]): directus_operations
+  resolve(filter: directus_operations_filter, limit: Int, offset: Int, page: Int, search: String, sort: [String]): directus_operations
+  type: String!
+  user_created(filter: directus_users_filter, limit: Int, offset: Int, page: Int, search: String, sort: [String]): directus_users
+}
+
+input directus_operations_filter {
+  _and: [directus_operations_filter]
+  _or: [directus_operations_filter]
+  date_created: date_filter_operators
+  date_created_func: datetime_function_filter_operators
+  flow: string_filter_operators
+  id: string_filter_operators
+  key: string_filter_operators
+  name: string_filter_operators
+  options: string_filter_operators
+  options_func: count_function_filter_operators
+  position_x: number_filter_operators
+  position_y: number_filter_operators
+  reject: directus_operations_filter
+  resolve: directus_operations_filter
+  type: string_filter_operators
+  user_created: directus_users_filter
+}
+
+type directus_operations_mutated {
+  data: directus_operations
+  event: EventEnum
+  key: ID!
+}
+
 type directus_roles {
   children(filter: directus_roles_filter, limit: Int, offset: Int, page: Int, search: String, sort: [String]): [directus_roles]
   children_func: count_functions
@@ -1052,7 +1331,6 @@ type directus_roles {
   parent(filter: directus_roles_filter, limit: Int, offset: Int, page: Int, search: String, sort: [String]): directus_roles
   policies(filter: directus_access_filter, limit: Int, offset: Int, page: Int, search: String, sort: [String]): [directus_access]
   policies_func: count_functions
-  test(filter: Actions_directus_roles_filter, limit: Int, offset: Int, page: Int, search: String, sort: [String]): [Actions_directus_roles]
   users(filter: directus_users_filter, limit: Int, offset: Int, page: Int, search: String, sort: [String]): [directus_users]
   users_func: count_functions
 }
@@ -1069,7 +1347,6 @@ input directus_roles_filter {
   parent: directus_roles_filter
   policies: directus_access_filter
   policies_func: count_function_filter_operators
-  test: Actions_directus_roles_filter
   users: directus_users_filter
   users_func: count_function_filter_operators
 }
@@ -1081,17 +1358,11 @@ type directus_roles_mutated {
 }
 
 type directus_users {
-  Collector_ID: String
-  Country: JSON
-  Country_func: count_functions
+  Company: Int
   appearance: String
   auth_data: JSON
   auth_data_func: count_functions
   avatar: String
-  """This can be the port name or company name"""
-  company_name: String
-  contact_person: String
-  coordinates: String
   description: String
   email: String
   email_notifications: Boolean
@@ -1108,15 +1379,10 @@ type directus_users {
   policies(filter: directus_access_filter, limit: Int, offset: Int, page: Int, search: String, sort: [String]): [directus_access]
   policies_func: count_functions
   provider: String
-  registered_port: String
   role(filter: directus_roles_filter, limit: Int, offset: Int, page: Int, search: String, sort: [String]): directus_roles
   status: String
   tags: JSON
   tags_func: count_functions
-  """this is a temp field to bring data from xsl to directus"""
-  temp_origin: String
-  """This is a temp field to bring data from xsl to directus"""
-  temp_vessel: String
   tfa_secret: Hash
   theme_dark: String
   theme_dark_overrides: JSON
@@ -1126,27 +1392,18 @@ type directus_users {
   theme_light_overrides_func: count_functions
   title: String
   token: Hash
-  """This should be manually enter, where this user's city"""
-  user_city: String
-  user_country: String
-  """This is only if the user is fisherman"""
-  vessel_type: String
+  """This field is reserve to write their crypto wallet address, please DO NOT edit."""
   wallet_address: String
 }
 
 input directus_users_filter {
-  Collector_ID: string_filter_operators
-  Country: string_filter_operators
-  Country_func: count_function_filter_operators
+  Company: number_filter_operators
   _and: [directus_users_filter]
   _or: [directus_users_filter]
   appearance: string_filter_operators
   auth_data: string_filter_operators
   auth_data_func: count_function_filter_operators
   avatar: string_filter_operators
-  company_name: string_filter_operators
-  contact_person: string_filter_operators
-  coordinates: string_filter_operators
   description: string_filter_operators
   email: string_filter_operators
   email_notifications: boolean_filter_operators
@@ -1163,13 +1420,10 @@ input directus_users_filter {
   policies: directus_access_filter
   policies_func: count_function_filter_operators
   provider: string_filter_operators
-  registered_port: string_filter_operators
   role: directus_roles_filter
   status: string_filter_operators
   tags: string_filter_operators
   tags_func: count_function_filter_operators
-  temp_origin: string_filter_operators
-  temp_vessel: string_filter_operators
   tfa_secret: hash_filter_operators
   theme_dark: string_filter_operators
   theme_dark_overrides: string_filter_operators
@@ -1179,9 +1433,6 @@ input directus_users_filter {
   theme_light_overrides_func: count_function_filter_operators
   title: string_filter_operators
   token: hash_filter_operators
-  user_city: string_filter_operators
-  user_country: string_filter_operators
-  vessel_type: string_filter_operators
   wallet_address: string_filter_operators
 }
 
@@ -1297,76 +1548,154 @@ input string_filter_operators {
   _starts_with: String
 }
 
+input update_Events_Input_input {
+  date_created: Date
+  date_updated: Date
+  event_id: update_Events_input
+  event_input_id: ID
+  """The incoming material type"""
+  input_Material: Int
+  """The QR code on the incoming material. Exception: If the Action is collection, then it represent the Collector ID card number."""
+  input_code: String
+  """The weight of the incoming material"""
+  input_weight: Int
+  sort: Int
+  status: String
+  user_created: String
+  user_updated: String
+}
+
+input update_Events_Output_input {
+  date_created: Date
+  date_updated: Date
+  event_id: update_Events_input
+  event_output_id: ID
+  """The QR code on the outgoing material. Exception: If the Action is manufacturing, this field should remain empty."""
+  output_code: String
+  """The outgoing material type"""
+  output_material: Int
+  """The weight of the outgoing material"""
+  output_weight: Int
+  sort: Int
+  status: String
+  user_created: String
+  user_updated: String
+}
+
+input update_Events_input {
+  """The UID from EAS. DO NOT edit this field."""
+  EAS_UID: String
+  """This is when the data has submitted to the blockchain. DO NOT edit."""
+  EAS_timestamp: Date
+  """The action type. ex. Fishing for litter, Sorting, Pelletizing, Manufacturing ..."""
+  action: Int
+  collector_name: Int
+  company: Int
+  date_created: Date
+  date_updated: Date
+  """This should be system autogenerated"""
+  event_id: ID
+  event_input_id: [update_Events_Input_input]
+  """This is WHERE the event happen. It should be feeded by the mobile app."""
+  event_location: String
+  event_output_id: [update_Events_Output_input]
+  """The date and time at which the action occurred."""
+  event_timestamp: Date
+  """Just tag things so its easy to find."""
+  internal_tag: JSON
+  sort: Int
+  """The sponsor for the Action. """
+  sponsor_id: Int
+  status: String
+  user_created: String
+  user_updated: String
+  """This is for internal operation, so they can refer the event to a weight slip."""
+  weight_slip_ref: Int
+}
+
+input update_Production_input {
+  """The NFT link for this product."""
+  NFT_link: String
+  """The batch data identifier. Format: YYYYMMDD. ex. 20241209"""
+  batch_identifier: String
+  """The number of items manufactured in this batch."""
+  batch_quantity: Int
+  date_created: Date
+  date_updated: Date
+  event_id: update_Events_input
+  """The product type that was manufactured"""
+  product_id: Int
+  production_id: ID
+  """The URL for this product. Format: https://enaleia-hub.com/product?user_id=user_id&product_id:=product_id&batch_identifier=YYYYMMDD"""
+  production_url: String
+  sort: Int
+  status: String
+  user_created: String
+  user_updated: String
+}
+
+input update_Vessels_Type_input {
+  Description: String
+  Greek: String
+  Vessels_type: String
+  date_created: Date
+  date_updated: Date
+  id: ID
+  sort: Int
+  status: String
+  user_created: String
+  user_updated: String
+}
+
 type version_Actions {
   action_description: String
+  action_group: String
   action_id: ID!
   action_name: String
   date_created: Date
   date_created_func: datetime_functions
   date_updated: Date
   date_updated_func: datetime_functions
-  roles: JSON
-  roles_func: count_functions
   sort: Int
   status: String
   user_created: JSON
-  user_role: JSON
-  user_role_func: count_functions
-  user_updated: JSON
-}
-
-type version_Actions_directus_roles {
-  Actions_action_id: JSON
-  directus_roles_id: JSON
-  id: ID!
-}
-
-type version_Aggregates {
-  active_vessels: Int
-  date_updated: Date
-  date_updated_func: datetime_functions
-  id: ID!
-  total_countries: Int
-  total_fishermen_actions: Int
-  total_materials_recycled: Int
-  total_ports: Int
   user_updated: JSON
 }
 
 type version_Collectors {
-  collector_country: String
+  collector_company_name: String
   collector_id: ID!
-  """This usually use for Vessel name, or Ad-hoc collector name"""
-  collector_name: String
-  """If vessel is part of company, you can enter it here"""
-  company_name: String
+  """This is the number that we will print on the fisherman's ID card"""
+  collector_identity: String
   contact_person: String
+  country: JSON
   date_created: Date
   date_created_func: datetime_functions
   date_updated: Date
   date_updated_func: datetime_functions
   fishing_season: JSON
   fishing_season_func: count_functions
-  """Is the collector active or not?"""
+  fishing_zone: GraphQLGeoJSON
+  """Is the collector active?"""
   is_active: Boolean
-  place_origin_temp: String
-  place_vessel_temp: String
+  registered_port: Int
   sort: Int
   status: String
   user_created: JSON
   user_updated: JSON
+  vessel_name: String
   vessel_type: JSON
-  vessel_type_func: count_functions
 }
 
 type version_Events {
+  """The UID from EAS. DO NOT edit this field."""
   EAS_UID: String
+  """This is when the data has submitted to the blockchain. DO NOT edit."""
   EAS_timestamp: Date
-  Inputs: JSON
-  """Select type of action, whether its fishing for litter...etc."""
+  """The action type. ex. Fishing for litter, Sorting, Pelletizing, Manufacturing ..."""
   action: Int
-  """This to give credit to WHO collect the waste. You can skip this if the action is for recycler."""
-  collector: String
+  collector_name: Int
+  company: Int
   date_created: Date
   date_updated: Date
   """This should be system autogenerated"""
@@ -1375,14 +1704,49 @@ type version_Events {
   """This is WHERE the event happen. It should be feeded by the mobile app."""
   event_location: String
   event_output_id: JSON
-  """This is to capture when the action is taken place."""
+  """The date and time at which the action occurred."""
   event_timestamp: Date
+  """Just tag things so its easy to find."""
   internal_tag: JSON
-  """This field is reserved for Enaleia internal, when team need to enter data on behalf of port coordinator"""
-  on_behalf_of: String
-  production_id: String
   sort: Int
+  """The sponsor for the Action. """
   sponsor_id: Int
+  status: String
+  user_created: String
+  user_updated: String
+  """This is for internal operation, so they can refer the event to a weight slip."""
+  weight_slip_ref: Int
+}
+
+type version_Events_Input {
+  date_created: Date
+  date_updated: Date
+  event_id: JSON
+  event_input_id: ID
+  """The incoming material type"""
+  input_Material: Int
+  """The QR code on the incoming material. Exception: If the Action is collection, then it represent the Collector ID card number."""
+  input_code: String
+  """The weight of the incoming material"""
+  input_weight: Int
+  sort: Int
+  status: String
+  user_created: String
+  user_updated: String
+}
+
+type version_Events_Output {
+  date_created: Date
+  date_updated: Date
+  event_id: JSON
+  event_output_id: ID
+  """The QR code on the outgoing material. Exception: If the Action is manufacturing, this field should remain empty."""
+  output_code: String
+  """The outgoing material type"""
+  output_material: Int
+  """The weight of the outgoing material"""
+  output_weight: Int
+  sort: Int
   status: String
   user_created: String
   user_updated: String
@@ -1402,28 +1766,25 @@ type version_Materials {
   user_updated: JSON
 }
 
-type version_Materials_directus_roles {
-  Materials_material_id: JSON
-  directus_roles_id: JSON
-  id: ID!
-}
-
 type version_Production {
+  """The NFT link for this product."""
   NFT_link: String
+  """The batch data identifier. Format: YYYYMMDD. ex. 20241209"""
   batch_identifier: String
+  """The number of items manufactured in this batch."""
   batch_quantity: Int
   date_created: Date
-  date_created_func: datetime_functions
   date_updated: Date
-  date_updated_func: datetime_functions
   event_id: JSON
-  product_id: JSON
-  production_id: ID!
+  """The product type that was manufactured"""
+  product_id: Int
+  production_id: ID
+  """The URL for this product. Format: https://enaleia-hub.com/product?user_id=user_id&product_id:=product_id&batch_identifier=YYYYMMDD"""
   production_url: String
   sort: Int
   status: String
-  user_created: JSON
-  user_updated: JSON
+  user_created: String
+  user_updated: String
 }
 
 type version_Products {
@@ -1433,9 +1794,10 @@ type version_Products {
   date_updated_func: datetime_functions
   manufactured_by: JSON
   product_id: ID!
+  product_images: String
+  product_images_func: count_functions
   product_name: String
-  product_type: JSON
-  product_type_func: count_functions
+  product_type: String
   product_weight: Int
   section_title: String
   sort: Int
@@ -1450,11 +1812,25 @@ type version_Sponsors {
   date_updated: Date
   date_updated_func: datetime_functions
   sort: Int
+  sponsor_contact: String
   sponsor_id: ID!
   sponsor_name: String
   status: String
   user_created: JSON
   user_updated: JSON
+}
+
+type version_Vessels_Type {
+  Description: String
+  Greek: String
+  Vessels_type: String
+  date_created: Date
+  date_updated: Date
+  id: ID
+  sort: Int
+  status: String
+  user_created: String
+  user_updated: String
 }
 
 type version_activity {
@@ -1463,6 +1839,20 @@ type version_activity {
   location: GraphQLGeoJSON
   type: String
   user_created: String
+}
+
+type version_countries {
+  country_color: String
+  country_id: ID!
+  country_name: String
+  date_created: Date
+  date_created_func: datetime_functions
+  date_updated: Date
+  date_updated_func: datetime_functions
+  sort: Int
+  status: String
+  user_created: JSON
+  user_updated: JSON
 }
 
 type version_resource {

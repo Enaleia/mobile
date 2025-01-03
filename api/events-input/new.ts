@@ -5,7 +5,11 @@ import { execute } from "@/api/graphql/execute";
 
 const CREATE_EVENTS_INPUT_MUTATION = graphql(`
   mutation CreateEventsInput($data: create_Events_Input_input!) {
-    create_Events_Input_item(data: $data)
+    create_Events_Input_item(data: $data) {
+      event_id {
+        event_id
+      }
+    }
   }
 `);
 
