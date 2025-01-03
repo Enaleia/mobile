@@ -113,6 +113,9 @@ importers:
       react-native:
         specifier: 0.76.5
         version: 0.76.5(@babel/core@7.25.7)(@babel/preset-env@7.25.7(@babel/core@7.25.7))(@react-native-community/cli-server-api@13.6.9)(@types/react@18.3.12)(react@18.3.1)
+      react-native-background-fetch:
+        specifier: ^4.2.7
+        version: 4.2.7
       react-native-gesture-handler:
         specifier: ~2.20.2
         version: 2.20.2(react-native@0.76.5(@babel/core@7.25.7)(@babel/preset-env@7.25.7(@babel/core@7.25.7))(@react-native-community/cli-server-api@13.6.9)(@types/react@18.3.12)(react@18.3.1))(react@18.3.1)
@@ -5363,6 +5366,9 @@ packages:
 
   react-is@18.3.1:
     resolution: {integrity: sha512-/LLMVyas0ljjAtoYiPqYiL8VWXzUUdThrmU5+n20DZv+a+ClRoevUzw5JxU+Ieh5/c87ytoTBV9G1FiKfNJdmg==}
+
+  react-native-background-fetch@4.2.7:
+    resolution: {integrity: sha512-lR8MmQRjd7MV9KBSOsyxFRW7jeCjNOSvsT4PECwZv54iZZtxUkRjH8Kbr6SGiSPK1AmYM6TCdRBEt2I9FDZJEg==}
 
   react-native-gesture-handler@2.20.2:
     resolution: {integrity: sha512-HqzFpFczV4qCnwKlvSAvpzEXisL+Z9fsR08YV5LfJDkzuArMhBu2sOoSPUF/K62PCoAb+ObGlTC83TKHfUd0vg==}
@@ -13231,6 +13237,8 @@ snapshots:
     optional: true
 
   react-is@18.3.1: {}
+
+  react-native-background-fetch@4.2.7: {}
 
   react-native-gesture-handler@2.20.2(react-native@0.76.5(@babel/core@7.25.7)(@babel/preset-env@7.25.7(@babel/core@7.25.7))(@react-native-community/cli-server-api@13.6.9)(@types/react@18.3.12)(react@18.3.1))(react@18.3.1):
     dependencies:

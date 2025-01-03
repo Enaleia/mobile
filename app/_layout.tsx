@@ -14,7 +14,7 @@ import { useFonts } from "expo-font";
 import { Stack } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import { memo, useEffect, useMemo, useState } from "react";
-
+import BackgroundFetch from "react-native-background-fetch";
 import { i18n } from "@lingui/core";
 import { I18nProvider, TransRenderProps } from "@lingui/react";
 import { Text } from "react-native";
@@ -22,8 +22,20 @@ import { Text } from "react-native";
 import * as Localization from "expo-localization";
 
 import { defaultLocale, dynamicActivate } from "@/lib/i18n";
+import { processQueue } from "@/api/events/new";
 
 SplashScreen.preventAutoHideAsync();
+
+BackgroundFetch.configure(
+  {
+    minimumFetchInterval: 15, // minutes
+    stopOnTerminate: false,
+  },
+  async () => {
+    await processQueue();
+    BackgroundFetch.finish();
+  }
+);
 
 const preloadedFonts = {
   "DMSans-Bold": require("../assets/fonts/DMSans-Bold.ttf"),

@@ -53,7 +53,8 @@
         }
       ],
       "expo-font",
-      "expo-localization"
+      "expo-localization",
+      "react-native-background-fetch"
     ],
     "experiments": {
       "typedRoutes": true
