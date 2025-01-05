@@ -61,14 +61,10 @@
     "zod": "^3.23.8"
   },
   "devDependencies": {
-    "@0no-co/graphqlsp": "^1.12.16",
     "@babel/core": "^7.20.0",
-    "@graphql-codegen/cli": "^5.0.3",
-    "@graphql-codegen/schema-ast": "^4.1.0",
     "@lingui/babel-plugin-lingui-macro": "^5.0.0",
     "@lingui/cli": "^5.0.0",
     "@lingui/metro-transformer": "^5.0.0",
-    "@parcel/watcher": "^2.4.1",
     "@types/jest": "^29.5.12",
     "@types/react": "~18.3.12",
     "@types/react-test-renderer": "^18.0.7",
