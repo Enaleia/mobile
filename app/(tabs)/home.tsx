@@ -1,10 +1,24 @@
 import ActionSelection from "@/components/features/home/ActionSelect";
 import SafeAreaContent from "@/components/shared/SafeAreaContent";
+import useDirectus from "@/hooks/useDirectus";
+import { readItems } from "@directus/sdk";
 import { Ionicons } from "@expo/vector-icons";
 import { Trans } from "@lingui/react";
+import { useQuery } from "@tanstack/react-query";
 import { Text, View } from "react-native";
 
 export default function Home() {
+  const { client } = useDirectus();
+  const { data: actions } = useQuery({
+    queryKey: ["actions"],
+    queryFn: async () =>
+      await client.request(
+        readItems("Actions", {
+          fields: ["*"],
+        })
+      ),
+  });
+  console.log({ actions });
   return (
     <SafeAreaContent>
       <View className="flex-row items-start justify-between pb-2 font-dm-regular">
