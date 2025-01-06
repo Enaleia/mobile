@@ -34,7 +34,7 @@ export default function LoginScreen() {
         <ScrollView
           showsVerticalScrollIndicator={false}
           contentContainerStyle={{
-            flexGrow: 1,
+            flexGrow: 0.8,
             justifyContent: "space-between",
           }}
         >
