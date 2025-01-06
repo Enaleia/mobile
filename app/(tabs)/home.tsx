@@ -1,37 +1,60 @@
 import ActionSelection from "@/components/features/home/ActionSelect";
 import SafeAreaContent from "@/components/shared/SafeAreaContent";
-import useDirectus from "@/hooks/useDirectus";
-import { readItems } from "@directus/sdk";
+import { UserInfo } from "@/types/user";
+import { directus } from "@/utils/directus";
+import { readMe } from "@directus/sdk";
 import { Ionicons } from "@expo/vector-icons";
 import { Trans } from "@lingui/react";
-import { useQuery } from "@tanstack/react-query";
+import { onlineManager, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Text, View } from "react-native";
 
 export default function Home() {
-  const { client } = useDirectus();
-  const { data: actions } = useQuery({
-    queryKey: ["actions"],
-    queryFn: async () =>
-      await client.request(
-        readItems("Actions", {
-          fields: ["*"],
-        })
-      ),
+  const queryClient = useQueryClient();
+  const { data: user } = useQuery({
+    queryKey: ["user-info"],
+    queryFn: async () => {
+      // First try to get cached data
+      const cachedData = queryClient.getQueryData<UserInfo>(["user-info"]);
+      if (cachedData) return cachedData;
+
+      // If no cached data, fetch fresh data
+      const token = await directus.getToken();
+      if (!token) throw new Error("No token found");
+
+      const userData = await directus.request(readMe());
+      const freshData = {
+        token,
+        email: userData.email,
+        name: userData.first_name,
+        lastName: userData.last_name,
+        avatar: userData.avatar,
+        id: userData.id,
+      };
+
+      return freshData;
+    },
+    initialData: {
+      token: "",
+      email: "",
+      name: "",
+      lastName: "",
+      avatar: "",
+      id: "",
+    },
   });
-  console.log({ actions });
   return (
     <SafeAreaContent>
       <View className="flex-row items-start justify-between pb-2 font-dm-regular">
         <View className="flex-row items-center justify-center gap-0.5">
           <Ionicons name="person-circle-outline" size={24} color="#0D0D0D" />
           <Text className="text-sm font-bold text-enaleia-black">
-            East Alexandria
+            {user.name}
           </Text>
         </View>
         <View className="flex-row items-center justify-center px-1.5 py-0.5 space-x-1 bg-sand-beige rounded-full">
           <View className="w-2 h-2 rounded-full bg-green-500" />
           <Text className="text-xs font-dm-medium text-enaleia-black">
-            Online
+            {onlineManager.isOnline() ? "Online" : "Offline"}
           </Text>
         </View>
       </View>

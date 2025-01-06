@@ -5,7 +5,11 @@
 
 // const CREATE_EVENTS_OUTPUT_MUTATION = graphql(`
 //   mutation CreateEventsOutput($data: create_Events_Output_input!) {
-//     create_Events_Output_item(data: $data)
+//     create_Events_Output_item(data: $data) {
+//       event_id {
+//         event_id
+//       }
+//     }
 //   }
 // `);
 

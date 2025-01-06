@@ -26,7 +26,7 @@ const ActionButton = ({
       }
     >
       <Image source={ACTION_ICONS[title]} className="w-16 h-16" />
-      <Text className="text-sm font-dm-light tracking-[-0.25px] text-enaleia-black">
+      <Text className="text-sm font-dm-light tracking-[-0.25px] text-enaleia-black text-center">
         {title}
       </Text>
     </Pressable>
