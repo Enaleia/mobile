@@ -1,4 +1,4 @@
-import { createDirectus, rest } from "@directus/sdk";
+import { authentication, createDirectus, rest } from "@directus/sdk";
 
 export const createDirectusClient = () => {
   const apiUrl = process.env.EXPO_PUBLIC_DEV_API_URL;
@@ -7,7 +7,9 @@ export const createDirectusClient = () => {
   }
 
   try {
-    const client = createDirectus(apiUrl).with(rest());
+    const client = createDirectus(apiUrl)
+      .with(authentication("json"))
+      .with(rest({ credentials: "include" }));
     console.log("[Directus] Client created successfully");
     return client;
   } catch (error) {
