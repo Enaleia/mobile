@@ -1,3 +1,4 @@
+import { ACTION_COLORS } from "@/constants/action";
 import { ImageSourcePropType } from "react-native";
 
 export interface UIAction {
@@ -34,3 +35,6 @@ export type ActionIcon = Record<ActionTitle, ImageSourcePropType>;
 export type ActionColor = Record<ActionTitle, string>;
 export type ActionCategories = Record<ActionCategory, ActionTitle[]>;
 export type ActionSlug = Record<ActionTitle, string>;
+export type ActionIds = {
+  [K in keyof typeof ACTION_COLORS]: number;
+};

@@ -5,35 +5,26 @@ import {
   MaterialOptions,
 } from "@/types/material";
 
-const MATERIAL_NAME_TO_ID: MaterialIdMap = {
-  "Mixed Plastics": 1,
-  Metals: 2,
-  PP: 6,
-  LDPE: 8,
-  "Prevention Nets": 3,
-  PE: 45,
-  "Ghost Nets": 4,
-  Others: 5,
-  PS: 13,
-  "Non-Recyclables": 11,
-  HDPE: 7,
-  PET: 9,
-  Nets: 10,
-  Rubbers: 43,
-  PA: 44,
-  Ropes: 46,
-  "Mixed Materials": 47,
-} as const;
+// These will be populated from cache
+export let MATERIAL_NAME_TO_ID: MaterialIdMap | undefined = undefined;
+export let MATERIAL_ID_TO_NAME: Record<number, string> | undefined = undefined;
+export let MATERIAL_OPTIONS: MaterialOptions | undefined = undefined;
 
-const MATERIAL_ID_TO_NAME = Object.fromEntries(
-  Object.entries(MATERIAL_NAME_TO_ID).map(([name, id]) => [id, name])
-);
+export function updateMaterialConstants(materials: any[]) {
+  MATERIAL_NAME_TO_ID = materials.reduce(
+    (acc, material) => ({
+      ...acc,
+      [material.name]: material.id,
+    }),
+    {}
+  );
 
-const MATERIAL_OPTIONS: MaterialOptions = Object.entries(
-  MATERIAL_NAME_TO_ID
-).map(([name, id]) => ({
-  label: name as MaterialNames,
-  value: id,
-}));
+  MATERIAL_ID_TO_NAME = Object.fromEntries(
+    materials.map((material) => [material.id, material.name])
+  );
 
-export { MATERIAL_NAME_TO_ID, MATERIAL_ID_TO_NAME, MATERIAL_OPTIONS };
+  MATERIAL_OPTIONS = materials.map((material) => ({
+    label: material.name as MaterialNames,
+    value: material.id,
+  }));
+}
