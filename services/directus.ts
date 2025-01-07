@@ -1,28 +1,37 @@
-import { createDirectus, readItems, rest } from "@directus/sdk";
+import { ActionTitle } from "@/types/action";
+import { directus } from "@/utils/directus";
+import { readItems } from "@directus/sdk";
 
-interface Material {
+export interface DirectusAction {
   id: number;
-  name: string;
-  // TODO: Add other fields from Directus schema
-}
-
-interface Action {
-  name: string;
+  name: ActionTitle;
   slug: string;
   color: string;
   icon: string;
   category: string;
-  // TODO: Add other fields from Directus schema
 }
 
-const directus = createDirectus(process.env.EXPO_PUBLIC_API_URL!).with(rest());
+export interface DirectusMaterial {
+  id: number;
+  name: string;
+}
 
 export async function fetchMaterials() {
-  return directus.request(readItems("materials"));
+  try {
+    const materials = await directus.request(readItems("Materials"));
+    return materials;
+  } catch (error) {
+    console.error("Error fetching materials:", error);
+    throw error;
+  }
 }
 
 export async function fetchActions() {
-  const result = await directus.request(readItems("actions"));
-  console.log({ result });
-  return result;
+  try {
+    const actions = await directus.request(readItems("Actions"));
+    return actions;
+  } catch (error) {
+    console.error("Error fetching actions:", error);
+    throw error;
+  }
 }

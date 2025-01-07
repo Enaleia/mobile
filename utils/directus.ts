@@ -1,9 +1,9 @@
 import { authentication, createDirectus, rest } from "@directus/sdk";
 
 export const createDirectusClient = () => {
-  const apiUrl = process.env.EXPO_PUBLIC_DEV_API_URL;
+  const apiUrl = process.env.EXPO_PUBLIC_API_URL;
   if (!apiUrl) {
-    throw new Error("EXPO_PUBLIC_DEV_API_URL is not set");
+    throw new Error("EXPO_PUBLIC_API_URL is not set");
   }
 
   try {
