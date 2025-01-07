@@ -1,5 +1,8 @@
 import ActionSelection from "@/components/features/home/ActionSelect";
 import SafeAreaContent from "@/components/shared/SafeAreaContent";
+import { LoadingScreen } from "@/components/LoadingScreen";
+import { ErrorScreen } from "@/components/ErrorScreen";
+import { NoDataScreen } from "@/components/NoDataScreen";
 import { UserInfo } from "@/types/user";
 import { directus } from "@/utils/directus";
 import { readMe } from "@directus/sdk";
@@ -7,10 +10,18 @@ import { Ionicons } from "@expo/vector-icons";
 import { Trans } from "@lingui/react";
 import { onlineManager, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Text, View } from "react-native";
+import { useDirectusData } from "@/hooks/useDirectusData";
 
-export default function Home() {
+function Home() {
   const queryClient = useQueryClient();
-  const { data: user } = useQuery({
+
+  const {
+    isLoading: directusLoading,
+    error: directusError,
+    hasData,
+  } = useDirectusData();
+
+  const { data: user, isLoading: userLoading } = useQuery({
     queryKey: ["user-info"],
     queryFn: async () => {
       // First try to get cached data
@@ -42,6 +53,21 @@ export default function Home() {
       id: "",
     },
   });
+
+  if (directusLoading || userLoading) {
+    return <LoadingScreen />;
+  }
+
+  if (directusError) {
+    return <ErrorScreen message={directusError.message} />;
+  }
+
+  if (!hasData) {
+    return (
+      <NoDataScreen message="Please connect to the internet to load required data" />
+    );
+  }
+
   return (
     <SafeAreaContent>
       <View className="flex-row items-start justify-between pb-2 font-dm-regular">
@@ -69,3 +95,5 @@ export default function Home() {
     </SafeAreaContent>
   );
 }
+
+export default Home;

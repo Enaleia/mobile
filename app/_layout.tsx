@@ -42,6 +42,7 @@ const queryClient = new QueryClient({
       gcTime: 1000 * 60 * 60 * 24, // 24 hours
       retry: 3,
       refetchOnWindowFocus: false,
+      staleTime: 1000 * 60 * 60 * 24, // 24 hours
     },
     mutations: {
       retry: 3,
@@ -50,15 +51,15 @@ const queryClient = new QueryClient({
   },
 });
 
+const asyncStoragePersister = createAsyncStoragePersister({
+  storage: AsyncStorage,
+  key: "enaleia-cache-v0",
+  throttleTime: 2000,
+});
+
 export default function RootLayout() {
   const [appIsReady, setAppIsReady] = useState(false);
   const [loaded, error] = useFonts(preloadedFonts);
-
-  const asyncStoragePersister = createAsyncStoragePersister({
-    storage: AsyncStorage,
-    key: "enaleia-cache-v0",
-    throttleTime: 2000,
-  });
 
   const locale = Localization.getLocales()[0]?.languageCode || defaultLocale;
 
