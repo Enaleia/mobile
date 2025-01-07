@@ -1,8 +1,5 @@
 import ActionSelection from "@/components/features/home/ActionSelect";
 import SafeAreaContent from "@/components/shared/SafeAreaContent";
-import { LoadingScreen } from "@/components/LoadingScreen";
-import { ErrorScreen } from "@/components/ErrorScreen";
-import { NoDataScreen } from "@/components/NoDataScreen";
 import { UserInfo } from "@/types/user";
 import { directus } from "@/utils/directus";
 import { readMe } from "@directus/sdk";
@@ -10,39 +7,38 @@ import { Ionicons } from "@expo/vector-icons";
 import { Trans } from "@lingui/react";
 import { onlineManager, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Text, View } from "react-native";
-import { useDirectusData } from "@/hooks/useDirectusData";
+import { useActions } from "@/hooks/useActions";
 
 function Home() {
   const queryClient = useQueryClient();
 
-  const {
-    isLoading: directusLoading,
-    error: directusError,
-    hasData,
-  } = useDirectusData();
-
   const { data: user, isLoading: userLoading } = useQuery({
     queryKey: ["user-info"],
     queryFn: async () => {
-      // First try to get cached data
-      const cachedData = queryClient.getQueryData<UserInfo>(["user-info"]);
-      if (cachedData) return cachedData;
+      try {
+        const cachedData = queryClient.getQueryData<UserInfo>(["user-info"]);
+        if (cachedData) return cachedData;
 
-      // If no cached data, fetch fresh data
-      const token = await directus.getToken();
-      if (!token) throw new Error("No token found");
+        const token = await directus.getToken();
+        if (!token) throw new Error("No token found");
 
-      const userData = await directus.request(readMe());
-      const freshData = {
-        token,
-        email: userData.email,
-        name: userData.first_name,
-        lastName: userData.last_name,
-        avatar: userData.avatar,
-        id: userData.id,
-      };
+        const userData = await directus.request(readMe());
+        if (!userData) throw new Error("No user data found");
 
-      return freshData;
+        const freshData = {
+          token,
+          email: userData.email,
+          name: userData.first_name,
+          lastName: userData.last_name,
+          avatar: userData.avatar,
+          id: userData.id,
+        };
+
+        return freshData;
+      } catch (error) {
+        console.error("Error fetching user data:", error);
+        throw error;
+      }
     },
     initialData: {
       token: "",
@@ -54,19 +50,7 @@ function Home() {
     },
   });
 
-  if (directusLoading || userLoading) {
-    return <LoadingScreen />;
-  }
-
-  if (directusError) {
-    return <ErrorScreen message={directusError.message} />;
-  }
-
-  if (!hasData) {
-    return (
-      <NoDataScreen message="Please connect to the internet to load required data" />
-    );
-  }
+  const { isLoading: actionsLoading, actionsData } = useActions();
 
   return (
     <SafeAreaContent>
@@ -90,7 +74,7 @@ function Home() {
             Hello, what action will you be doing today?
           </Trans>
         </Text>
-        <ActionSelection />
+        <ActionSelection actions={actionsData} isLoading={actionsLoading} />
       </View>
     </SafeAreaContent>
   );
