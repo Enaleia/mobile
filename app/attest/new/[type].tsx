@@ -1,11 +1,11 @@
-import { useCreateEvent } from "@/api/events/new";
-import SafeAreaContent from "@/components/shared/SafeAreaContent";
+// import { useCreateEvent } from "@/api/events/new";
 import AddMaterialModal from "@/components/features/attest/AddMaterialModal";
-import FormSection from "@/components/shared/FormSection";
-import QRTextInput from "@/components/features/scanning/QRTextInput";
 import { SentToQueueModal } from "@/components/features/attest/SentToQueueModal";
+import QRTextInput from "@/components/features/scanning/QRTextInput";
+import FormSection from "@/components/shared/FormSection";
+import SafeAreaContent from "@/components/shared/SafeAreaContent";
 import { ACTION_SLUGS } from "@/constants/action";
-import { MATERIAL_ID_TO_NAME } from "@/constants/material";
+import { MaterialsData, useMaterials } from "@/hooks/useMaterials";
 import { ActionTitle } from "@/types/action";
 import { MaterialDetail } from "@/types/material";
 import { Ionicons } from "@expo/vector-icons";
@@ -69,7 +69,7 @@ export type EventFormType = z.infer<typeof eventFormSchema>;
 
 const NewActionScreen = () => {
   const { type } = useLocalSearchParams(); // slug format
-  const { mutateAsync: createEvent } = useCreateEvent();
+
   const [isSentToQueue, setIsSentToQueue] = useState(false);
   const title = Object.keys(ACTION_SLUGS).find(
     (key) => ACTION_SLUGS[key as ActionTitle] === type
@@ -78,6 +78,8 @@ const NewActionScreen = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [hasAttemptedSubmit, setHasAttemptedSubmit] = useState(false);
+
+  const { materialsData, isLoading: materialsLoading } = useMaterials();
 
   const form = useForm({
     defaultValues: {
@@ -118,14 +120,14 @@ const NewActionScreen = () => {
 
         try {
           // TODO: Implement API call
-          // console.log(
-          //   "Form submitted with values:",
-          //   JSON.stringify(formDataWithLocalId, null, 2)
-          // );
-          await createEvent({
-            ...formDataWithLocalId,
-            isNotSynced: true,
-          });
+          console.log(
+            "Form submitted with values:",
+            JSON.stringify(formDataWithLocalId, null, 2)
+          );
+          // await createEvent({
+          //   ...formDataWithLocalId,
+          //   isNotSynced: true,
+          // });
           // console.log({ response });
         } catch (error) {
           console.error("Failed to create action:", error);
@@ -190,6 +192,7 @@ const NewActionScreen = () => {
             <form.Field name="incomingMaterials">
               {(field) => (
                 <MaterialSection
+                  materials={materialsData}
                   category="incoming"
                   isModalVisible={isIncomingMaterialsPickerVisible}
                   setModalVisible={setIsIncomingMaterialsPickerVisible}
@@ -204,6 +207,7 @@ const NewActionScreen = () => {
               <form.Field name="outgoingMaterials">
                 {(field) => (
                   <MaterialSection
+                    materials={materialsData}
                     category="outgoing"
                     isModalVisible={isOutgoingMaterialsPickerVisible}
                     setModalVisible={setIsOutgoingMaterialsPickerVisible}
@@ -361,12 +365,14 @@ const NewActionScreen = () => {
 };
 
 const MaterialSection = ({
+  materials,
   category,
   isModalVisible,
   setModalVisible,
   selectedMaterials,
   setSelectedMaterials,
 }: {
+  materials: MaterialsData | undefined;
   category: "incoming" | "outgoing";
   isModalVisible: boolean;
   setModalVisible: (visible: boolean) => void;
@@ -383,6 +389,10 @@ const MaterialSection = ({
     newMaterials.splice(index, 1);
     setSelectedMaterials(newMaterials);
   };
+
+  if (!materials) {
+    return null;
+  }
 
   return (
     <View className="mt-6">
@@ -401,7 +411,7 @@ const MaterialSection = ({
               <View key={materialIndex} className="mb-5">
                 <View className="flex-row items-center justify-between w-full mb-1">
                   <Text className="text-base font-dm-bold text-enaleia-black tracking-[-0.5px]">
-                    {MATERIAL_ID_TO_NAME[id]}
+                    {materials?.idToName?.[id] ?? "Unknown Material"}
                   </Text>
                   {isDeleting === materialIndex ? (
                     <View className="flex-row gap-2">
@@ -512,6 +522,7 @@ const MaterialSection = ({
         </Text>
       </Pressable>
       <AddMaterialModal
+        materials={materials?.options}
         isVisible={isModalVisible}
         onClose={() => setModalVisible(false)}
         selectedMaterials={selectedMaterials}

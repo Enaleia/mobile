@@ -4,6 +4,7 @@
     "slug": "enaleia",
     "version": "1.0.0",
     "newArchEnabled": true,
+    "owner": "pollen-labs",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "myapp",

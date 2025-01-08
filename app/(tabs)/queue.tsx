@@ -1,4 +1,4 @@
-import { IEvent } from "@/api/events/new";
+// import { IEvent } from "@/api/events/new";
 import SafeAreaContent from "@/components/shared/SafeAreaContent";
 import { ACTION_ICONS } from "@/constants/action";
 import { ActionTitle } from "@/types/action";
@@ -39,10 +39,17 @@ const QueueScreen = () => {
 
   const { data: incompleteActions } = useQuery({
     queryKey: ["events"],
-    queryFn: () =>
-      queryClient
-        .getQueryData<IEvent[]>(["events"])
-        ?.filter((event) => event.isNotSynced) || [],
+    queryFn: () => [
+      {
+        type: "Manufacturing",
+        date: "2025-01-01",
+        localId: "1",
+        isNotSynced: true,
+      },
+    ], // TODO: Remove this
+    // queryClient
+    //   .getQueryData<IEvent[]>(["events"])
+    //   ?.filter((event) => event.isNotSynced) || [],
     staleTime: Infinity,
   });
 
@@ -87,7 +94,7 @@ const QueueScreen = () => {
           QUEUE_ACTIONS_SORTED.map((action) => (
             <QueuedAction
               key={action.localId}
-              type={action.type}
+              type={action.type as ActionTitle}
               date={action.date}
             />
           ))

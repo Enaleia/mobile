@@ -21,7 +21,13 @@ import { Text } from "react-native";
 
 import * as Localization from "expo-localization";
 
+import { processActions } from "@/hooks/data/useActions";
+import { processCollectors } from "@/hooks/data/useCollectors";
+import { processMaterials } from "@/hooks/data/useMaterials";
+import { processProducts } from "@/hooks/data/useProducts";
 import { defaultLocale, dynamicActivate } from "@/lib/i18n";
+import { directus } from "@/utils/directus";
+import { batchFetchData } from "@/utils/batchFetcher";
 
 SplashScreen.preventAutoHideAsync();
 
@@ -42,6 +48,7 @@ const queryClient = new QueryClient({
       gcTime: 1000 * 60 * 60 * 24, // 24 hours
       retry: 3,
       refetchOnWindowFocus: false,
+      staleTime: 1000 * 60 * 60 * 24, // 24 hours
     },
     mutations: {
       retry: 3,
@@ -50,17 +57,48 @@ const queryClient = new QueryClient({
   },
 });
 
+const asyncStoragePersister = createAsyncStoragePersister({
+  storage: AsyncStorage,
+  key: "enaleia-cache-v0",
+  throttleTime: 2000,
+});
+
 export default function RootLayout() {
   const [appIsReady, setAppIsReady] = useState(false);
   const [loaded, error] = useFonts(preloadedFonts);
-
-  const asyncStoragePersister = createAsyncStoragePersister({
-    storage: AsyncStorage,
-    key: "enaleia-cache-v0",
-    throttleTime: 2000,
-  });
-
   const locale = Localization.getLocales()[0]?.languageCode || defaultLocale;
+
+  useEffect(() => {
+    async function prefetchData() {
+      try {
+        const token = await directus.getToken();
+        if (!token) return;
+
+        const data = await batchFetchData();
+
+        queryClient.prefetchQuery({
+          queryKey: ["actions"],
+          queryFn: () => processActions(data.actions),
+        });
+        queryClient.prefetchQuery({
+          queryKey: ["materials"],
+          queryFn: () => processMaterials(data.materials),
+        });
+        queryClient.prefetchQuery({
+          queryKey: ["collectors"],
+          queryFn: () => processCollectors(data.collectors),
+        });
+        queryClient.prefetchQuery({
+          queryKey: ["products"],
+          queryFn: () => processProducts(data.products),
+        });
+      } catch (error) {
+        console.error("Failed to prefetch data:", error);
+      }
+    }
+
+    prefetchData();
+  }, []);
 
   const stackScreens = useMemo(
     () => (
@@ -68,7 +106,6 @@ export default function RootLayout() {
         <Stack.Screen name="(tabs)" />
         <Stack.Screen name="index" />
         <Stack.Screen name="(auth)/login" />
-        <Stack.Screen name="forms" />
         <Stack.Screen name="attest/new/[type]" />
       </Stack>
     ),
@@ -101,11 +138,6 @@ export default function RootLayout() {
     <PersistQueryClientProvider
       client={queryClient}
       persistOptions={{ persister: asyncStoragePersister }}
-      onSuccess={() =>
-        queryClient
-          .resumePausedMutations()
-          .then(() => queryClient.invalidateQueries())
-      }
     >
       <I18nProvider i18n={i18n} defaultComponent={DefaultComponent}>
         {stackScreens}
