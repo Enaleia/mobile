@@ -1,56 +1,18 @@
 import ActionSelection from "@/components/features/home/ActionSelect";
+import { InitializationModal } from "@/components/features/initialization/InitializationModal";
 import SafeAreaContent from "@/components/shared/SafeAreaContent";
-import { UserInfo } from "@/types/user";
-import { directus } from "@/utils/directus";
-import { readMe } from "@directus/sdk";
+import { useActions } from "@/hooks/useActions";
+import { useInitialData } from "@/hooks/useInitialData";
+import { useUserInfo } from "@/hooks/useUserInfo";
 import { Ionicons } from "@expo/vector-icons";
 import { Trans } from "@lingui/react";
-import { onlineManager, useQuery, useQueryClient } from "@tanstack/react-query";
+import { onlineManager } from "@tanstack/react-query";
 import { Text, View } from "react-native";
-import { useActions } from "@/hooks/useActions";
 
 function Home() {
-  const queryClient = useQueryClient();
-
-  const { data: user, isLoading: userLoading } = useQuery({
-    queryKey: ["user-info"],
-    queryFn: async () => {
-      try {
-        const cachedData = queryClient.getQueryData<UserInfo>(["user-info"]);
-        if (cachedData) return cachedData;
-
-        const token = await directus.getToken();
-        if (!token) throw new Error("No token found");
-
-        const userData = await directus.request(readMe());
-        if (!userData) throw new Error("No user data found");
-
-        const freshData = {
-          token,
-          email: userData.email,
-          name: userData.first_name,
-          lastName: userData.last_name,
-          avatar: userData.avatar,
-          id: userData.id,
-        };
-
-        return freshData;
-      } catch (error) {
-        console.error("Error fetching user data:", error);
-        throw error;
-      }
-    },
-    initialData: {
-      token: "",
-      email: "",
-      name: "",
-      lastName: "",
-      avatar: "",
-      id: "",
-    },
-  });
-
-  const { isLoading: actionsLoading, actionsData } = useActions();
+  const { isLoading, error, progress, isComplete } = useInitialData();
+  const { userData } = useUserInfo();
+  const { actionsData } = useActions();
 
   return (
     <SafeAreaContent>
@@ -58,7 +20,7 @@ function Home() {
         <View className="flex-row items-center justify-center gap-0.5">
           <Ionicons name="person-circle-outline" size={24} color="#0D0D0D" />
           <Text className="text-sm font-bold text-enaleia-black">
-            {user.name}
+            {userData.name}
           </Text>
         </View>
         <View className="flex-row items-center justify-center px-1.5 py-0.5 space-x-1 bg-sand-beige rounded-full">
@@ -74,8 +36,13 @@ function Home() {
             Hello, what action will you be doing today?
           </Trans>
         </Text>
-        <ActionSelection actions={actionsData} isLoading={actionsLoading} />
+        <ActionSelection actions={actionsData} isLoading={isLoading} />
       </View>
+      <InitializationModal
+        isVisible={!isComplete}
+        progress={progress}
+        error={error}
+      />
     </SafeAreaContent>
   );
 }
