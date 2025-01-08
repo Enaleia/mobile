@@ -17,7 +17,7 @@ export interface MaterialsData {
   }>;
 }
 
-function processMaterials(materials: any[]): MaterialsData {
+export const processMaterials = (materials: any[]): MaterialsData => {
   const nameToId = materials.reduce(
     (acc, material) => ({
       ...acc,
@@ -40,7 +40,7 @@ function processMaterials(materials: any[]): MaterialsData {
     idToName,
     options,
   };
-}
+};
 
 export function useMaterials() {
   const queryClient = useQueryClient();

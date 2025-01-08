@@ -5,7 +5,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 
 export type GroupedActions = Record<string, Action[]>;
 
-function processActions(actions: any[]): GroupedActions {
+export const processActions = (actions: any[]): GroupedActions => {
   return actions.reduce((acc: GroupedActions, action: any) => {
     const category = action.action_group;
     if (!acc[category]) {
@@ -22,7 +22,7 @@ function processActions(actions: any[]): GroupedActions {
 
     return acc;
   }, {});
-}
+};
 
 export function useActions() {
   const queryClient = useQueryClient();
