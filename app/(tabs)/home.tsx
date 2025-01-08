@@ -2,17 +2,27 @@ import ActionSelection from "@/components/features/home/ActionSelect";
 import { InitializationModal } from "@/components/features/initialization/InitializationModal";
 import SafeAreaContent from "@/components/shared/SafeAreaContent";
 import { useActions } from "@/hooks/useActions";
-import { useInitialData } from "@/hooks/useInitialData";
 import { useUserInfo } from "@/hooks/useUserInfo";
 import { Ionicons } from "@expo/vector-icons";
 import { Trans } from "@lingui/react";
 import { onlineManager } from "@tanstack/react-query";
 import { Text, View } from "react-native";
+import { useQueries } from "@tanstack/react-query";
 
 function Home() {
-  const { isLoading, error, progress, isComplete } = useInitialData();
   const { userData } = useUserInfo();
   const { actionsData } = useActions();
+  const results = useQueries({
+    queries: [
+      { queryKey: ["materials"] },
+      { queryKey: ["collectors"] },
+      { queryKey: ["products"] },
+    ],
+  });
+
+  const error = results.find((result) => result.error)?.error;
+  const isComplete =
+    userData && actionsData && results.every((result) => result.data);
 
   return (
     <SafeAreaContent>
@@ -20,7 +30,7 @@ function Home() {
         <View className="flex-row items-center justify-center gap-0.5">
           <Ionicons name="person-circle-outline" size={24} color="#0D0D0D" />
           <Text className="text-sm font-bold text-enaleia-black">
-            {userData.name}
+            {userData?.name}
           </Text>
         </View>
         <View className="flex-row items-center justify-center px-1.5 py-0.5 space-x-1 bg-sand-beige rounded-full">
@@ -36,12 +46,18 @@ function Home() {
             Hello, what action will you be doing today?
           </Trans>
         </Text>
-        <ActionSelection actions={actionsData} isLoading={isLoading} />
+        <ActionSelection actions={actionsData} />
       </View>
       <InitializationModal
         isVisible={!isComplete}
-        progress={progress}
-        error={error}
+        progress={{
+          user: Boolean(userData),
+          actions: Boolean(actionsData),
+          materials: Boolean(results[0].data),
+          collectors: Boolean(results[1].data),
+          products: Boolean(results[2].data),
+        }}
+        error={error || null}
       />
     </SafeAreaContent>
   );
