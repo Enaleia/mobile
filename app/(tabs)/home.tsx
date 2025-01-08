@@ -1,8 +1,8 @@
 import ActionSelection from "@/components/features/home/ActionSelect";
 import { InitializationModal } from "@/components/features/initialization/InitializationModal";
 import SafeAreaContent from "@/components/shared/SafeAreaContent";
-import { useActions } from "@/hooks/useActions";
-import { useUserInfo } from "@/hooks/useUserInfo";
+import { useActions } from "@/hooks/data/useActions";
+import { useUserInfo } from "@/hooks/data/useUserInfo";
 import { Ionicons } from "@expo/vector-icons";
 import { Trans } from "@lingui/react";
 import { onlineManager } from "@tanstack/react-query";

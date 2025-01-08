@@ -21,10 +21,10 @@ import { Text } from "react-native";
 
 import * as Localization from "expo-localization";
 
-import { processActions } from "@/hooks/useActions";
-import { processCollectors } from "@/hooks/useCollectors";
-import { processMaterials } from "@/hooks/useMaterials";
-import { processProducts } from "@/hooks/useProducts";
+import { processActions } from "@/hooks/data/useActions";
+import { processCollectors } from "@/hooks/data/useCollectors";
+import { processMaterials } from "@/hooks/data/useMaterials";
+import { processProducts } from "@/hooks/data/useProducts";
 import { defaultLocale, dynamicActivate } from "@/lib/i18n";
 import { directus } from "@/utils/directus";
 import { batchFetchData } from "@/utils/batchFetcher";

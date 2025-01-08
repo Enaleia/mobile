@@ -1,6 +1,6 @@
 import { LoadingScreen } from "@/components/LoadingScreen";
 import ActionButton from "@/components/features/home/ActionButton";
-import { GroupedActions } from "@/hooks/useActions";
+import { GroupedActions } from "@/hooks/data/useActions";
 import { Action } from "@/types/action";
 import { ScrollView, Text, View } from "react-native";
 
