@@ -21,7 +21,13 @@ import { Text } from "react-native";
 
 import * as Localization from "expo-localization";
 
+import { processActions } from "@/hooks/useActions";
+import { processCollectors } from "@/hooks/useCollectors";
+import { processMaterials } from "@/hooks/useMaterials";
+import { processProducts } from "@/hooks/useProducts";
 import { defaultLocale, dynamicActivate } from "@/lib/i18n";
+import { directus } from "@/utils/directus";
+import { batchFetchData } from "@/utils/batchFetcher";
 
 SplashScreen.preventAutoHideAsync();
 
@@ -60,8 +66,39 @@ const asyncStoragePersister = createAsyncStoragePersister({
 export default function RootLayout() {
   const [appIsReady, setAppIsReady] = useState(false);
   const [loaded, error] = useFonts(preloadedFonts);
-
   const locale = Localization.getLocales()[0]?.languageCode || defaultLocale;
+
+  useEffect(() => {
+    async function prefetchData() {
+      try {
+        const token = await directus.getToken();
+        if (!token) return;
+
+        const data = await batchFetchData();
+
+        queryClient.prefetchQuery({
+          queryKey: ["actions"],
+          queryFn: () => processActions(data.actions),
+        });
+        queryClient.prefetchQuery({
+          queryKey: ["materials"],
+          queryFn: () => processMaterials(data.materials),
+        });
+        queryClient.prefetchQuery({
+          queryKey: ["collectors"],
+          queryFn: () => processCollectors(data.collectors),
+        });
+        queryClient.prefetchQuery({
+          queryKey: ["products"],
+          queryFn: () => processProducts(data.products),
+        });
+      } catch (error) {
+        console.error("Failed to prefetch data:", error);
+      }
+    }
+
+    prefetchData();
+  }, []);
 
   const stackScreens = useMemo(
     () => (
@@ -101,11 +138,6 @@ export default function RootLayout() {
     <PersistQueryClientProvider
       client={queryClient}
       persistOptions={{ persister: asyncStoragePersister }}
-      onSuccess={() =>
-        queryClient
-          .resumePausedMutations()
-          .then(() => queryClient.invalidateQueries())
-      }
     >
       <I18nProvider i18n={i18n} defaultComponent={DefaultComponent}>
         {stackScreens}
