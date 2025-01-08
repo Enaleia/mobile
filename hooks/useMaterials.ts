@@ -70,8 +70,6 @@ export function useMaterials() {
     staleTime: 7 * 24 * 60 * 60 * 1000, // 1 week
   });
 
-  console.log({ queryData: JSON.stringify(data, null, 2) });
-
   return {
     isLoading,
     error,
