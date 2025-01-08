@@ -1,4 +1,4 @@
-import { MATERIAL_OPTIONS } from "@/constants/material";
+import { MaterialsData } from "@/hooks/useMaterials";
 import { MaterialDetail, MaterialNames } from "@/types/material";
 import { Ionicons } from "@expo/vector-icons";
 import React, { useCallback } from "react";
@@ -44,8 +44,10 @@ const SelectMaterialChip = React.memo(
 
 const SelectMaterial = React.memo(
   ({
+    materials,
     handleAddMaterial,
   }: {
+    materials: MaterialsData["options"];
     handleAddMaterial: (materialId: number) => void;
   }) => {
     return (
@@ -55,10 +57,10 @@ const SelectMaterial = React.memo(
         </Text>
         <View className="p-1 mt-5">
           <View className="flex-row flex-wrap gap-2 justify-center">
-            {MATERIAL_OPTIONS.map(({ label, value }) => (
+            {materials.map(({ label, value }) => (
               <SelectMaterialChip
                 key={value}
-                label={label}
+                label={label as MaterialNames}
                 value={value}
                 handleAddMaterial={handleAddMaterial}
               />
@@ -75,8 +77,10 @@ export default function AddMaterialModal({
   onClose,
   selectedMaterials,
   setSelectedMaterials,
+  materials,
 }: {
   isVisible: boolean;
+  materials: MaterialsData["options"];
   onClose: () => void;
   selectedMaterials: MaterialDetail[];
   setSelectedMaterials: (materials: MaterialDetail[]) => void;
@@ -115,7 +119,10 @@ export default function AddMaterialModal({
           keyboardShouldPersistTaps="handled"
         >
           <View className="bg-slate-50 p-3 rounded-lg relative">
-            <SelectMaterial handleAddMaterial={handleAddMaterial} />
+            <SelectMaterial
+              materials={materials}
+              handleAddMaterial={handleAddMaterial}
+            />
             <Pressable
               onPress={onClose}
               className="h-10 w-10 absolute right-0 top-3"

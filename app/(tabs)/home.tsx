@@ -1,54 +1,36 @@
 import ActionSelection from "@/components/features/home/ActionSelect";
+import { InitializationModal } from "@/components/features/initialization/InitializationModal";
 import SafeAreaContent from "@/components/shared/SafeAreaContent";
-import { UserInfo } from "@/types/user";
-import { directus } from "@/utils/directus";
-import { readMe } from "@directus/sdk";
+import { useActions } from "@/hooks/data/useActions";
+import { useUserInfo } from "@/hooks/data/useUserInfo";
 import { Ionicons } from "@expo/vector-icons";
 import { Trans } from "@lingui/react";
-import { onlineManager, useQuery, useQueryClient } from "@tanstack/react-query";
+import { onlineManager } from "@tanstack/react-query";
 import { Text, View } from "react-native";
+import { useQueries } from "@tanstack/react-query";
 
-export default function Home() {
-  const queryClient = useQueryClient();
-  const { data: user } = useQuery({
-    queryKey: ["user-info"],
-    queryFn: async () => {
-      // First try to get cached data
-      const cachedData = queryClient.getQueryData<UserInfo>(["user-info"]);
-      if (cachedData) return cachedData;
-
-      // If no cached data, fetch fresh data
-      const token = await directus.getToken();
-      if (!token) throw new Error("No token found");
-
-      const userData = await directus.request(readMe());
-      const freshData = {
-        token,
-        email: userData.email,
-        name: userData.first_name,
-        lastName: userData.last_name,
-        avatar: userData.avatar,
-        id: userData.id,
-      };
-
-      return freshData;
-    },
-    initialData: {
-      token: "",
-      email: "",
-      name: "",
-      lastName: "",
-      avatar: "",
-      id: "",
-    },
+function Home() {
+  const { userData } = useUserInfo();
+  const { actionsData } = useActions();
+  const results = useQueries({
+    queries: [
+      { queryKey: ["materials"] },
+      { queryKey: ["collectors"] },
+      { queryKey: ["products"] },
+    ],
   });
+
+  const error = results.find((result) => result.error)?.error;
+  const isComplete =
+    userData && actionsData && results.every((result) => result.data);
+
   return (
     <SafeAreaContent>
       <View className="flex-row items-start justify-between pb-2 font-dm-regular">
         <View className="flex-row items-center justify-center gap-0.5">
           <Ionicons name="person-circle-outline" size={24} color="#0D0D0D" />
           <Text className="text-sm font-bold text-enaleia-black">
-            {user.name}
+            {userData?.name}
           </Text>
         </View>
         <View className="flex-row items-center justify-center px-1.5 py-0.5 space-x-1 bg-sand-beige rounded-full">
@@ -64,8 +46,21 @@ export default function Home() {
             Hello, what action will you be doing today?
           </Trans>
         </Text>
-        <ActionSelection />
+        <ActionSelection actions={actionsData} />
       </View>
+      <InitializationModal
+        isVisible={!isComplete}
+        progress={{
+          user: Boolean(userData),
+          actions: Boolean(actionsData),
+          materials: Boolean(results[0].data),
+          collectors: Boolean(results[1].data),
+          products: Boolean(results[2].data),
+        }}
+        error={error || null}
+      />
     </SafeAreaContent>
   );
 }
+
+export default Home;

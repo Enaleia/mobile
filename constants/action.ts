@@ -1,28 +1,11 @@
-import {
-  ActionCategories,
-  ActionColor,
-  ActionIcon,
-  ActionSlug,
-} from "@/types/action";
+import { ActionColor, ActionIcon, ActionSlug } from "@/types/action";
 
-const actionIcons = {
-  "Ad-hoc": require("@assets/images/action-icons/Ad-hoc.webp"),
-  "Collection Batch": require("@assets/images/action-icons/Batch.webp"),
-  "Beach Cleanup": require("@assets/images/action-icons/Beach Cleanup.webp"),
-  "Fishing for Litter": require("@assets/images/action-icons/Fishing for Litter.webp"),
-  Manufacturing: require("@assets/images/action-icons/Manufacturing.webp"),
-  Pelletizing: require("@assets/images/action-icons/Pelletizing.webp"),
-  Prevention: require("@assets/images/action-icons/Prevention.webp"),
-  Shredding: require("@assets/images/action-icons/Shredding.webp"),
-  Sorting: require("@assets/images/action-icons/Sorting.webp"),
-  Washing: require("@assets/images/action-icons/Washing.webp"),
-} as const;
-
+// Keep only the static assets and configurations
 export const ACTION_COLORS: ActionColor = {
   "Ad-hoc": "#FABAA4",
-  "Collection Batch": "#9FD08B",
-  "Beach Cleanup": "#E2CD96",
-  "Fishing for Litter": "#69B5E8",
+  Batch: "#9FD08B",
+  "Beach cleanup": "#E2CD96",
+  "Fishing for litter": "#69B5E8",
   Manufacturing: "#E2B9ED",
   Pelletizing: "#DCB093",
   Prevention: "#7BCFCC",
@@ -33,9 +16,9 @@ export const ACTION_COLORS: ActionColor = {
 
 export const ACTION_SLUGS: ActionSlug = {
   "Ad-hoc": "adhoc",
-  "Collection Batch": "collection-batch",
-  "Beach Cleanup": "beach-cleanup",
-  "Fishing for Litter": "fishing-for-litter",
+  Batch: "collection-batch",
+  "Beach cleanup": "beach-cleanup",
+  "Fishing for litter": "fishing-for-litter",
   Manufacturing: "manufacturing",
   Pelletizing: "pelletizing",
   Prevention: "prevention",
@@ -44,13 +27,19 @@ export const ACTION_SLUGS: ActionSlug = {
   Washing: "washing",
 } as const;
 
-export const ACTION_ICONS: ActionIcon = actionIcons;
-
-export const ACTION_CATEGORIES: ActionCategories = {
-  Collecting: ["Fishing for Litter", "Prevention", "Ad-hoc", "Beach Cleanup"],
-  Transporting: ["Collection Batch"],
-  Recycling: ["Pelletizing", "Shredding", "Sorting", "Washing"],
-  Manufacturing: ["Manufacturing"],
+const actionIcons = {
+  "Ad-hoc": require("@assets/images/action-icons/Ad-hoc.webp"),
+  Batch: require("@assets/images/action-icons/Batch.webp"),
+  "Beach cleanup": require("@assets/images/action-icons/Beach Cleanup.webp"),
+  "Fishing for litter": require("@assets/images/action-icons/Fishing for Litter.webp"),
+  Manufacturing: require("@assets/images/action-icons/Manufacturing.webp"),
+  Pelletizing: require("@assets/images/action-icons/Pelletizing.webp"),
+  Prevention: require("@assets/images/action-icons/Prevention.webp"),
+  Shredding: require("@assets/images/action-icons/Shredding.webp"),
+  Sorting: require("@assets/images/action-icons/Sorting.webp"),
+  Washing: require("@assets/images/action-icons/Washing.webp"),
 } as const;
+
+export const ACTION_ICONS: ActionIcon = actionIcons;
 
 export default actionIcons;

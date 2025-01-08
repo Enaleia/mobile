@@ -1,11 +1,21 @@
-import { ACTION_CATEGORIES } from "@/constants/action";
-import { ScrollView, Text, View } from "react-native";
+import { LoadingScreen } from "@/components/LoadingScreen";
 import ActionButton from "@/components/features/home/ActionButton";
+import { GroupedActions } from "@/hooks/data/useActions";
+import { Action } from "@/types/action";
+import { ScrollView, Text, View } from "react-native";
 
-export default function ActionSelection() {
+interface ActionSelectionProps {
+  actions: GroupedActions | undefined;
+}
+
+export default function ActionSelection({ actions }: ActionSelectionProps) {
+  if (!actions) {
+    return <LoadingScreen />;
+  }
+
   return (
     <ScrollView>
-      {Object.entries(ACTION_CATEGORIES).map(([category, actions]) => (
+      {Object.entries(actions).map(([category, categoryActions]) => (
         <View
           key={category}
           className="py-5 border-b-[1.5px] border-neutral-200 last-of-type:border-b-0"
@@ -14,8 +24,13 @@ export default function ActionSelection() {
             {category}
           </Text>
           <View className="flex-row flex-wrap">
-            {actions.map((action) => (
-              <ActionButton key={action} title={action} />
+            {categoryActions.map((action: Action) => (
+              <ActionButton
+                key={action.id}
+                name={action.name}
+                color={action.color}
+                icon={action.icon}
+              />
             ))}
           </View>
         </View>
