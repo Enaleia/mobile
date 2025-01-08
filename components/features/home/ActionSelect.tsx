@@ -1,27 +1,16 @@
-import ActionButton from "@/components/features/home/ActionButton";
-import { ScrollView, Text, View } from "react-native";
 import { LoadingScreen } from "@/components/LoadingScreen";
-import { NoDataScreen } from "@/components/NoDataScreen";
-import { Action } from "@/types/action";
+import ActionButton from "@/components/features/home/ActionButton";
 import { GroupedActions } from "@/hooks/useActions";
+import { Action } from "@/types/action";
+import { ScrollView, Text, View } from "react-native";
 
 interface ActionSelectionProps {
   actions: GroupedActions | undefined;
-  isLoading: boolean;
 }
 
-export default function ActionSelection({
-  actions,
-  isLoading,
-}: ActionSelectionProps) {
-  if (isLoading) {
-    return <LoadingScreen />;
-  }
-
+export default function ActionSelection({ actions }: ActionSelectionProps) {
   if (!actions) {
-    return (
-      <NoDataScreen message="Could not load actions, check your internet connection" />
-    );
+    return <LoadingScreen />;
   }
 
   return (
