@@ -167,15 +167,25 @@ const NewActionScreen = () => {
           accessibilityRole="image"
         />
       </View>
-      <View className="flex-row items-center justify-end">
-        <Pressable onPress={() => router.back()}>
-          <Ionicons name="close" size={24} color="#0D0D0D" />
+      <View className="flex-row items-center justify-start pb-4">
+        <Pressable
+          onPress={() => router.back()}
+          className="flex-row items-center space-x-1"
+        >
+          <Ionicons
+            name="chevron-back-circle-outline"
+            size={24}
+            color="#0D0D0D"
+          />
+          <Text className="text-base font-dm-regular text-enaleia-black tracking-tighter">
+            Back
+          </Text>
         </Pressable>
       </View>
       <Text className="text-3xl font-dm-bold text-enaleia-black tracking-[-1px] mb-2">
         {title}
       </Text>
-      <View className="flex-1 py-1">
+      <View className="flex-1">
         <ScrollView
           showsVerticalScrollIndicator={false}
           contentContainerStyle={{ flexGrow: 0, paddingBottom: 20 }}
@@ -187,7 +197,7 @@ const NewActionScreen = () => {
               e.stopPropagation();
               form.handleSubmit();
             }}
-            className="flex-1space-y-4"
+            className="flex-1 space-y-2"
           >
             <form.Field name="incomingMaterials">
               {(field) => (
@@ -305,7 +315,7 @@ const NewActionScreen = () => {
                     <ActivityIndicator color="white" className="mr-2" />
                   ) : null}
                   <Text className="text-base font-dm-medium text-slate-50 tracking-tight">
-                    {isSubmitting ? "Submitting..." : "Submit Attestation"}
+                    {isSubmitting ? "Saving..." : "Create Attestation"}
                   </Text>
                 </Pressable>
               )}
@@ -396,7 +406,7 @@ const MaterialSection = ({
 
   return (
     <View className="mt-6">
-      <View className="flex-row items-start space-x-1 mb-4">
+      <View className="flex-row items-start space-x-1 mb-1">
         <Text className="text-[20px] font-dm-regular text-enaleia-black tracking-tighter">
           {title}
         </Text>
