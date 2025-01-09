@@ -31,7 +31,7 @@ const ActionButton = ({
       }
     >
       <Image source={icon} className="w-16 h-16" />
-      <Text className="text-sm font-dm-light tracking-[-0.25px] text-enaleia-black text-center">
+      <Text className="text-sm font-dm-regular tracking-[-0.25px] text-enaleia-black text-center w-full">
         {name}
       </Text>
     </Pressable>
