@@ -8,7 +8,7 @@ export const createDirectusClient = () => {
 
   try {
     const client = createDirectus(apiUrl)
-      .with(authentication("json"))
+      .with(authentication())
       .with(rest({ credentials: "include" }));
     console.log("[Directus] Client created successfully");
     return client;
