@@ -38,24 +38,30 @@ export type ActionIds = {
   [K in keyof typeof ACTION_COLORS]: number;
 };
 
-// Add the missing GroupedActions type
 export type GroupedActions = Record<string, Action[]>;
-
 export const processActions = (actions: any[]): GroupedActions => {
-  return actions.reduce((acc: GroupedActions, action: any) => {
+  const groupedActions: GroupedActions = {};
+
+  const len = actions.length;
+
+  for (let i = 0; i < len; i++) {
+    const action = actions[i];
     const category = action.action_group;
-    if (!acc[category]) {
-      acc[category] = [];
+
+    if (!groupedActions[category]) {
+      groupedActions[category] = [];
     }
 
-    acc[category].push({
-      id: action.action_id,
-      name: action.action_name,
-      description: action.action_description,
-      color: ACTION_COLORS[action.action_name as keyof typeof ACTION_COLORS],
-      icon: ACTION_ICONS[action.action_name as keyof typeof ACTION_ICONS],
-    });
+    const actionName = action.action_name;
 
-    return acc;
-  }, {});
+    groupedActions[category].push({
+      id: action.action_id,
+      name: actionName,
+      description: action.action_description,
+      color: ACTION_COLORS[actionName as keyof typeof ACTION_COLORS],
+      icon: ACTION_ICONS[actionName as keyof typeof ACTION_ICONS],
+    });
+  }
+
+  return groupedActions;
 };

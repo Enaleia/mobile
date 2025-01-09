@@ -47,22 +47,22 @@ export interface MaterialsData {
 }
 
 export const processMaterials = (materials: any[]): MaterialsData => {
-  const nameToId = materials.reduce(
-    (acc, material) => ({
-      ...acc,
-      [material.material_name]: material.material_id,
-    }),
-    {}
-  );
+  const nameToId: Record<string, number> = {};
+  const idToName: Record<number, string> = {};
+  const options: Array<{ label: string; value: number }> = [];
 
-  const idToName = Object.fromEntries(
-    materials.map((material) => [material.material_id, material.material_name])
-  );
+  for (const material of materials) {
+    if (material.material_name !== null) {
+      const { material_name, material_id } = material;
 
-  const options = materials.map((material) => ({
-    label: material.material_name,
-    value: material.material_id,
-  }));
+      nameToId[material_name] = material_id;
+      idToName[material_id] = material_name;
+      options.push({
+        label: material_name,
+        value: material_id,
+      });
+    }
+  }
 
   return {
     nameToId,
