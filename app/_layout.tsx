@@ -73,24 +73,16 @@ export default function RootLayout() {
       try {
         const token = await directus.getToken();
         if (!token) return;
-
-        const data = await batchFetchData();
-
         queryClient.prefetchQuery({
-          queryKey: ["actions"],
-          queryFn: () => processActions(data.actions),
-        });
-        queryClient.prefetchQuery({
-          queryKey: ["materials"],
-          queryFn: () => processMaterials(data.materials),
-        });
-        queryClient.prefetchQuery({
-          queryKey: ["collectors"],
-          queryFn: () => processCollectors(data.collectors),
-        });
-        queryClient.prefetchQuery({
-          queryKey: ["products"],
-          queryFn: () => processProducts(data.products),
+          queryKey: ["batchData"],
+          queryFn: async () => {
+            const data = await batchFetchData();
+            return {
+              materials: processMaterials(data.materials),
+              collectors: processCollectors(data.collectors),
+              products: processProducts(data.products),
+            };
+          },
         });
       } catch (error) {
         console.error("Failed to prefetch data:", error);

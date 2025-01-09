@@ -2,27 +2,33 @@ import ActionSelection from "@/components/features/home/ActionSelect";
 import { InitializationModal } from "@/components/features/initialization/InitializationModal";
 import SafeAreaContent from "@/components/shared/SafeAreaContent";
 import { useActions } from "@/hooks/data/useActions";
+import { processCollectors } from "@/hooks/data/useCollectors";
+import { processMaterials } from "@/hooks/data/useMaterials";
+import { processProducts } from "@/hooks/data/useProducts";
 import { useUserInfo } from "@/hooks/data/useUserInfo";
+import { batchFetchData } from "@/utils/batchFetcher";
 import { Ionicons } from "@expo/vector-icons";
 import { Trans } from "@lingui/react";
-import { onlineManager } from "@tanstack/react-query";
+import { onlineManager, useQuery } from "@tanstack/react-query";
 import { Text, View } from "react-native";
-import { useQueries } from "@tanstack/react-query";
 
 function Home() {
   const { userData } = useUserInfo();
   const { actionsData } = useActions();
-  const results = useQueries({
-    queries: [
-      { queryKey: ["materials"] },
-      { queryKey: ["collectors"] },
-      { queryKey: ["products"] },
-    ],
+
+  const { data: batchData, error } = useQuery({
+    queryKey: ["batchData"],
+    queryFn: async () => {
+      const data = await batchFetchData();
+      return {
+        materials: processMaterials(data.materials),
+        collectors: processCollectors(data.collectors),
+        products: processProducts(data.products),
+      };
+    },
   });
 
-  const error = results.find((result) => result.error)?.error;
-  const isComplete =
-    userData && actionsData && results.every((result) => result.data);
+  const isComplete = userData && actionsData && batchData;
 
   return (
     <SafeAreaContent>
@@ -53,9 +59,9 @@ function Home() {
         progress={{
           user: Boolean(userData),
           actions: Boolean(actionsData),
-          materials: Boolean(results[0].data),
-          collectors: Boolean(results[1].data),
-          products: Boolean(results[2].data),
+          materials: Boolean(batchData?.materials),
+          collectors: Boolean(batchData?.collectors),
+          products: Boolean(batchData?.products),
         }}
         error={error || null}
       />
