@@ -5,7 +5,7 @@ import QRTextInput from "@/components/features/scanning/QRTextInput";
 import FormSection from "@/components/shared/FormSection";
 import SafeAreaContent from "@/components/shared/SafeAreaContent";
 import { ACTION_SLUGS } from "@/constants/action";
-import { MaterialsData, useMaterials } from "@/hooks/useMaterials";
+import { MaterialsData, useMaterials } from "@/hooks/data/useMaterials";
 import { ActionTitle } from "@/types/action";
 import { MaterialDetail } from "@/types/material";
 import { Ionicons } from "@expo/vector-icons";
