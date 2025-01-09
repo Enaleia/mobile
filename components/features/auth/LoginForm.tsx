@@ -1,6 +1,6 @@
 import { UserInfo } from "@/types/user";
 import { directus } from "@/utils/directus";
-import { login, readMe } from "@directus/sdk";
+import { readMe } from "@directus/sdk";
 import { Ionicons } from "@expo/vector-icons";
 import { useForm } from "@tanstack/react-form";
 import { useQueryClient } from "@tanstack/react-query";
@@ -49,9 +49,7 @@ export default function LoginForm() {
 
   const handleLogin = async (value: LoginData) => {
     try {
-      const loginResult = await directus.request(
-        login(value.email, value.password)
-      );
+      const loginResult = await directus.login(value.email, value.password);
       const token = loginResult.access_token;
       await directus.setToken(token);
       const user = await directus.request(readMe());
