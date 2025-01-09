@@ -25,7 +25,7 @@ const TabsLayout = () => {
         options={{
           tabBarLabel: "Home",
           tabBarIcon: ({ color }) => (
-            <Ionicons name="home-outline" size={24} color={color} />
+            <Ionicons name="home" size={24} color={color} />
           ),
         }}
       />
@@ -35,7 +35,16 @@ const TabsLayout = () => {
           tabBarLabel: "Queue",
           tabBarBadge: incompleteActions?.length || undefined,
           tabBarIcon: ({ color }) => (
-            <Ionicons name="archive-outline" size={24} color={color} />
+            <Ionicons name="archive" size={24} color={color} />
+          ),
+        }}
+      />
+      <Tabs.Screen
+        name="settings"
+        options={{
+          tabBarLabel: "Settings",
+          tabBarIcon: ({ color }) => (
+            <Ionicons name="settings" size={24} color={color} />
           ),
         }}
       />
