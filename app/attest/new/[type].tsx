@@ -1,4 +1,4 @@
-// import { useCreateEvent } from "@/api/events/new";
+import { useCreateEvent } from "@/api/events/new";
 import AddMaterialModal from "@/components/features/attest/AddMaterialModal";
 import { SentToQueueModal } from "@/components/features/attest/SentToQueueModal";
 import QRTextInput from "@/components/features/scanning/QRTextInput";
@@ -81,6 +81,8 @@ const NewActionScreen = () => {
 
   const { materialsData, isLoading: materialsLoading } = useMaterials();
 
+  const { mutate: createEvent } = useCreateEvent();
+
   const form = useForm({
     defaultValues: {
       type: title as ActionTitle,
@@ -124,10 +126,10 @@ const NewActionScreen = () => {
             "Form submitted with values:",
             JSON.stringify(formDataWithLocalId, null, 2)
           );
-          // await createEvent({
-          //   ...formDataWithLocalId,
-          //   isNotSynced: true,
-          // });
+          await createEvent({
+            ...formDataWithLocalId,
+            isNotSynced: true,
+          });
           // console.log({ response });
         } catch (error) {
           console.error("Failed to create action:", error);
