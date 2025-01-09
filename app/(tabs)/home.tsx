@@ -2,10 +2,11 @@ import ActionSelection from "@/components/features/home/ActionSelect";
 import { InitializationModal } from "@/components/features/initialization/InitializationModal";
 import SafeAreaContent from "@/components/shared/SafeAreaContent";
 import { useActions } from "@/hooks/data/useActions";
-import { processCollectors } from "@/hooks/data/useCollectors";
-import { processMaterials } from "@/hooks/data/useMaterials";
-import { processProducts } from "@/hooks/data/useProducts";
+
 import { useUserInfo } from "@/hooks/data/useUserInfo";
+import { processCollectors } from "@/types/collector";
+import { processMaterials } from "@/types/material";
+import { processProducts } from "@/types/product";
 import { batchFetchData } from "@/utils/batchFetcher";
 import { Ionicons } from "@expo/vector-icons";
 import { Trans } from "@lingui/react";

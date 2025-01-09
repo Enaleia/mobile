@@ -21,13 +21,13 @@ import { Text } from "react-native";
 
 import * as Localization from "expo-localization";
 
-import { processActions } from "@/hooks/data/useActions";
-import { processCollectors } from "@/hooks/data/useCollectors";
-import { processMaterials } from "@/hooks/data/useMaterials";
-import { processProducts } from "@/hooks/data/useProducts";
 import { defaultLocale, dynamicActivate } from "@/lib/i18n";
 import { directus } from "@/utils/directus";
 import { batchFetchData } from "@/utils/batchFetcher";
+import { processActions } from "@/types/action";
+import { processMaterials } from "@/types/material";
+import { processCollectors } from "@/types/collector";
+import { processProducts } from "@/types/product";
 
 SplashScreen.preventAutoHideAsync();
 
@@ -73,11 +73,13 @@ export default function RootLayout() {
       try {
         const token = await directus.getToken();
         if (!token) return;
+
         queryClient.prefetchQuery({
           queryKey: ["batchData"],
           queryFn: async () => {
             const data = await batchFetchData();
             return {
+              actions: processActions(data.actions),
               materials: processMaterials(data.materials),
               collectors: processCollectors(data.collectors),
               products: processProducts(data.products),
