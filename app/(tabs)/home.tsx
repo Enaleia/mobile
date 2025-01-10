@@ -1,9 +1,9 @@
 import ActionSelection from "@/components/features/home/ActionSelect";
 import { InitializationModal } from "@/components/features/initialization/InitializationModal";
 import SafeAreaContent from "@/components/shared/SafeAreaContent";
-import { useActions } from "@/hooks/data/useActions";
-
 import { useUserInfo } from "@/hooks/data/useUserInfo";
+import { processActions } from "@/types/action";
+import { BatchData } from "@/types/batch";
 import { processCollectors } from "@/types/collector";
 import { processMaterials } from "@/types/material";
 import { processProducts } from "@/types/product";
@@ -15,21 +15,42 @@ import { Text, View } from "react-native";
 
 function Home() {
   const { userData } = useUserInfo();
-  const { actionsData } = useActions();
-
-  const { data: batchData, error } = useQuery({
+  const {
+    data: batchData,
+    error,
+    isLoading,
+  } = useQuery<BatchData, Error>({
     queryKey: ["batchData"],
     queryFn: async () => {
-      const data = await batchFetchData();
-      return {
-        materials: processMaterials(data.materials),
-        collectors: processCollectors(data.collectors),
-        products: processProducts(data.products),
-      };
+      try {
+        const data = await batchFetchData();
+        const processed = {
+          actions: data.actions ? processActions(data.actions) : null,
+          materials: data.materials ? processMaterials(data.materials) : null,
+          collectors: data.collectors
+            ? processCollectors(data.collectors)
+            : null,
+          products: data.products ? processProducts(data.products) : null,
+        };
+
+        if (
+          !processed.actions ||
+          !processed.materials ||
+          !processed.collectors ||
+          !processed.products
+        ) {
+          throw new Error("Missing required data");
+        }
+
+        return processed as BatchData;
+      } catch (error) {
+        throw error;
+      }
     },
+    staleTime: 1000 * 60 * 60 * 24, // 24 hours
   });
 
-  const isComplete = userData && actionsData && batchData;
+  const isComplete = userData && batchData;
 
   return (
     <SafeAreaContent>
@@ -37,7 +58,7 @@ function Home() {
         <View className="flex-row items-center justify-center gap-0.5">
           <Ionicons name="person-circle-outline" size={24} color="#0D0D0D" />
           <Text className="text-sm font-bold text-enaleia-black">
-            {userData?.name}
+            {userData.name}
           </Text>
         </View>
         <View className="flex-row items-center justify-center px-1.5 py-0.5 space-x-1 bg-sand-beige rounded-full">
@@ -53,13 +74,13 @@ function Home() {
             Hello, what action will you be doing today?
           </Trans>
         </Text>
-        <ActionSelection actions={actionsData} />
+        <ActionSelection actions={batchData?.actions} isLoading={isLoading} />
       </View>
       <InitializationModal
         isVisible={!isComplete}
         progress={{
           user: Boolean(userData),
-          actions: Boolean(actionsData),
+          actions: Boolean(batchData?.actions),
           materials: Boolean(batchData?.materials),
           collectors: Boolean(batchData?.collectors),
           products: Boolean(batchData?.products),

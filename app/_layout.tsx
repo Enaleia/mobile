@@ -22,12 +22,6 @@ import { Text } from "react-native";
 import * as Localization from "expo-localization";
 
 import { defaultLocale, dynamicActivate } from "@/lib/i18n";
-import { directus } from "@/utils/directus";
-import { batchFetchData } from "@/utils/batchFetcher";
-import { processActions } from "@/types/action";
-import { processMaterials } from "@/types/material";
-import { processCollectors } from "@/types/collector";
-import { processProducts } from "@/types/product";
 
 SplashScreen.preventAutoHideAsync();
 
@@ -68,32 +62,6 @@ export default function RootLayout() {
   const [loaded, error] = useFonts(preloadedFonts);
   const locale = Localization.getLocales()[0]?.languageCode || defaultLocale;
 
-  useEffect(() => {
-    async function prefetchData() {
-      try {
-        const token = await directus.getToken();
-        if (!token) return;
-
-        queryClient.prefetchQuery({
-          queryKey: ["batchData"],
-          queryFn: async () => {
-            const data = await batchFetchData();
-            return {
-              actions: processActions(data.actions),
-              materials: processMaterials(data.materials),
-              collectors: processCollectors(data.collectors),
-              products: processProducts(data.products),
-            };
-          },
-        });
-      } catch (error) {
-        console.error("Failed to prefetch data:", error);
-      }
-    }
-
-    prefetchData();
-  }, []);
-
   const stackScreens = useMemo(
     () => (
       <Stack screenOptions={{ headerShown: false }}>
@@ -123,6 +91,23 @@ export default function RootLayout() {
       SplashScreen.hideAsync();
     }
   }, [loaded, error]);
+
+  // Clear AsyncStorage and React Query cache on app startup
+  // useEffect(() => {
+  //   const clearCaches = async () => {
+  //     try {
+  //       await AsyncStorage.clear();
+  //       console.log("[Cache] AsyncStorage cleared successfully");
+
+  //       queryClient.clear();
+  //       console.log("[Cache] React Query cache cleared successfully");
+  //     } catch (error) {
+  //       console.error("[Cache] Error clearing caches:", error);
+  //     }
+  //   };
+
+  //   clearCaches();
+  // }, []);
 
   if (!appIsReady) {
     return null;

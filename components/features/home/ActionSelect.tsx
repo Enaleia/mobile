@@ -6,11 +6,19 @@ import { ScrollView, Text, View } from "react-native";
 
 interface ActionSelectionProps {
   actions: GroupedActions | undefined;
+  isLoading: boolean;
 }
 
-export default function ActionSelection({ actions }: ActionSelectionProps) {
-  if (!actions) {
+export default function ActionSelection({
+  actions,
+  isLoading,
+}: ActionSelectionProps) {
+  if (isLoading) {
     return <LoadingScreen />;
+  }
+
+  if (!actions || Object.keys(actions).length === 0) {
+    return <Text>No actions found</Text>;
   }
 
   return (
