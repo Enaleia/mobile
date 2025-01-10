@@ -38,9 +38,6 @@ importers:
       '@react-native-picker/picker':
         specifier: 2.9.0
         version: 2.9.0(react-native@0.76.6(@babel/core@7.25.7)(@babel/preset-env@7.25.7(@babel/core@7.25.7))(@react-native-community/cli-server-api@13.6.9)(@types/react@18.3.12)(react@18.3.1))(react@18.3.1)
-      '@react-navigation/native':
-        specifier: ^7.0.3
-        version: 7.0.3(react-native@0.76.6(@babel/core@7.25.7)(@babel/preset-env@7.25.7(@babel/core@7.25.7))(@react-native-community/cli-server-api@13.6.9)(@types/react@18.3.12)(react@18.3.1))(react@18.3.1)
       '@tanstack/query-async-storage-persister':
         specifier: ^5.62.7
         version: 5.62.7
@@ -147,6 +144,9 @@ importers:
       '@lingui/metro-transformer':
         specifier: ^5.0.0
         version: 5.0.0(@expo/metro-config@0.19.9)(@react-native/metro-babel-transformer@0.76.6(@babel/core@7.25.7)(@babel/preset-env@7.25.7(@babel/core@7.25.7)))(expo@52.0.25(@babel/core@7.25.7)(@babel/preset-env@7.25.7(@babel/core@7.25.7))(@expo/metro-runtime@4.0.0(react-native@0.76.6(@babel/core@7.25.7)(@babel/preset-env@7.25.7(@babel/core@7.25.7))(@react-native-community/cli-server-api@13.6.9)(@types/react@18.3.12)(react@18.3.1)))(graphql@15.8.0)(react-native@0.76.6(@babel/core@7.25.7)(@babel/preset-env@7.25.7(@babel/core@7.25.7))(@react-native-community/cli-server-api@13.6.9)(@types/react@18.3.12)(react@18.3.1))(react@18.3.1))(metro@0.81.0)(react-native@0.76.6(@babel/core@7.25.7)(@babel/preset-env@7.25.7(@babel/core@7.25.7))(@react-native-community/cli-server-api@13.6.9)(@types/react@18.3.12)(react@18.3.1))(typescript@5.3.3)
+      '@react-navigation/native':
+        specifier: ^7.0.3
+        version: 7.0.3(react-native@0.76.6(@babel/core@7.25.7)(@babel/preset-env@7.25.7(@babel/core@7.25.7))(@react-native-community/cli-server-api@13.6.9)(@types/react@18.3.12)(react@18.3.1))(react@18.3.1)
       '@types/jest':
         specifier: ^29.5.12
         version: 29.5.13
