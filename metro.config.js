@@ -10,7 +10,7 @@ config.transformer = {
 };
 config.resolver = {
   ...resolver,
-  sourceExts: [...resolver.sourceExts, "po", "pot"],
+	sourceExts: [...resolver.sourceExts],
 };
 
 module.exports = config;
