@@ -18,12 +18,6 @@ const TabsLayout = () => {
       screenOptions={{
         headerShown: false,
         tabBarActiveTintColor: "#24548b",
-        tabBarIconStyle: {
-          alignItems: "center",
-          justifyContent: "center",
-          width: "100%",
-          height: "100%",
-        },
       }}
     >
       <Tabs.Screen
