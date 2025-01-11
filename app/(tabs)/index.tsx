@@ -9,7 +9,6 @@ import { processMaterials } from "@/types/material";
 import { processProducts } from "@/types/product";
 import { batchFetchData } from "@/utils/batchFetcher";
 import { Ionicons } from "@expo/vector-icons";
-import { Trans } from "@lingui/react";
 import { onlineManager, useQuery } from "@tanstack/react-query";
 import { Text, View } from "react-native";
 
@@ -70,9 +69,7 @@ function Home() {
       </View>
       <View className="flex-1 mt-4">
         <Text className="text-3xl font-dm-bold tracking-[-1.5px] mb-2 text-enaleia-black">
-          <Trans id="home.welcome_message">
-            Hello, what action will you be doing today?
-          </Trans>
+          Hello, what action will you be doing today?
         </Text>
         <ActionSelection actions={batchData?.actions} isLoading={isLoading} />
       </View>
