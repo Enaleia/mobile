@@ -13,11 +13,7 @@ import { PersistQueryClientProvider } from "@tanstack/react-query-persist-client
 import { useFonts } from "expo-font";
 import { Stack } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
-import { memo, useEffect, useMemo, useState } from "react";
-
-import { i18n } from "@lingui/core";
-import { I18nProvider, TransRenderProps } from "@lingui/react";
-import { Text } from "react-native";
+import React, { useEffect, useState } from "react";
 
 import * as Localization from "expo-localization";
 
@@ -31,10 +27,6 @@ const preloadedFonts = {
   "DMSans-Medium": require("../assets/fonts/DMSans-Medium.ttf"),
   "DMSans-Regular": require("../assets/fonts/DMSans-Regular.ttf"),
 };
-
-const DefaultComponent = memo((props: TransRenderProps) => {
-  return <Text>{props.children}</Text>;
-});
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -61,18 +53,6 @@ export default function RootLayout() {
   const [appIsReady, setAppIsReady] = useState(false);
   const [loaded, error] = useFonts(preloadedFonts);
   const locale = Localization.getLocales()[0]?.languageCode || defaultLocale;
-
-  const stackScreens = useMemo(
-    () => (
-      <Stack screenOptions={{ headerShown: false }}>
-        <Stack.Screen name="(tabs)" />
-        <Stack.Screen name="index" />
-        <Stack.Screen name="(auth)/login" />
-        <Stack.Screen name="attest/new/[type]" />
-      </Stack>
-    ),
-    []
-  );
 
   useEffect(() => {
     dynamicActivate(locale);
@@ -118,9 +98,14 @@ export default function RootLayout() {
       client={queryClient}
       persistOptions={{ persister: asyncStoragePersister }}
     >
-      <I18nProvider i18n={i18n} defaultComponent={DefaultComponent}>
-        {stackScreens}
-      </I18nProvider>
+      <Stack screenOptions={{ headerShown: false }}>
+        <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+        <Stack.Screen name="(auth)/login" options={{ headerShown: false }} />
+        <Stack.Screen
+          name="attest/new/[type]"
+          options={{ headerShown: false }}
+        />
+      </Stack>
     </PersistQueryClientProvider>
   );
 }
