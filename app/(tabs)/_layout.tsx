@@ -1,8 +1,8 @@
 import { IEvent } from "@/api/events/new";
 import { Ionicons } from "@expo/vector-icons";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Tabs } from "expo-router";
-
+import { Tabs } from "expo-router/tabs";
+import React from "react";
 const TabsLayout = () => {
   const queryClient = useQueryClient();
   const { data: incompleteActions } = useQuery({
@@ -18,15 +18,22 @@ const TabsLayout = () => {
       screenOptions={{
         headerShown: false,
         tabBarActiveTintColor: "#24548b",
+        tabBarIconStyle: {
+          alignItems: "center",
+          justifyContent: "center",
+          width: "100%",
+          height: "100%",
+        },
       }}
     >
       <Tabs.Screen
-        name="home"
+        name="index"
         options={{
           tabBarLabel: "Home",
           tabBarIcon: ({ color }) => (
             <Ionicons name="home" size={24} color={color} />
           ),
+          href: "/",
         }}
       />
       <Tabs.Screen
@@ -37,6 +44,7 @@ const TabsLayout = () => {
           tabBarIcon: ({ color }) => (
             <Ionicons name="archive" size={24} color={color} />
           ),
+          href: "/queue",
         }}
       />
       <Tabs.Screen
@@ -46,6 +54,7 @@ const TabsLayout = () => {
           tabBarIcon: ({ color }) => (
             <Ionicons name="settings" size={24} color={color} />
           ),
+          href: "/settings",
         }}
       />
     </Tabs>

@@ -41,7 +41,7 @@ export const SentToQueueModal = ({
           </Text>
         </Pressable>
         <Pressable
-          onPress={() => router.replace("/home")}
+          onPress={() => router.replace("/(tabs)")}
           className="bg-blue-ocean rounded-full p-3 flex-1"
         >
           <Text className="text-white font-dm-regular text-base text-center">

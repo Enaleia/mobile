@@ -34,7 +34,7 @@ export default function LoginForm() {
           await queryClient.setQueryData(["user-info"], {
             token,
           });
-          router.replace("/home");
+          router.replace("/(tabs)");
         }
       } catch (error) {
         console.error("Error checking token:", error);
@@ -62,7 +62,7 @@ export default function LoginForm() {
         id: user.id || "",
       });
 
-      router.replace("/home");
+      router.replace("/(tabs)");
     } catch (error) {
       console.error(JSON.stringify(error, null, 2));
       throw error;
