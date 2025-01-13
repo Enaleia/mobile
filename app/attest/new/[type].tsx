@@ -12,7 +12,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { useForm } from "@tanstack/react-form";
 import { zodValidator } from "@tanstack/zod-form-adapter";
 import { router, useLocalSearchParams } from "expo-router";
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import {
   ActivityIndicator,
   Image,
@@ -265,7 +265,7 @@ const NewActionScreen = () => {
                           Quantity
                         </Text>
                         <TextInput
-                          value={field.state.value.toString()}
+                          value={field.state.value?.toString() || ""}
                           onChangeText={(text) => {
                             field.handleChange(Number(text));
                           }}
@@ -284,7 +284,7 @@ const NewActionScreen = () => {
                           Weight
                         </Text>
                         <TextInput
-                          value={field.state.value.toString()}
+                          value={field.state.value?.toString() || ""}
                           onChangeText={(text) => {
                             field.handleChange(Number(text));
                           }}
@@ -396,6 +396,22 @@ const MaterialSection = ({
   const iconRotation = category === "incoming" ? "-rotate-45" : "rotate-45";
   const [isDeleting, setIsDeleting] = useState<number | null>(null);
 
+  const getMaterialCount = useMemo(() => {
+    return (materialId: number, currentIndex: number) => {
+      const totalCount = selectedMaterials.filter(
+        (material) => material.id === materialId
+      ).length;
+
+      if (totalCount === 1) return null;
+
+      const position = selectedMaterials
+        .slice(0, currentIndex + 1)
+        .filter((material) => material.id === materialId).length;
+
+      return `(${position} of ${totalCount})`;
+    };
+  }, [selectedMaterials]);
+
   const handleRemoveMaterial = (index: number) => {
     const newMaterials = [...selectedMaterials];
     newMaterials.splice(index, 1);
@@ -424,6 +440,12 @@ const MaterialSection = ({
                 <View className="flex-row items-center justify-between w-full mb-1">
                   <Text className="text-base font-dm-bold text-enaleia-black tracking-[-0.5px]">
                     {materials?.idToName?.[id] ?? "Unknown Material"}
+                    {getMaterialCount(id, materialIndex) && (
+                      <Text className="text-sm font-dm-regular text-grey-6">
+                        {" "}
+                        {getMaterialCount(id, materialIndex)}
+                      </Text>
+                    )}
                   </Text>
                   {isDeleting === materialIndex ? (
                     <View className="flex-row gap-2">
