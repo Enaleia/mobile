@@ -25,6 +25,7 @@ import {
 import uuid from "react-native-uuid";
 import { z } from "zod";
 import { IncompleteAttestationModal } from "@/components/features/attest/IncompleteAttestationModal";
+import { LeaveAttestationModal } from "@/components/features/attest/LeaveAttestationModal";
 
 // TODO: Update validation so that atleast one incoming or outgoing material is required
 const eventFormSchema = z.object({
@@ -86,6 +87,7 @@ const NewActionScreen = () => {
 
   const [showIncompleteModal, setShowIncompleteModal] = useState(false);
   const [pendingSubmission, setPendingSubmission] = useState(false);
+  const [showLeaveModal, setShowLeaveModal] = useState(false);
 
   const validateMaterials = (materials: MaterialDetail[]) => {
     if (materials.length === 0) return false;
@@ -172,6 +174,17 @@ const NewActionScreen = () => {
     setIsOutgoingMaterialsPickerVisible,
   ] = useState(false);
 
+  const hasAnyMaterials = (values: any) => {
+    if (typeof values !== "object" || values === null) return false;
+
+    const incomingMaterials =
+      "incomingMaterials" in values ? values.incomingMaterials || [] : [];
+    const outgoingMaterials =
+      "outgoingMaterials" in values ? values.outgoingMaterials || [] : [];
+
+    return incomingMaterials.length > 0 || outgoingMaterials.length > 0;
+  };
+
   return (
     <SafeAreaContent>
       <View className="absolute top-20 right-[-30px] bg-white-sand opacity-20">
@@ -183,19 +196,29 @@ const NewActionScreen = () => {
         />
       </View>
       <View className="flex-row items-center justify-start pb-4">
-        <Pressable
-          onPress={() => router.back()}
-          className="flex-row items-center space-x-1"
-        >
-          <Ionicons
-            name="chevron-back-circle-outline"
-            size={24}
-            color="#0D0D0D"
-          />
-          <Text className="text-base font-dm-regular text-enaleia-black tracking-tighter">
-            Back
-          </Text>
-        </Pressable>
+        <form.Subscribe selector={(state) => state.values}>
+          {(values) => (
+            <Pressable
+              onPress={() => {
+                if (hasAnyMaterials(values)) {
+                  setShowLeaveModal(true);
+                } else {
+                  router.back();
+                }
+              }}
+              className="flex-row items-center space-x-1"
+            >
+              <Ionicons
+                name="chevron-back-circle-outline"
+                size={24}
+                color="#0D0D0D"
+              />
+              <Text className="text-base font-dm-regular text-enaleia-black tracking-tighter">
+                Back
+              </Text>
+            </Pressable>
+          )}
+        </form.Subscribe>
       </View>
       <Text className="text-3xl font-dm-bold text-enaleia-black tracking-[-1px] mb-2">
         {title}
@@ -428,6 +451,14 @@ const NewActionScreen = () => {
       {isSentToQueue && (
         <SentToQueueModal isVisible={isSentToQueue} onClose={() => {}} />
       )}
+      <LeaveAttestationModal
+        isVisible={showLeaveModal}
+        onClose={() => setShowLeaveModal(false)}
+        onConfirmLeave={() => {
+          setShowLeaveModal(false);
+          router.back();
+        }}
+      />
     </SafeAreaContent>
   );
 };
