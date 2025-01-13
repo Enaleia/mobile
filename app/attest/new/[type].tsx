@@ -24,6 +24,7 @@ import {
 } from "react-native";
 import uuid from "react-native-uuid";
 import { z } from "zod";
+import { IncompleteAttestationModal } from "@/components/features/attest/IncompleteAttestationModal";
 
 // TODO: Update validation so that atleast one incoming or outgoing material is required
 const eventFormSchema = z.object({
@@ -82,6 +83,18 @@ const NewActionScreen = () => {
   const { materialsData, isLoading: materialsLoading } = useMaterials();
 
   const { mutate: createEvent } = useCreateEvent();
+
+  const [showIncompleteModal, setShowIncompleteModal] = useState(false);
+  const [pendingSubmission, setPendingSubmission] = useState(false);
+
+  const validateMaterials = (materials: MaterialDetail[]) => {
+    if (materials.length === 0) return false;
+    return materials.some(
+      (material) =>
+        (material.code && material.code.trim() !== "") ||
+        (material.weight && material.weight > 0)
+    );
+  };
 
   const form = useForm({
     defaultValues: {
@@ -299,28 +312,71 @@ const NewActionScreen = () => {
               </View>
             )}
             <form.Subscribe
-              selector={(state) => [state.canSubmit, state.isSubmitting]}
+              selector={(state) => [
+                state.canSubmit,
+                state.isSubmitting,
+                state.values,
+              ]}
             >
-              {([canSubmit, isSubmitting]) => (
-                <Pressable
-                  onPress={() => {
-                    console.log("Submit button pressed");
-                    console.log({ canSubmit, isSubmitting });
-                    form.handleSubmit();
-                  }}
-                  // disabled={!canSubmit || isSubmitting}
-                  className={`flex-row items-center justify-center mt-4 p-3 rounded-full ${
-                    !canSubmit || isSubmitting ? "bg-blue-400" : "bg-blue-ocean"
-                  }`}
-                >
-                  {isSubmitting ? (
-                    <ActivityIndicator color="white" className="mr-2" />
-                  ) : null}
-                  <Text className="text-base font-dm-medium text-slate-50 tracking-tight">
-                    {isSubmitting ? "Saving..." : "Create Attestation"}
-                  </Text>
-                </Pressable>
-              )}
+              {([canSubmit, isSubmitting, values]) => {
+                const handleSubmitClick = () => {
+                  const hasValidIncoming = validateMaterials(
+                    typeof values === "object" &&
+                      values !== null &&
+                      "incomingMaterials" in values
+                      ? values.incomingMaterials || []
+                      : []
+                  );
+                  const hasValidOutgoing = validateMaterials(
+                    typeof values === "object" &&
+                      values !== null &&
+                      "outgoingMaterials" in values
+                      ? values.outgoingMaterials || []
+                      : []
+                  );
+
+                  if (!hasValidIncoming && !hasValidOutgoing) {
+                    setShowIncompleteModal(true);
+                    setPendingSubmission(true);
+                    return;
+                  }
+
+                  form.handleSubmit();
+                };
+
+                return (
+                  <>
+                    <Pressable
+                      onPress={handleSubmitClick}
+                      className={`flex-row items-center justify-center mt-4 p-3 rounded-full ${
+                        !canSubmit || isSubmitting
+                          ? "bg-blue-400"
+                          : "bg-blue-ocean"
+                      }`}
+                    >
+                      {isSubmitting ? (
+                        <ActivityIndicator color="white" className="mr-2" />
+                      ) : null}
+                      <Text className="text-base font-dm-medium text-slate-50 tracking-tight">
+                        {isSubmitting ? "Saving..." : "Create Attestation"}
+                      </Text>
+                    </Pressable>
+                    <IncompleteAttestationModal
+                      isVisible={showIncompleteModal}
+                      onClose={() => {
+                        setShowIncompleteModal(false);
+                        setPendingSubmission(false);
+                      }}
+                      onSubmitAnyway={() => {
+                        setShowIncompleteModal(false);
+                        if (pendingSubmission) {
+                          form.handleSubmit();
+                        }
+                      }}
+                    />
+                  </>
+                );
+              }}
             </form.Subscribe>
             {/* DEBUG SECTION */}
             <View className="px-4 mt-4">
