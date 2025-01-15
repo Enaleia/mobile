@@ -9,17 +9,19 @@ import {
   View,
 } from "react-native";
 
+interface ModalBaseProps {
+  isVisible: boolean;
+  onClose: () => void;
+  children: React.ReactNode;
+  canClose?: boolean;
+}
+
 export default function ModalBase({
   isVisible,
   onClose,
   children,
   canClose = true,
-}: {
-  isVisible: boolean;
-  onClose: () => void;
-  children: React.ReactNode;
-  canClose?: boolean;
-}) {
+}: ModalBaseProps) {
   return (
     <Modal
       visible={isVisible}
@@ -46,7 +48,7 @@ export default function ModalBase({
                 onPress={onClose}
                 className="h-10 w-10 absolute right-0 top-3"
               >
-                <Ionicons name="close" size={20} color="gray" />
+                <Ionicons name="close" size={24} color="gray" />
               </Pressable>
             )}
           </View>

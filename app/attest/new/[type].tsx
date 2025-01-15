@@ -3,11 +3,12 @@ import { IncompleteAttestationModal } from "@/components/features/attest/Incompl
 import { LeaveAttestationModal } from "@/components/features/attest/LeaveAttestationModal";
 import MaterialSection from "@/components/features/attest/MaterialSection";
 import { SentToQueueModal } from "@/components/features/attest/SentToQueueModal";
+import TypeInformationModal from "@/components/features/attest/TypeInformationModal";
 import FormSection from "@/components/shared/FormSection";
 import SafeAreaContent from "@/components/shared/SafeAreaContent";
 import { ACTION_SLUGS } from "@/constants/action";
 import { useMaterials } from "@/hooks/data/useMaterials";
-import { ActionTitle } from "@/types/action";
+import { ActionTitle, typeModalMap } from "@/types/action";
 import { MaterialDetail } from "@/types/material";
 import { Ionicons } from "@expo/vector-icons";
 import { useForm } from "@tanstack/react-form";
@@ -79,6 +80,8 @@ const NewActionScreen = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [hasAttemptedSubmit, setHasAttemptedSubmit] = useState(false);
+  const [isTypeInformationModalVisible, setIsTypeInformationModalVisible] =
+    useState(false);
 
   const { materialsData, isLoading: materialsLoading } = useMaterials();
 
@@ -194,7 +197,7 @@ const NewActionScreen = () => {
           accessibilityRole="image"
         />
       </View>
-      <View className="flex-row items-center justify-start pb-4">
+      <View className="flex-row items-center justify-between pb-4">
         <form.Subscribe selector={(state) => state.values}>
           {(values) => (
             <Pressable
@@ -218,7 +221,20 @@ const NewActionScreen = () => {
             </Pressable>
           )}
         </form.Subscribe>
+
+        <Pressable onPress={() => setIsTypeInformationModalVisible(true)}>
+          <Ionicons
+            name="information-circle-outline"
+            size={24}
+            color="#0D0D0D"
+          />
+        </Pressable>
       </View>
+      <TypeInformationModal
+        {...typeModalMap[title]}
+        isVisible={isTypeInformationModalVisible}
+        onClose={() => setIsTypeInformationModalVisible(false)}
+      />
       <Text className="text-3xl font-dm-bold text-enaleia-black tracking-[-1px] mb-2">
         {title}
       </Text>
