@@ -1,5 +1,10 @@
+import {
+  MaterialInputRecord,
+  MaterialOutputRecord,
+  MaterialTrackingEvent,
+} from "@/types/event";
 import { directus } from "@/utils/directus";
-import { readItems } from "@directus/sdk";
+import { createItem, readItems } from "@directus/sdk";
 
 function formatDirectusError(endpoint: string, error: any): Error {
   const errorMessage =
@@ -40,5 +45,29 @@ export async function fetchProducts() {
     return await directus.request(readItems("Products"));
   } catch (error: any) {
     throw formatDirectusError("Products", error);
+  }
+}
+
+export async function createEvent(event: MaterialTrackingEvent) {
+  try {
+    return await directus.request(createItem("Events", event));
+  } catch (error: any) {
+    throw formatDirectusError("Events", error);
+  }
+}
+
+export async function createMaterialInput(input: MaterialInputRecord) {
+  try {
+    return await directus.request(createItem("MaterialInputs", input));
+  } catch (error: any) {
+    throw formatDirectusError("MaterialInputs", error);
+  }
+}
+
+export async function createMaterialOutput(output: MaterialOutputRecord) {
+  try {
+    return await directus.request(createItem("MaterialOutputs", output));
+  } catch (error: any) {
+    throw formatDirectusError("MaterialOutputs", error);
   }
 }
