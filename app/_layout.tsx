@@ -18,6 +18,8 @@ import React, { useEffect, useState } from "react";
 import * as Localization from "expo-localization";
 
 import { defaultLocale, dynamicActivate } from "@/lib/i18n";
+import { processQueueItems } from "@/services/queueProcessor";
+import { QueueProvider } from "@/contexts/QueueContext";
 
 SplashScreen.preventAutoHideAsync();
 
@@ -62,6 +64,11 @@ export default function RootLayout() {
     return NetInfo.addEventListener((state) => {
       const status = !!state.isConnected;
       onlineManager.setOnline(status);
+
+      // If connection restored, try processing queue
+      if (status) {
+        processQueueItems();
+      }
     });
   }, []);
 
@@ -94,18 +101,20 @@ export default function RootLayout() {
   }
 
   return (
-    <PersistQueryClientProvider
-      client={queryClient}
-      persistOptions={{ persister: asyncStoragePersister }}
-    >
-      <Stack screenOptions={{ headerShown: false }}>
-        <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-        <Stack.Screen name="(auth)/login" options={{ headerShown: false }} />
-        <Stack.Screen
-          name="attest/new/[type]"
-          options={{ headerShown: false }}
-        />
-      </Stack>
-    </PersistQueryClientProvider>
+    <QueueProvider>
+      <PersistQueryClientProvider
+        client={queryClient}
+        persistOptions={{ persister: asyncStoragePersister }}
+      >
+        <Stack screenOptions={{ headerShown: false }}>
+          <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+          <Stack.Screen name="(auth)/login" options={{ headerShown: false }} />
+          <Stack.Screen
+            name="attest/new/[type]"
+            options={{ headerShown: false }}
+          />
+        </Stack>
+      </PersistQueryClientProvider>
+    </QueueProvider>
   );
 }
