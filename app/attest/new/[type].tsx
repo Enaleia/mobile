@@ -1,4 +1,3 @@
-import { useCreateEvent } from "@/api/events/new";
 import { IncompleteAttestationModal } from "@/components/features/attest/IncompleteAttestationModal";
 import { LeaveAttestationModal } from "@/components/features/attest/LeaveAttestationModal";
 import MaterialSection from "@/components/features/attest/MaterialSection";
@@ -26,15 +25,17 @@ import {
 } from "react-native";
 import uuid from "react-native-uuid";
 import { z } from "zod";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { useCurrentLocation } from "@/hooks/useCurrentLocation";
+import { QueueItem, QueueItemStatus } from "@/types/queue";
 
-// TODO: Update validation so that atleast one incoming or outgoing material is required
 const eventFormSchema = z.object({
   type: z
     .string()
     .refine((value) => Object.keys(ACTION_SLUGS).includes(value), {
       message: "Please select an action that exists",
     }) as z.ZodType<ActionTitle>,
-  location: z.string().min(1),
+  // location: z.string().min(1),
   date: z.string().min(1),
   incomingMaterials: z
     .array(
@@ -71,6 +72,7 @@ export type EventFormType = z.infer<typeof eventFormSchema>;
 
 const NewActionScreen = () => {
   const { type } = useLocalSearchParams(); // slug format
+  const location = useCurrentLocation();
 
   const [isSentToQueue, setIsSentToQueue] = useState(false);
   const title = Object.keys(ACTION_SLUGS).find(
@@ -85,8 +87,6 @@ const NewActionScreen = () => {
 
   const { materialsData, isLoading: materialsLoading } = useMaterials();
 
-  const { mutate: createEvent } = useCreateEvent();
-
   const [showIncompleteModal, setShowIncompleteModal] = useState(false);
   const [pendingSubmission, setPendingSubmission] = useState(false);
   const [showLeaveModal, setShowLeaveModal] = useState(false);
@@ -100,10 +100,25 @@ const NewActionScreen = () => {
     );
   };
 
+  const addItemToQueue = async (queueItem: QueueItem) => {
+    const cacheKey = process.env.EXPO_PUBLIC_CACHE_KEY;
+    if (!cacheKey) return;
+
+    // Get existing items
+    const existingData = await AsyncStorage.getItem(cacheKey);
+    const existingItems: QueueItem[] = existingData
+      ? JSON.parse(existingData)
+      : [];
+
+    // Add new item
+    const updatedItems = [...existingItems, queueItem];
+    await AsyncStorage.setItem(cacheKey, JSON.stringify(updatedItems));
+  };
+
   const form = useForm({
     defaultValues: {
       type: title as ActionTitle,
-      location: "Durban, South Africa",
+      // location: "",
       date: new Date().toISOString(),
       incomingMaterials: [] as MaterialDetail[],
       outgoingMaterials: [] as MaterialDetail[],
@@ -119,45 +134,29 @@ const NewActionScreen = () => {
       setIsSubmitting(true);
 
       try {
-        const {
-          data: parsedData,
-          error: parseError,
-          success: parseSuccess,
-        } = eventFormSchema.safeParse(value);
-
-        if (!parseSuccess) {
+        const { success: isValid, error: validationError } =
+          eventFormSchema.safeParse(value);
+        if (!isValid) {
           setSubmitError("Please fix the form errors before submitting");
-          console.error("Form validation errors:", parseError);
+          console.error("Form validation errors:", validationError);
           return;
         }
 
-        const formDataWithLocalId = {
+        const queueItem: QueueItem = {
           ...value,
           localId: uuid.v4() as string,
           date: new Date().toISOString(),
+          status: QueueItemStatus.PENDING,
+          retryCount: 0,
         };
 
-        try {
-          // TODO: Implement API call
-          console.log(
-            "Form submitted with values:",
-            JSON.stringify(formDataWithLocalId, null, 2)
-          );
-          await createEvent({
-            ...formDataWithLocalId,
-            isNotSynced: true,
-          });
-          // console.log({ response });
-        } catch (error) {
-          console.error("Failed to create action:", error);
-          throw error;
-        }
+        await addItemToQueue(queueItem);
+        setIsSentToQueue(true);
       } catch (error) {
-        setSubmitError("An error occurred while submitting the form");
-        console.error("Error submitting form:", error);
+        setSubmitError("An error occurred while adding to queue");
+        console.error("Error adding to queue:", error);
       } finally {
         setIsSubmitting(false);
-        setIsSentToQueue(true);
       }
     },
     validatorAdapter: zodValidator(),

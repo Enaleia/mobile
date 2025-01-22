@@ -1,5 +1,6 @@
 // import { graphql } from "@/api/graphql";
 import { EventFormType } from "@/app/attest/new/[type]";
+import { QueueItemStatus } from "@/types/queue";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 // export const CREATE_EVENTS_MUTATION = graphql(`
@@ -12,7 +13,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 export type IEvent = EventFormType & {
   localId: string;
-  isNotSynced: boolean;
+  status: QueueItemStatus;
 };
 
 const addEvent = async (data: IEvent): Promise<IEvent> => {

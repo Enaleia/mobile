@@ -1,105 +1,138 @@
 import { IEvent } from "@/api/events/new";
+import QueueSection from "@/components/features/queue/QueueSection";
+import NetworkStatus from "@/components/shared/NetworkStatus";
 import SafeAreaContent from "@/components/shared/SafeAreaContent";
-import { ACTION_ICONS } from "@/constants/action";
-import { ActionTitle } from "@/types/action";
-import { Ionicons } from "@expo/vector-icons";
+import { processQueueItems } from "@/services/queueProcessor";
+import { QueueItem, QueueItemStatus } from "@/types/queue";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useNetInfo } from "@react-native-community/netinfo";
 import { useNavigation } from "expo-router";
-import { useEffect } from "react";
-import { Image, Text, View } from "react-native";
-
-const QueuedAction = ({ type, date }: { type: ActionTitle; date: string }) => {
-  return (
-    <View className="flex-row items-center justify-between px-3 py-2 border-b border-neutral-200">
-      <View className="flex-row items-center justify-center gap-2">
-        <Image source={ACTION_ICONS[type]} className="w-8 h-8" />
-        <View className="space-y-0.5">
-          <Text className="text-base font-dm-bold text-slate-800 tracking-tighter">
-            {type}
-          </Text>
-          <Text className="text-xs font-dm-medium text-slate-500 uppercase w-full">
-            {new Intl.DateTimeFormat("en-US", {
-              month: "short",
-              day: "numeric",
-              year: "numeric",
-              hour: "numeric",
-              minute: "numeric",
-            }).format(new Date(date))}
-          </Text>
-        </View>
-      </View>
-    </View>
-  );
-};
+import { useEffect, useState } from "react";
+import { Text, View } from "react-native";
+import { useQueue } from "@/contexts/QueueContext";
+import { queueEventEmitter, QueueEvents } from "@/services/events";
+import { useEventListener } from "expo";
 
 const QueueScreen = () => {
+  const { queueItems, loadQueueItems } = useQueue();
   const navigation = useNavigation();
-  const queryClient = useQueryClient();
+  const { isConnected } = useNetInfo();
 
-  const { data: incompleteActions } = useQuery({
-    queryKey: ["events"],
-    queryFn: () =>
-      queryClient
-        .getQueryData<IEvent[]>(["events"])
-        ?.filter((event) => event.isNotSynced) || [],
-    staleTime: Infinity,
-  });
+  // Refresh on focus
+  useEffect(() => {
+    const unsubscribe = navigation.addListener("focus", loadQueueItems);
+    return unsubscribe;
+  }, [navigation]);
+
+  // Listen for queue updates
+  useEventListener(queueEventEmitter, QueueEvents.UPDATED, loadQueueItems);
+
+  const pendingItems = queueItems.filter(
+    (i) => i.status === QueueItemStatus.PENDING
+  );
+  const processingItems = queueItems.filter(
+    (i) => i.status === QueueItemStatus.PROCESSING
+  );
+  const failedItems = queueItems.filter(
+    (i) => i.status === QueueItemStatus.FAILED
+  );
+  const offlineItems = queueItems.filter(
+    (i) => i.status === QueueItemStatus.OFFLINE
+  );
+  const completedItems = queueItems.filter(
+    (i) => i.status === QueueItemStatus.COMPLETED
+  );
+
+  const handleRetry = async (items: QueueItem[]) => {
+    try {
+      await processQueueItems(items);
+      await loadQueueItems(); // Refresh after retry
+    } catch (error) {
+      console.error("Error retrying items:", error);
+    }
+  };
 
   useEffect(() => {
+    const numPending = queueItems?.filter(
+      (i) => i.status !== QueueItemStatus.COMPLETED
+    )?.length;
     // Update the tab bar badge with number of incomplete actions
     navigation.setOptions({
-      tabBarBadge: incompleteActions?.length || undefined,
+      tabBarBadge: numPending > 0 ? numPending : undefined,
     });
-  }, [incompleteActions]);
+  }, [queueItems]);
 
-  const QUEUE_ACTIONS_SORTED = (incompleteActions || []).sort((a, b) => {
-    return new Date(b.date).getTime() - new Date(a.date).getTime();
-  });
-
-  // TODO: This is a temporary fix to clear the cache when the queue is too large
+  // TODO: [DEV] This is a temporary fix to clear the cache when the queue is too large
   useEffect(() => {
     // If there are more than 30 queued actions, invalidate and clear the cache
-    if (QUEUE_ACTIONS_SORTED.length > 30) {
+    if (queueItems?.length && queueItems?.length > 30) {
       // Clear the AsyncStorage cache
       AsyncStorage.removeItem("enaleia-cache-v0")
         .then(() => {
           // Invalidate and reset the query client
-          queryClient.invalidateQueries({ queryKey: ["events"] });
-          queryClient.resetQueries({ queryKey: ["events"] });
+          loadQueueItems();
         })
         .catch((error) => {
           console.error("Error clearing queue cache:", error);
         });
     }
-  }, [QUEUE_ACTIONS_SORTED.length]);
+  }, [queueItems?.length]);
+
+  useEffect(() => {
+    console.log("Queue Items:", queueItems);
+    console.log("Pending:", pendingItems);
+    console.log("Processing:", processingItems);
+    console.log("Failed:", failedItems);
+    console.log("Offline:", offlineItems);
+    console.log("Completed:", completedItems);
+  }, [queueItems]);
 
   return (
     <SafeAreaContent>
-      <Text className="text-3xl font-dm-bold text-neutral-800 tracking-[-1px] mb-3">
-        Queue
-      </Text>
-      <Text className="text-base font-dm-regular text-neutral-600 tracking-tighter">
-        Sorted by most recent
-      </Text>
-      <View className="h-max bg-white rounded-lg overflow-hidden">
-        {QUEUE_ACTIONS_SORTED.length > 0 ? (
-          QUEUE_ACTIONS_SORTED.map((action) => (
-            <QueuedAction
-              key={action.localId}
-              type={action.type as ActionTitle}
-              date={action.date}
-            />
-          ))
-        ) : (
-          <View className="flex-1 items-center justify-center">
-            <Ionicons name="albums-outline" size={64} color="#475569" />
-            <Text className="text-lg font-dm-medium text-slate-600 tracking-tight">
-              No actions in queue
-            </Text>
-          </View>
+      <NetworkStatus isConnected={isConnected || false} />
+
+      {pendingItems && pendingItems?.length > 0 && (
+        <QueueSection
+          title="Pending"
+          items={pendingItems}
+          onRetry={handleRetry}
+        />
+      )}
+
+      {processingItems && processingItems?.length > 0 && (
+        <QueueSection
+          title="Processing"
+          items={processingItems}
+          onRetry={handleRetry}
+        />
+      )}
+
+      {failedItems && failedItems?.length > 0 && (
+        <QueueSection
+          title="Failed"
+          items={failedItems}
+          onRetry={handleRetry}
+        />
+      )}
+
+      {offlineItems && offlineItems?.length > 0 && (
+        <QueueSection
+          title="Offline"
+          items={offlineItems}
+          onRetry={handleRetry}
+        />
+      )}
+
+      {/* Development only section */}
+      {process.env.NODE_ENV === "development" &&
+        completedItems &&
+        completedItems.length > 0 && (
+          <QueueSection
+            title="Completed (Dev Only)"
+            items={completedItems}
+            onRetry={handleRetry}
+          />
         )}
-      </View>
     </SafeAreaContent>
   );
 };
