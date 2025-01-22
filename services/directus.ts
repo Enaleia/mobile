@@ -11,7 +11,7 @@ function formatDirectusError(endpoint: string, error: any): Error {
     error.errors?.[0]?.message || error.message || "Unknown error";
   const errorCode = error.errors?.[0]?.extensions?.code || "UNKNOWN_ERROR";
   return new Error(
-    `Failed to fetch ${endpoint}: ${errorMessage} (${errorCode})`
+    `[Directus] Failed to fetch ${endpoint}: ${errorMessage} (${errorCode})`
   );
 }
 

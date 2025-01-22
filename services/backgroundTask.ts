@@ -9,9 +9,8 @@ TaskManager.defineTask(BACKGROUND_SYNC_TASK, async () => {
   try {
     // Process queue items here
     const result = await processQueueItems();
-    return result
-      ? BackgroundFetch.BackgroundFetchResult.NewData
-      : BackgroundFetch.BackgroundFetchResult.NoData;
+    // Since processQueueItems returns void, we'll assume any successful completion means new data
+    return BackgroundFetch.BackgroundFetchResult.NewData;
   } catch (error) {
     console.error("Background sync failed:", error);
     return BackgroundFetch.BackgroundFetchResult.Failed;
