@@ -27,7 +27,8 @@ import uuid from "react-native-uuid";
 import { z } from "zod";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useCurrentLocation } from "@/hooks/useCurrentLocation";
-import { QueueItem, QueueItemStatus } from "@/types/queue";
+import { MAX_RETRIES, QueueItem, QueueItemStatus } from "@/types/queue";
+import { useQueue } from "@/contexts/QueueContext";
 
 const eventFormSchema = z.object({
   type: z
@@ -91,6 +92,8 @@ const NewActionScreen = () => {
   const [pendingSubmission, setPendingSubmission] = useState(false);
   const [showLeaveModal, setShowLeaveModal] = useState(false);
 
+  const { updateQueueItems } = useQueue();
+
   const validateMaterials = (materials: MaterialDetail[]) => {
     if (materials.length === 0) return false;
     return materials.some(
@@ -101,24 +104,55 @@ const NewActionScreen = () => {
   };
 
   const addItemToQueue = async (queueItem: QueueItem) => {
-    const cacheKey = process.env.EXPO_PUBLIC_CACHE_KEY;
-    if (!cacheKey) return;
+    try {
+      const cacheKey = process.env.EXPO_PUBLIC_CACHE_KEY;
+      if (!cacheKey) {
+        console.error("No cache key available");
+        return;
+      }
 
-    // Get existing items
-    const existingData = await AsyncStorage.getItem(cacheKey);
-    const existingItems: QueueItem[] = existingData
-      ? JSON.parse(existingData)
-      : [];
+      console.log("Adding queue item:", JSON.stringify(queueItem, null, 2));
 
-    // Add new item
-    const updatedItems = [...existingItems, queueItem];
-    await AsyncStorage.setItem(cacheKey, JSON.stringify(updatedItems));
+      // Get existing items
+      const existingData = await AsyncStorage.getItem(cacheKey);
+      console.log("Existing data from storage:", existingData);
+
+      let existingItems: QueueItem[] = [];
+      if (existingData) {
+        try {
+          existingItems = JSON.parse(existingData);
+          if (!Array.isArray(existingItems)) {
+            console.warn("Stored data is not an array, resetting");
+            existingItems = [];
+          }
+        } catch (parseError) {
+          console.error("Error parsing stored data:", parseError);
+          existingItems = [];
+        }
+      }
+
+      // Add new item
+      const updatedItems = [...existingItems, queueItem];
+      console.log(
+        "Saving updated items:",
+        JSON.stringify(updatedItems, null, 2)
+      );
+
+      // Use the passed updateQueueItems function
+      await updateQueueItems(updatedItems);
+
+      // Verify save
+      const savedData = await AsyncStorage.getItem(cacheKey);
+      console.log("Verified saved data:", savedData);
+    } catch (error) {
+      console.error("Error in addItemToQueue:", error);
+      throw error;
+    }
   };
 
   const form = useForm({
     defaultValues: {
       type: title as ActionTitle,
-      // location: "",
       date: new Date().toISOString(),
       incomingMaterials: [] as MaterialDetail[],
       outgoingMaterials: [] as MaterialDetail[],
@@ -148,6 +182,8 @@ const NewActionScreen = () => {
           date: new Date().toISOString(),
           status: QueueItemStatus.PENDING,
           retryCount: 0,
+          incomingMaterials: value.incomingMaterials || [],
+          outgoingMaterials: value.outgoingMaterials || [],
         };
 
         await addItemToQueue(queueItem);
