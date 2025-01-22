@@ -15,3 +15,5 @@ export interface QueueItem extends EventFormType {
   lastError?: string;
   lastAttempt?: Date;
 }
+
+export const MAX_RETRIES = 3;

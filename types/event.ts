@@ -19,7 +19,7 @@ interface MaterialTrackingEvent {
   event_location?: string;
 
   /** Name of the action from Actions table, max length 255 characters */
-  action_name?: string;
+  action?: string;
 
   /** Name of the collector (relates to "collectors" table) */
   collector_name?: string;
@@ -54,7 +54,10 @@ interface MaterialTrackingEvent {
  */
 interface MaterialOutputRecord {
   /** Unique identifier for the output entry */
-  event_output_id: number;
+  event_output_id?: number;
+
+  /** Event ID related to the output entry */
+  event_id?: number;
 
   /** QR code for the output material or production_url */
   output_code: string;
@@ -77,7 +80,10 @@ interface MaterialOutputRecord {
  */
 interface MaterialInputRecord {
   /** Unique identifier for the input entry */
-  event_input_id: number;
+  event_input_id?: number;
+
+  /** Event ID related to the input entry */
+  event_id?: number;
 
   /** QR code for input material or collector QR card */
   input_code: string;
