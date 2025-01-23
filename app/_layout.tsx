@@ -18,8 +18,7 @@ import React, { useEffect, useState } from "react";
 import * as Localization from "expo-localization";
 
 import { defaultLocale, dynamicActivate } from "@/lib/i18n";
-import { processQueueItems } from "@/services/queueProcessor";
-import { QueueProvider } from "@/contexts/QueueContext";
+import { QueueProvider, useQueue } from "@/contexts/QueueContext";
 
 SplashScreen.preventAutoHideAsync();
 
@@ -51,6 +50,30 @@ const asyncStoragePersister = createAsyncStoragePersister({
   throttleTime: 2000,
 });
 
+// Create a new component to handle network status
+const NetworkHandler = () => {
+  const { loadQueueItems } = useQueue();
+
+  useEffect(() => {
+    return NetInfo.addEventListener((state) => {
+      const status = !!state.isConnected;
+      onlineManager.setOnline(status);
+
+      // If connection restored, trigger queue refresh
+      if (status) {
+        loadQueueItems().catch((error) => {
+          console.error(
+            "Failed to refresh queue items on connection restore:",
+            error
+          );
+        });
+      }
+    });
+  }, []);
+
+  return null;
+};
+
 export default function RootLayout() {
   const [appIsReady, setAppIsReady] = useState(false);
   const [loaded, error] = useFonts(preloadedFonts);
@@ -59,18 +82,6 @@ export default function RootLayout() {
   useEffect(() => {
     dynamicActivate(locale);
   }, [locale]);
-
-  useEffect(() => {
-    return NetInfo.addEventListener((state) => {
-      const status = !!state.isConnected;
-      onlineManager.setOnline(status);
-
-      // If connection restored, try processing queue
-      if (status) {
-        processQueueItems();
-      }
-    });
-  }, []);
 
   useEffect(() => {
     if (loaded || error) {
@@ -106,6 +117,7 @@ export default function RootLayout() {
         client={queryClient}
         persistOptions={{ persister: asyncStoragePersister }}
       >
+        <NetworkHandler />
         <Stack screenOptions={{ headerShown: false }}>
           <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
           <Stack.Screen name="(auth)/login" options={{ headerShown: false }} />
