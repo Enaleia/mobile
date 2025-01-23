@@ -20,16 +20,17 @@ export default function SignOutModal({
   const handleSignOut = async () => {
     setIsLoading(true);
     try {
-      // Clear the token from directus client
-      await directus.logout();
+      // Do cleanup first
+      await Promise.all([
+        directus.logout(),
+        queryClient.cancelQueries(),
+        queryClient.clear(),
+      ]);
 
-      // Clear user data from react-query cache
-      await queryClient.setQueryData(["user-info"], null);
-
-      // Navigate back to login screen
-      router.replace("/");
+      // Then navigate after cleanup is complete
+      router.replace("/login");
     } catch (error) {
-      console.error("Error signing out:", error);
+      console.error("Error during sign out:", error);
     } finally {
       setIsLoading(false);
       onClose();
