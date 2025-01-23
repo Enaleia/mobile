@@ -4,6 +4,7 @@ import { MAX_RETRIES, QueueItem, QueueItemStatus } from "@/types/queue";
 import { processQueueItems } from "@/services/queueProcessor";
 import { useNetInfo } from "@react-native-community/netinfo";
 import { QueueEvents, queueEventEmitter } from "@/services/events";
+import { getCacheKey } from "@/utils/storage";
 
 interface QueueContextType {
   queueItems: QueueItem[];
@@ -20,14 +21,20 @@ export function QueueProvider({ children }: { children: React.ReactNode }) {
 
   const loadQueueItems = async () => {
     try {
-      const data = await AsyncStorage.getItem(
-        process.env.EXPO_PUBLIC_CACHE_KEY || ""
-      );
+      const key = getCacheKey();
+      const data = await AsyncStorage.getItem(key);
       const items = data ? JSON.parse(data) : [];
       setQueueItems(items);
-      return items; // Return items for immediate processing
+      return items;
     } catch (error) {
-      console.error("Error loading queue items:", error);
+      if (
+        error instanceof Error &&
+        error.message.includes("Cache key is not configured")
+      ) {
+        console.error("Queue functionality disabled:", error.message);
+      } else {
+        console.error("Error loading queue items:", error);
+      }
       setQueueItems([]);
       return [];
     }
@@ -88,13 +95,10 @@ export function QueueProvider({ children }: { children: React.ReactNode }) {
 
   const updateQueueItems = async (items: QueueItem[]) => {
     try {
-      await AsyncStorage.setItem(
-        process.env.EXPO_PUBLIC_CACHE_KEY || "",
-        JSON.stringify(items)
-      );
+      const key = getCacheKey();
+      await AsyncStorage.setItem(key, JSON.stringify(items));
       setQueueItems(items);
 
-      // Immediately process if we have pending items and are connected
       if (isConnected) {
         console.log("Triggering immediate queue processing after update");
         await processQueue(items);
@@ -102,7 +106,14 @@ export function QueueProvider({ children }: { children: React.ReactNode }) {
         console.log("Not connected, skipping immediate processing");
       }
     } catch (error) {
+      if (
+        error instanceof Error &&
+        error.message.includes("Cache key is not configured")
+      ) {
+        throw new Error("Unable to update queue: Cache key is not configured");
+      }
       console.error("Error updating queue items:", error);
+      throw error;
     }
   };
 

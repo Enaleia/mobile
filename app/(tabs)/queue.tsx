@@ -3,7 +3,6 @@ import NetworkStatus from "@/components/shared/NetworkStatus";
 import SafeAreaContent from "@/components/shared/SafeAreaContent";
 import { useQueue } from "@/contexts/QueueContext";
 import { QueueEvents, queueEventEmitter } from "@/services/events";
-import { processQueueItems } from "@/services/queueProcessor";
 import { QueueItem, QueueItemStatus } from "@/types/queue";
 import { Ionicons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -77,9 +76,10 @@ const QueueScreen = () => {
       process.env.EXPO_PUBLIC_CACHE_KEY || "",
       JSON.stringify(updatedItems)
     );
+
     try {
-      await processQueueItems(updatedItems);
-      await loadQueueItems(); // Refresh after retry
+      // Just trigger a queue items refresh - the queue processor will handle the rest
+      await loadQueueItems();
     } catch (error) {
       console.error("Error retrying items:", error);
     }
@@ -89,8 +89,8 @@ const QueueScreen = () => {
   useEffect(() => {
     // If there are more than 30 queued actions, invalidate and clear the cache
     if (items?.length && items?.length > 30) {
-      // Clear the AsyncStorage cache
-      AsyncStorage.removeItem("enaleia-cache-v0")
+      // Clear the AsyncStorage cache using the environment variable
+      AsyncStorage.removeItem(process.env.EXPO_PUBLIC_CACHE_KEY || "")
         .then(() => {
           // Invalidate and reset the query client
           loadQueueItems();
