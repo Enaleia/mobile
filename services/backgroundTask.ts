@@ -1,16 +1,34 @@
 import * as TaskManager from "expo-task-manager";
 import * as BackgroundFetch from "expo-background-fetch";
-import { processQueueItems } from "@/services/queueProcessor";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { QueueItem, QueueItemStatus } from "@/types/queue";
+import { QueueEvents, queueEventEmitter } from "@/services/events";
 
 const BACKGROUND_SYNC_TASK = "BACKGROUND_SYNC_TASK";
 
 // Define the task before registering
 TaskManager.defineTask(BACKGROUND_SYNC_TASK, async () => {
   try {
-    // Process queue items here
-    const result = await processQueueItems();
-    // Since processQueueItems returns void, we'll assume any successful completion means new data
-    return BackgroundFetch.BackgroundFetchResult.NewData;
+    // Emit event to trigger queue processing through context
+    queueEventEmitter.emit(QueueEvents.UPDATED);
+
+    // Check if there are any remaining items that need processing
+    const cacheKey = process.env.EXPO_PUBLIC_CACHE_KEY;
+    if (!cacheKey) return BackgroundFetch.BackgroundFetchResult.NoData;
+
+    const data = await AsyncStorage.getItem(cacheKey);
+    if (!data) return BackgroundFetch.BackgroundFetchResult.NoData;
+
+    const items: QueueItem[] = JSON.parse(data);
+    const pendingItems = items.filter(
+      (item) =>
+        item.status === QueueItemStatus.PENDING ||
+        item.status === QueueItemStatus.OFFLINE
+    );
+
+    return pendingItems.length > 0
+      ? BackgroundFetch.BackgroundFetchResult.Failed // Still have items to process
+      : BackgroundFetch.BackgroundFetchResult.NewData; // All items processed
   } catch (error) {
     console.error("Background sync failed:", error);
     return BackgroundFetch.BackgroundFetchResult.Failed;

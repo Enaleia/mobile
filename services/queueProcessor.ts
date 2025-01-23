@@ -52,108 +52,146 @@ async function notifyUser(title: string, body: string) {
   });
 }
 
-export async function processQueueItems(itemsToProcess?: QueueItem[]) {
-  if (!itemsToProcess?.length) return;
+// Add a processing lock flag
+let isProcessing = false;
 
-  const isConnected = (await NetInfo.fetch()).isConnected;
-  if (!isConnected) {
-    console.log("No connection, marking items as offline");
-    for (const item of itemsToProcess) {
-      await updateItemInCache(item.localId, {
-        status: QueueItemStatus.OFFLINE,
-      });
-    }
+export async function processQueueItems(itemsToProcess?: QueueItem[]) {
+  // Prevent concurrent processing
+  if (isProcessing) {
+    console.log("Queue processing already in progress, skipping");
     return;
   }
 
-  for (const item of itemsToProcess) {
-    console.log(
-      `Processing item ${item.localId}, retry count: ${item.retryCount}`
-    );
+  try {
+    isProcessing = true;
 
-    try {
-      // First mark as processing
-      await updateItemInCache(item.localId, {
-        status: QueueItemStatus.PROCESSING,
-        lastAttempt: new Date(),
-      });
+    // If no items provided, fetch pending items from storage
+    if (!itemsToProcess) {
+      const cacheKey = process.env.EXPO_PUBLIC_CACHE_KEY;
+      if (!cacheKey) return;
 
-      // Create the event first
-      const directusEvent = await createEvent({
-        action: item.type,
-        event_timestamp: new Date(item.date),
-      });
+      const data = await AsyncStorage.getItem(cacheKey);
+      if (!data) return;
 
-      if (!directusEvent?.data?.event_id) {
-        throw new Error("No event ID returned from API");
-      }
-
-      // Process incoming materials if they exist
-      if (item.incomingMaterials?.length) {
-        const validMaterials = item.incomingMaterials.filter(
-          (material) => material
-        );
-
-        await Promise.all(
-          validMaterials.map(async (material) => {
-            const result = await createMaterialInput({
-              input_material: material.id,
-              input_code: material.code || "",
-              input_weight: material.weight || 0,
-              event_id: directusEvent.data.event_id,
-            });
-
-            if (!result) {
-              throw new Error(
-                `Failed to create input material for ${material.id}`
-              );
-            }
-
-            console.log(`Created incoming material record for ${material.id}`);
-          })
-        );
-      }
-
-      // Process outgoing materials if they exist
-      if (item.outgoingMaterials?.length) {
-        const validMaterials = item.outgoingMaterials.filter(
-          (material) => material
-        );
-
-        await Promise.all(
-          validMaterials.map(async (material) => {
-            const result = await createMaterialOutput({
-              output_material: material.id,
-              output_code: material.code || "",
-              output_weight: material.weight || 0,
-              event_id: directusEvent.data.event_id,
-            });
-
-            if (!result) {
-              throw new Error(
-                `Failed to create output material for ${material.id}`
-              );
-            }
-
-            console.log(`Created outgoing material record for ${material.id}`);
-          })
-        );
-      }
-
-      // If all succeeded, mark as completed
-      await updateItemInCache(item.localId, {
-        status: QueueItemStatus.COMPLETED,
-      });
-
-      console.log(`Successfully processed item ${item.localId}`);
-    } catch (error) {
-      console.error(`Error processing item ${item.localId}:`, error);
-
-      await updateItemInCache(item.localId, {
-        status: QueueItemStatus.FAILED,
-        lastError:
-          error instanceof Error ? error.message : "Unknown error occurred",
-      });
+      const allItems: QueueItem[] = JSON.parse(data);
+      itemsToProcess = allItems.filter(
+        (item) =>
+          item.status === QueueItemStatus.PENDING ||
+          item.status === QueueItemStatus.OFFLINE
+      );
     }
+
+    if (!itemsToProcess?.length) {
+      console.log("No items to process");
+      return;
+    }
+
+    const isConnected = (await NetInfo.fetch()).isConnected;
+    if (!isConnected) {
+      console.log("No connection, marking items as offline");
+      for (const item of itemsToProcess) {
+        await updateItemInCache(item.localId, {
+          status: QueueItemStatus.OFFLINE,
+        });
+      }
+      return;
+    }
+
+    for (const item of itemsToProcess) {
+      console.log(
+        `Processing item ${item.localId}, retry count: ${item.retryCount}`
+      );
+
+      try {
+        // First mark as processing
+        await updateItemInCache(item.localId, {
+          status: QueueItemStatus.PROCESSING,
+          lastAttempt: new Date(),
+        });
+
+        // Create the event first
+        const directusEvent = await createEvent({
+          action: item.type,
+          event_timestamp: new Date(item.date),
+        });
+
+        if (!directusEvent?.data?.event_id) {
+          throw new Error("No event ID returned from API");
+        }
+
+        // Process incoming materials if they exist
+        if (item.incomingMaterials?.length) {
+          const validMaterials = item.incomingMaterials.filter(
+            (material) => material
+          );
+
+          await Promise.all(
+            validMaterials.map(async (material) => {
+              const result = await createMaterialInput({
+                input_material: material.id,
+                input_code: material.code || "",
+                input_weight: material.weight || 0,
+                event_id: directusEvent.data.event_id,
+              });
+
+              if (!result) {
+                throw new Error(
+                  `Failed to create input material for ${material.id}`
+                );
+              }
+
+              console.log(
+                `Created incoming material record for ${material.id}`
+              );
+            })
+          );
+        }
+
+        // Process outgoing materials if they exist
+        if (item.outgoingMaterials?.length) {
+          const validMaterials = item.outgoingMaterials.filter(
+            (material) => material
+          );
+
+          await Promise.all(
+            validMaterials.map(async (material) => {
+              const result = await createMaterialOutput({
+                output_material: material.id,
+                output_code: material.code || "",
+                output_weight: material.weight || 0,
+                event_id: directusEvent.data.event_id,
+              });
+
+              if (!result) {
+                throw new Error(
+                  `Failed to create output material for ${material.id}`
+                );
+              }
+
+              console.log(
+                `Created outgoing material record for ${material.id}`
+              );
+            })
+          );
+        }
+
+        // If all succeeded, mark as completed
+        await updateItemInCache(item.localId, {
+          status: QueueItemStatus.COMPLETED,
+        });
+
+        console.log(`Successfully processed item ${item.localId}`);
+      } catch (error) {
+        console.error(`Error processing item ${item.localId}:`, error);
+
+        await updateItemInCache(item.localId, {
+          status: QueueItemStatus.FAILED,
+          lastError:
+            error instanceof Error ? error.message : "Unknown error occurred",
+        });
+      }
+    }
+  } finally {
+    isProcessing = false;
   }
 }
