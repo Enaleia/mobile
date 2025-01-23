@@ -18,38 +18,43 @@ function Home() {
     data: batchData,
     error,
     isLoading,
-  } = useQuery<BatchData, Error>({
+  } = useQuery<BatchData | null, Error>({
     queryKey: ["batchData"],
     queryFn: async () => {
       try {
         const data = await batchFetchData();
-        const processed = {
-          actions: data.actions ? processActions(data.actions) : null,
-          materials: data.materials ? processMaterials(data.materials) : null,
-          collectors: data.collectors
-            ? processCollectors(data.collectors)
-            : null,
-          products: data.products ? processProducts(data.products) : null,
-        };
-
         if (
-          !processed.actions ||
-          !processed.materials ||
-          !processed.collectors ||
-          !processed.products
+          !data.actions.length &&
+          !data.materials.length &&
+          !data.collectors.length &&
+          !data.products.length
         ) {
+          return null;
+        }
+
+        const actions = processActions(data.actions);
+        const materials = processMaterials(data.materials);
+        const collectors = processCollectors(data.collectors);
+        const products = processProducts(data.products);
+
+        if (!actions || !materials || !collectors || !products) {
           throw new Error("Missing required data");
         }
 
-        return processed as BatchData;
-      } catch (error) {
-        throw error;
+        return { actions, materials, collectors, products };
+      } catch (error: any) {
+        if (!error?.message?.includes("FORBIDDEN")) {
+          throw error;
+        }
+        return null;
       }
     },
     staleTime: 1000 * 60 * 60 * 24, // 24 hours
+    enabled: !!userData, // Only fetch when we have user data
   });
 
   const isComplete = userData && batchData;
+  const isAuthError = !userData || (error?.message || "").includes("FORBIDDEN");
 
   return (
     <SafeAreaContent>
@@ -71,7 +76,10 @@ function Home() {
         <Text className="text-3xl font-dm-bold tracking-[-1.5px] mb-2 text-enaleia-black">
           Hello, what action will you be doing today?
         </Text>
-        <ActionSelection actions={batchData?.actions} isLoading={isLoading} />
+        <ActionSelection
+          actions={batchData?.actions ?? undefined}
+          isLoading={isLoading && !isAuthError}
+        />
       </View>
       <InitializationModal
         isVisible={!isComplete}
@@ -82,7 +90,8 @@ function Home() {
           collectors: Boolean(batchData?.collectors),
           products: Boolean(batchData?.products),
         }}
-        error={error || null}
+        error={error}
+        isAuthError={isAuthError}
       />
     </SafeAreaContent>
   );

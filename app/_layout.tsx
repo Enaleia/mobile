@@ -36,6 +36,7 @@ const queryClient = new QueryClient({
       retry: 3,
       refetchOnWindowFocus: false,
       staleTime: 1000 * 60 * 60 * 24, // 24 hours
+      enabled: false, // Queries will need to explicitly enable themselves
     },
     mutations: {
       retry: 3,
