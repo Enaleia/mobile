@@ -22,6 +22,8 @@ import {
   Text,
   TextInput,
   View,
+  Alert,
+  GestureResponderEvent,
 } from "react-native";
 import uuid from "react-native-uuid";
 import { z } from "zod";
@@ -29,6 +31,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useCurrentLocation } from "@/hooks/useCurrentLocation";
 import { MAX_RETRIES, QueueItem, QueueItemStatus } from "@/types/queue";
 import { useQueue } from "@/contexts/QueueContext";
+import { getCacheKey } from "@/utils/storage";
 
 const eventFormSchema = z.object({
   type: z
@@ -105,11 +108,8 @@ const NewActionScreen = () => {
 
   const addItemToQueue = async (queueItem: QueueItem) => {
     try {
-      const cacheKey = process.env.EXPO_PUBLIC_CACHE_KEY;
-      if (!cacheKey) {
-        console.error("No cache key available");
-        return;
-      }
+      // Validate cache key availability early
+      const cacheKey = getCacheKey();
 
       console.log("Adding queue item:", JSON.stringify(queueItem, null, 2));
 
@@ -127,25 +127,33 @@ const NewActionScreen = () => {
           }
         } catch (parseError) {
           console.error("Error parsing stored data:", parseError);
-          existingItems = [];
+          throw new Error("Failed to parse existing queue data");
         }
       }
 
       // Add new item
       const updatedItems = [...existingItems, queueItem];
-      console.log(
-        "Saving updated items:",
-        JSON.stringify(updatedItems, null, 2)
-      );
 
       // Use the passed updateQueueItems function
       await updateQueueItems(updatedItems);
 
       // Verify save
       const savedData = await AsyncStorage.getItem(cacheKey);
+      if (!savedData) {
+        throw new Error("Failed to verify queue item was saved");
+      }
       console.log("Verified saved data:", savedData);
     } catch (error) {
       console.error("Error in addItemToQueue:", error);
+
+      // Show appropriate error message to user
+      const errorMessage =
+        error instanceof Error && error.message.includes("Cache key")
+          ? "Queue functionality is not properly configured. Please contact support."
+          : "Failed to add item to queue. Please try again.";
+
+      Alert.alert("Error", errorMessage, [{ text: "OK" }]);
+
       throw error;
     }
   };
@@ -189,7 +197,13 @@ const NewActionScreen = () => {
         await addItemToQueue(queueItem);
         setIsSentToQueue(true);
       } catch (error) {
-        setSubmitError("An error occurred while adding to queue");
+        // Don't show success modal if queue operation failed
+        setIsSentToQueue(false);
+        setSubmitError(
+          error instanceof Error && error.message.includes("Cache key")
+            ? "Queue system is not properly configured"
+            : "An error occurred while adding to queue"
+        );
         console.error("Error adding to queue:", error);
       } finally {
         setIsSubmitting(false);
@@ -278,15 +292,7 @@ const NewActionScreen = () => {
           showsVerticalScrollIndicator={false}
           contentContainerStyle={{ flexGrow: 0, paddingBottom: 20 }}
         >
-          <View
-            onStartShouldSetResponder={() => true}
-            onResponderRelease={(e) => {
-              e.preventDefault();
-              e.stopPropagation();
-              form.handleSubmit();
-            }}
-            className="flex-1 space-y-2"
-          >
+          <View className="flex-1 space-y-2">
             <form.Field name="incomingMaterials">
               {(field) => (
                 <MaterialSection
@@ -392,7 +398,10 @@ const NewActionScreen = () => {
               ]}
             >
               {([canSubmit, isSubmitting, values]) => {
-                const handleSubmitClick = () => {
+                const handleSubmitClick = (e: GestureResponderEvent) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+
                   const hasValidIncoming = validateMaterials(
                     typeof values === "object" &&
                       values !== null &&
