@@ -6,32 +6,33 @@ import TypeInformationModal from "@/components/features/attest/TypeInformationMo
 import FormSection from "@/components/shared/FormSection";
 import SafeAreaContent from "@/components/shared/SafeAreaContent";
 import { ACTION_SLUGS } from "@/constants/action";
+import { useQueue } from "@/contexts/QueueContext";
+import { useActions } from "@/hooks/data/useActions";
 import { useMaterials } from "@/hooks/data/useMaterials";
+import { useCurrentLocation } from "@/hooks/useCurrentLocation";
 import { ActionTitle, typeModalMap } from "@/types/action";
 import { MaterialDetail } from "@/types/material";
+import { QueueItem, QueueItemStatus } from "@/types/queue";
+import { getCacheKey } from "@/utils/storage";
 import { Ionicons } from "@expo/vector-icons";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useForm } from "@tanstack/react-form";
 import { zodValidator } from "@tanstack/zod-form-adapter";
 import { router, useLocalSearchParams } from "expo-router";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import {
   ActivityIndicator,
+  Alert,
+  GestureResponderEvent,
   Image,
   Pressable,
   ScrollView,
   Text,
   TextInput,
   View,
-  Alert,
-  GestureResponderEvent,
 } from "react-native";
 import uuid from "react-native-uuid";
 import { z } from "zod";
-import AsyncStorage from "@react-native-async-storage/async-storage";
-import { useCurrentLocation } from "@/hooks/useCurrentLocation";
-import { MAX_RETRIES, QueueItem, QueueItemStatus } from "@/types/queue";
-import { useQueue } from "@/contexts/QueueContext";
-import { getCacheKey } from "@/utils/storage";
 
 const eventFormSchema = z.object({
   type: z
@@ -75,14 +76,10 @@ const eventFormSchema = z.object({
 export type EventFormType = z.infer<typeof eventFormSchema>;
 
 const NewActionScreen = () => {
-  const { type } = useLocalSearchParams(); // slug format
+  const { slug } = useLocalSearchParams(); // slug format
   const location = useCurrentLocation();
 
   const [isSentToQueue, setIsSentToQueue] = useState(false);
-  const title = Object.keys(ACTION_SLUGS).find(
-    (key) => ACTION_SLUGS[key as ActionTitle] === type
-  ) as ActionTitle;
-
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [hasAttemptedSubmit, setHasAttemptedSubmit] = useState(false);
@@ -96,6 +93,25 @@ const NewActionScreen = () => {
   const [showLeaveModal, setShowLeaveModal] = useState(false);
 
   const { updateQueueItems } = useQueue();
+
+  const { actionsData } = useActions();
+
+  const currentAction = useMemo(() => {
+    if (!actionsData?.length || !slug) return undefined;
+
+    const matchingAction = actionsData.find((action) => action.slug === slug);
+
+    if (!matchingAction) {
+      console.warn(`No action found for slug: ${slug}`);
+    }
+    return matchingAction;
+  }, [actionsData, slug]);
+
+  if (!actionsData?.length) return null;
+  if (!currentAction) {
+    console.warn("No matching action found for:", slug);
+    return null;
+  }
 
   const validateMaterials = (materials: MaterialDetail[]) => {
     if (materials.length === 0) return false;
@@ -131,13 +147,10 @@ const NewActionScreen = () => {
         }
       }
 
-      // Add new item
       const updatedItems = [...existingItems, queueItem];
 
-      // Use the passed updateQueueItems function
       await updateQueueItems(updatedItems);
 
-      // Verify save
       const savedData = await AsyncStorage.getItem(cacheKey);
       if (!savedData) {
         throw new Error("Failed to verify queue item was saved");
@@ -146,7 +159,6 @@ const NewActionScreen = () => {
     } catch (error) {
       console.error("Error in addItemToQueue:", error);
 
-      // Show appropriate error message to user
       const errorMessage =
         error instanceof Error && error.message.includes("Cache key")
           ? "Queue functionality is not properly configured. Please contact support."
@@ -160,7 +172,7 @@ const NewActionScreen = () => {
 
   const form = useForm({
     defaultValues: {
-      type: title as ActionTitle,
+      type: currentAction?.name as ActionTitle,
       date: new Date().toISOString(),
       incomingMaterials: [] as MaterialDetail[],
       outgoingMaterials: [] as MaterialDetail[],
@@ -184,8 +196,15 @@ const NewActionScreen = () => {
           return;
         }
 
+        const actionId = currentAction?.id;
+
+        if (!actionId) {
+          throw new Error("Could not find matching action ID");
+        }
+
         const queueItem: QueueItem = {
           ...value,
+          actionId,
           localId: uuid.v4() as string,
           date: new Date().toISOString(),
           status: QueueItemStatus.PENDING,
@@ -197,7 +216,6 @@ const NewActionScreen = () => {
         await addItemToQueue(queueItem);
         setIsSentToQueue(true);
       } catch (error) {
-        // Don't show success modal if queue operation failed
         setIsSentToQueue(false);
         setSubmitError(
           error instanceof Error && error.message.includes("Cache key")
@@ -280,12 +298,12 @@ const NewActionScreen = () => {
         </Pressable>
       </View>
       <TypeInformationModal
-        {...typeModalMap[title]}
+        {...typeModalMap[currentAction.name]}
         isVisible={isTypeInformationModalVisible}
         onClose={() => setIsTypeInformationModalVisible(false)}
       />
       <Text className="text-3xl font-dm-bold text-enaleia-black tracking-[-1px] mb-2">
-        {title}
+        {currentAction?.name}
       </Text>
       <View className="flex-1">
         <ScrollView
@@ -307,7 +325,7 @@ const NewActionScreen = () => {
                 />
               )}
             </form.Field>
-            {title !== "Manufacturing" && (
+            {currentAction?.name !== "Manufacturing" && (
               <form.Field name="outgoingMaterials">
                 {(field) => (
                   <MaterialSection
@@ -321,7 +339,7 @@ const NewActionScreen = () => {
                 )}
               </form.Field>
             )}
-            {title === "Manufacturing" && (
+            {currentAction?.name === "Manufacturing" && (
               <View className="mt-10 rounded-lg">
                 <View className="flex-row items-center space-x-0.5">
                   <Text className="text-xl font-dm-light text-enaleia-black tracking-tighter">
