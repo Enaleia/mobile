@@ -1,4 +1,4 @@
-import { EventFormType } from "@/app/attest/new/[type]";
+import { EventFormType } from "@/app/attest/new/[slug]";
 
 export enum QueueItemStatus {
   PENDING = "PENDING", // Initial state when added to queue
@@ -14,6 +14,7 @@ export interface QueueItem extends EventFormType {
   retryCount: number;
   lastError?: string;
   lastAttempt?: Date;
+  actionId?: number;
 }
 
 export const MAX_RETRIES = 3;
