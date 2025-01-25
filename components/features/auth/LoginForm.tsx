@@ -24,7 +24,6 @@ const LoginData = z.object({
 type LoginData = z.infer<typeof LoginData>;
 
 export default function LoginForm() {
-  // Check for existing access token on component mount
   useEffect(() => {
     const checkExistingToken = async () => {
       try {
@@ -80,18 +79,13 @@ export default function LoginForm() {
         try {
           const result = LoginData.safeParse(value);
           if (!result.success) {
-            // Return validation errors if parsing fails
             return {
               form: "Please check your email and password",
               fields: Object.fromEntries(
-                result.error.errors.map((err) => [
-                  err.path[0], // Field name
-                  err.message, // Error message
-                ])
+                result.error.errors.map((err) => [err.path[0], err.message])
               ),
             };
           }
-          // Continue with validated data
           value = result.data;
           await handleLogin(value);
           return undefined;

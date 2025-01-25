@@ -17,10 +17,8 @@ const QueueScreen = () => {
   const navigation = useNavigation();
   const { isConnected } = useNetInfo();
 
-  // Initialize arrays with proper null checks
   const items = queueItems.length > 0 ? queueItems : [];
 
-  // Ensure we're working with arrays and handle null/undefined
   const pendingItems = items.filter(
     (i) => i && i.status === QueueItemStatus.PENDING
   );
@@ -41,7 +39,6 @@ const QueueScreen = () => {
     (i) => i && i.status === QueueItemStatus.COMPLETED
   );
 
-  // Update badge count
   useEffect(() => {
     const numPending = items.filter(
       (i) => i && i.status !== QueueItemStatus.COMPLETED
@@ -52,17 +49,14 @@ const QueueScreen = () => {
     });
   }, [items]);
 
-  // Refresh on focus
   useEffect(() => {
     const unsubscribe = navigation.addListener("focus", loadQueueItems);
     return unsubscribe;
   }, [navigation]);
 
-  // Listen for queue updates
   useEventListener(queueEventEmitter, QueueEvents.UPDATED, loadQueueItems);
 
   const handleRetry = async (items: QueueItem[]) => {
-    // Reset items to pending state and clear retry count
     const updatedItems = items.map((item) => ({
       ...item,
       status: QueueItemStatus.PENDING,
@@ -71,14 +65,12 @@ const QueueScreen = () => {
       lastAttempt: undefined,
     }));
 
-    // Update items in AsyncStorage
     await AsyncStorage.setItem(
       process.env.EXPO_PUBLIC_CACHE_KEY || "",
       JSON.stringify(updatedItems)
     );
 
     try {
-      // Just trigger a queue items refresh - the queue processor will handle the rest
       await loadQueueItems();
     } catch (error) {
       console.error("Error retrying items:", error);
@@ -87,12 +79,9 @@ const QueueScreen = () => {
 
   // TODO: [DEV] This is a temporary fix to clear the cache when the queue is too large
   useEffect(() => {
-    // If there are more than 30 queued actions, invalidate and clear the cache
     if (items?.length && items?.length > 30) {
-      // Clear the AsyncStorage cache using the environment variable
       AsyncStorage.removeItem(process.env.EXPO_PUBLIC_CACHE_KEY || "")
         .then(() => {
-          // Invalidate and reset the query client
           loadQueueItems();
         })
         .catch((error) => {
@@ -100,15 +89,6 @@ const QueueScreen = () => {
         });
     }
   }, [items?.length]);
-
-  useEffect(() => {
-    console.log("Queue Items:", items);
-    console.log("Pending:", pendingItems);
-    console.log("Processing:", processingItems);
-    console.log("Failed:", failedItems);
-    console.log("Offline:", offlineItems);
-    console.log("Completed:", completedItems);
-  }, [items]);
 
   const hasNoItems =
     !pendingItems.length &&

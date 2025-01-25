@@ -20,14 +20,12 @@ export default function SignOutModal({
   const handleSignOut = async () => {
     setIsLoading(true);
     try {
-      // Do cleanup first
       await Promise.all([
         directus.logout(),
         queryClient.cancelQueries(),
         queryClient.clear(),
       ]);
 
-      // Then navigate after cleanup is complete
       router.replace("/login");
     } catch (error) {
       console.error("Error during sign out:", error);

@@ -51,8 +51,8 @@ function Home() {
         return null;
       }
     },
-    staleTime: 1000 * 60 * 60 * 24, // 24 hours
-    enabled: !!userData, // Only fetch when we have user data
+    staleTime: 1000 * 60 * 60 * 24,
+    enabled: !!userData,
   });
 
   const isComplete = userData && batchData;

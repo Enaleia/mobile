@@ -1,6 +1,5 @@
 import { ActionColor, ActionIcon, ActionSlug } from "@/types/action";
 
-// Keep only the static assets and configurations
 export const ACTION_COLORS: ActionColor = {
   "Ad-hoc": "#FABAA4",
   Batch: "#9FD08B",

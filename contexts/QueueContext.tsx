@@ -72,12 +72,11 @@ export function QueueProvider({ children }: { children: React.ReactNode }) {
         console.error("Error processing queue:", error);
       } finally {
         processingRef.current = false;
-        await loadQueueItems(); // Refresh queue after processing
+        await loadQueueItems();
       }
     }
   };
 
-  // Initial load
   useEffect(() => {
     loadQueueItems().then((items) => {
       if (isConnected) {
@@ -86,7 +85,6 @@ export function QueueProvider({ children }: { children: React.ReactNode }) {
     });
   }, []);
 
-  // Process when connection changes
   useEffect(() => {
     if (isConnected && queueItems.length > 0) {
       processQueue(queueItems);
@@ -117,7 +115,6 @@ export function QueueProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  // Add event listener for queue updates
   useEffect(() => {
     const handleQueueUpdate = () => {
       console.log("Queue update event received");

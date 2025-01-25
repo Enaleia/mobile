@@ -124,12 +124,10 @@ const NewActionScreen = () => {
 
   const addItemToQueue = async (queueItem: QueueItem) => {
     try {
-      // Validate cache key availability early
       const cacheKey = getCacheKey();
 
       console.log("Adding queue item:", JSON.stringify(queueItem, null, 2));
 
-      // Get existing items
       const existingData = await AsyncStorage.getItem(cacheKey);
       console.log("Existing data from storage:", existingData);
 

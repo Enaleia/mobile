@@ -32,11 +32,11 @@ const preloadedFonts = {
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      gcTime: 1000 * 60 * 60 * 24, // 24 hours
+      gcTime: 1000 * 60 * 60 * 24,
       retry: 3,
       refetchOnWindowFocus: false,
-      staleTime: 1000 * 60 * 60 * 24, // 24 hours
-      enabled: false, // Queries will need to explicitly enable themselves
+      staleTime: 1000 * 60 * 60 * 24,
+      enabled: false,
     },
     mutations: {
       retry: 3,
@@ -51,7 +51,6 @@ const asyncStoragePersister = createAsyncStoragePersister({
   throttleTime: 2000,
 });
 
-// Create a new component to handle network status
 const NetworkHandler = () => {
   const { loadQueueItems } = useQueue();
 
@@ -60,7 +59,6 @@ const NetworkHandler = () => {
       const status = !!state.isConnected;
       onlineManager.setOnline(status);
 
-      // If connection restored, trigger queue refresh
       if (status) {
         loadQueueItems().catch((error) => {
           console.error(
@@ -91,23 +89,6 @@ export default function RootLayout() {
     }
   }, [loaded, error]);
 
-  // Clear AsyncStorage and React Query cache on app startup
-  // useEffect(() => {
-  //   const clearCaches = async () => {
-  //     try {
-  //       await AsyncStorage.clear();
-  //       console.log("[Cache] AsyncStorage cleared successfully");
-
-  //       queryClient.clear();
-  //       console.log("[Cache] React Query cache cleared successfully");
-  //     } catch (error) {
-  //       console.error("[Cache] Error clearing caches:", error);
-  //     }
-  //   };
-
-  //   clearCaches();
-  // }, []);
-
   if (!appIsReady) {
     return null;
   }
@@ -120,7 +101,6 @@ export default function RootLayout() {
           persister: asyncStoragePersister,
           dehydrateOptions: {
             shouldDehydrateQuery: ({ queryKey }) => {
-              // Only persist specific queries like batchData
               return queryKey.includes("batchData");
             },
           },

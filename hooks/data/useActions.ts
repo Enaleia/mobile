@@ -3,12 +3,10 @@ import { BatchData } from "@/types/batch";
 import { Action, processActions, groupActionsByCategory } from "@/types/action";
 
 export function useActions() {
-  // This will read from the existing cache populated by index.tsx
   const { data: batchData } = useQuery<BatchData | null>({
     queryKey: ["batchData"],
   });
 
-  // The actions are already processed in index.tsx, so we can use them directly
   const actions = batchData?.actions as Action[] | undefined;
 
   return {
