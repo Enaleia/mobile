@@ -7,9 +7,9 @@ import { QueueItemStatus } from "@/types/queue";
 const TabsLayout = () => {
   const { queueItems } = useQueue();
 
-  const incompleteItems = queueItems.filter(
-    (item) => item.status !== QueueItemStatus.COMPLETED
-  );
+  const incompleteItems = Array.isArray(queueItems)
+    ? queueItems.filter((item) => item.status !== QueueItemStatus.COMPLETED)
+    : [];
 
   return (
     <Tabs
