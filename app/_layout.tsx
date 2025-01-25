@@ -33,10 +33,11 @@ const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
       gcTime: 1000 * 60 * 60 * 24,
-      retry: 3,
-      refetchOnWindowFocus: false,
       staleTime: 1000 * 60 * 60 * 24,
-      enabled: false,
+      structuralSharing: true,
+      refetchOnMount: false,
+      refetchOnWindowFocus: false,
+      refetchOnReconnect: "always",
     },
     mutations: {
       retry: 3,

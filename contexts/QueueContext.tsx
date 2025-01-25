@@ -5,11 +5,13 @@ import { processQueueItems } from "@/services/queueProcessor";
 import { useNetInfo } from "@react-native-community/netinfo";
 import { QueueEvents, queueEventEmitter } from "@/services/events";
 import { getCacheKey } from "@/utils/storage";
+import { QueryClient } from "@tanstack/react-query";
 
 interface QueueContextType {
   queueItems: QueueItem[];
   loadQueueItems: () => Promise<void>;
   updateQueueItems: (items: QueueItem[]) => Promise<void>;
+  clearStaleData: () => void;
 }
 
 const QueueContext = createContext<QueueContextType | null>(null);
@@ -18,6 +20,7 @@ export function QueueProvider({ children }: { children: React.ReactNode }) {
   const [queueItems, setQueueItems] = useState<QueueItem[]>([]);
   const { isConnected } = useNetInfo();
   const processingRef = useRef(false);
+  const queryClient = new QueryClient();
 
   const loadQueueItems = async () => {
     try {
@@ -131,9 +134,23 @@ export function QueueProvider({ children }: { children: React.ReactNode }) {
     };
   }, [isConnected]);
 
+  const clearStaleData = () => {
+    queryClient.removeQueries({
+      predicate: (query) => {
+        const hour = 1000 * 60 * 60;
+        return Date.now() - query.state.dataUpdatedAt > hour * 24;
+      },
+    });
+  };
+
   return (
     <QueueContext.Provider
-      value={{ queueItems, loadQueueItems, updateQueueItems }}
+      value={{
+        queueItems,
+        loadQueueItems,
+        updateQueueItems,
+        clearStaleData,
+      }}
     >
       {children}
     </QueueContext.Provider>
