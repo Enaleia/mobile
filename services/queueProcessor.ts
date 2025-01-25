@@ -13,9 +13,6 @@ if (!process.env.EXPO_PUBLIC_CACHE_KEY) {
   throw new Error("EXPO_PUBLIC_CACHE_KEY is not set");
 }
 
-/**
- * Updates the sync status of an item in the cache
- */
 async function updateItemInCache(itemId: string, updates: Partial<QueueItem>) {
   const cacheKey = process.env.EXPO_PUBLIC_CACHE_KEY;
   if (!cacheKey) return;
@@ -29,7 +26,6 @@ async function updateItemInCache(itemId: string, updates: Partial<QueueItem>) {
       ? {
           ...item,
           ...updates,
-          // Don't increment retry count when just updating status
           retryCount:
             updates.status === QueueItemStatus.PROCESSING
               ? (item.retryCount || 0) + 1
@@ -48,15 +44,13 @@ async function notifyUser(title: string, body: string) {
       title,
       body,
     },
-    trigger: null, // Show immediately
+    trigger: null,
   });
 }
 
-// Add a processing lock flag
 let isProcessing = false;
 
 export async function processQueueItems(itemsToProcess?: QueueItem[]) {
-  // Prevent concurrent processing
   if (isProcessing) {
     console.log("Queue processing already in progress, skipping");
     return;
@@ -65,7 +59,6 @@ export async function processQueueItems(itemsToProcess?: QueueItem[]) {
   try {
     isProcessing = true;
 
-    // If no items provided, fetch pending items from storage
     if (!itemsToProcess) {
       const cacheKey = process.env.EXPO_PUBLIC_CACHE_KEY;
       if (!cacheKey) return;
@@ -103,13 +96,11 @@ export async function processQueueItems(itemsToProcess?: QueueItem[]) {
       );
 
       try {
-        // First mark as processing
         await updateItemInCache(item.localId, {
           status: QueueItemStatus.PROCESSING,
           lastAttempt: new Date(),
         });
 
-        // Create the event first
         const directusEvent = await createEvent({
           action: item.actionId,
           event_timestamp: new Date(item.date),
@@ -121,7 +112,6 @@ export async function processQueueItems(itemsToProcess?: QueueItem[]) {
           throw new Error("No event ID returned from API");
         }
 
-        // Process incoming materials if they exist
         if (item.incomingMaterials?.length) {
           const validMaterials = item.incomingMaterials.filter(
             (material) => material
@@ -149,7 +139,6 @@ export async function processQueueItems(itemsToProcess?: QueueItem[]) {
           );
         }
 
-        // Process outgoing materials if they exist
         if (item.outgoingMaterials?.length) {
           const validMaterials = item.outgoingMaterials.filter(
             (material) => material
@@ -177,7 +166,6 @@ export async function processQueueItems(itemsToProcess?: QueueItem[]) {
           );
         }
 
-        // If all succeeded, mark as completed
         await updateItemInCache(item.localId, {
           status: QueueItemStatus.COMPLETED,
         });

@@ -6,13 +6,10 @@ import { QueueEvents, queueEventEmitter } from "@/services/events";
 
 const BACKGROUND_SYNC_TASK = "BACKGROUND_SYNC_TASK";
 
-// Define the task before registering
 TaskManager.defineTask(BACKGROUND_SYNC_TASK, async () => {
   try {
-    // Emit event to trigger queue processing through context
     queueEventEmitter.emit(QueueEvents.UPDATED);
 
-    // Check if there are any remaining items that need processing
     const cacheKey = process.env.EXPO_PUBLIC_CACHE_KEY;
     if (!cacheKey) return BackgroundFetch.BackgroundFetchResult.NoData;
 
@@ -27,8 +24,8 @@ TaskManager.defineTask(BACKGROUND_SYNC_TASK, async () => {
     );
 
     return pendingItems.length > 0
-      ? BackgroundFetch.BackgroundFetchResult.Failed // Still have items to process
-      : BackgroundFetch.BackgroundFetchResult.NewData; // All items processed
+      ? BackgroundFetch.BackgroundFetchResult.Failed
+      : BackgroundFetch.BackgroundFetchResult.NewData;
   } catch (error) {
     console.error("Background sync failed:", error);
     return BackgroundFetch.BackgroundFetchResult.Failed;

@@ -11,9 +11,6 @@ export interface Action {
   category: string;
 }
 
-// TODO: Re-assess if this is needed
-export type ActionStatus = "Pending" | "In Progress" | "Complete";
-
 export type ActionTitle =
   | "Fishing for litter"
   | "Manufacturing"
@@ -51,7 +48,6 @@ export const processActions = (actions: any[] | undefined): Action[] => {
 
   return actions
     .map((action) => {
-      // Ensure action_name is a valid ActionTitle
       const name = action.action_name as ActionTitle;
       if (!Object.keys(ACTION_SLUGS).includes(name)) {
         console.warn(`Invalid action name: ${name}`);
