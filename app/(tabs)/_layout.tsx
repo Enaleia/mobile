@@ -1,17 +1,15 @@
-import { IEvent } from "@/api/events/new";
 import { Ionicons } from "@expo/vector-icons";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Tabs } from "expo-router/tabs";
 import React from "react";
+import { useQueue } from "@/contexts/QueueContext";
+import { QueueItemStatus } from "@/types/queue";
+
 const TabsLayout = () => {
-  const queryClient = useQueryClient();
-  const { data: incompleteActions } = useQuery({
-    queryKey: ["events"],
-    queryFn: () =>
-      queryClient
-        .getQueryData<IEvent[]>(["events"])
-        ?.filter((event) => event.isNotSynced) || [],
-  });
+  const { queueItems } = useQueue();
+
+  const incompleteItems = queueItems.filter(
+    (item) => item.status !== QueueItemStatus.COMPLETED
+  );
 
   return (
     <Tabs
@@ -34,7 +32,7 @@ const TabsLayout = () => {
         name="queue"
         options={{
           tabBarLabel: "Queue",
-          tabBarBadge: incompleteActions?.length || undefined,
+          tabBarBadge: incompleteItems.length || undefined,
           tabBarIcon: ({ color }) => (
             <Ionicons name="archive" size={24} color={color} />
           ),

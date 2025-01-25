@@ -1,4 +1,3 @@
-import { ACTION_SLUGS } from "@/constants/action";
 import { router } from "expo-router";
 import { Image, ImageSourcePropType, Pressable, Text } from "react-native";
 
@@ -12,10 +11,12 @@ const ActionButton = ({
   name,
   color,
   icon,
+  slug,
 }: {
   name: string;
   color: string;
   icon: ImageSourcePropType;
+  slug: string;
   presentation?: "button" | "banner";
 }) => {
   return (
@@ -23,11 +24,7 @@ const ActionButton = ({
       className={presentation === "button" ? buttonClasses : bannerClasses}
       style={{ backgroundColor: color }}
       onPress={() =>
-        presentation === "button"
-          ? router.push(
-              `/attest/new/${ACTION_SLUGS[name as keyof typeof ACTION_SLUGS]}`
-            )
-          : null
+        presentation === "button" ? router.push(`/attest/new/${slug}`) : null
       }
     >
       <Image source={icon} className="w-16 h-16" />

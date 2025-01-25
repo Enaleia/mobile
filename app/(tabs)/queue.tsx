@@ -1,105 +1,162 @@
-import { IEvent } from "@/api/events/new";
+import QueueSection from "@/components/features/queue/QueueSection";
+import NetworkStatus from "@/components/shared/NetworkStatus";
 import SafeAreaContent from "@/components/shared/SafeAreaContent";
-import { ACTION_ICONS } from "@/constants/action";
-import { ActionTitle } from "@/types/action";
+import { useQueue } from "@/contexts/QueueContext";
+import { QueueEvents, queueEventEmitter } from "@/services/events";
+import { QueueItem, QueueItemStatus } from "@/types/queue";
 import { Ionicons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useNetInfo } from "@react-native-community/netinfo";
+import { useEventListener } from "expo";
 import { useNavigation } from "expo-router";
 import { useEffect } from "react";
-import { Image, Text, View } from "react-native";
-
-const QueuedAction = ({ type, date }: { type: ActionTitle; date: string }) => {
-  return (
-    <View className="flex-row items-center justify-between px-3 py-2 border-b border-neutral-200">
-      <View className="flex-row items-center justify-center gap-2">
-        <Image source={ACTION_ICONS[type]} className="w-8 h-8" />
-        <View className="space-y-0.5">
-          <Text className="text-base font-dm-bold text-slate-800 tracking-tighter">
-            {type}
-          </Text>
-          <Text className="text-xs font-dm-medium text-slate-500 uppercase w-full">
-            {new Intl.DateTimeFormat("en-US", {
-              month: "short",
-              day: "numeric",
-              year: "numeric",
-              hour: "numeric",
-              minute: "numeric",
-            }).format(new Date(date))}
-          </Text>
-        </View>
-      </View>
-    </View>
-  );
-};
+import { Text, View } from "react-native";
 
 const QueueScreen = () => {
+  const { queueItems, loadQueueItems } = useQueue();
   const navigation = useNavigation();
-  const queryClient = useQueryClient();
+  const { isConnected } = useNetInfo();
 
-  const { data: incompleteActions } = useQuery({
-    queryKey: ["events"],
-    queryFn: () =>
-      queryClient
-        .getQueryData<IEvent[]>(["events"])
-        ?.filter((event) => event.isNotSynced) || [],
-    staleTime: Infinity,
-  });
+  const items = queueItems.length > 0 ? queueItems : [];
+
+  const pendingItems = items.filter(
+    (i) => i && i.status === QueueItemStatus.PENDING
+  );
+
+  const processingItems = items.filter(
+    (i) => i && i.status === QueueItemStatus.PROCESSING
+  );
+
+  const failedItems = items.filter(
+    (i) => i && i.status === QueueItemStatus.FAILED
+  );
+
+  const offlineItems = items.filter(
+    (i) => i && i.status === QueueItemStatus.OFFLINE
+  );
+
+  const completedItems = items.filter(
+    (i) => i && i.status === QueueItemStatus.COMPLETED
+  );
 
   useEffect(() => {
-    // Update the tab bar badge with number of incomplete actions
+    const numPending = items.filter(
+      (i) => i && i.status !== QueueItemStatus.COMPLETED
+    ).length;
+
     navigation.setOptions({
-      tabBarBadge: incompleteActions?.length || undefined,
+      tabBarBadge: numPending > 0 ? numPending : undefined,
     });
-  }, [incompleteActions]);
+  }, [items]);
 
-  const QUEUE_ACTIONS_SORTED = (incompleteActions || []).sort((a, b) => {
-    return new Date(b.date).getTime() - new Date(a.date).getTime();
-  });
-
-  // TODO: This is a temporary fix to clear the cache when the queue is too large
   useEffect(() => {
-    // If there are more than 30 queued actions, invalidate and clear the cache
-    if (QUEUE_ACTIONS_SORTED.length > 30) {
-      // Clear the AsyncStorage cache
-      AsyncStorage.removeItem("enaleia-cache-v0")
+    const unsubscribe = navigation.addListener("focus", loadQueueItems);
+    return unsubscribe;
+  }, [navigation]);
+
+  useEventListener(queueEventEmitter, QueueEvents.UPDATED, loadQueueItems);
+
+  const handleRetry = async (items: QueueItem[]) => {
+    const updatedItems = items.map((item) => ({
+      ...item,
+      status: QueueItemStatus.PENDING,
+      retryCount: 0,
+      lastError: undefined,
+      lastAttempt: undefined,
+    }));
+
+    await AsyncStorage.setItem(
+      process.env.EXPO_PUBLIC_CACHE_KEY || "",
+      JSON.stringify(updatedItems)
+    );
+
+    try {
+      await loadQueueItems();
+    } catch (error) {
+      console.error("Error retrying items:", error);
+    }
+  };
+
+  // TODO: [DEV] This is a temporary fix to clear the cache when the queue is too large
+  useEffect(() => {
+    if (items?.length && items?.length > 30) {
+      AsyncStorage.removeItem(process.env.EXPO_PUBLIC_CACHE_KEY || "")
         .then(() => {
-          // Invalidate and reset the query client
-          queryClient.invalidateQueries({ queryKey: ["events"] });
-          queryClient.resetQueries({ queryKey: ["events"] });
+          loadQueueItems();
         })
         .catch((error) => {
           console.error("Error clearing queue cache:", error);
         });
     }
-  }, [QUEUE_ACTIONS_SORTED.length]);
+  }, [items?.length]);
+
+  const hasNoItems =
+    !pendingItems.length &&
+    !processingItems.length &&
+    !failedItems.length &&
+    !offlineItems.length;
 
   return (
     <SafeAreaContent>
-      <Text className="text-3xl font-dm-bold text-neutral-800 tracking-[-1px] mb-3">
-        Queue
-      </Text>
-      <Text className="text-base font-dm-regular text-neutral-600 tracking-tighter">
-        Sorted by most recent
-      </Text>
-      <View className="h-max bg-white rounded-lg overflow-hidden">
-        {QUEUE_ACTIONS_SORTED.length > 0 ? (
-          QUEUE_ACTIONS_SORTED.map((action) => (
-            <QueuedAction
-              key={action.localId}
-              type={action.type as ActionTitle}
-              date={action.date}
+      <NetworkStatus isConnected={isConnected || false} />
+
+      {hasNoItems ? (
+        <View className="flex-1 items-center justify-center p-4">
+          <Ionicons name="checkmark-circle-outline" size={64} color="#4CAF50" />
+          <Text className="text-lg text-center mt-4 font-medium">
+            Queue is Empty
+          </Text>
+          <Text className="text-sm text-center text-gray-600 mt-2">
+            All actions have been processed successfully. Create a new action to
+            see it here.
+          </Text>
+        </View>
+      ) : (
+        <>
+          {pendingItems.length > 0 && (
+            <QueueSection
+              title="Pending"
+              items={pendingItems}
+              onRetry={handleRetry}
             />
-          ))
-        ) : (
-          <View className="flex-1 items-center justify-center">
-            <Ionicons name="albums-outline" size={64} color="#475569" />
-            <Text className="text-lg font-dm-medium text-slate-600 tracking-tight">
-              No actions in queue
-            </Text>
-          </View>
-        )}
-      </View>
+          )}
+
+          {processingItems.length > 0 && (
+            <QueueSection
+              title="Processing"
+              items={processingItems}
+              onRetry={handleRetry}
+            />
+          )}
+
+          {failedItems.length > 0 && (
+            <QueueSection
+              title="Failed"
+              items={failedItems}
+              onRetry={handleRetry}
+            />
+          )}
+
+          {offlineItems.length > 0 && (
+            <QueueSection
+              title="Offline"
+              items={offlineItems}
+              onRetry={handleRetry}
+            />
+          )}
+
+          {/* Development only section */}
+          {process.env.NODE_ENV === "development" &&
+            completedItems &&
+            completedItems.length > 0 && (
+              <QueueSection
+                title="Completed (Dev Only)"
+                items={completedItems}
+                onRetry={handleRetry}
+              />
+            )}
+        </>
+      )}
     </SafeAreaContent>
   );
 };

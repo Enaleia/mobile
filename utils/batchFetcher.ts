@@ -6,61 +6,61 @@ import {
 } from "@/services/directus";
 
 export async function batchFetchData() {
-  const results = await Promise.allSettled([
-    fetchActions().catch((error) => {
-      console.error("Actions fetch error:", error);
-      throw error;
-    }),
-    fetchMaterials().catch((error) => {
-      console.error("Materials fetch error:", error);
-      throw error;
-    }),
-    fetchCollectors().catch((error) => {
-      console.error("Collectors fetch error:", error);
-      throw error;
-    }),
-    fetchProducts().catch((error) => {
-      console.error("Products fetch error:", error);
-      throw error;
-    }),
-  ]);
+  try {
+    const results = await Promise.allSettled([
+      fetchActions(),
+      fetchMaterials(),
+      fetchCollectors(),
+      fetchProducts(),
+    ]);
 
-  const errors = results
-    .map((result, index) => {
-      if (result.status === "rejected") {
-        const endpoints = ["actions", "materials", "collectors", "products"];
-        return `${endpoints[index]}: ${result.reason.message}`;
+    const errors = results
+      .map((result, index) => {
+        if (result.status === "rejected") {
+          const endpoints = ["actions", "materials", "collectors", "products"];
+          // Don't log auth errors as they're expected when signed out
+          if (!result.reason.message?.includes("FORBIDDEN")) {
+            console.error(`${endpoints[index]} fetch error:`, result.reason);
+          }
+          return `${endpoints[index]}: ${result.reason.message}`;
+        }
+        return null;
+      })
+      .filter(Boolean);
+
+    if (errors.length > 0) {
+      // If all errors are auth related, handle quietly
+      if (errors.every((err) => err && err.includes("FORBIDDEN"))) {
+        return {
+          actions: [],
+          materials: [],
+          collectors: [],
+          products: [],
+        };
       }
-      return null;
-    })
-    .filter(Boolean);
+      throw new Error(`Batch fetch failed:\n${errors.join("\n")}`);
+    }
 
-  if (errors.length > 0) {
-    throw new Error(`Batch fetch failed:\n${errors.join("\n")}`);
-  }
-
-  const [actions, materials, collectors, products] = results.map((result) =>
-    result.status === "fulfilled" ? result.value : null
-  );
-
-  if (!actions || !materials || !collectors || !products) {
-    throw new Error(
-      "Missing required data: " +
-        [
-          !actions && "actions",
-          !materials && "materials",
-          !collectors && "collectors",
-          !products && "products",
-        ]
-          .filter(Boolean)
-          .join(", ")
+    const [actions, materials, collectors, products] = results.map((result) =>
+      result.status === "fulfilled" ? result.value : []
     );
-  }
 
-  return {
-    actions,
-    materials,
-    collectors,
-    products,
-  };
+    return {
+      actions: actions || [],
+      materials: materials || [],
+      collectors: collectors || [],
+      products: products || [],
+    };
+  } catch (error: any) {
+    // Return empty data for auth errors instead of throwing
+    if (error.message?.includes("FORBIDDEN")) {
+      return {
+        actions: [],
+        materials: [],
+        collectors: [],
+        products: [],
+      };
+    }
+    throw error;
+  }
 }

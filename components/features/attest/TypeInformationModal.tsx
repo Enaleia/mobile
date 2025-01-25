@@ -5,26 +5,30 @@ import React from "react";
 import { Image, Text } from "react-native";
 
 const TypeInformationModal = ({
-  icons,
+  icons = [],
   title,
-  description,
-  incomingInstructions,
-  outgoingInstructions,
-  important,
-  notes,
-  isVisible,
+  description = "",
+  incomingInstructions = [],
+  outgoingInstructions = [],
+  important = "",
+  notes = "",
+  isVisible = false,
   onClose,
-}: TypeInformationProps) => {
+}: Partial<TypeInformationProps>) => {
+  if (!title) return null;
+
   return (
-    <ModalBase isVisible={isVisible} onClose={onClose}>
+    <ModalBase isVisible={isVisible} onClose={onClose ?? (() => {})}>
       <Text className="text-2xl font-dm-bold text-enaleia-black tracking-[-1px] my-3">
         {title}
       </Text>
-      <View className="flex-row items-center justify-start gap-3">
-        {icons.map((icon, index) => (
-          <Image source={icon} className="w-14 h-14" key={index} />
-        ))}
-      </View>
+      {icons?.length > 0 && (
+        <View className="flex-row items-center justify-start gap-3">
+          {icons.map((icon, index) => (
+            <Image source={icon} className="w-14 h-14" key={index} />
+          ))}
+        </View>
+      )}
       <Text className="text-base font-dm-regular text-enaleia-black mt-2 tracking-[-0.5px]">
         {description}
       </Text>

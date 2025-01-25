@@ -127,6 +127,7 @@ const MaterialSection = ({
                       Code
                     </Text>
                     <QRTextInput
+                      placeholder="Enter code"
                       value={code || ""}
                       onChangeText={(text) => {
                         setSelectedMaterials(

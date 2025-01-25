@@ -1,16 +1,15 @@
-import { ACTION_COLORS, ACTION_ICONS } from "@/constants/action";
+import { ACTION_COLORS, ACTION_ICONS, ACTION_SLUGS } from "@/constants/action";
 import { ImageSourcePropType } from "react-native";
 
 export interface Action {
   id: number;
-  name: string;
+  name: ActionTitle;
   description: string;
   color: string;
   icon: ImageSourcePropType;
+  slug: string;
+  category: string;
 }
-
-// TODO: Re-assess if this is needed
-export type ActionStatus = "Pending" | "In Progress" | "Complete";
 
 export type ActionTitle =
   | "Fishing for litter"
@@ -38,29 +37,50 @@ export type ActionIds = {
   [K in keyof typeof ACTION_COLORS]: number;
 };
 
-export type GroupedActions = Record<string, Action[]>;
-export const processActions = (actions: any[]): GroupedActions => {
+export type GroupedActions = {
+  [category: string]: Action[];
+};
+
+export const processActions = (actions: any[] | undefined): Action[] => {
+  if (!actions || !Array.isArray(actions)) {
+    return [];
+  }
+
+  return actions
+    .map((action) => {
+      const name = action.action_name as ActionTitle;
+      if (!Object.keys(ACTION_SLUGS).includes(name)) {
+        console.warn(`Invalid action name: ${name}`);
+        return null;
+      }
+
+      return {
+        id: action.action_id,
+        name,
+        description: action.action_description,
+        color: ACTION_COLORS[name],
+        icon: ACTION_ICONS[name],
+        slug: ACTION_SLUGS[name],
+        category: action.action_group,
+      };
+    })
+    .filter((action): action is Action => action !== null);
+};
+
+export const groupActionsByCategory = (
+  actions: Action[] | undefined
+): GroupedActions => {
+  if (!actions || !Array.isArray(actions)) {
+    return {};
+  }
+
   const groupedActions: GroupedActions = {};
 
-  const len = actions.length;
-
-  for (let i = 0; i < len; i++) {
-    const action = actions[i];
-    const category = action.action_group;
-
-    if (!groupedActions[category]) {
-      groupedActions[category] = [];
+  for (const action of actions) {
+    if (!groupedActions[action.category]) {
+      groupedActions[action.category] = [];
     }
-
-    const actionName = action.action_name;
-
-    groupedActions[category].push({
-      id: action.action_id,
-      name: actionName,
-      description: action.action_description,
-      color: ACTION_COLORS[actionName as keyof typeof ACTION_COLORS],
-      icon: ACTION_ICONS[actionName as keyof typeof ACTION_ICONS],
-    });
+    groupedActions[action.category].push(action);
   }
 
   return groupedActions;
@@ -86,7 +106,7 @@ export interface TypeInformationProps {
 }
 
 const commonIncomingCopy = [
-  "Tap “Add Incoming” button.",
+  "Tap 'Add Incoming' button.",
   "Select the material type for the manufacturing process.",
   "Scan the QR code of the incoming material batch or manually enter the code.",
   "Enter the weight of the material.",
@@ -95,7 +115,7 @@ const commonIncomingCopy = [
 
 const commonOutgoingCopy = [
   "Affix a new QR code sticker to the sorted outgoing material.",
-  "Tap “Add Outgoing” button.",
+  "Tap 'Add Outgoing' button.",
   "Select the material for the sorted outgoing batch.",
   "Scan the newly affixed QR code or manually enter the code.",
   "Enter the weight of the sorted outgoing material.",

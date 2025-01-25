@@ -2,57 +2,83 @@ import ActionSelection from "@/components/features/home/ActionSelect";
 import { InitializationModal } from "@/components/features/initialization/InitializationModal";
 import SafeAreaContent from "@/components/shared/SafeAreaContent";
 import { useUserInfo } from "@/hooks/data/useUserInfo";
-import { processActions } from "@/types/action";
+import { groupActionsByCategory, processActions } from "@/types/action";
 import { BatchData } from "@/types/batch";
 import { processCollectors } from "@/types/collector";
 import { processMaterials } from "@/types/material";
 import { processProducts } from "@/types/product";
 import { batchFetchData } from "@/utils/batchFetcher";
 import { Ionicons } from "@expo/vector-icons";
-import { onlineManager, useQuery } from "@tanstack/react-query";
-import { Text, View } from "react-native";
+import { onlineManager, useQuery, useQueryClient } from "@tanstack/react-query";
+import { Text, View, Pressable } from "react-native";
+import React from "react";
 
 function Home() {
   const { userData } = useUserInfo();
+  const queryClient = useQueryClient();
   const {
     data: batchData,
     error,
     isLoading,
-  } = useQuery<BatchData, Error>({
+  } = useQuery<BatchData | null, Error>({
     queryKey: ["batchData"],
     queryFn: async () => {
       try {
         const data = await batchFetchData();
-        const processed = {
-          actions: data.actions ? processActions(data.actions) : null,
-          materials: data.materials ? processMaterials(data.materials) : null,
-          collectors: data.collectors
-            ? processCollectors(data.collectors)
-            : null,
-          products: data.products ? processProducts(data.products) : null,
-        };
-
         if (
-          !processed.actions ||
-          !processed.materials ||
-          !processed.collectors ||
-          !processed.products
+          !data.actions.length &&
+          !data.materials.length &&
+          !data.collectors.length &&
+          !data.products.length
         ) {
+          return null;
+        }
+
+        const actions = processActions(data.actions);
+        const materials = processMaterials(data.materials);
+        const collectors = processCollectors(data.collectors);
+        const products = processProducts(data.products);
+
+        if (!actions || !materials || !collectors || !products) {
           throw new Error("Missing required data");
         }
 
-        return processed as BatchData;
-      } catch (error) {
-        throw error;
+        return { actions, materials, collectors, products };
+      } catch (error: any) {
+        if (!error?.message?.includes("FORBIDDEN")) {
+          throw error;
+        }
+        return null;
       }
     },
-    staleTime: 1000 * 60 * 60 * 24, // 24 hours
+    staleTime: 1000 * 60 * 60 * 24,
+    enabled: !!userData,
   });
 
   const isComplete = userData && batchData;
+  const isAuthError = !userData || (error?.message || "").includes("FORBIDDEN");
+  const groupedActions = batchData?.actions
+    ? groupActionsByCategory(batchData.actions)
+    : undefined;
+
+  // React.useEffect(() => {
+  //   queryClient.invalidateQueries({ queryKey: ["batchData"] });
+  // }, []);
 
   return (
     <SafeAreaContent>
+      {__DEV__ && (
+        <Pressable
+          onPress={() =>
+            queryClient.invalidateQueries({ queryKey: ["batchData"] })
+          }
+          className="p-3 my-1 bg-blue-500 rounded"
+        >
+          <Text className="text-white text-center text-dm-medium">
+            Refresh Data
+          </Text>
+        </Pressable>
+      )}
       <View className="flex-row items-start justify-between pb-2 font-dm-regular">
         <View className="flex-row items-center justify-center gap-0.5">
           <Ionicons name="person-circle-outline" size={24} color="#0D0D0D" />
@@ -71,7 +97,10 @@ function Home() {
         <Text className="text-3xl font-dm-bold tracking-[-1.5px] mb-2 text-enaleia-black">
           Hello, what action will you be doing today?
         </Text>
-        <ActionSelection actions={batchData?.actions} isLoading={isLoading} />
+        <ActionSelection
+          actions={groupedActions ?? undefined}
+          isLoading={isLoading && !isAuthError}
+        />
       </View>
       <InitializationModal
         isVisible={!isComplete}
@@ -82,7 +111,8 @@ function Home() {
           collectors: Boolean(batchData?.collectors),
           products: Boolean(batchData?.products),
         }}
-        error={error || null}
+        error={error}
+        isAuthError={isAuthError}
       />
     </SafeAreaContent>
   );

@@ -18,6 +18,7 @@ import React, { useEffect, useState } from "react";
 import * as Localization from "expo-localization";
 
 import { defaultLocale, dynamicActivate } from "@/lib/i18n";
+import { QueueProvider, useQueue } from "@/contexts/QueueContext";
 
 SplashScreen.preventAutoHideAsync();
 
@@ -31,10 +32,11 @@ const preloadedFonts = {
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      gcTime: 1000 * 60 * 60 * 24, // 24 hours
+      gcTime: 1000 * 60 * 60 * 24,
       retry: 3,
       refetchOnWindowFocus: false,
-      staleTime: 1000 * 60 * 60 * 24, // 24 hours
+      staleTime: 1000 * 60 * 60 * 24,
+      enabled: false,
     },
     mutations: {
       retry: 3,
@@ -45,9 +47,31 @@ const queryClient = new QueryClient({
 
 const asyncStoragePersister = createAsyncStoragePersister({
   storage: AsyncStorage,
-  key: "enaleia-cache-v0",
+  key: process.env.EXPO_PUBLIC_CACHE_KEY,
   throttleTime: 2000,
 });
+
+const NetworkHandler = () => {
+  const { loadQueueItems } = useQueue();
+
+  useEffect(() => {
+    return NetInfo.addEventListener((state) => {
+      const status = !!state.isConnected;
+      onlineManager.setOnline(status);
+
+      if (status) {
+        loadQueueItems().catch((error) => {
+          console.error(
+            "Failed to refresh queue items on connection restore:",
+            error
+          );
+        });
+      }
+    });
+  }, []);
+
+  return null;
+};
 
 export default function RootLayout() {
   const [appIsReady, setAppIsReady] = useState(false);
@@ -59,53 +83,39 @@ export default function RootLayout() {
   }, [locale]);
 
   useEffect(() => {
-    return NetInfo.addEventListener((state) => {
-      const status = !!state.isConnected;
-      onlineManager.setOnline(status);
-    });
-  }, []);
-
-  useEffect(() => {
     if (loaded || error) {
       setAppIsReady(true);
       SplashScreen.hideAsync();
     }
   }, [loaded, error]);
 
-  // Clear AsyncStorage and React Query cache on app startup
-  // useEffect(() => {
-  //   const clearCaches = async () => {
-  //     try {
-  //       await AsyncStorage.clear();
-  //       console.log("[Cache] AsyncStorage cleared successfully");
-
-  //       queryClient.clear();
-  //       console.log("[Cache] React Query cache cleared successfully");
-  //     } catch (error) {
-  //       console.error("[Cache] Error clearing caches:", error);
-  //     }
-  //   };
-
-  //   clearCaches();
-  // }, []);
-
   if (!appIsReady) {
     return null;
   }
 
   return (
-    <PersistQueryClientProvider
-      client={queryClient}
-      persistOptions={{ persister: asyncStoragePersister }}
-    >
-      <Stack screenOptions={{ headerShown: false }}>
-        <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-        <Stack.Screen name="(auth)/login" options={{ headerShown: false }} />
-        <Stack.Screen
-          name="attest/new/[type]"
-          options={{ headerShown: false }}
-        />
-      </Stack>
-    </PersistQueryClientProvider>
+    <QueueProvider>
+      <PersistQueryClientProvider
+        client={queryClient}
+        persistOptions={{
+          persister: asyncStoragePersister,
+          dehydrateOptions: {
+            shouldDehydrateQuery: ({ queryKey }) => {
+              return queryKey.includes("batchData");
+            },
+          },
+        }}
+      >
+        <NetworkHandler />
+        <Stack screenOptions={{ headerShown: false }}>
+          <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+          <Stack.Screen name="(auth)/login" options={{ headerShown: false }} />
+          <Stack.Screen
+            name="attest/new/[type]"
+            options={{ headerShown: false }}
+          />
+        </Stack>
+      </PersistQueryClientProvider>
+    </QueueProvider>
   );
 }

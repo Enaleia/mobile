@@ -110,28 +110,35 @@ const QRTextInput: React.FC<QRTextInputProps> = React.memo(
     return (
       <View>
         <View className="relative flex-row items-center gap-2">
-          <TextInput
-            value={value}
-            onChangeText={(text) => {
-              setError(null);
-              onChangeText(text);
-            }}
-            placeholder={placeholder}
-            accessibilityLabel={placeholder}
-            accessibilityRole="text"
-            accessibilityState={{ selected: !!value }}
-            className={`w-[100px] h-[28px] overflow-hidden my-0 py-0 font-dm-bold tracking-tighter text-enaleia-black text-xl ${className}`}
-          />
-          <Pressable
-            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-            onPress={() => {
-              setError(null);
-              setScanner(true);
-            }}
-            className="absolute right-2.5 z-10 active:scale-75"
-          >
-            <Ionicons name="qr-code-outline" size={24} color="#8E8E93" />
-          </Pressable>
+          <View className="flex-1">
+            <TextInput
+              value={value}
+              onChangeText={(text) => {
+                setError(null);
+                onChangeText(text);
+                setScanner(false);
+              }}
+              placeholder={placeholder}
+              accessibilityLabel={placeholder}
+              accessibilityRole="text"
+              accessibilityState={{ selected: !!value }}
+              className={`w-[100px] h-[28px] overflow-hidden my-0 py-0 font-dm-bold tracking-tighter text-lg ${className}`}
+            />
+          </View>
+          <View className="w-6 h-6 justify-center items-center">
+            <Pressable
+              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+              onPress={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                setError(null);
+                setScanner(true);
+              }}
+              className="active:scale-75 transition-transform"
+            >
+              <Ionicons name="qr-code-outline" size={24} color="#8E8E93" />
+            </Pressable>
+          </View>
         </View>
 
         {currentState.error && (

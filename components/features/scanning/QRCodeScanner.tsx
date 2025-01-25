@@ -89,7 +89,7 @@ const QRCodeScanner: React.FC<QRCodeScannerProps> = ({ onScan, onClose }) => {
           className="bg-blue-ocean min-w-[60px] px-3 py-2 rounded-3xl flex flex-row items-center justify-center mx-1 my-1"
           onPress={onClose}
         >
-          <Text className="text-sm font-dm-bold text-white tracking-tighter">
+          <Text className="text-sm font-dm-bold text-white tracking-tighter text-center">
             Close scanner
           </Text>
         </Pressable>
