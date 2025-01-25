@@ -47,7 +47,7 @@ const queryClient = new QueryClient({
 
 const asyncStoragePersister = createAsyncStoragePersister({
   storage: AsyncStorage,
-  key: "enaleia-cache-v0",
+  key: process.env.EXPO_PUBLIC_CACHE_KEY,
   throttleTime: 2000,
 });
 
@@ -116,7 +116,15 @@ export default function RootLayout() {
     <QueueProvider>
       <PersistQueryClientProvider
         client={queryClient}
-        persistOptions={{ persister: asyncStoragePersister }}
+        persistOptions={{
+          persister: asyncStoragePersister,
+          dehydrateOptions: {
+            shouldDehydrateQuery: ({ queryKey }) => {
+              // Only persist specific queries like batchData
+              return queryKey.includes("batchData");
+            },
+          },
+        }}
       >
         <NetworkHandler />
         <Stack screenOptions={{ headerShown: false }}>

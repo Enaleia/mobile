@@ -2,18 +2,20 @@ import ActionSelection from "@/components/features/home/ActionSelect";
 import { InitializationModal } from "@/components/features/initialization/InitializationModal";
 import SafeAreaContent from "@/components/shared/SafeAreaContent";
 import { useUserInfo } from "@/hooks/data/useUserInfo";
-import { processActions } from "@/types/action";
+import { groupActionsByCategory, processActions } from "@/types/action";
 import { BatchData } from "@/types/batch";
 import { processCollectors } from "@/types/collector";
 import { processMaterials } from "@/types/material";
 import { processProducts } from "@/types/product";
 import { batchFetchData } from "@/utils/batchFetcher";
 import { Ionicons } from "@expo/vector-icons";
-import { onlineManager, useQuery } from "@tanstack/react-query";
-import { Text, View } from "react-native";
+import { onlineManager, useQuery, useQueryClient } from "@tanstack/react-query";
+import { Text, View, Pressable } from "react-native";
+import React from "react";
 
 function Home() {
   const { userData } = useUserInfo();
+  const queryClient = useQueryClient();
   const {
     data: batchData,
     error,
@@ -55,9 +57,28 @@ function Home() {
 
   const isComplete = userData && batchData;
   const isAuthError = !userData || (error?.message || "").includes("FORBIDDEN");
+  const groupedActions = batchData?.actions
+    ? groupActionsByCategory(batchData.actions)
+    : undefined;
+
+  // React.useEffect(() => {
+  //   queryClient.invalidateQueries({ queryKey: ["batchData"] });
+  // }, []);
 
   return (
     <SafeAreaContent>
+      {__DEV__ && (
+        <Pressable
+          onPress={() =>
+            queryClient.invalidateQueries({ queryKey: ["batchData"] })
+          }
+          className="p-3 my-1 bg-blue-500 rounded"
+        >
+          <Text className="text-white text-center text-dm-medium">
+            Refresh Data
+          </Text>
+        </Pressable>
+      )}
       <View className="flex-row items-start justify-between pb-2 font-dm-regular">
         <View className="flex-row items-center justify-center gap-0.5">
           <Ionicons name="person-circle-outline" size={24} color="#0D0D0D" />
@@ -77,7 +98,7 @@ function Home() {
           Hello, what action will you be doing today?
         </Text>
         <ActionSelection
-          actions={batchData?.actions ?? undefined}
+          actions={groupedActions ?? undefined}
           isLoading={isLoading && !isAuthError}
         />
       </View>
