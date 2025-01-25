@@ -38,6 +38,7 @@ export default function ActionSelection({
                 name={action.name}
                 color={action.color}
                 icon={action.icon}
+                slug={action.slug}
               />
             ))}
           </View>
