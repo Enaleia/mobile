@@ -5,6 +5,13 @@ import {
   fetchProducts,
 } from "@/services/directus";
 
+const createEmptyBatchData = () => ({
+  actions: [],
+  materials: [],
+  collectors: [],
+  products: [],
+});
+
 export async function batchFetchData() {
   try {
     const results = await Promise.allSettled([
@@ -14,29 +21,23 @@ export async function batchFetchData() {
       fetchProducts(),
     ]);
 
-    const errors = results
-      .map((result, index) => {
-        if (result.status === "rejected") {
-          const endpoints = ["actions", "materials", "collectors", "products"];
-          // Don't log auth errors as they're expected when signed out
-          if (!result.reason.message?.includes("FORBIDDEN")) {
-            console.error(`${endpoints[index]} fetch error:`, result.reason);
-          }
-          return `${endpoints[index]}: ${result.reason.message}`;
-        }
-        return null;
-      })
-      .filter(Boolean);
+    const errors: string[] = [];
+    const endpoints = ["actions", "materials", "collectors", "products"];
+
+    for (let i = 0; i < results.length; i++) {
+      const result = results[i];
+      if (
+        result.status === "rejected" &&
+        !result.reason.message?.includes("FORBIDDEN")
+      ) {
+        errors.push(`${endpoints[i]}: ${result.reason.message}`);
+      }
+    }
 
     if (errors.length > 0) {
       // If all errors are auth related, handle quietly
-      if (errors.every((err) => err && err.includes("FORBIDDEN"))) {
-        return {
-          actions: [],
-          materials: [],
-          collectors: [],
-          products: [],
-        };
+      if (errors.every((err) => err.includes("FORBIDDEN"))) {
+        return createEmptyBatchData();
       }
       throw new Error(`Batch fetch failed:\n${errors.join("\n")}`);
     }
@@ -52,14 +53,8 @@ export async function batchFetchData() {
       products: products || [],
     };
   } catch (error: any) {
-    // Return empty data for auth errors instead of throwing
     if (error.message?.includes("FORBIDDEN")) {
-      return {
-        actions: [],
-        materials: [],
-        collectors: [],
-        products: [],
-      };
+      return createEmptyBatchData();
     }
     throw error;
   }
