@@ -18,8 +18,8 @@ interface MaterialTrackingEvent {
   /** Geographic coordinates (longitude/latitude) from device location services */
   event_location?: string;
 
-  /** Name of the action from Actions table, max length 255 characters */
-  action?: string;
+  /** ID of the action from Actions table */
+  action?: number;
 
   /** Name of the collector (relates to "collectors" table) */
   collector_name?: string;
@@ -89,7 +89,7 @@ interface MaterialInputRecord {
   input_code: string;
 
   /** Reference to material_id from Materials table */
-  input_material: number;
+  input_Material: number;
 
   /** Weight of the input material(s) in Kg */
   input_weight: number;

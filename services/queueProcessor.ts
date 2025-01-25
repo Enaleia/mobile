@@ -111,11 +111,13 @@ export async function processQueueItems(itemsToProcess?: QueueItem[]) {
 
         // Create the event first
         const directusEvent = await createEvent({
-          action: item.type,
+          action: item.actionId,
           event_timestamp: new Date(item.date),
         });
 
-        if (!directusEvent?.data?.event_id) {
+        console.log("directusEvent", JSON.stringify(directusEvent, null, 2));
+
+        if (!directusEvent || !directusEvent.event_id) {
           throw new Error("No event ID returned from API");
         }
 
@@ -128,10 +130,10 @@ export async function processQueueItems(itemsToProcess?: QueueItem[]) {
           await Promise.all(
             validMaterials.map(async (material) => {
               const result = await createMaterialInput({
-                input_material: material.id,
+                input_Material: material.id,
                 input_code: material.code || "",
                 input_weight: material.weight || 0,
-                event_id: directusEvent.data.event_id,
+                event_id: directusEvent.event_id,
               });
 
               if (!result) {
@@ -159,7 +161,7 @@ export async function processQueueItems(itemsToProcess?: QueueItem[]) {
                 output_material: material.id,
                 output_code: material.code || "",
                 output_weight: material.weight || 0,
-                event_id: directusEvent.data.event_id,
+                event_id: directusEvent.event_id,
               });
 
               if (!result) {

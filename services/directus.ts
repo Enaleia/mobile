@@ -58,7 +58,7 @@ export async function createEvent(event: MaterialTrackingEvent) {
 
 export async function createMaterialInput(input: MaterialInputRecord) {
   try {
-    return await directus.request(createItem("MaterialInputs", input));
+    return await directus.request(createItem("Events_Input", input));
   } catch (error: any) {
     throw formatDirectusError("MaterialInputs", error);
   }
@@ -66,8 +66,8 @@ export async function createMaterialInput(input: MaterialInputRecord) {
 
 export async function createMaterialOutput(output: MaterialOutputRecord) {
   try {
-    return await directus.request(createItem("MaterialOutputs", output));
+    return await directus.request(createItem("Events_Output", output));
   } catch (error: any) {
-    throw formatDirectusError("MaterialOutputs", error);
+    throw formatDirectusError("Events_Output", error);
   }
 }
