@@ -15,6 +15,7 @@ import {
   View,
 } from "react-native";
 import { z } from "zod";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 const LoginData = z.object({
   email: z.string().email("Please enter a valid email"),
@@ -50,16 +51,24 @@ export default function LoginForm() {
     try {
       const loginResult = await directus.login(value.email, value.password);
       const token = loginResult.access_token;
+
+      // Store credentials
       await directus.setToken(token);
+      await AsyncStorage.setItem("userEmail", value.email);
+
       const user = await directus.request(readMe());
-      await queryClient.setQueryData<UserInfo>(["user-info"], {
+      const userInfo: UserInfo = {
         token: token || "",
         email: value.email,
         name: user.first_name || "",
         lastName: user.last_name || "",
         avatar: user.avatar || "",
         id: user.id || "",
-      });
+      };
+
+      // Store user info
+      await AsyncStorage.setItem("userInfo", JSON.stringify(userInfo));
+      await queryClient.setQueryData<UserInfo>(["user-info"], userInfo);
 
       router.replace("/(tabs)");
     } catch (error) {

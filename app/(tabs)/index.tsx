@@ -11,11 +11,38 @@ import { batchFetchData } from "@/utils/batchFetcher";
 import { Ionicons } from "@expo/vector-icons";
 import { onlineManager, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Text, View, Pressable } from "react-native";
-import React from "react";
+import React, { useEffect } from "react";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { UserInfo } from "@/types/user";
 
 function Home() {
   const { userData } = useUserInfo();
   const queryClient = useQueryClient();
+
+  useEffect(() => {
+    const initializeUserData = async () => {
+      try {
+        const storedUserInfo = await AsyncStorage.getItem("userInfo");
+        if (storedUserInfo) {
+          const userInfo = JSON.parse(storedUserInfo);
+          await queryClient.setQueryData<UserInfo>(["user-info"], userInfo);
+        }
+      } catch (error) {
+        console.error("Error initializing user data:", error);
+      }
+    };
+
+    initializeUserData();
+  }, []);
+
+  useEffect(() => {
+    const debugStorage = async () => {
+      const userInfo = await AsyncStorage.getItem("userInfo");
+      console.log("Stored User Info:", userInfo);
+    };
+    debugStorage();
+  }, []);
+
   const {
     data: batchData,
     error,
@@ -68,16 +95,26 @@ function Home() {
   return (
     <SafeAreaContent>
       {__DEV__ && (
-        <Pressable
-          onPress={() =>
-            queryClient.invalidateQueries({ queryKey: ["batchData"] })
-          }
-          className="p-3 my-1 bg-blue-500 rounded"
-        >
-          <Text className="text-white text-center text-dm-medium">
-            Refresh Data
-          </Text>
-        </Pressable>
+        <View>
+          <Pressable
+            onPress={async () => {
+              const userInfo = await AsyncStorage.getItem("userInfo");
+              console.log("Stored User Info:", userInfo);
+            }}
+            className="p-3 my-1 bg-blue-500 rounded"
+          >
+            <Text className="text-white text-center">Debug: Show Storage</Text>
+          </Pressable>
+          <Pressable
+            onPress={async () => {
+              await AsyncStorage.clear();
+              console.log("Storage cleared");
+            }}
+            className="p-3 my-1 bg-red-500 rounded"
+          >
+            <Text className="text-white text-center">Debug: Clear Storage</Text>
+          </Pressable>
+        </View>
       )}
       <View className="flex-row items-start justify-between pb-2 font-dm-regular">
         <View className="flex-row items-center justify-center gap-0.5">
