@@ -1,4 +1,4 @@
-import { EnaleiaSchema } from "@/types/event";
+import { EnaleiaSchema } from "@/types/enaliea";
 import { authentication, createDirectus, rest } from "@directus/sdk";
 
 export const createDirectusClient = () => {
