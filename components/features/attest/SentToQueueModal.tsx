@@ -19,7 +19,6 @@ export const SentToQueueModal = ({
         />
       </View>
       <View className="space-y-2">
-        {/* TODO:This should probably be reworded tbh */}
         <Text className="text-xl font-dm-bold text-enaleia-black tracking-tighter text-center">
           Attestation queued successfully
         </Text>
