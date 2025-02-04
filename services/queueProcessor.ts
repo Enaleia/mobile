@@ -1,4 +1,12 @@
 import {
+  Events,
+  Events_Input,
+  Events_Output,
+  MaterialTrackingEvent,
+  MaterialTrackingEventInput,
+  MaterialTrackingEventOutput,
+} from "@/types/event";
+import {
   createEvent,
   createMaterialInput,
   createMaterialOutput,
@@ -103,8 +111,10 @@ export async function processQueueItems(itemsToProcess?: QueueItem[]) {
 
         const directusEvent = await createEvent({
           action: item.actionId,
-          event_timestamp: new Date(item.date),
-        });
+          event_timestamp: new Date(item.date).toISOString(),
+
+          // event_location: item.location, // TODO: Find location
+        } as MaterialTrackingEvent);
 
         console.log("directusEvent", JSON.stringify(directusEvent, null, 2));
 
@@ -124,7 +134,7 @@ export async function processQueueItems(itemsToProcess?: QueueItem[]) {
                 input_code: material.code || "",
                 input_weight: material.weight || 0,
                 event_id: directusEvent.event_id,
-              });
+              } as MaterialTrackingEventInput);
 
               if (!result) {
                 throw new Error(
@@ -151,7 +161,7 @@ export async function processQueueItems(itemsToProcess?: QueueItem[]) {
                 output_code: material.code || "",
                 output_weight: material.weight || 0,
                 event_id: directusEvent.event_id,
-              });
+              } as MaterialTrackingEventOutput);
 
               if (!result) {
                 throw new Error(

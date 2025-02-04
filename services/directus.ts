@@ -1,10 +1,6 @@
-import {
-  MaterialInputRecord,
-  MaterialOutputRecord,
-  MaterialTrackingEvent,
-} from "@/types/event";
+import { Events, Events_Input, Events_Output } from "@/types/event";
 import { directus } from "@/utils/directus";
-import { createItem, readItems } from "@directus/sdk";
+import { createItem, readItems, updateItem } from "@directus/sdk";
 
 function formatDirectusError(endpoint: string, error: any): Error {
   const errorMessage =
@@ -25,7 +21,6 @@ export async function fetchMaterials() {
 
 export async function fetchActions() {
   try {
-    const token = await directus.getToken();
     return await directus.request(readItems("Actions"));
   } catch (error: any) {
     throw formatDirectusError("Actions", error);
@@ -48,7 +43,7 @@ export async function fetchProducts() {
   }
 }
 
-export async function createEvent(event: MaterialTrackingEvent) {
+export async function createEvent(event: Events) {
   try {
     return await directus.request(createItem("Events", event));
   } catch (error: any) {
@@ -56,7 +51,7 @@ export async function createEvent(event: MaterialTrackingEvent) {
   }
 }
 
-export async function createMaterialInput(input: MaterialInputRecord) {
+export async function createMaterialInput(input: Events_Input) {
   try {
     return await directus.request(createItem("Events_Input", input));
   } catch (error: any) {
@@ -64,10 +59,18 @@ export async function createMaterialInput(input: MaterialInputRecord) {
   }
 }
 
-export async function createMaterialOutput(output: MaterialOutputRecord) {
+export async function createMaterialOutput(output: Events_Output) {
   try {
     return await directus.request(createItem("Events_Output", output));
   } catch (error: any) {
     throw formatDirectusError("Events_Output", error);
+  }
+}
+
+export async function updateEvent(eventId: number, event: Partial<Events>) {
+  try {
+    return await directus.request(updateItem("Events", eventId, event));
+  } catch (error: any) {
+    throw formatDirectusError("Events", error);
   }
 }
