@@ -2,29 +2,29 @@
   "expo": {
     "name": "Enaleia",
     "slug": "enaleia",
-    "version": "1.0.0",
+    "version": "0.0.8",
     "newArchEnabled": true,
     "owner": "pollen-labs",
     "orientation": "portrait",
-    "icon": "./assets/images/icon.png",
+    "icon": "./assets/images/adaptive-icon.png",
     "scheme": "myapp",
     "userInterfaceStyle": "automatic",
-    "splash": {
-      "image": "./assets/images/splash.png",
-      "resizeMode": "contain",
-      "backgroundColor": "#ffffff"
-    },
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.anonymous.enaleia",
       "infoPlist": {
         "UIViewControllerBasedStatusBarAppearance": true
-      }
+      },
+      "icon": {
+				"dark": "./assets/images/ios-dark.png",
+				"light": "./assets/images/ios-light.png",
+				"tinted": "./assets/images/ios-tinted.png"
+			}
     },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/adaptive-icon.png",
-        "backgroundColor": "#ffffff"
+        "backgroundColor": "#F6F4F2"
       },
       "permissions": [
         "android.permission.ACCESS_COARSE_LOCATION",
@@ -40,6 +40,18 @@
       "favicon": "./assets/images/favicon.png"
     },
     "plugins": [
+			[
+        "expo-splash-screen",
+        {
+          "backgroundColor": "#F6F4F2",
+          "image": "./assets/images/splash-icon.png",
+          "dark": {
+            "image": "./assets/images/splash-icon-dark.png",
+            "backgroundColor": "#000000"
+          },
+          "imageWidth": 200
+        }
+      ],
       "expo-router",
       [
         "expo-location",
