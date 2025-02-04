@@ -239,3 +239,16 @@ export const typeModalMap: Record<ActionTitle, ModalData> = {
   Pelletizing: modalData[5],
   Manufacturing: modalData[6],
 };
+
+export interface DirectusAction {
+  action_id: number;
+  status: "published" | "draft" | "archived";
+  sort?: number;
+  user_created?: string; // UUID
+  date_created?: string;
+  user_updated?: string; // UUID
+  date_updated?: string;
+  action_name?: string;
+  action_description?: string;
+  action_group?: "Collection" | "Transport" | "Recycling" | "Manufacturing";
+}
