@@ -19,7 +19,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useForm } from "@tanstack/react-form";
 import { zodValidator } from "@tanstack/zod-form-adapter";
 import { router, useLocalSearchParams } from "expo-router";
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -33,6 +33,8 @@ import {
 } from "react-native";
 import uuid from "react-native-uuid";
 import { z } from "zod";
+import { LocationPermissionRequest } from "@/components/features/location/LocationPermissionRequest";
+import { LocationSchema } from "@/services/locationService";
 
 const eventFormSchema = z.object({
   type: z
@@ -40,8 +42,8 @@ const eventFormSchema = z.object({
     .refine((value) => Object.keys(ACTION_SLUGS).includes(value), {
       message: "Please select an action that exists",
     }) as z.ZodType<ActionTitle>,
-  // location: z.string().min(1),
   date: z.string().min(1),
+  location: LocationSchema.optional(),
   incomingMaterials: z
     .array(
       z
@@ -172,6 +174,7 @@ const NewActionScreen = () => {
     defaultValues: {
       type: currentAction?.name as ActionTitle,
       date: new Date().toISOString(),
+      location: undefined,
       incomingMaterials: [] as MaterialDetail[],
       outgoingMaterials: [] as MaterialDetail[],
       manufacturing: {
@@ -209,6 +212,7 @@ const NewActionScreen = () => {
           retryCount: 0,
           incomingMaterials: value.incomingMaterials || [],
           outgoingMaterials: value.outgoingMaterials || [],
+          location: value.location,
         };
 
         await addItemToQueue(queueItem);
@@ -251,6 +255,15 @@ const NewActionScreen = () => {
 
     return incomingMaterials.length > 0 || outgoingMaterials.length > 0;
   };
+
+  const { data: locationData, isLoading: locationLoading } =
+    useCurrentLocation();
+
+  useEffect(() => {
+    if (locationData) {
+      form.setFieldValue("location", locationData);
+    }
+  }, [locationData]);
 
   return (
     <SafeAreaContent>
@@ -309,6 +322,25 @@ const NewActionScreen = () => {
           contentContainerStyle={{ flexGrow: 0, paddingBottom: 20 }}
         >
           <View className="flex-1 space-y-2">
+            <form.Subscribe selector={(state) => state.values}>
+              {(values) => (
+                <LocationPermissionRequest
+                  onPermissionGranted={() => {
+                    // Location will be automatically updated via the effect
+                  }}
+                  onPermissionDenied={() => {
+                    Alert.alert(
+                      "Location Access",
+                      "Location helps verify where events take place. You can still use saved locations or change this later in settings."
+                    );
+                  }}
+                  onLocationSelected={(location) => {
+                    form.setFieldValue("location", location);
+                  }}
+                  currentLocation={values.location}
+                />
+              )}
+            </form.Subscribe>
             <form.Field name="incomingMaterials">
               {(field) => (
                 <MaterialSection

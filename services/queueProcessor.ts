@@ -1,7 +1,4 @@
 import {
-  Events,
-  Events_Input,
-  Events_Output,
   MaterialTrackingEvent,
   MaterialTrackingEventInput,
   MaterialTrackingEventOutput,
@@ -109,11 +106,15 @@ export async function processQueueItems(itemsToProcess?: QueueItem[]) {
           lastAttempt: new Date(),
         });
 
+        // Format location as "latitude,longitude" if available
+        const locationString = item.location?.coords
+          ? `${item.location.coords.latitude},${item.location.coords.longitude}`
+          : undefined;
+
         const directusEvent = await createEvent({
           action: item.actionId,
           event_timestamp: new Date(item.date).toISOString(),
-
-          // event_location: item.location, // TODO: Find location
+          event_location: locationString,
         } as MaterialTrackingEvent);
 
         console.log("directusEvent", JSON.stringify(directusEvent, null, 2));
