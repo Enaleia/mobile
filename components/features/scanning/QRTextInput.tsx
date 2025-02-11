@@ -10,6 +10,7 @@ interface QRTextInputProps {
   className?: string;
   ref?: React.RefObject<TextInput>;
   id?: string;
+  variant?: "standalone" | "embedded";
 }
 
 const scannerReducer = (state: any, action: any) => {
@@ -42,6 +43,7 @@ const QRTextInput: React.FC<QRTextInputProps> = React.memo(
     placeholder = "",
     className = "",
     id = "default",
+    variant = "embedded",
   }) => {
     const [scannerStates, dispatch] = useReducer(scannerReducer, {});
 
@@ -107,8 +109,18 @@ const QRTextInput: React.FC<QRTextInputProps> = React.memo(
       [id, onChangeText]
     );
 
+    const containerClass =
+      variant === "standalone"
+        ? "h-12 border-[1.5px] border-grey-3 rounded-lg p-2 bg-white items-center"
+        : "";
+
+    const inputClass =
+      variant === "standalone"
+        ? "overflow-hidden my-0 py-0 font-dm-regular tracking-tighter text-base items-center h-full"
+        : "w-[100px] h-[28px] overflow-hidden my-0 py-0 font-dm-bold tracking-tighter text-lg items-center";
+
     return (
-      <View>
+      <View className={containerClass}>
         <View className="relative flex-row items-center gap-2">
           <View className="flex-1">
             <TextInput
@@ -122,7 +134,7 @@ const QRTextInput: React.FC<QRTextInputProps> = React.memo(
               accessibilityLabel={placeholder}
               accessibilityRole="text"
               accessibilityState={{ selected: !!value }}
-              className={`w-[100px] h-[28px] overflow-hidden my-0 py-0 font-dm-bold tracking-tighter text-lg ${className}`}
+              className={`${inputClass} ${className}`}
             />
           </View>
           <View className="w-6 h-6 justify-center items-center">
