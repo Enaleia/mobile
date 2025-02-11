@@ -4,7 +4,7 @@ import { MAX_RETRIES, QueueItem, QueueItemStatus } from "@/types/queue";
 import { processQueueItems } from "@/services/queueProcessor";
 import { useNetInfo } from "@react-native-community/netinfo";
 import { QueueEvents, queueEventEmitter } from "@/services/events";
-import { getCacheKey } from "@/utils/storage";
+import { getQueueCacheKey } from "@/utils/storage";
 import { QueryClient } from "@tanstack/react-query";
 
 interface QueueContextType {
@@ -24,7 +24,7 @@ export function QueueProvider({ children }: { children: React.ReactNode }) {
 
   const loadQueueItems = async () => {
     try {
-      const key = getCacheKey();
+      const key = getQueueCacheKey();
       const data = await AsyncStorage.getItem(key);
       const items = data ? JSON.parse(data) : [];
       setQueueItems(items);
@@ -96,7 +96,7 @@ export function QueueProvider({ children }: { children: React.ReactNode }) {
 
   const updateQueueItems = async (items: QueueItem[]) => {
     try {
-      const key = getCacheKey();
+      const key = getQueueCacheKey();
       await AsyncStorage.setItem(key, JSON.stringify(items));
       setQueueItems(items);
 
