@@ -14,6 +14,8 @@ import { Text, View, Pressable } from "react-native";
 import React, { useEffect } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { UserInfo } from "@/types/user";
+import { DirectusCollector } from "@/types/collector";
+import { DirectusProduct } from "@/types/product";
 
 function Home() {
   const { userData } = useUserInfo();
@@ -63,8 +65,8 @@ function Home() {
 
         const actions = processActions(data.actions);
         const materials = processMaterials(data.materials);
-        const collectors = processCollectors(data.collectors);
-        const products = processProducts(data.products);
+        const collectors = data.collectors as DirectusCollector[];
+        const products = data.products as DirectusProduct[];
 
         if (!actions || !materials || !collectors || !products) {
           throw new Error("Missing required data");
@@ -87,10 +89,6 @@ function Home() {
   const groupedActions = batchData?.actions
     ? groupActionsByCategory(batchData.actions)
     : undefined;
-
-  // React.useEffect(() => {
-  //   queryClient.invalidateQueries({ queryKey: ["batchData"] });
-  // }, []);
 
   return (
     <SafeAreaContent>
