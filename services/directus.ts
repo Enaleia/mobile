@@ -1,4 +1,10 @@
-import { Events, Events_Input, Events_Output } from "@/types/event";
+// TODO: Get all the data from the tables, not just the first 100
+// TODO: Update the fields to only get the ones required
+import {
+  MaterialTrackingEvent,
+  MaterialTrackingEventInput,
+  MaterialTrackingEventOutput,
+} from "@/types/event";
 import { directus } from "@/utils/directus";
 import { createItem, readItems, updateItem } from "@directus/sdk";
 
@@ -43,7 +49,7 @@ export async function fetchProducts() {
   }
 }
 
-export async function createEvent(event: Events) {
+export async function createEvent(event: MaterialTrackingEvent) {
   try {
     return await directus.request(createItem("Events", event));
   } catch (error: any) {
@@ -51,7 +57,7 @@ export async function createEvent(event: Events) {
   }
 }
 
-export async function createMaterialInput(input: Events_Input) {
+export async function createMaterialInput(input: MaterialTrackingEventInput) {
   try {
     return await directus.request(createItem("Events_Input", input));
   } catch (error: any) {
@@ -59,7 +65,9 @@ export async function createMaterialInput(input: Events_Input) {
   }
 }
 
-export async function createMaterialOutput(output: Events_Output) {
+export async function createMaterialOutput(
+  output: MaterialTrackingEventOutput
+) {
   try {
     return await directus.request(createItem("Events_Output", output));
   } catch (error: any) {
@@ -67,7 +75,10 @@ export async function createMaterialOutput(output: Events_Output) {
   }
 }
 
-export async function updateEvent(eventId: number, event: Partial<Events>) {
+export async function updateEvent(
+  eventId: number,
+  event: Partial<MaterialTrackingEvent>
+) {
   try {
     return await directus.request(updateItem("Events", eventId, event));
   } catch (error: any) {

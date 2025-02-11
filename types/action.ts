@@ -8,7 +8,7 @@ export interface Action {
   color: string;
   icon: ImageSourcePropType;
   slug: string;
-  category: string;
+  category: ActionCategory;
 }
 
 export type ActionTitle =
@@ -23,15 +23,14 @@ export type ActionTitle =
   | "Ad-hoc"
   | "Pelletizing";
 
-export type ActionCategory =
-  | "Collecting"
-  | "Transporting"
-  | "Recycling"
-  | "Manufacturing";
+export type ActionCategory = NonNullable<DirectusAction["action_group"]>;
 
 export type ActionIcon = Record<ActionTitle, ImageSourcePropType>;
 export type ActionColor = Record<ActionTitle, string>;
-export type ActionCategories = Record<ActionCategory, ActionTitle[]>;
+export type ActionCategories = Record<
+  NonNullable<ActionCategory>,
+  ActionTitle[]
+>;
 export type ActionSlug = Record<ActionTitle, string>;
 export type ActionIds = {
   [K in keyof typeof ACTION_COLORS]: number;
