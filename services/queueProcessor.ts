@@ -13,13 +13,12 @@ import { MAX_RETRIES, QueueItem, QueueItemStatus } from "@/types/queue";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import NetInfo from "@react-native-community/netinfo";
 import * as Notifications from "expo-notifications";
-
-if (!process.env.EXPO_PUBLIC_CACHE_KEY) {
-  throw new Error("EXPO_PUBLIC_CACHE_KEY is not set");
-}
+import { getCacheKey, getQueueCacheKey } from "@/utils/storage";
+import { DirectusCollector } from "@/types/collector";
+import { BatchData } from "@/types/batch";
 
 async function updateItemInCache(itemId: string, updates: Partial<QueueItem>) {
-  const cacheKey = process.env.EXPO_PUBLIC_CACHE_KEY;
+  const cacheKey = getQueueCacheKey();
   if (!cacheKey) return;
 
   const data = await AsyncStorage.getItem(cacheKey);
@@ -63,9 +62,30 @@ export async function processQueueItems(itemsToProcess?: QueueItem[]) {
 
   try {
     isProcessing = true;
+    const cacheKey = getCacheKey();
+
+    const storedData = await AsyncStorage.getItem(cacheKey);
+
+    let directusCollectors: DirectusCollector[] = [];
+    if (storedData) {
+      try {
+        const cache = JSON.parse(storedData);
+        const batchDataQuery = Object.values(
+          cache.clientState?.queries || {}
+        ).find((query: any) => query?.queryKey?.includes("batchData")) as
+          | { state: { data: BatchData } }
+          | undefined;
+
+        if (batchDataQuery) {
+          directusCollectors = batchDataQuery.state?.data?.collectors || [];
+        }
+      } catch (error) {
+        console.error("Error accessing collector data:", error);
+      }
+    }
 
     if (!itemsToProcess) {
-      const cacheKey = process.env.EXPO_PUBLIC_CACHE_KEY;
+      const cacheKey = getQueueCacheKey();
       if (!cacheKey) return;
 
       const data = await AsyncStorage.getItem(cacheKey);
@@ -111,10 +131,28 @@ export async function processQueueItems(itemsToProcess?: QueueItem[]) {
           ? `${item.location.coords.latitude},${item.location.coords.longitude}`
           : undefined;
 
+        // Find db collector_id if this is a collection action and we have a collector QR ID
+        let collectorDbId: number | undefined;
+        if (item.collectorId && directusCollectors) {
+          console.log({ collectors: directusCollectors.length });
+          const collector = directusCollectors.find(
+            (c) => c.collector_identity === item.collectorId
+          );
+          if (collector) {
+            collectorDbId = collector.collector_id;
+            console.log({ collector });
+          } else {
+            console.warn(`No collector found for ID: ${item.collectorId}`);
+          }
+        }
+
+        console.log({ collectorDbId });
+
         const directusEvent = await createEvent({
           action: item.actionId,
           event_timestamp: new Date(item.date).toISOString(),
           event_location: locationString,
+          collector_name: collectorDbId,
         } as MaterialTrackingEvent);
 
         console.log("directusEvent", JSON.stringify(directusEvent, null, 2));
@@ -132,7 +170,7 @@ export async function processQueueItems(itemsToProcess?: QueueItem[]) {
             validMaterials.map(async (material) => {
               const result = await createMaterialInput({
                 input_Material: material.id,
-                input_code: material.code || "",
+                input_code: item.collectorId || material.code || "",
                 input_weight: material.weight || 0,
                 event_id: directusEvent.event_id,
               } as MaterialTrackingEventInput);
@@ -159,7 +197,7 @@ export async function processQueueItems(itemsToProcess?: QueueItem[]) {
             validMaterials.map(async (material) => {
               const result = await createMaterialOutput({
                 output_material: material.id,
-                output_code: material.code || "",
+                output_code: item.collectorId || material.code || "",
                 output_weight: material.weight || 0,
                 event_id: directusEvent.event_id,
               } as MaterialTrackingEventOutput);
