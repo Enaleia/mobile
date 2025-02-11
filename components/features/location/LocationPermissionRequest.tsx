@@ -134,7 +134,7 @@ export function LocationPermissionRequest({
 
   if (permissionStatus === "granted") {
     return (
-      <View className="bg-white rounded-lg p-4 shadow-sm">
+      <View className="bg-white rounded-lg p-3 shadow-sm border-2 border-enaleia-black/10">
         <View className="flex-row items-center justify-between">
           <View className="flex-row items-center space-x-2">
             <Ionicons name="location" size={20} color="#10B981" />
