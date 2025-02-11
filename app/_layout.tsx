@@ -19,6 +19,7 @@ import * as Localization from "expo-localization";
 
 import { defaultLocale, dynamicActivate } from "@/lib/i18n";
 import { QueueProvider, useQueue } from "@/contexts/QueueContext";
+import { getCacheKey } from "@/utils/storage";
 
 SplashScreen.preventAutoHideAsync();
 
@@ -48,7 +49,7 @@ const queryClient = new QueryClient({
 
 const asyncStoragePersister = createAsyncStoragePersister({
   storage: AsyncStorage,
-  key: process.env.EXPO_PUBLIC_CACHE_KEY,
+  key: getCacheKey(),
   throttleTime: 2000,
 });
 
