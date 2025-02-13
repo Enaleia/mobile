@@ -36,6 +36,7 @@ import { z } from "zod";
 import { LocationPermissionRequest } from "@/components/features/location/LocationPermissionRequest";
 import { LocationSchema } from "@/services/locationService";
 import QRTextInput from "@/components/features/scanning/QRTextInput";
+import { useUserInfo } from "@/hooks/data/useUserInfo";
 
 const eventFormSchema = z.object({
   type: z
@@ -82,6 +83,7 @@ export type EventFormType = z.infer<typeof eventFormSchema>;
 const NewActionScreen = () => {
   const { slug } = useLocalSearchParams(); // slug format
   const location = useCurrentLocation();
+  const { userData } = useUserInfo();
 
   const [isSentToQueue, setIsSentToQueue] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -215,6 +217,10 @@ const NewActionScreen = () => {
           incomingMaterials: value.incomingMaterials || [],
           outgoingMaterials: value.outgoingMaterials || [],
           location: value.location,
+          company:
+            typeof userData?.Company === "number"
+              ? undefined
+              : userData?.Company?.id,
         };
 
         await addItemToQueue(queueItem);

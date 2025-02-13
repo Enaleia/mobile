@@ -80,7 +80,7 @@ export async function processQueueItems(itemsToProcess?: QueueItem[]) {
           directusCollectors = batchDataQuery.state?.data?.collectors || [];
         }
       } catch (error) {
-        console.error("Error accessing collector data:", error);
+        console.error("Error accessing cache data:", error);
       }
     }
 
@@ -153,6 +153,7 @@ export async function processQueueItems(itemsToProcess?: QueueItem[]) {
           event_timestamp: new Date(item.date).toISOString(),
           event_location: locationString,
           collector_name: collectorDbId,
+          company: item.company,
         } as MaterialTrackingEvent);
 
         console.log("directusEvent", JSON.stringify(directusEvent, null, 2));
