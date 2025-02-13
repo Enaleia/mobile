@@ -13,9 +13,9 @@ import { onlineManager, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Text, View, Pressable } from "react-native";
 import React, { useEffect } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { UserInfo } from "@/types/user";
 import { DirectusCollector } from "@/types/collector";
 import { DirectusProduct } from "@/types/product";
+import { EnaleiaUser } from "@/types/user";
 
 function Home() {
   const { userData } = useUserInfo();
@@ -27,7 +27,7 @@ function Home() {
         const storedUserInfo = await AsyncStorage.getItem("userInfo");
         if (storedUserInfo) {
           const userInfo = JSON.parse(storedUserInfo);
-          await queryClient.setQueryData<UserInfo>(["user-info"], userInfo);
+          await queryClient.setQueryData<EnaleiaUser>(["user-info"], userInfo);
         }
       } catch (error) {
         console.error("Error initializing user data:", error);
@@ -106,7 +106,9 @@ function Home() {
           <Pressable
             onPress={async () => {
               await AsyncStorage.clear();
-              console.log("Storage cleared");
+              await queryClient.invalidateQueries({ queryKey: ["user-info"] });
+              await queryClient.resetQueries({ queryKey: ["user-info"] });
+              console.log("Storage cleared and queries invalidated");
             }}
             className="p-3 my-1 bg-red-500 rounded"
           >
@@ -118,7 +120,7 @@ function Home() {
         <View className="flex-row items-center justify-center gap-0.5">
           <Ionicons name="person-circle-outline" size={24} color="#0D0D0D" />
           <Text className="text-sm font-bold text-enaleia-black">
-            {userData.name}
+            {userData?.first_name || "User"}
           </Text>
         </View>
         <View className="flex-row items-center justify-center px-1.5 py-0.5 space-x-1 bg-sand-beige rounded-full">

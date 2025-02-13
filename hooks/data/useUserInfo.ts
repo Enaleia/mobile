@@ -1,7 +1,7 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { directus } from "@/utils/directus";
-import { readMe } from "@directus/sdk";
-import { UserInfo } from "@/types/user";
+import { readItems, readMe, readUsers } from "@directus/sdk";
+import { EnaleiaUser } from "@/types/user";
 
 export function useUserInfo() {
   const queryClient = useQueryClient();
@@ -10,7 +10,7 @@ export function useUserInfo() {
     queryKey: ["user-info"],
     queryFn: async () => {
       try {
-        const cachedData = queryClient.getQueryData<UserInfo>(["user-info"]);
+        const cachedData = queryClient.getQueryData<EnaleiaUser>(["user-info"]);
         if (cachedData) {
           console.log("User info fetched from cache");
           return cachedData;
@@ -19,21 +19,33 @@ export function useUserInfo() {
         const token = await directus.getToken();
         if (!token) throw new Error("No token found");
 
-        const userData = await directus.request(readMe());
-        if (!userData) throw new Error("No user data found");
+        // First get basic user info
+        const basicUserData = await directus.request(readMe());
+        if (!basicUserData) throw new Error("No user data found");
 
-        const freshData = {
+        // Then get detailed user info including company
+        const detailedUserData = await directus.request(
+          readUsers({
+            fields: ["id", "first_name", "last_name", "email", "Company"],
+            filter: {
+              id: {
+                _eq: basicUserData.id,
+              },
+            },
+            limit: 1,
+          })
+        );
+
+        if (!detailedUserData?.[0])
+          throw new Error("Failed to fetch user details");
+
+        const freshData: EnaleiaUser = {
+          ...detailedUserData[0],
           token,
-          email: userData.email,
-          name: userData.first_name,
-          lastName: userData.last_name,
-          avatar: userData.avatar,
-          id: userData.id,
-          company: userData.company,
         };
 
         queryClient.setQueryData(["user-info"], freshData);
-        console.log("User info fetched");
+        console.log("User info fetched", freshData);
         return freshData;
       } catch (error) {
         console.error("Error fetching user data:", error);
@@ -41,13 +53,13 @@ export function useUserInfo() {
       }
     },
     initialData: {
-      token: "",
-      email: "",
-      name: "",
-      lastName: "",
-      avatar: "",
       id: "",
-    },
+      first_name: null,
+      last_name: null,
+      email: null,
+      token: null,
+      company: undefined,
+    } as EnaleiaUser,
     staleTime: 7 * 24 * 60 * 60 * 1000, // 1 week
   });
 
