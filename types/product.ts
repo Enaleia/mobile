@@ -1,4 +1,5 @@
 import { JsonValue } from "@/types/json";
+import { DirectusItemStatus } from "./directus";
 
 export interface Product {
   id: number;
@@ -16,7 +17,7 @@ export const processProducts = (products: any[]): Product[] => {
 
 export interface DirectusProduct {
   product_id: number;
-  status: "published" | "draft" | "archived";
+  status: DirectusItemStatus;
   sort?: number;
   user_created?: string; // UUID
   date_created?: string;

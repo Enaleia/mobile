@@ -1,4 +1,5 @@
 import { JsonValue } from "@/types/json";
+import { DirectusItemStatus } from "./directus";
 
 export type MaterialNames =
   | "Mixed Plastics"
@@ -75,7 +76,7 @@ export const processMaterials = (materials: any[]): MaterialsData => {
 
 export interface DirectusMaterial {
   material_id: number;
-  status: "published" | "draft" | "archived";
+  status: DirectusItemStatus;
   sort?: number;
   user_created?: string; // UUID
   date_created?: string; // Using literal type as shown in image

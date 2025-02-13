@@ -1,10 +1,9 @@
 import { JsonValue } from "@/types/json";
+import { DirectusItemStatus } from "./directus";
 
-type Status = "Default" | "Reviewed";
-type DirectusStatus = "published" | "draft" | "archived";
 export interface MaterialTrackingEvent {
   event_id: number;
-  status: Status;
+  status: DirectusItemStatus;
   sort?: number;
   user_created?: string; // UUID
   date_created?: string;
@@ -27,7 +26,7 @@ export interface MaterialTrackingEvent {
 
 export interface MaterialTrackingEventInput {
   event_input_id: number;
-  status: DirectusStatus;
+  status: DirectusItemStatus;
   sort?: number;
   user_created?: string; // UUID
   date_created?: string;
@@ -41,7 +40,7 @@ export interface MaterialTrackingEventInput {
 
 export interface MaterialTrackingEventOutput {
   event_output_id: number;
-  status: DirectusStatus;
+  status: DirectusItemStatus;
   sort?: number;
   user_created?: string; // UUID
   date_created?: string;

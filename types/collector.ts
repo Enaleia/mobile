@@ -1,4 +1,5 @@
 import { JsonValue } from "@/types/json";
+import { DirectusItemStatus } from "./directus";
 
 export interface Collector {
   id: number;
@@ -22,7 +23,7 @@ export interface DirectusCollector {
   /**
    * The status of the collector
    */
-  status: "published" | "draft" | "archived";
+  status: DirectusItemStatus;
   /**
    * The sort order of the collector
    */

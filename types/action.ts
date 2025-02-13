@@ -1,5 +1,6 @@
 import { ACTION_COLORS, ACTION_ICONS, ACTION_SLUGS } from "@/constants/action";
 import { ImageSourcePropType } from "react-native";
+import { DirectusItemStatus } from "./directus";
 
 export interface Action {
   id: number;
@@ -241,7 +242,7 @@ export const typeModalMap: Record<ActionTitle, ModalData> = {
 
 export interface DirectusAction {
   action_id: number;
-  status: "published" | "draft" | "archived";
+  status: DirectusItemStatus;
   sort?: number;
   user_created?: string; // UUID
   date_created?: string;
