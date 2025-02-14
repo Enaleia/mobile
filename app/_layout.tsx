@@ -1,10 +1,5 @@
 import "@expo/metro-runtime";
 
-import "@formatjs/intl-locale/polyfill-force";
-import "@formatjs/intl-pluralrules/locale-data/ar";
-import "@formatjs/intl-pluralrules/locale-data/el";
-import "@formatjs/intl-pluralrules/locale-data/en";
-import "@formatjs/intl-pluralrules/polyfill-force";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import NetInfo from "@react-native-community/netinfo";
 import { createAsyncStoragePersister } from "@tanstack/query-async-storage-persister";
@@ -17,10 +12,10 @@ import React, { useEffect, useState } from "react";
 
 import * as Localization from "expo-localization";
 
-import { defaultLocale, dynamicActivate } from "@/lib/i18n";
-import { QueueProvider, useQueue } from "@/contexts/QueueContext";
-import { getCacheKey } from "@/utils/storage";
 import { NetworkProvider } from "@/contexts/NetworkContext";
+import { QueueProvider, useQueue } from "@/contexts/QueueContext";
+import { defaultLocale, dynamicActivate } from "@/lib/i18n";
+import { getCacheKey } from "@/utils/storage";
 
 SplashScreen.preventAutoHideAsync();
 
@@ -54,7 +49,7 @@ const asyncStoragePersister = createAsyncStoragePersister({
   throttleTime: 2000,
 });
 
-const NetworkHandler = () => {
+const QueueNetworkHandler = () => {
   const { loadQueueItems } = useQueue();
 
   useEffect(() => {
@@ -97,8 +92,8 @@ export default function RootLayout() {
   }
 
   return (
-    <QueueProvider>
-      <NetworkProvider>
+    <NetworkProvider>
+      <QueueProvider>
         <PersistQueryClientProvider
           client={queryClient}
           persistOptions={{
@@ -110,7 +105,7 @@ export default function RootLayout() {
             },
           }}
         >
-          <NetworkHandler />
+          <QueueNetworkHandler />
           <Stack screenOptions={{ headerShown: false }}>
             <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
             <Stack.Screen
@@ -123,7 +118,7 @@ export default function RootLayout() {
             />
           </Stack>
         </PersistQueryClientProvider>
-      </NetworkProvider>
-    </QueueProvider>
+      </QueueProvider>
+    </NetworkProvider>
   );
 }
