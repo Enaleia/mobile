@@ -1,23 +1,21 @@
 import { View, Text } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
+import { useNetwork } from "@/contexts/NetworkContext";
 
-interface NetworkStatusProps {
-  isConnected: boolean;
-}
+const NetworkStatus = () => {
+  const { isConnected, connectionType, isInternetReachable } = useNetwork();
+  const isOnline = isConnected && isInternetReachable;
 
-const NetworkStatus = ({ isConnected }: NetworkStatusProps) => {
   return (
-    <View className="flex-row items-center justify-between p-4 bg-white rounded-lg mb-4">
-      <View className="flex-row items-center space-x-2">
-        <Ionicons
-          name="wifi"
-          size={24}
-          color={isConnected ? "#22c55e" : "#ef4444"} // colors: green, red
-        />
-        <Text className="text-base font-dm-medium">
-          {isConnected ? "Connected" : "Offline"}
-        </Text>
-      </View>
+    <View className="flex-row items-center justify-center px-2 py-1 space-x-1 bg-sand-beige rounded-full w-fit max-w-[120px]">
+      <Ionicons
+        name={connectionType === "wifi" ? "wifi" : "cellular"}
+        size={14}
+        color={isOnline ? "#22c55e" : "#ef4444"}
+      />
+      <Text className="text-xs font-dm-medium text-enaleia-black">
+        {isOnline ? `Online (${connectionType})` : "Offline"}
+      </Text>
     </View>
   );
 };
