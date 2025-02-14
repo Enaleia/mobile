@@ -6,6 +6,7 @@ import { QueueEvents, queueEventEmitter } from "@/services/events";
 import { getQueueCacheKey } from "@/utils/storage";
 import { QueryClient } from "@tanstack/react-query";
 import { useNetwork } from "./NetworkContext";
+import { BackgroundTaskManager } from "@/services/backgroundTaskManager";
 
 interface QueueContextType {
   queueItems: QueueItem[];
@@ -25,6 +26,7 @@ export function QueueProvider({ children }: { children: React.ReactNode }) {
   const processingRef = useRef(false);
   const queryClient = new QueryClient();
   const isOnline = isConnected && isInternetReachable;
+  const backgroundManager = BackgroundTaskManager.getInstance();
 
   const loadQueueItems = async (): Promise<void> => {
     try {
@@ -68,46 +70,8 @@ export function QueueProvider({ children }: { children: React.ReactNode }) {
       return;
     }
 
-    // Filter items based on network conditions
-    const itemsToProcess = items.filter((item) => {
-      if (item.status === QueueItemStatus.COMPLETED) return false;
-
-      if (isMetered) {
-        return item.status === QueueItemStatus.PENDING && item.retryCount === 0;
-      }
-
-      return (
-        item.status === QueueItemStatus.PENDING ||
-        (item.status === QueueItemStatus.FAILED &&
-          item.retryCount < MAX_RETRIES) ||
-        item.status === QueueItemStatus.OFFLINE
-      );
-    });
-
-    const groupedItems = itemsToProcess.reduce((acc, item) => {
-      const key = `${item.actionId}-${item.company || "no-company"}`;
-      if (!acc[key]) acc[key] = [];
-      acc[key].push(item);
-      return acc;
-    }, {} as Record<string, QueueItem[]>);
-
-    if (Object.keys(groupedItems).length > 0 && isOnline) {
-      processingRef.current = true;
-      try {
-        for (const group of Object.values(groupedItems)) {
-          console.log(
-            "Processing group:",
-            group.map((i) => i.localId)
-          );
-          await processQueueItems(group);
-        }
-      } catch (error) {
-        console.error("Error processing queue:", error);
-      } finally {
-        processingRef.current = false;
-        await loadQueueItems();
-      }
-    }
+    // Let the background manager handle the processing
+    await backgroundManager.processQueueItems();
   };
 
   // Network recovery handler
@@ -171,6 +135,10 @@ export function QueueProvider({ children }: { children: React.ReactNode }) {
     });
 
     await updateQueueItems(updatedItems);
+    // Trigger processing immediately after retry
+    await backgroundManager.processQueueItems().catch((error) => {
+      console.error("Failed to process retried items:", error);
+    });
   };
 
   useEffect(() => {

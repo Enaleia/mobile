@@ -16,6 +16,7 @@ import { NetworkProvider } from "@/contexts/NetworkContext";
 import { QueueProvider, useQueue } from "@/contexts/QueueContext";
 import { defaultLocale, dynamicActivate } from "@/lib/i18n";
 import { getCacheKey } from "@/utils/storage";
+import { BackgroundTaskManager } from "@/services/backgroundTaskManager";
 
 SplashScreen.preventAutoHideAsync();
 
@@ -50,7 +51,7 @@ const asyncStoragePersister = createAsyncStoragePersister({
 });
 
 const QueueNetworkHandler = () => {
-  const { loadQueueItems } = useQueue();
+  const backgroundManager = BackgroundTaskManager.getInstance();
 
   useEffect(() => {
     return NetInfo.addEventListener((state) => {
@@ -58,9 +59,9 @@ const QueueNetworkHandler = () => {
       onlineManager.setOnline(status);
 
       if (status) {
-        loadQueueItems().catch((error) => {
+        backgroundManager.processQueueItems().catch((error) => {
           console.error(
-            "Failed to refresh queue items on connection restore:",
+            "Failed to process queue items on connection restore:",
             error
           );
         });
