@@ -6,22 +6,30 @@ interface QueueSectionProps {
   title: string;
   items: QueueItem[];
   onRetry: (items: QueueItem[]) => void;
+  showRetry?: boolean;
 }
 
-const QueueSection = ({ title, items, onRetry }: QueueSectionProps) => {
+const QueueSection = ({
+  title,
+  items,
+  onRetry,
+  showRetry = true,
+}: QueueSectionProps) => {
   return (
     <View className="mb-4">
       <View className="flex-row justify-between items-center mb-2">
         <Text className="text-lg font-dm-bold">{title}</Text>
-        <Pressable
-          onPress={() => onRetry(items)}
-          className="bg-blue-500 px-3 py-1 rounded-full"
-        >
-          <Text className="text-white font-dm-medium">Retry All</Text>
-        </Pressable>
+        {showRetry && (
+          <Pressable
+            onPress={() => onRetry(items)}
+            className="bg-blue-500 px-3 py-1 rounded-full"
+          >
+            <Text className="text-white font-dm-medium">Retry All</Text>
+          </Pressable>
+        )}
       </View>
       {items.map((item) => (
-        <QueuedAction key={item.localId} type={item.type} date={item.date} />
+        <QueuedAction key={item.localId} item={item} />
       ))}
     </View>
   );

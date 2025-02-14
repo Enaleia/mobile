@@ -96,6 +96,7 @@ const QueueScreen = () => {
               title="Failed"
               items={failedItems}
               onRetry={retryItems}
+              showRetry={true}
             />
           )}
 
@@ -104,6 +105,7 @@ const QueueScreen = () => {
               title="Offline"
               items={offlineItems}
               onRetry={retryItems}
+              showRetry={true}
             />
           )}
 
@@ -115,6 +117,7 @@ const QueueScreen = () => {
                 title="Completed (Dev Only)"
                 items={completedItems}
                 onRetry={retryItems}
+                showRetry={false}
               />
             )}
         </>
