@@ -1,3 +1,4 @@
+import { EnaleiaSchema } from "@/types/enaliea";
 import { authentication, createDirectus, rest } from "@directus/sdk";
 
 export const createDirectusClient = () => {
@@ -7,7 +8,7 @@ export const createDirectusClient = () => {
   }
 
   try {
-    const client = createDirectus(apiUrl)
+    const client = createDirectus<EnaleiaSchema>(apiUrl)
       .with(authentication())
       .with(rest({ credentials: "include" }));
     console.log("[Directus] Client created successfully");

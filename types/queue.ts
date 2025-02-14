@@ -8,13 +8,14 @@ export enum QueueItemStatus {
   COMPLETED = "COMPLETED",
 }
 
-export interface QueueItem extends EventFormType {
+export interface QueueItem extends Omit<EventFormType, "type"> {
   localId: string;
   status: QueueItemStatus;
   retryCount: number;
-  lastError?: string;
   lastAttempt?: Date;
-  actionId?: number;
+  lastError?: string;
+  company?: number;
+  actionId: number;
 }
 
 export const MAX_RETRIES = 3;

@@ -1,6 +1,6 @@
-import { UserInfo } from "@/types/user";
+import { EnaleiaUser } from "@/types/user";
 import { directus } from "@/utils/directus";
-import { readMe } from "@directus/sdk";
+import { readItem, readMe } from "@directus/sdk";
 import { Ionicons } from "@expo/vector-icons";
 import { useForm } from "@tanstack/react-form";
 import { useQueryClient } from "@tanstack/react-query";
@@ -15,6 +15,8 @@ import {
   View,
 } from "react-native";
 import { z } from "zod";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { Company } from "@/types/company";
 
 const LoginData = z.object({
   email: z.string().email("Please enter a valid email"),
@@ -46,20 +48,46 @@ export default function LoginForm() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
 
-  const handleLogin = async (value: LoginData) => {
+  const handleLogin = async (values: LoginData) => {
     try {
-      const loginResult = await directus.login(value.email, value.password);
+      const loginResult = await directus.login(values.email, values.password);
       const token = loginResult.access_token;
+
+      // Store credentials
       await directus.setToken(token);
-      const user = await directus.request(readMe());
-      await queryClient.setQueryData<UserInfo>(["user-info"], {
-        token: token || "",
-        email: value.email,
-        name: user.first_name || "",
-        lastName: user.last_name || "",
-        avatar: user.avatar || "",
-        id: user.id || "",
-      });
+      await AsyncStorage.setItem("userEmail", values.email);
+
+      // Get basic user info
+      const basicUserData = await directus.request(readMe());
+      if (!basicUserData) throw new Error("No user data found");
+
+      let userInfo: EnaleiaUser = {
+        id: basicUserData.id,
+        first_name: basicUserData.first_name,
+        last_name: basicUserData.last_name,
+        email: basicUserData.email,
+        token,
+      };
+
+      // If user has a company, fetch company details
+      if (basicUserData.Company) {
+        try {
+          const companyData = await directus.request(
+            readItem("Companies", basicUserData.Company as number)
+          );
+          console.log("Company data:", companyData);
+          const company: Pick<Company, "id" | "name"> = {
+            id: companyData.id,
+            name: companyData.name,
+          };
+          userInfo.Company = company;
+        } catch (error) {
+          console.warn("Failed to fetch company data:", error);
+        }
+      }
+
+      await AsyncStorage.setItem("userInfo", JSON.stringify(userInfo));
+      await queryClient.setQueryData<EnaleiaUser>(["user-info"], userInfo);
 
       router.replace("/(tabs)");
     } catch (error) {
@@ -73,112 +101,86 @@ export default function LoginForm() {
       email: "",
       password: "",
     },
-    validators: {
-      onSubmitAsync: async ({ value }) => {
-        setIsSubmitting(true);
-        try {
-          const result = LoginData.safeParse(value);
-          if (!result.success) {
-            return {
-              form: "Please check your email and password",
-              fields: Object.fromEntries(
-                result.error.errors.map((err) => [err.path[0], err.message])
-              ),
-            };
-          }
-          value = result.data;
-          await handleLogin(value);
-          return undefined;
-        } catch (error) {
-          const { errors } = error as {
-            errors: { message: string; extensions: { code: string } }[];
-          };
-
-          console.log({ errorCode: errors[0].extensions.code });
-
-          if (
-            errors[0].extensions.code === "INVALID_PAYLOAD" ||
-            errors[0].extensions.code === "INVALID_CREDENTIALS"
-          ) {
-            return {
-              form: "Could not login",
-              fields: {
-                email: "Check that your email is correct",
-                password: "Check that your password is correct",
-              },
-            };
-          }
-          return undefined;
-        } finally {
-          setIsSubmitting(false);
+    onSubmit: async ({ value }) => {
+      setIsSubmitting(true);
+      try {
+        const result = LoginData.safeParse(value);
+        if (!result.success) {
+          console.error("Form validation failed:", result.error.errors);
+          return;
         }
-      },
+        await handleLogin(result.data);
+      } catch (error) {
+        console.error("Login failed:", error);
+      } finally {
+        setIsSubmitting(false);
+      }
     },
   });
 
   return (
     <View>
-      <form.Field
-        name="email"
-        validators={{
-          onChange: z.string().trim().min(1, "Please enter your email"),
-        }}
-        validatorAdapter={zodValidator()}
-      >
+      <form.Field name="email">
         {(field) => (
-          <View
-            className={`bg-white p-2 rounded-xl h-[100px] border-[1.5px] border-transparent ${
-              field.state.meta.errors.length > 0 && "border-red-500"
-            }`}
-          >
+          <View className="bg-white p-2 rounded-xl h-[100px] border-[1.5px] border-transparent">
             <Text className="font-dm-light text-grey-6 text-sm">Email</Text>
             <TextInput
-              autoCapitalize="none"
-              autoComplete="email"
+              className="h-12 px-0 focus:shadow-outline focus:ring-offset-2 font-dm-bold text-[20px]"
               placeholder="email@email.com"
-              inputMode="email"
               value={field.state.value}
               onChangeText={field.handleChange}
-              onBlur={field.handleBlur}
-              className={`h-12 px-0 focus:shadow-outline focus:ring-offset-2 font-dm-bold text-[20px]`}
+              onBlur={() => {
+                const result = LoginData.shape.email.safeParse(
+                  field.state.value
+                );
+                if (!result.success) {
+                  field.setMeta((prev) => ({
+                    ...prev,
+                    errors: [result.error.errors[0].message],
+                  }));
+                } else {
+                  field.setMeta((prev) => ({ ...prev, errors: [] }));
+                }
+              }}
+              autoCapitalize="none"
+              keyboardType="email-address"
             />
-            {field.state.meta.errors.length > 0 && (
+            {field.state.meta.errors?.length ? (
               <Text className="text-red-600 font-dm-regular text-xs">
                 {field.state.meta.errors.join(", ")}
               </Text>
-            )}
+            ) : null}
           </View>
         )}
       </form.Field>
 
       <View className="p-2" />
 
-      <form.Field
-        name="password"
-        validators={{
-          onChange: z.string().trim().min(1, "Please enter your password"),
-        }}
-        validatorAdapter={zodValidator()}
-      >
+      <form.Field name="password">
         {(field) => (
-          <View
-            className={`bg-white p-2 rounded-xl h-[100px] border-[1.5px] border-transparent ${
-              field.state.meta.errors.length > 0 && "border-red-500"
-            }`}
-          >
+          <View className="bg-white p-2 rounded-xl h-[100px] border-[1.5px] border-transparent">
             <Text className="font-dm-light text-grey-6 text-sm">Password</Text>
             <View className="flex flex-row items-center justify-between">
               <TextInput
-                secureTextEntry={!showPassword}
-                autoCapitalize="none"
+                className="h-12 border-neutral-300 focus:border-blue-600 focus:shadow-outline focus:ring-offset-2 font-dm-bold text-[20px]"
                 placeholder="********"
-                autoComplete="password"
                 value={field.state.value}
                 onChangeText={field.handleChange}
-                onBlur={field.handleBlur}
-                className={`h-12 border-neutral-300 focus:border-blue-600 focus:shadow-outline focus:ring-offset-2 font-dm-bold text-[20px] ${
-                  field.state.meta.errors.length > 0 && "border-red-500"
-                }`}
+                onBlur={() => {
+                  const result = LoginData.shape.password.safeParse(
+                    field.state.value
+                  );
+                  if (!result.success) {
+                    field.setMeta((prev) => ({
+                      ...prev,
+                      errors: [result.error.errors[0].message],
+                    }));
+                  } else {
+                    field.setMeta((prev) => ({ ...prev, errors: [] }));
+                  }
+                }}
+                secureTextEntry={!showPassword}
+                autoCapitalize="none"
               />
               <Pressable onPress={() => setShowPassword(!showPassword)}>
                 <Text className="text-blue-ocean font-dm-medium text-base">
@@ -190,41 +192,39 @@ export default function LoginForm() {
                 </Text>
               </Pressable>
             </View>
-
-            {field.state.meta.errors.length > 0 && (
+            {field.state.meta.errors?.length ? (
               <Text className="text-red-600 font-dm-regular text-xs">
                 {field.state.meta.errors.join(", ")}
               </Text>
-            )}
+            ) : null}
           </View>
         )}
       </form.Field>
 
-      <form.Subscribe selector={(state) => [state.errorMap.onSubmit]}>
-        {([formError]) =>
-          formError ? (
-            <Text className="text-red-600 font-dm-regular text-xs text-center mt-2">
-              {formError.toString()}
-            </Text>
-          ) : null
-        }
-      </form.Subscribe>
-
-      <Pressable
-        onPress={() => form.handleSubmit()}
-        className="flex flex-row items-center justify-center p-2 mt-2 bg-blue-ocean rounded-full tracking-tight"
+      <form.Subscribe
+        selector={(state) => ({
+          canSubmit: !state.isSubmitting && !state.errors.length,
+          isSubmitting: state.isSubmitting,
+        })}
       >
-        {isSubmitting ? (
-          <View className="flex flex-row items-center justify-center gap-2">
-            <ActivityIndicator color="white" size="small" />
-            <Text className="text-white font-dm-medium text-base">
-              Logging in...
-            </Text>
-          </View>
-        ) : (
-          <Text className="text-white font-dm-medium text-base">Login</Text>
+        {({ canSubmit, isSubmitting }) => (
+          <Pressable
+            onPress={() => form.handleSubmit()}
+            className="flex flex-row items-center justify-center p-2 mt-2 bg-blue-ocean rounded-full tracking-tight"
+          >
+            {isSubmitting ? (
+              <View className="flex flex-row items-center justify-center gap-2">
+                <ActivityIndicator color="white" size="small" />
+                <Text className="text-white font-dm-medium text-base">
+                  Logging in...
+                </Text>
+              </View>
+            ) : (
+              <Text className="text-white font-dm-medium text-base">Login</Text>
+            )}
+          </Pressable>
         )}
-      </Pressable>
+      </form.Subscribe>
     </View>
   );
 }

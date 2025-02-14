@@ -1,5 +1,4 @@
-import { MaterialsData } from "@/hooks/data/useMaterials";
-import { MaterialDetail, MaterialNames } from "@/types/material";
+import { MaterialDetail, MaterialNames, MaterialsData } from "@/types/material";
 import { Ionicons } from "@expo/vector-icons";
 import React, { useCallback } from "react";
 import {

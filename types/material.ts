@@ -1,3 +1,6 @@
+import { JsonValue } from "@/types/json";
+import { DirectusItemStatus } from "./directus";
+
 export type MaterialNames =
   | "Mixed Plastics"
   | "Metals"
@@ -70,3 +73,16 @@ export const processMaterials = (materials: any[]): MaterialsData => {
     options,
   };
 };
+
+export interface DirectusMaterial {
+  material_id: number;
+  status: DirectusItemStatus;
+  sort?: number;
+  user_created?: string; // UUID
+  date_created?: string; // Using literal type as shown in image
+  user_updated?: string; // UUID
+  date_updated?: string;
+  material_name?: string;
+  material_description?: string;
+  used_for?: JsonValue; // Using JsonValue instead of any for json fields
+}

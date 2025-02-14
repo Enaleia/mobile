@@ -1,5 +1,6 @@
 import { ACTION_COLORS, ACTION_ICONS, ACTION_SLUGS } from "@/constants/action";
 import { ImageSourcePropType } from "react-native";
+import { DirectusItemStatus } from "./directus";
 
 export interface Action {
   id: number;
@@ -8,7 +9,7 @@ export interface Action {
   color: string;
   icon: ImageSourcePropType;
   slug: string;
-  category: string;
+  category: ActionCategory;
 }
 
 export type ActionTitle =
@@ -23,15 +24,14 @@ export type ActionTitle =
   | "Ad-hoc"
   | "Pelletizing";
 
-export type ActionCategory =
-  | "Collecting"
-  | "Transporting"
-  | "Recycling"
-  | "Manufacturing";
+export type ActionCategory = NonNullable<DirectusAction["action_group"]>;
 
 export type ActionIcon = Record<ActionTitle, ImageSourcePropType>;
 export type ActionColor = Record<ActionTitle, string>;
-export type ActionCategories = Record<ActionCategory, ActionTitle[]>;
+export type ActionCategories = Record<
+  NonNullable<ActionCategory>,
+  ActionTitle[]
+>;
 export type ActionSlug = Record<ActionTitle, string>;
 export type ActionIds = {
   [K in keyof typeof ACTION_COLORS]: number;
@@ -239,3 +239,16 @@ export const typeModalMap: Record<ActionTitle, ModalData> = {
   Pelletizing: modalData[5],
   Manufacturing: modalData[6],
 };
+
+export interface DirectusAction {
+  action_id: number;
+  status: DirectusItemStatus;
+  sort?: number;
+  user_created?: string; // UUID
+  date_created?: string;
+  user_updated?: string; // UUID
+  date_updated?: string;
+  action_name?: string;
+  action_description?: string;
+  action_group?: "Collection" | "Transport" | "Recycling" | "Manufacturing";
+}

@@ -13,13 +13,13 @@ import { useCurrentLocation } from "@/hooks/useCurrentLocation";
 import { ActionTitle, typeModalMap } from "@/types/action";
 import { MaterialDetail } from "@/types/material";
 import { QueueItem, QueueItemStatus } from "@/types/queue";
-import { getCacheKey } from "@/utils/storage";
+import { getQueueCacheKey } from "@/utils/storage";
 import { Ionicons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useForm } from "@tanstack/react-form";
 import { zodValidator } from "@tanstack/zod-form-adapter";
 import { router, useLocalSearchParams } from "expo-router";
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -33,6 +33,10 @@ import {
 } from "react-native";
 import uuid from "react-native-uuid";
 import { z } from "zod";
+import { LocationPermissionRequest } from "@/components/features/location/LocationPermissionRequest";
+import { LocationSchema } from "@/services/locationService";
+import QRTextInput from "@/components/features/scanning/QRTextInput";
+import { useUserInfo } from "@/hooks/data/useUserInfo";
 
 const eventFormSchema = z.object({
   type: z
@@ -40,8 +44,9 @@ const eventFormSchema = z.object({
     .refine((value) => Object.keys(ACTION_SLUGS).includes(value), {
       message: "Please select an action that exists",
     }) as z.ZodType<ActionTitle>,
-  // location: z.string().min(1),
   date: z.string().min(1),
+  location: LocationSchema.optional(),
+  collectorId: z.string().optional(),
   incomingMaterials: z
     .array(
       z
@@ -78,6 +83,7 @@ export type EventFormType = z.infer<typeof eventFormSchema>;
 const NewActionScreen = () => {
   const { slug } = useLocalSearchParams(); // slug format
   const location = useCurrentLocation();
+  const { userData } = useUserInfo();
 
   const [isSentToQueue, setIsSentToQueue] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -124,12 +130,11 @@ const NewActionScreen = () => {
 
   const addItemToQueue = async (queueItem: QueueItem) => {
     try {
-      const cacheKey = getCacheKey();
+      const queueCacheKey = getQueueCacheKey();
 
       console.log("Adding queue item:", JSON.stringify(queueItem, null, 2));
 
-      const existingData = await AsyncStorage.getItem(cacheKey);
-      console.log("Existing data from storage:", existingData);
+      const existingData = await AsyncStorage.getItem(queueCacheKey);
 
       let existingItems: QueueItem[] = [];
       if (existingData) {
@@ -149,7 +154,7 @@ const NewActionScreen = () => {
 
       await updateQueueItems(updatedItems);
 
-      const savedData = await AsyncStorage.getItem(cacheKey);
+      const savedData = await AsyncStorage.getItem(queueCacheKey);
       if (!savedData) {
         throw new Error("Failed to verify queue item was saved");
       }
@@ -172,6 +177,8 @@ const NewActionScreen = () => {
     defaultValues: {
       type: currentAction?.name as ActionTitle,
       date: new Date().toISOString(),
+      location: undefined,
+      collectorId: "",
       incomingMaterials: [] as MaterialDetail[],
       outgoingMaterials: [] as MaterialDetail[],
       manufacturing: {
@@ -209,6 +216,11 @@ const NewActionScreen = () => {
           retryCount: 0,
           incomingMaterials: value.incomingMaterials || [],
           outgoingMaterials: value.outgoingMaterials || [],
+          location: value.location,
+          company:
+            typeof userData?.Company === "number"
+              ? undefined
+              : userData?.Company?.id,
         };
 
         await addItemToQueue(queueItem);
@@ -251,6 +263,15 @@ const NewActionScreen = () => {
 
     return incomingMaterials.length > 0 || outgoingMaterials.length > 0;
   };
+
+  const { data: locationData, isLoading: locationLoading } =
+    useCurrentLocation();
+
+  useEffect(() => {
+    if (locationData) {
+      form.setFieldValue("location", locationData);
+    }
+  }, [locationData]);
 
   return (
     <SafeAreaContent>
@@ -308,7 +329,47 @@ const NewActionScreen = () => {
           showsVerticalScrollIndicator={false}
           contentContainerStyle={{ flexGrow: 0, paddingBottom: 20 }}
         >
-          <View className="flex-1 space-y-2">
+          <View className="flex-1">
+            <form.Subscribe selector={(state) => state.values}>
+              {(values) => (
+                <View className="mb-2 mt-4">
+                  <LocationPermissionRequest
+                    onPermissionGranted={() => {
+                      // Location will be automatically updated via the effect
+                    }}
+                    onPermissionDenied={() => {
+                      Alert.alert(
+                        "Location Access",
+                        "Location helps verify where events take place. You can still use saved locations or change this later in settings."
+                      );
+                    }}
+                    onLocationSelected={(location) => {
+                      form.setFieldValue("location", location);
+                    }}
+                    currentLocation={values.location}
+                  />
+                </View>
+              )}
+            </form.Subscribe>
+
+            {currentAction?.category === "Collection" && (
+              <View className="mt-4 mb-2">
+                <Text className="text-[20px] font-dm-regular text-enaleia-black tracking-tighter mb-2">
+                  Collector ID
+                </Text>
+                <form.Field name="collectorId">
+                  {(field) => (
+                    <QRTextInput
+                      value={field.state.value || ""}
+                      onChangeText={field.handleChange}
+                      placeholder="Scan or enter collector ID"
+                      variant="standalone"
+                    />
+                  )}
+                </form.Field>
+              </View>
+            )}
+            <View className="h-[1.5px] bg-slate-200 my-5" />
             <form.Field name="incomingMaterials">
               {(field) => (
                 <MaterialSection
@@ -320,9 +381,11 @@ const NewActionScreen = () => {
                   setSelectedMaterials={(materials: MaterialDetail[]) =>
                     field.handleChange(materials)
                   }
+                  hideCodeInput={currentAction?.category === "Collection"}
                 />
               )}
             </form.Field>
+            <View className="h-[1.5px] bg-slate-200 my-5" />
             {currentAction?.name !== "Manufacturing" && (
               <form.Field name="outgoingMaterials">
                 {(field) => (
@@ -332,7 +395,10 @@ const NewActionScreen = () => {
                     isModalVisible={isOutgoingMaterialsPickerVisible}
                     setModalVisible={setIsOutgoingMaterialsPickerVisible}
                     selectedMaterials={field.state.value as MaterialDetail[]}
-                    setSelectedMaterials={field.handleChange}
+                    setSelectedMaterials={(materials: MaterialDetail[]) =>
+                      field.handleChange(materials)
+                    }
+                    hideCodeInput={currentAction?.category === "Collection"}
                   />
                 )}
               </form.Field>
@@ -448,7 +514,7 @@ const NewActionScreen = () => {
                       onPress={handleSubmitClick}
                       className={`flex-row items-center justify-center mt-4 p-3 rounded-full ${
                         !canSubmit || isSubmitting
-                          ? "bg-blue-400"
+                          ? "bg-primary-dark-blue"
                           : "bg-blue-ocean"
                       }`}
                     >
@@ -477,7 +543,7 @@ const NewActionScreen = () => {
               }}
             </form.Subscribe>
             {/* DEBUG SECTION */}
-            <View className="px-4 mt-4">
+            {/* <View className="px-4 mt-4">
               <form.Subscribe selector={(state) => state.values}>
                 {(values) => (
                   <Text className="text-xs font-dm-regular text-slate-500 bg-slate-100 p-2 rounded">
@@ -519,7 +585,7 @@ const NewActionScreen = () => {
                   );
                 }}
               </form.Subscribe>
-            </View>
+            </View> */}
           </View>
         </ScrollView>
       </View>

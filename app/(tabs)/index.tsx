@@ -11,11 +11,40 @@ import { batchFetchData } from "@/utils/batchFetcher";
 import { Ionicons } from "@expo/vector-icons";
 import { onlineManager, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Text, View, Pressable } from "react-native";
-import React from "react";
+import React, { useEffect } from "react";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { DirectusCollector } from "@/types/collector";
+import { DirectusProduct } from "@/types/product";
+import { EnaleiaUser } from "@/types/user";
 
 function Home() {
   const { userData } = useUserInfo();
   const queryClient = useQueryClient();
+
+  useEffect(() => {
+    const initializeUserData = async () => {
+      try {
+        const storedUserInfo = await AsyncStorage.getItem("userInfo");
+        if (storedUserInfo) {
+          const userInfo = JSON.parse(storedUserInfo);
+          await queryClient.setQueryData<EnaleiaUser>(["user-info"], userInfo);
+        }
+      } catch (error) {
+        console.error("Error initializing user data:", error);
+      }
+    };
+
+    initializeUserData();
+  }, []);
+
+  useEffect(() => {
+    const debugStorage = async () => {
+      const userInfo = await AsyncStorage.getItem("userInfo");
+      console.log("Stored User Info:", userInfo);
+    };
+    debugStorage();
+  }, []);
+
   const {
     data: batchData,
     error,
@@ -36,8 +65,8 @@ function Home() {
 
         const actions = processActions(data.actions);
         const materials = processMaterials(data.materials);
-        const collectors = processCollectors(data.collectors);
-        const products = processProducts(data.products);
+        const collectors = data.collectors as DirectusCollector[];
+        const products = data.products as DirectusProduct[];
 
         if (!actions || !materials || !collectors || !products) {
           throw new Error("Missing required data");
@@ -61,29 +90,37 @@ function Home() {
     ? groupActionsByCategory(batchData.actions)
     : undefined;
 
-  // React.useEffect(() => {
-  //   queryClient.invalidateQueries({ queryKey: ["batchData"] });
-  // }, []);
-
   return (
     <SafeAreaContent>
       {__DEV__ && (
-        <Pressable
-          onPress={() =>
-            queryClient.invalidateQueries({ queryKey: ["batchData"] })
-          }
-          className="p-3 my-1 bg-blue-500 rounded"
-        >
-          <Text className="text-white text-center text-dm-medium">
-            Refresh Data
-          </Text>
-        </Pressable>
+        <View>
+          <Pressable
+            onPress={async () => {
+              const userInfo = await AsyncStorage.getItem("userInfo");
+              console.log("Stored User Info:", userInfo);
+            }}
+            className="p-3 my-1 bg-blue-500 rounded"
+          >
+            <Text className="text-white text-center">Debug: Show Storage</Text>
+          </Pressable>
+          <Pressable
+            onPress={async () => {
+              await AsyncStorage.clear();
+              await queryClient.invalidateQueries({ queryKey: ["user-info"] });
+              await queryClient.resetQueries({ queryKey: ["user-info"] });
+              console.log("Storage cleared and queries invalidated");
+            }}
+            className="p-3 my-1 bg-red-500 rounded"
+          >
+            <Text className="text-white text-center">Debug: Clear Storage</Text>
+          </Pressable>
+        </View>
       )}
       <View className="flex-row items-start justify-between pb-2 font-dm-regular">
         <View className="flex-row items-center justify-center gap-0.5">
           <Ionicons name="person-circle-outline" size={24} color="#0D0D0D" />
           <Text className="text-sm font-bold text-enaleia-black">
-            {userData.name}
+            {userData?.first_name || "User"}
           </Text>
         </View>
         <View className="flex-row items-center justify-center px-1.5 py-0.5 space-x-1 bg-sand-beige rounded-full">
