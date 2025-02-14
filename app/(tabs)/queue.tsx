@@ -98,8 +98,7 @@ const QueueScreen = () => {
 
   return (
     <SafeAreaContent>
-      <NetworkStatus isConnected={isConnected || false} />
-
+      <NetworkStatus />
       {hasNoItems ? (
         <View className="flex-1 items-center justify-center p-4">
           <Ionicons name="checkmark-circle-outline" size={64} color="#4CAF50" />

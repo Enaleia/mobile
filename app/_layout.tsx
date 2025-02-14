@@ -20,6 +20,7 @@ import * as Localization from "expo-localization";
 import { defaultLocale, dynamicActivate } from "@/lib/i18n";
 import { QueueProvider, useQueue } from "@/contexts/QueueContext";
 import { getCacheKey } from "@/utils/storage";
+import { NetworkProvider } from "@/contexts/NetworkContext";
 
 SplashScreen.preventAutoHideAsync();
 
@@ -97,27 +98,32 @@ export default function RootLayout() {
 
   return (
     <QueueProvider>
-      <PersistQueryClientProvider
-        client={queryClient}
-        persistOptions={{
-          persister: asyncStoragePersister,
-          dehydrateOptions: {
-            shouldDehydrateQuery: ({ queryKey }) => {
-              return queryKey.includes("batchData");
+      <NetworkProvider>
+        <PersistQueryClientProvider
+          client={queryClient}
+          persistOptions={{
+            persister: asyncStoragePersister,
+            dehydrateOptions: {
+              shouldDehydrateQuery: ({ queryKey }) => {
+                return queryKey.includes("batchData");
+              },
             },
-          },
-        }}
-      >
-        <NetworkHandler />
-        <Stack screenOptions={{ headerShown: false }}>
-          <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-          <Stack.Screen name="(auth)/login" options={{ headerShown: false }} />
-          <Stack.Screen
-            name="attest/new/[slug]"
-            options={{ headerShown: false }}
-          />
-        </Stack>
-      </PersistQueryClientProvider>
+          }}
+        >
+          <NetworkHandler />
+          <Stack screenOptions={{ headerShown: false }}>
+            <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+            <Stack.Screen
+              name="(auth)/login"
+              options={{ headerShown: false }}
+            />
+            <Stack.Screen
+              name="attest/new/[slug]"
+              options={{ headerShown: false }}
+            />
+          </Stack>
+        </PersistQueryClientProvider>
+      </NetworkProvider>
     </QueueProvider>
   );
 }
