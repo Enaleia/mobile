@@ -134,11 +134,18 @@ export function LocationPermissionRequest({
 
   if (permissionStatus === "granted") {
     return (
-      <View className="bg-white rounded-lg p-3 shadow-sm border-2 border-enaleia-black/10">
+      <View
+        className="bg-white rounded-lg p-3 shadow-sm border-2 border-enaleia-black/10"
+        accessibilityRole="none"
+        accessibilityLabel="Location status"
+      >
         <View className="flex-row items-center justify-between">
           <View className="flex-row items-center space-x-2">
             <Ionicons name="location" size={20} color="#10B981" />
-            <Text className="text-sm font-dm-medium text-gray-700">
+            <Text
+              className="text-sm font-dm-medium text-gray-700"
+              accessibilityRole="text"
+            >
               Location Enabled
             </Text>
           </View>
@@ -146,6 +153,9 @@ export function LocationPermissionRequest({
             <Pressable
               onPress={() => setShowSavedLocations(true)}
               className="bg-gray-50 p-2 rounded-full"
+              accessibilityRole="button"
+              accessibilityLabel="View saved locations"
+              accessibilityHint="Double tap to view and select from saved locations"
             >
               <Ionicons name="bookmark-outline" size={20} color="#4B5563" />
             </Pressable>
@@ -153,6 +163,10 @@ export function LocationPermissionRequest({
               onPress={handleSaveCurrentLocation}
               disabled={isSaving}
               className="bg-gray-50 p-2 rounded-full"
+              accessibilityRole="button"
+              accessibilityLabel="Save current location"
+              accessibilityHint="Double tap to save your current location"
+              accessibilityState={{ disabled: isSaving }}
             >
               {isSaving ? (
                 <ActivityIndicator size="small" color="#4B5563" />
@@ -185,13 +199,20 @@ export function LocationPermissionRequest({
 
   return (
     <>
-      <View className="bg-white rounded-lg p-4 shadow-sm space-y-4">
+      <View
+        className="bg-white rounded-lg p-4 shadow-sm space-y-4"
+        accessibilityRole="none"
+        accessibilityLabel="Location permission request"
+      >
         <View className="flex-row items-center space-x-3">
           <View className="bg-blue-50 rounded-full p-2">
             <Ionicons name="location-outline" size={24} color="#3B82F6" />
           </View>
           <View className="flex-1">
-            <Text className="text-lg font-dm-bold text-enaleia-black tracking-tight">
+            <Text
+              className="text-lg font-dm-bold text-enaleia-black tracking-tight"
+              accessibilityRole="header"
+            >
               Add Location to Event
             </Text>
             <Text className="text-sm font-dm-regular text-gray-600">
@@ -201,19 +222,28 @@ export function LocationPermissionRequest({
         </View>
 
         <View className="space-y-3">
-          <View className="flex-row items-center space-x-2">
+          <View
+            className="flex-row items-center space-x-2"
+            accessibilityRole="text"
+          >
             <Ionicons name="checkmark-circle" size={20} color="#10B981" />
             <Text className="text-sm font-dm-regular text-gray-700">
               Verify event location accuracy
             </Text>
           </View>
-          <View className="flex-row items-center space-x-2">
+          <View
+            className="flex-row items-center space-x-2"
+            accessibilityRole="text"
+          >
             <Ionicons name="checkmark-circle" size={20} color="#10B981" />
             <Text className="text-sm font-dm-regular text-gray-700">
               Works offline with location caching
             </Text>
           </View>
-          <View className="flex-row items-center space-x-2">
+          <View
+            className="flex-row items-center space-x-2"
+            accessibilityRole="text"
+          >
             <Ionicons name="checkmark-circle" size={20} color="#10B981" />
             <Text className="text-sm font-dm-regular text-gray-700">
               Battery efficient location updates
@@ -228,6 +258,10 @@ export function LocationPermissionRequest({
             className={`flex-1 flex-row items-center justify-center p-3 rounded-full ${
               isRequesting ? "bg-blue-400" : "bg-blue-ocean"
             }`}
+            accessibilityRole="button"
+            accessibilityLabel="Enable location"
+            accessibilityHint="Double tap to enable location services"
+            accessibilityState={{ disabled: isRequesting }}
           >
             {isRequesting ? (
               <ActivityIndicator color="white" className="mr-2" />
@@ -247,6 +281,9 @@ export function LocationPermissionRequest({
           <Pressable
             onPress={() => setShowSavedLocations(true)}
             className="bg-gray-100 p-3 rounded-full aspect-square items-center justify-center"
+            accessibilityRole="button"
+            accessibilityLabel="View saved locations"
+            accessibilityHint="Double tap to view and select from saved locations"
           >
             <Ionicons name="bookmark-outline" size={20} color="#4B5563" />
           </Pressable>

@@ -133,7 +133,11 @@ const QRTextInput: React.FC<QRTextInputProps> = React.memo(
               placeholder={placeholder}
               accessibilityLabel={placeholder}
               accessibilityRole="text"
-              accessibilityState={{ selected: !!value }}
+              accessibilityState={{
+                selected: !!value,
+                disabled: false,
+              }}
+              accessibilityHint="Enter text or tap QR code button to scan"
               className={`${inputClass} ${className}`}
             />
           </View>
@@ -147,6 +151,9 @@ const QRTextInput: React.FC<QRTextInputProps> = React.memo(
                 setScanner(true);
               }}
               className="active:scale-75 transition-transform"
+              accessibilityRole="button"
+              accessibilityLabel="Open QR scanner"
+              accessibilityHint="Double tap to open QR code scanner"
             >
               <Ionicons name="qr-code-outline" size={24} color="#8E8E93" />
             </Pressable>

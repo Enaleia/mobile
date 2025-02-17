@@ -28,8 +28,9 @@ const SelectMaterialChip = React.memo(
 
     return (
       <Pressable
-        accessibilityLabel={label}
+        accessibilityLabel={`Select ${label}`}
         accessibilityRole="button"
+        accessibilityHint={`Double tap to select ${label} material`}
         className={`bg-white min-w-[60px] px-3 py-2 rounded-3xl flex flex-row items-center justify-center mx-1 my-1 border-[1.5px] border-grey-3`}
         onPress={handlePress}
       >
@@ -50,12 +51,19 @@ const SelectMaterial = React.memo(
     handleAddMaterial: (materialId: number) => void;
   }) => {
     return (
-      <View>
-        <Text className="text-xl font-dm-bold text-enaleia-black tracking-tighter text-center">
+      <View accessibilityRole="none" accessibilityLabel="Material selection">
+        <Text
+          className="text-xl font-dm-bold text-enaleia-black tracking-tighter text-center"
+          accessibilityRole="header"
+        >
           Select Material
         </Text>
         <View className="p-1 mt-5">
-          <View className="flex-row flex-wrap gap-2 justify-center">
+          <View
+            className="flex-row flex-wrap gap-2 justify-center"
+            accessibilityRole="none"
+            accessibilityLabel="Available materials"
+          >
             {materials.map(({ label, value }) => (
               <SelectMaterialChip
                 key={value}
@@ -105,6 +113,7 @@ export default function AddMaterialModal({
       onRequestClose={onClose}
       transparent={true}
       animationType="fade"
+      accessibilityViewIsModal={true}
     >
       <KeyboardAvoidingView
         behavior={Platform.OS === "ios" ? "padding" : "height"}
@@ -125,6 +134,9 @@ export default function AddMaterialModal({
             <Pressable
               onPress={onClose}
               className="h-10 w-10 absolute right-0 top-3"
+              accessibilityRole="button"
+              accessibilityLabel="Close material selection"
+              accessibilityHint="Double tap to close material selection"
             >
               <Ionicons name="close" size={20} color="gray" />
             </Pressable>
