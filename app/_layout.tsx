@@ -1,10 +1,5 @@
 import "@expo/metro-runtime";
 
-import "@formatjs/intl-locale/polyfill-force";
-import "@formatjs/intl-pluralrules/locale-data/ar";
-import "@formatjs/intl-pluralrules/locale-data/el";
-import "@formatjs/intl-pluralrules/locale-data/en";
-import "@formatjs/intl-pluralrules/polyfill-force";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import NetInfo from "@react-native-community/netinfo";
 import { createAsyncStoragePersister } from "@tanstack/query-async-storage-persister";
@@ -17,9 +12,11 @@ import React, { useEffect, useState } from "react";
 
 import * as Localization from "expo-localization";
 
-import { defaultLocale, dynamicActivate } from "@/lib/i18n";
+import { NetworkProvider } from "@/contexts/NetworkContext";
 import { QueueProvider, useQueue } from "@/contexts/QueueContext";
+import { defaultLocale, dynamicActivate } from "@/lib/i18n";
 import { getCacheKey } from "@/utils/storage";
+import { BackgroundTaskManager } from "@/services/backgroundTaskManager";
 
 SplashScreen.preventAutoHideAsync();
 
@@ -53,8 +50,8 @@ const asyncStoragePersister = createAsyncStoragePersister({
   throttleTime: 2000,
 });
 
-const NetworkHandler = () => {
-  const { loadQueueItems } = useQueue();
+const QueueNetworkHandler = () => {
+  const backgroundManager = BackgroundTaskManager.getInstance();
 
   useEffect(() => {
     return NetInfo.addEventListener((state) => {
@@ -62,9 +59,9 @@ const NetworkHandler = () => {
       onlineManager.setOnline(status);
 
       if (status) {
-        loadQueueItems().catch((error) => {
+        backgroundManager.processQueueItems().catch((error) => {
           console.error(
-            "Failed to refresh queue items on connection restore:",
+            "Failed to process queue items on connection restore:",
             error
           );
         });
@@ -96,28 +93,33 @@ export default function RootLayout() {
   }
 
   return (
-    <QueueProvider>
-      <PersistQueryClientProvider
-        client={queryClient}
-        persistOptions={{
-          persister: asyncStoragePersister,
-          dehydrateOptions: {
-            shouldDehydrateQuery: ({ queryKey }) => {
-              return queryKey.includes("batchData");
+    <NetworkProvider>
+      <QueueProvider>
+        <PersistQueryClientProvider
+          client={queryClient}
+          persistOptions={{
+            persister: asyncStoragePersister,
+            dehydrateOptions: {
+              shouldDehydrateQuery: ({ queryKey }) => {
+                return queryKey.includes("batchData");
+              },
             },
-          },
-        }}
-      >
-        <NetworkHandler />
-        <Stack screenOptions={{ headerShown: false }}>
-          <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-          <Stack.Screen name="(auth)/login" options={{ headerShown: false }} />
-          <Stack.Screen
-            name="attest/new/[slug]"
-            options={{ headerShown: false }}
-          />
-        </Stack>
-      </PersistQueryClientProvider>
-    </QueueProvider>
+          }}
+        >
+          <QueueNetworkHandler />
+          <Stack screenOptions={{ headerShown: false }}>
+            <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+            <Stack.Screen
+              name="(auth)/login"
+              options={{ headerShown: false }}
+            />
+            <Stack.Screen
+              name="attest/new/[slug]"
+              options={{ headerShown: false }}
+            />
+          </Stack>
+        </PersistQueryClientProvider>
+      </QueueProvider>
+    </NetworkProvider>
   );
 }

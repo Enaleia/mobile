@@ -28,6 +28,7 @@ export default function ModalBase({
       onRequestClose={onClose}
       transparent={true}
       animationType="fade"
+      accessibilityViewIsModal={true}
     >
       <KeyboardAvoidingView
         behavior={Platform.OS === "ios" ? "padding" : "height"}
@@ -39,14 +40,22 @@ export default function ModalBase({
             justifyContent: "center",
           }}
           keyboardShouldPersistTaps="handled"
+          accessibilityRole="none"
         >
-          <View className="bg-slate-50 p-3 rounded-lg relative">
+          <View
+            className="bg-slate-50 p-3 rounded-lg relative"
+            accessibilityRole="alert"
+            accessibilityLabel="Modal dialog"
+          >
             {children}
 
             {canClose && (
               <Pressable
                 onPress={onClose}
                 className="h-10 w-10 absolute right-0 top-3"
+                accessibilityRole="button"
+                accessibilityLabel="Close modal"
+                accessibilityHint="Double tap to close this dialog"
               >
                 <Ionicons name="close" size={24} color="gray" />
               </Pressable>

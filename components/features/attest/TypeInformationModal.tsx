@@ -19,27 +19,53 @@ const TypeInformationModal = ({
 
   return (
     <ModalBase isVisible={isVisible} onClose={onClose ?? (() => {})}>
-      <Text className="text-2xl font-dm-bold text-enaleia-black tracking-[-1px] my-3">
+      <Text
+        className="text-2xl font-dm-bold text-enaleia-black tracking-[-1px] my-3"
+        accessibilityRole="header"
+      >
         {title}
       </Text>
       {icons?.length > 0 && (
-        <View className="flex-row items-center justify-start gap-3">
+        <View
+          className="flex-row items-center justify-start gap-3"
+          accessibilityRole="none"
+          accessibilityLabel="Type icons"
+        >
           {icons.map((icon, index) => (
-            <Image source={icon} className="w-14 h-14" key={index} />
+            <Image
+              source={icon}
+              className="w-14 h-14"
+              key={index}
+              accessibilityRole="image"
+              accessibilityLabel={`Type icon ${index + 1}`}
+            />
           ))}
         </View>
       )}
-      <Text className="text-base font-dm-regular text-enaleia-black mt-2 tracking-[-0.5px]">
+      <Text
+        className="text-base font-dm-regular text-enaleia-black mt-2 tracking-[-0.5px]"
+        accessibilityRole="text"
+      >
         {description}
       </Text>
       <View className="mt-4">
-        <Text className="text-lg font-dm-bold text-enaleia-black tracking-[-1px]">
+        <Text
+          className="text-lg font-dm-bold text-enaleia-black tracking-[-1px]"
+          accessibilityRole="header"
+        >
           Creating a {title} Attestation
         </Text>
       </View>
       {incomingInstructions.length > 0 && (
-        <View className="mt-2">
-          <Text className="text-base font-dm-bold text-enaleia-black tracking-[-1px] mb-2">
+        <View
+          className="mt-2"
+          accessibilityRole="none"
+          accessibilityLabel="Incoming materials instructions"
+        >
+          <Text
+            className="text-base font-dm-bold text-enaleia-black tracking-[-1px] mb-2"
+            accessibilityRole="header"
+          >
             Incoming materials
           </Text>
           <View>
@@ -47,6 +73,7 @@ const TypeInformationModal = ({
               <Text
                 key={index}
                 className="text-sm text-enaleia-black/70 font-dm-regular"
+                accessibilityRole="text"
               >
                 {" "}
                 {index + 1}. {instruction}
@@ -56,8 +83,15 @@ const TypeInformationModal = ({
         </View>
       )}
       {outgoingInstructions.length > 0 && (
-        <View className="mt-2">
-          <Text className="text-base font-dm-bold text-enaleia-black tracking-[-1px] mb-2">
+        <View
+          className="mt-2"
+          accessibilityRole="none"
+          accessibilityLabel="Outgoing materials instructions"
+        >
+          <Text
+            className="text-base font-dm-bold text-enaleia-black tracking-[-1px] mb-2"
+            accessibilityRole="header"
+          >
             Outgoing materials
           </Text>
 
@@ -66,6 +100,7 @@ const TypeInformationModal = ({
               <Text
                 key={index}
                 className="text-sm text-enaleia-black/70 font-dm-regular"
+                accessibilityRole="text"
               >
                 {index + 1}. {instruction}
               </Text>
@@ -73,23 +108,39 @@ const TypeInformationModal = ({
           </View>
         </View>
       )}
-      <View className="mt-3 p-3 bg-blue-100 rounded-md">
+      <View
+        className="mt-3 p-3 bg-blue-100 rounded-md"
+        accessibilityRole="none"
+        accessibilityLabel="Additional information"
+      >
         {important && (
           <View>
-            <Text className="text-base font-dm-bold tracking-[-0.5px] text-enaleia-black mb-1">
+            <Text
+              className="text-base font-dm-bold tracking-[-0.5px] text-enaleia-black mb-1"
+              accessibilityRole="header"
+            >
               Important
             </Text>
-            <Text className="text-sm text-enaleia-black/70 font-dm-regular">
+            <Text
+              className="text-sm text-enaleia-black/70 font-dm-regular"
+              accessibilityRole="text"
+            >
               {important}
             </Text>
           </View>
         )}
         {notes && (
           <View className="mt-2">
-            <Text className="text-base font-dm-bold text-enaleia-black tracking-[-0.5px] mb-1">
+            <Text
+              className="text-base font-dm-bold text-enaleia-black tracking-[-0.5px] mb-1"
+              accessibilityRole="header"
+            >
               Notes
             </Text>
-            <Text className="text-sm text-enaleia-black/70 font-dm-regular">
+            <Text
+              className="text-sm text-enaleia-black/70 font-dm-regular"
+              accessibilityRole="text"
+            >
               {notes}
             </Text>
           </View>

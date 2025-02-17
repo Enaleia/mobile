@@ -2,33 +2,55 @@ import { createContext, useContext, useEffect, useState, useRef } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { MAX_RETRIES, QueueItem, QueueItemStatus } from "@/types/queue";
 import { processQueueItems } from "@/services/queueProcessor";
-import { useNetInfo } from "@react-native-community/netinfo";
 import { QueueEvents, queueEventEmitter } from "@/services/events";
 import { getQueueCacheKey } from "@/utils/storage";
 import { QueryClient } from "@tanstack/react-query";
+import { useNetwork } from "./NetworkContext";
+import { BackgroundTaskManager } from "@/services/backgroundTaskManager";
 
 interface QueueContextType {
   queueItems: QueueItem[];
   loadQueueItems: () => Promise<void>;
   updateQueueItems: (items: QueueItem[]) => Promise<void>;
   clearStaleData: () => void;
+  retryItems: (items: QueueItem[]) => Promise<void>;
 }
 
 const QueueContext = createContext<QueueContextType | null>(null);
 
+const ONE_DAY = 24 * 60 * 60 * 1000; // 24 hours in milliseconds
+
 export function QueueProvider({ children }: { children: React.ReactNode }) {
   const [queueItems, setQueueItems] = useState<QueueItem[]>([]);
-  const { isConnected } = useNetInfo();
+  const { isConnected, isInternetReachable, isMetered } = useNetwork();
   const processingRef = useRef(false);
   const queryClient = new QueryClient();
+  const isOnline = isConnected && isInternetReachable;
+  const backgroundManager = BackgroundTaskManager.getInstance();
 
-  const loadQueueItems = async () => {
+  const loadQueueItems = async (): Promise<void> => {
     try {
       const key = getQueueCacheKey();
       const data = await AsyncStorage.getItem(key);
-      const items = data ? JSON.parse(data) : [];
-      setQueueItems(items);
-      return items;
+      const items: QueueItem[] = data ? JSON.parse(data) : [];
+
+      // Filter out completed items older than 24 hours
+      const now = Date.now();
+      const incompleteItems = items.filter((item) => {
+        if (item.status !== QueueItemStatus.COMPLETED) return true;
+        const itemDate = new Date(item.lastAttempt || item.date).getTime();
+        return now - itemDate < ONE_DAY;
+      });
+
+      // If we filtered out any items, update storage
+      if (incompleteItems.length !== items.length) {
+        await AsyncStorage.setItem(key, JSON.stringify(incompleteItems));
+        console.log(
+          `Cleaned up ${items.length - incompleteItems.length} completed items`
+        );
+      }
+
+      setQueueItems(incompleteItems);
     } catch (error) {
       if (
         error instanceof Error &&
@@ -39,7 +61,6 @@ export function QueueProvider({ children }: { children: React.ReactNode }) {
         console.error("Error loading queue items:", error);
       }
       setQueueItems([]);
-      return [];
     }
   };
 
@@ -49,62 +70,43 @@ export function QueueProvider({ children }: { children: React.ReactNode }) {
       return;
     }
 
-    const pendingItems = items.filter(
-      (item) =>
-        item.status === QueueItemStatus.PENDING ||
-        (item.status === QueueItemStatus.FAILED &&
-          item.retryCount < MAX_RETRIES)
-    );
-
-    console.log(
-      "Found pending items:",
-      pendingItems.length,
-      "Processing state:",
-      processingRef.current
-    );
-
-    if (pendingItems.length > 0 && isConnected) {
-      processingRef.current = true;
-      try {
-        console.log(
-          "Starting queue processing for items:",
-          pendingItems.map((i) => i.localId)
-        );
-        await processQueueItems(pendingItems);
-      } catch (error) {
-        console.error("Error processing queue:", error);
-      } finally {
-        processingRef.current = false;
-        await loadQueueItems();
-      }
-    }
+    // Let the background manager handle the processing
+    await backgroundManager.processQueueItems();
   };
 
+  // Network recovery handler
   useEffect(() => {
-    loadQueueItems().then((items) => {
-      if (isConnected) {
-        processQueue(items);
-      }
-    });
-  }, []);
-
-  useEffect(() => {
-    if (isConnected && queueItems.length > 0) {
+    if (isOnline && queueItems.length > 0) {
+      console.log("Network recovered, processing queue");
       processQueue(queueItems);
+    } else if (!isOnline && queueItems.length > 0) {
+      // Mark processing items as offline when network is lost
+      const updatedItems = queueItems.map((item) =>
+        item.status === QueueItemStatus.PROCESSING
+          ? { ...item, status: QueueItemStatus.OFFLINE }
+          : item
+      );
+      if (JSON.stringify(updatedItems) !== JSON.stringify(queueItems)) {
+        updateQueueItems(updatedItems).catch((error) => {
+          console.error("Failed to update items on network loss:", error);
+        });
+      }
     }
-  }, [isConnected]);
+  }, [isOnline]);
 
-  const updateQueueItems = async (items: QueueItem[]) => {
+  const updateQueueItems = async (items: QueueItem[]): Promise<void> => {
     try {
       const key = getQueueCacheKey();
       await AsyncStorage.setItem(key, JSON.stringify(items));
       setQueueItems(items);
 
-      if (isConnected) {
+      if (isOnline) {
         console.log("Triggering immediate queue processing after update");
         await processQueue(items);
       } else {
-        console.log("Not connected, skipping immediate processing");
+        console.log(
+          "Offline, items will be processed when network is available"
+        );
       }
     } catch (error) {
       if (
@@ -118,13 +120,32 @@ export function QueueProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
+  const retryItems = async (items: QueueItem[]): Promise<void> => {
+    const updatedItems = queueItems.map((item) => {
+      if (items.some((i) => i.localId === item.localId)) {
+        return {
+          ...item,
+          status: QueueItemStatus.PENDING,
+          retryCount: 0,
+          lastError: undefined,
+          lastAttempt: undefined,
+        };
+      }
+      return item;
+    });
+
+    await updateQueueItems(updatedItems);
+    // Trigger processing immediately after retry
+    await backgroundManager.processQueueItems().catch((error) => {
+      console.error("Failed to process retried items:", error);
+    });
+  };
+
   useEffect(() => {
     const handleQueueUpdate = () => {
       console.log("Queue update event received");
-      loadQueueItems().then((items) => {
-        if (isConnected) {
-          processQueue(items);
-        }
+      loadQueueItems().catch((error) => {
+        console.error("Failed to load queue items after update:", error);
       });
     };
 
@@ -132,7 +153,7 @@ export function QueueProvider({ children }: { children: React.ReactNode }) {
     return () => {
       queueEventEmitter.removeAllListeners(QueueEvents.UPDATED);
     };
-  }, [isConnected]);
+  }, [isOnline]);
 
   const clearStaleData = () => {
     queryClient.removeQueries({
@@ -150,6 +171,7 @@ export function QueueProvider({ children }: { children: React.ReactNode }) {
         loadQueueItems,
         updateQueueItems,
         clearStaleData,
+        retryItems,
       }}
     >
       {children}

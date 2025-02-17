@@ -61,16 +61,29 @@ const QRCodeScanner: React.FC<QRCodeScannerProps> = ({ onScan, onClose }) => {
   }
 
   return (
-    <View className="flex-1 flex-col justify-center">
-      <Text className="text-center p-4 text-sm font-dm-bold text-enaleia-black tracking-tighter bg-white-sand">
+    <View
+      className="flex-1 flex-col justify-center"
+      accessibilityRole="none"
+      accessibilityLabel="QR Code Scanner"
+    >
+      <Text
+        className="text-center p-4 text-sm font-dm-bold text-enaleia-black tracking-tighter bg-white-sand"
+        accessibilityRole="header"
+      >
         Point the camera at a QR code
       </Text>
 
-      <View className="flex-1 relative">
+      <View
+        className="flex-1 relative"
+        accessibilityRole="image"
+        accessibilityLabel="Camera view for QR scanning"
+      >
         <CameraView
           facing={"back"}
           className="flex-1"
           onBarcodeScanned={handleBarCodeScanned}
+          accessibilityLabel="QR code camera view"
+          accessibilityHint="Point camera at QR code to scan"
         />
         <Animated.View
           style={{
@@ -88,6 +101,9 @@ const QRCodeScanner: React.FC<QRCodeScannerProps> = ({ onScan, onClose }) => {
         <Pressable
           className="bg-blue-ocean min-w-[60px] px-3 py-2 rounded-3xl flex flex-row items-center justify-center mx-1 my-1"
           onPress={onClose}
+          accessibilityRole="button"
+          accessibilityLabel="Close scanner"
+          accessibilityHint="Double tap to close QR code scanner"
         >
           <Text className="text-sm font-dm-bold text-white tracking-tighter text-center">
             Close scanner

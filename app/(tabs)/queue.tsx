@@ -3,19 +3,16 @@ import NetworkStatus from "@/components/shared/NetworkStatus";
 import SafeAreaContent from "@/components/shared/SafeAreaContent";
 import { useQueue } from "@/contexts/QueueContext";
 import { QueueEvents, queueEventEmitter } from "@/services/events";
-import { QueueItem, QueueItemStatus } from "@/types/queue";
+import { QueueItemStatus } from "@/types/queue";
 import { Ionicons } from "@expo/vector-icons";
-import AsyncStorage from "@react-native-async-storage/async-storage";
-import { useNetInfo } from "@react-native-community/netinfo";
 import { useEventListener } from "expo";
 import { useNavigation } from "expo-router";
 import { useEffect } from "react";
 import { Text, View } from "react-native";
 
 const QueueScreen = () => {
-  const { queueItems, loadQueueItems } = useQueue();
+  const { queueItems, loadQueueItems, retryItems } = useQueue();
   const navigation = useNavigation();
-  const { isConnected } = useNetInfo();
 
   const items = queueItems.length > 0 ? queueItems : [];
 
@@ -56,40 +53,6 @@ const QueueScreen = () => {
 
   useEventListener(queueEventEmitter, QueueEvents.UPDATED, loadQueueItems);
 
-  const handleRetry = async (items: QueueItem[]) => {
-    const updatedItems = items.map((item) => ({
-      ...item,
-      status: QueueItemStatus.PENDING,
-      retryCount: 0,
-      lastError: undefined,
-      lastAttempt: undefined,
-    }));
-
-    await AsyncStorage.setItem(
-      process.env.EXPO_PUBLIC_CACHE_KEY || "",
-      JSON.stringify(updatedItems)
-    );
-
-    try {
-      await loadQueueItems();
-    } catch (error) {
-      console.error("Error retrying items:", error);
-    }
-  };
-
-  // TODO: [DEV] This is a temporary fix to clear the cache when the queue is too large
-  useEffect(() => {
-    if (items?.length && items?.length > 30) {
-      AsyncStorage.removeItem(process.env.EXPO_PUBLIC_CACHE_KEY || "")
-        .then(() => {
-          loadQueueItems();
-        })
-        .catch((error) => {
-          console.error("Error clearing queue cache:", error);
-        });
-    }
-  }, [items?.length]);
-
   const hasNoItems =
     !pendingItems.length &&
     !processingItems.length &&
@@ -98,8 +61,7 @@ const QueueScreen = () => {
 
   return (
     <SafeAreaContent>
-      <NetworkStatus isConnected={isConnected || false} />
-
+      <NetworkStatus />
       {hasNoItems ? (
         <View className="flex-1 items-center justify-center p-4">
           <Ionicons name="checkmark-circle-outline" size={64} color="#4CAF50" />
@@ -117,7 +79,7 @@ const QueueScreen = () => {
             <QueueSection
               title="Pending"
               items={pendingItems}
-              onRetry={handleRetry}
+              onRetry={retryItems}
             />
           )}
 
@@ -125,7 +87,7 @@ const QueueScreen = () => {
             <QueueSection
               title="Processing"
               items={processingItems}
-              onRetry={handleRetry}
+              onRetry={retryItems}
             />
           )}
 
@@ -133,7 +95,8 @@ const QueueScreen = () => {
             <QueueSection
               title="Failed"
               items={failedItems}
-              onRetry={handleRetry}
+              onRetry={retryItems}
+              showRetry={true}
             />
           )}
 
@@ -141,7 +104,8 @@ const QueueScreen = () => {
             <QueueSection
               title="Offline"
               items={offlineItems}
-              onRetry={handleRetry}
+              onRetry={retryItems}
+              showRetry={true}
             />
           )}
 
@@ -152,7 +116,8 @@ const QueueScreen = () => {
               <QueueSection
                 title="Completed (Dev Only)"
                 items={completedItems}
-                onRetry={handleRetry}
+                onRetry={retryItems}
+                showRetry={false}
               />
             )}
         </>

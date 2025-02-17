@@ -38,10 +38,16 @@ export default function SignOutModal({
   return (
     <ModalBase isVisible={isVisible} onClose={onClose}>
       <View className="px-4 py-6">
-        <Text className="text-2xl font-dm-bold text-slate-800 tracking-[-0.5px] mb-2">
+        <Text
+          className="text-2xl font-dm-bold text-slate-800 tracking-[-0.5px] mb-2"
+          accessibilityRole="header"
+        >
           Sign Out
         </Text>
-        <Text className="text-base font-dm-regular text-slate-600 mb-6">
+        <Text
+          className="text-base font-dm-regular text-slate-600 mb-6"
+          accessibilityRole="text"
+        >
           Are you sure you want to sign out?
         </Text>
 
@@ -49,6 +55,9 @@ export default function SignOutModal({
           <Pressable
             onPress={onClose}
             className="flex-1 p-3 border border-slate-200 rounded-lg"
+            accessibilityRole="button"
+            accessibilityLabel="Cancel sign out"
+            accessibilityHint="Double tap to cancel sign out"
           >
             <Text className="text-center font-dm-medium text-slate-800">
               Cancel
@@ -59,6 +68,10 @@ export default function SignOutModal({
             onPress={handleSignOut}
             disabled={isLoading}
             className="flex-1 p-3 bg-blue-ocean rounded-lg"
+            accessibilityRole="button"
+            accessibilityLabel="Confirm sign out"
+            accessibilityHint="Double tap to sign out of your account"
+            accessibilityState={{ disabled: isLoading }}
           >
             <Text className="text-center font-dm-medium text-white">
               {isLoading ? "Signing out..." : "Sign Out"}

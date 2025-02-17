@@ -16,16 +16,27 @@ export const SentToQueueModal = ({
         <Image
           source={require("@/assets/images/animals/Fish.png")}
           className="w-[133px] h-[134px]"
+          accessibilityRole="image"
+          accessibilityLabel="Success illustration"
         />
       </View>
       <View className="space-y-2">
-        <Text className="text-xl font-dm-bold text-enaleia-black tracking-tighter text-center">
+        <Text
+          className="text-xl font-dm-bold text-enaleia-black tracking-tighter text-center"
+          accessibilityRole="header"
+        >
           Attestation queued successfully
         </Text>
-        <Text className="text-base font-dm-regular text-enaleia-black tracking-tighter text-center">
+        <Text
+          className="text-base font-dm-regular text-enaleia-black tracking-tighter text-center"
+          accessibilityRole="text"
+        >
           Your attestation was sent to the queue for submission.
         </Text>
-        <Text className="text-sm font-dm-regular text-enaleia-black tracking-tighter text-center">
+        <Text
+          className="text-sm font-dm-regular text-enaleia-black tracking-tighter text-center"
+          accessibilityRole="text"
+        >
           Important: If working offline, please make sure to get online
           periodically to complete the submission(s).
         </Text>
@@ -34,6 +45,9 @@ export const SentToQueueModal = ({
         <Pressable
           onPress={() => router.replace("/queue")}
           className="border border-blue-ocean rounded-full bg-slate-50 p-3 flex-1"
+          accessibilityRole="button"
+          accessibilityLabel="View queue"
+          accessibilityHint="Double tap to go to queue page"
         >
           <Text className="text-blue-ocean font-dm-regular text-base text-center">
             See queue
@@ -42,6 +56,9 @@ export const SentToQueueModal = ({
         <Pressable
           onPress={() => router.replace("/(tabs)")}
           className="bg-blue-ocean rounded-full p-3 flex-1"
+          accessibilityRole="button"
+          accessibilityLabel="Go to home"
+          accessibilityHint="Double tap to return to home page"
         >
           <Text className="text-white font-dm-regular text-base text-center">
             Go home

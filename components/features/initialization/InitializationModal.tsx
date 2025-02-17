@@ -23,13 +23,27 @@ function ProgressItem({
   isComplete: boolean;
 }) {
   return (
-    <View className="flex-row items-center space-x-2 py-2">
+    <View
+      className="flex-row items-center space-x-2 py-2"
+      accessibilityRole="none"
+      accessibilityLabel={`${label} status`}
+    >
       {isComplete ? (
-        <Ionicons name="checkmark-circle" size={24} color="green" />
+        <Ionicons
+          name="checkmark-circle"
+          size={24}
+          color="green"
+          accessibilityLabel={`${label} completed`}
+        />
       ) : (
-        <ActivityIndicator size="small" />
+        <ActivityIndicator
+          size="small"
+          accessibilityLabel={`Loading ${label}`}
+        />
       )}
-      <Text className="text-base font-dm-medium">{label}</Text>
+      <Text className="text-base font-dm-medium" accessibilityRole="text">
+        {label}
+      </Text>
     </View>
   );
 }
@@ -43,30 +57,43 @@ export function InitializationModal({
   return (
     <ModalBase isVisible={isVisible} onClose={() => {}} canClose={false}>
       <View className="p-4">
-        <Text className="text-xl font-dm-bold mb-4">
+        <Text className="text-xl font-dm-bold mb-4" accessibilityRole="header">
           {isAuthError
             ? "Authentication required"
             : "Please wait while we load the required data..."}
         </Text>
 
-        <ProgressItem label="User Info" isComplete={progress.user} />
-        {!isAuthError && (
-          <>
-            <ProgressItem label="Actions" isComplete={progress.actions} />
-            <ProgressItem label="Materials" isComplete={progress.materials} />
-            <ProgressItem label="Collectors" isComplete={progress.collectors} />
-            <ProgressItem label="Products" isComplete={progress.products} />
-          </>
-        )}
+        <View accessibilityRole="none" accessibilityLabel="Loading progress">
+          <ProgressItem label="User Info" isComplete={progress.user} />
+          {!isAuthError && (
+            <>
+              <ProgressItem label="Actions" isComplete={progress.actions} />
+              <ProgressItem label="Materials" isComplete={progress.materials} />
+              <ProgressItem
+                label="Collectors"
+                isComplete={progress.collectors}
+              />
+              <ProgressItem label="Products" isComplete={progress.products} />
+            </>
+          )}
+        </View>
 
         {error && !isAuthError && (
-          <View className="mt-4 p-4 bg-red-50 rounded-lg">
+          <View
+            className="mt-4 p-4 bg-red-50 rounded-lg"
+            accessibilityRole="alert"
+            accessibilityLabel="Error message"
+          >
             <Text className="text-red-600">Error: {error.message}</Text>
           </View>
         )}
 
         {isAuthError && (
-          <View className="mt-4 p-4 bg-yellow-50 rounded-lg">
+          <View
+            className="mt-4 p-4 bg-yellow-50 rounded-lg"
+            accessibilityRole="alert"
+            accessibilityLabel="Authentication required"
+          >
             <Text className="text-yellow-800">
               Please sign in to access this feature.
             </Text>

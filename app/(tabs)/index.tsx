@@ -16,10 +16,14 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { DirectusCollector } from "@/types/collector";
 import { DirectusProduct } from "@/types/product";
 import { EnaleiaUser } from "@/types/user";
+import { useNetwork } from "@/contexts/NetworkContext";
+import NetworkStatus from "@/components/shared/NetworkStatus";
 
 function Home() {
   const { userData } = useUserInfo();
   const queryClient = useQueryClient();
+  const { isConnected, isInternetReachable, connectionType } = useNetwork();
+  const isOnline = isConnected && isInternetReachable;
 
   useEffect(() => {
     const initializeUserData = async () => {
@@ -123,12 +127,7 @@ function Home() {
             {userData?.first_name || "User"}
           </Text>
         </View>
-        <View className="flex-row items-center justify-center px-1.5 py-0.5 space-x-1 bg-sand-beige rounded-full">
-          <View className="w-2 h-2 rounded-full bg-green-500" />
-          <Text className="text-xs font-dm-medium text-enaleia-black">
-            {onlineManager.isOnline() ? "Online" : "Offline"}
-          </Text>
-        </View>
+        <NetworkStatus />
       </View>
       <View className="flex-1 mt-4">
         <Text className="text-3xl font-dm-bold tracking-[-1.5px] mb-2 text-enaleia-black">
