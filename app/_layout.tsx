@@ -17,6 +17,8 @@ import { QueueProvider, useQueue } from "@/contexts/QueueContext";
 import { defaultLocale, dynamicActivate } from "@/lib/i18n";
 import { getCacheKey } from "@/utils/storage";
 import { BackgroundTaskManager } from "@/services/backgroundTaskManager";
+import { Asset } from "expo-asset";
+import { ACTION_ICONS } from "@/constants/action";
 
 SplashScreen.preventAutoHideAsync();
 
@@ -26,6 +28,10 @@ const preloadedFonts = {
   "DMSans-Medium": require("../assets/fonts/DMSans-Medium.ttf"),
   "DMSans-Regular": require("../assets/fonts/DMSans-Regular.ttf"),
 };
+
+const preloadedActionIcons = Object.values(ACTION_ICONS).map(
+  (icon) => icon as number
+);
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -80,6 +86,18 @@ export default function RootLayout() {
   useEffect(() => {
     dynamicActivate(locale);
   }, [locale]);
+
+  useEffect(() => {
+    async function prepare() {
+      try {
+        await Asset.loadAsync(preloadedActionIcons);
+      } catch (e) {
+        console.warn("Failed to pre-load icons:", e);
+      }
+    }
+
+    prepare();
+  }, []);
 
   useEffect(() => {
     if (loaded || error) {
