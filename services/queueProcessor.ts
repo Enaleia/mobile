@@ -55,6 +55,11 @@ async function notifyUser(title: string, body: string) {
 let isProcessing = false;
 
 export async function processQueueItems(itemsToProcess?: QueueItem[]) {
+  console.log("processQueueItems called:", {
+    itemCount: itemsToProcess?.length,
+    isProcessing,
+  });
+
   if (isProcessing) {
     console.log("Queue processing already in progress, skipping");
     return;
@@ -85,10 +90,10 @@ export async function processQueueItems(itemsToProcess?: QueueItem[]) {
     }
 
     if (!itemsToProcess) {
-      const cacheKey = getQueueCacheKey();
-      if (!cacheKey) return;
+      const queueKey = getQueueCacheKey();
+      if (!queueKey) return;
 
-      const data = await AsyncStorage.getItem(cacheKey);
+      const data = await AsyncStorage.getItem(queueKey);
       if (!data) return;
 
       const allItems: QueueItem[] = JSON.parse(data);
@@ -116,9 +121,7 @@ export async function processQueueItems(itemsToProcess?: QueueItem[]) {
     }
 
     for (const item of itemsToProcess) {
-      console.log(
-        `Processing item ${item.localId}, retry count: ${item.retryCount}`
-      );
+      console.log(`Starting to process item ${item.localId}`);
 
       try {
         await updateItemInCache(item.localId, {
@@ -216,22 +219,26 @@ export async function processQueueItems(itemsToProcess?: QueueItem[]) {
           );
         }
 
+        console.log(`Successfully processed item ${item.localId}`);
         await updateItemInCache(item.localId, {
           status: QueueItemStatus.COMPLETED,
         });
-
-        console.log(`Successfully processed item ${item.localId}`);
       } catch (error) {
         console.error(`Error processing item ${item.localId}:`, error);
+        const errorMessage =
+          error instanceof Error ? error.message : "Unknown error occurred";
 
         await updateItemInCache(item.localId, {
           status: QueueItemStatus.FAILED,
-          lastError:
-            error instanceof Error ? error.message : "Unknown error occurred",
+          lastError: errorMessage,
         });
+
+        // Throw the error to be caught by the caller
+        throw error;
       }
     }
   } finally {
     isProcessing = false;
+    queueEventEmitter.emit(QueueEvents.UPDATED);
   }
 }
