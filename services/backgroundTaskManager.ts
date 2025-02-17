@@ -48,12 +48,21 @@ export class BackgroundTaskManager {
 
   private async registerBackgroundTask() {
     try {
+      const isRegistered = await TaskManager.isTaskRegisteredAsync(
+        BACKGROUND_SYNC_TASK
+      );
+      console.log("Is background task registered:", isRegistered);
+
       await BackgroundFetch.registerTaskAsync(BACKGROUND_SYNC_TASK, {
         minimumInterval: 900, // 15 minutes
         stopOnTerminate: false,
         startOnBoot: true,
       });
-      console.log("Background task registered");
+      console.log("Background task registered successfully");
+
+      // Add this to verify the registration worked
+      const tasks = await TaskManager.getRegisteredTasksAsync();
+      console.log("Registered tasks:", JSON.stringify(tasks, null, 2));
     } catch (error) {
       console.error("Failed to register background task:", error);
     }

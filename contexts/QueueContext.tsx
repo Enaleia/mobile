@@ -65,21 +65,40 @@ export function QueueProvider({ children }: { children: React.ReactNode }) {
   };
 
   const processQueue = async (items: QueueItem[]) => {
+    console.log("Process queue called:", {
+      isProcessing: processingRef.current,
+      itemCount: items.length,
+    });
+
     if (processingRef.current) {
       console.log("Already processing queue, skipping");
       return;
     }
 
-    // Let the background manager handle the processing
-    await backgroundManager.processQueueItems();
+    try {
+      processingRef.current = true;
+      await backgroundManager.processQueueItems();
+    } finally {
+      processingRef.current = false;
+      console.log("Queue processing completed");
+    }
   };
 
   // Network recovery handler
   useEffect(() => {
+    console.log("Network state changed:", {
+      isOnline,
+      queueItemsCount: queueItems.length,
+      processingRef: processingRef.current,
+    });
+
     if (isOnline && queueItems.length > 0) {
-      console.log("Network recovered, processing queue");
-      processQueue(queueItems);
+      console.log("Network recovered, attempting to process queue");
+      processQueue(queueItems).catch((err) =>
+        console.error("Failed to process queue:", err)
+      );
     } else if (!isOnline && queueItems.length > 0) {
+      console.log("Network offline, marking items as offline");
       // Mark processing items as offline when network is lost
       const updatedItems = queueItems.map((item) =>
         item.status === QueueItemStatus.PROCESSING
@@ -100,13 +119,16 @@ export function QueueProvider({ children }: { children: React.ReactNode }) {
       await AsyncStorage.setItem(key, JSON.stringify(items));
       setQueueItems(items);
 
-      if (isOnline) {
-        console.log("Triggering immediate queue processing after update");
-        await processQueue(items);
-      } else {
-        console.log(
-          "Offline, items will be processed when network is available"
-        );
+      // Force immediate processing regardless of network state
+      console.log("Forcing immediate queue processing after update");
+      const pendingItems = items.filter(
+        (i) =>
+          i.status === QueueItemStatus.PENDING ||
+          i.status === QueueItemStatus.OFFLINE
+      );
+
+      if (pendingItems.length > 0) {
+        await processQueueItems(pendingItems);
       }
     } catch (error) {
       if (
