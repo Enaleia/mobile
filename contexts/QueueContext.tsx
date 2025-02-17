@@ -7,6 +7,7 @@ import { getQueueCacheKey } from "@/utils/storage";
 import { QueryClient } from "@tanstack/react-query";
 import { useNetwork } from "./NetworkContext";
 import { BackgroundTaskManager } from "@/services/backgroundTaskManager";
+import { AppState } from "react-native";
 
 interface QueueContextType {
   queueItems: QueueItem[];
@@ -77,41 +78,37 @@ export function QueueProvider({ children }: { children: React.ReactNode }) {
 
     try {
       processingRef.current = true;
-      await backgroundManager.processQueueItems();
+      // Use direct processing in foreground
+      await processQueueItems(items);
     } finally {
       processingRef.current = false;
       console.log("Queue processing completed");
     }
   };
 
-  // Network recovery handler
+  // Add AppState listener for foreground/background detection
   useEffect(() => {
-    console.log("Network state changed:", {
-      isOnline,
-      queueItemsCount: queueItems.length,
-      processingRef: processingRef.current,
+    const subscription = AppState.addEventListener("change", (nextAppState) => {
+      if (nextAppState === "active") {
+        // App came to foreground, process any pending items
+        const pendingItems = queueItems.filter(
+          (item) =>
+            item.status === QueueItemStatus.PENDING ||
+            item.status === QueueItemStatus.OFFLINE
+        );
+        if (pendingItems.length > 0 && isOnline) {
+          console.log("App active, processing pending items in foreground");
+          processQueue(pendingItems).catch((err) =>
+            console.error("Failed to process queue in foreground:", err)
+          );
+        }
+      }
     });
 
-    if (isOnline && queueItems.length > 0) {
-      console.log("Network recovered, attempting to process queue");
-      processQueue(queueItems).catch((err) =>
-        console.error("Failed to process queue:", err)
-      );
-    } else if (!isOnline && queueItems.length > 0) {
-      console.log("Network offline, marking items as offline");
-      // Mark processing items as offline when network is lost
-      const updatedItems = queueItems.map((item) =>
-        item.status === QueueItemStatus.PROCESSING
-          ? { ...item, status: QueueItemStatus.OFFLINE }
-          : item
-      );
-      if (JSON.stringify(updatedItems) !== JSON.stringify(queueItems)) {
-        updateQueueItems(updatedItems).catch((error) => {
-          console.error("Failed to update items on network loss:", error);
-        });
-      }
-    }
-  }, [isOnline]);
+    return () => {
+      subscription.remove();
+    };
+  }, [queueItems, isOnline]);
 
   const updateQueueItems = async (items: QueueItem[]): Promise<void> => {
     try {
@@ -119,8 +116,6 @@ export function QueueProvider({ children }: { children: React.ReactNode }) {
       await AsyncStorage.setItem(key, JSON.stringify(items));
       setQueueItems(items);
 
-      // Force immediate processing regardless of network state
-      console.log("Forcing immediate queue processing after update");
       const pendingItems = items.filter(
         (i) =>
           i.status === QueueItemStatus.PENDING ||
@@ -128,7 +123,19 @@ export function QueueProvider({ children }: { children: React.ReactNode }) {
       );
 
       if (pendingItems.length > 0) {
-        await processQueueItems(pendingItems);
+        const appState = AppState.currentState;
+        console.log(
+          "Processing items in",
+          appState === "active" ? "foreground" : "background"
+        );
+
+        if (appState === "active") {
+          // Process immediately in foreground
+          await processQueue(pendingItems);
+        } else {
+          // Use background processing when app is not active
+          await backgroundManager.processQueueItems();
+        }
       }
     } catch (error) {
       if (
@@ -143,24 +150,58 @@ export function QueueProvider({ children }: { children: React.ReactNode }) {
   };
 
   const retryItems = async (items: QueueItem[]): Promise<void> => {
-    const updatedItems = queueItems.map((item) => {
-      if (items.some((i) => i.localId === item.localId)) {
-        return {
-          ...item,
-          status: QueueItemStatus.PENDING,
-          retryCount: 0,
-          lastError: undefined,
-          lastAttempt: undefined,
-        };
-      }
-      return item;
+    console.log("Retrying items:", {
+      itemsToRetry: items.length,
+      itemIds: items.map((i) => i.localId),
     });
 
-    await updateQueueItems(updatedItems);
-    // Trigger processing immediately after retry
-    await backgroundManager.processQueueItems().catch((error) => {
-      console.error("Failed to process retried items:", error);
-    });
+    try {
+      const updatedItems = queueItems.map((item) => {
+        if (items.some((i) => i.localId === item.localId)) {
+          console.log(`Resetting item ${item.localId} to pending state`);
+          return {
+            ...item,
+            status: QueueItemStatus.PENDING,
+            retryCount: 0,
+            lastError: undefined,
+            lastAttempt: undefined,
+          };
+        }
+        return item;
+      });
+
+      console.log("Updating queue with retried items");
+      await updateQueueItems(updatedItems);
+
+      // Force immediate processing
+      console.log("Forcing immediate processing of retried items");
+      const itemsToProcess = items.map((item) => ({
+        ...item,
+        status: QueueItemStatus.PENDING,
+        retryCount: 0,
+        lastError: undefined,
+        lastAttempt: undefined,
+      }));
+
+      await processQueueItems(itemsToProcess).catch((error) => {
+        console.error("Failed to process retried items:", error);
+        // Update items to failed state if processing fails
+        updateQueueItems(
+          updatedItems.map((item) =>
+            itemsToProcess.some((i) => i.localId === item.localId)
+              ? {
+                  ...item,
+                  status: QueueItemStatus.FAILED,
+                  lastError: error.message,
+                }
+              : item
+          )
+        );
+      });
+    } catch (error) {
+      console.error("Error in retryItems:", error);
+      throw error;
+    }
   };
 
   useEffect(() => {
@@ -185,6 +226,47 @@ export function QueueProvider({ children }: { children: React.ReactNode }) {
       },
     });
   };
+
+  // Network recovery handler
+  useEffect(() => {
+    console.log("Network state changed:", {
+      isOnline,
+      queueItemsCount: queueItems.length,
+      processingRef: processingRef.current,
+      appState: AppState.currentState,
+    });
+
+    if (!isOnline && queueItems.length > 0) {
+      console.log("Network offline, marking items as offline");
+      const updatedItems = queueItems.map((item) =>
+        item.status === QueueItemStatus.PROCESSING
+          ? { ...item, status: QueueItemStatus.OFFLINE }
+          : item
+      );
+      if (JSON.stringify(updatedItems) !== JSON.stringify(queueItems)) {
+        updateQueueItems(updatedItems).catch((error) => {
+          console.error("Failed to update items on network loss:", error);
+        });
+      }
+    } else if (
+      isOnline &&
+      queueItems.length > 0 &&
+      AppState.currentState === "active"
+    ) {
+      // Only process in foreground when network recovers
+      console.log("Network recovered, processing in foreground");
+      const pendingItems = queueItems.filter(
+        (item) =>
+          item.status === QueueItemStatus.PENDING ||
+          item.status === QueueItemStatus.OFFLINE
+      );
+      if (pendingItems.length > 0) {
+        processQueue(pendingItems).catch((err) =>
+          console.error("Failed to process queue on network recovery:", err)
+        );
+      }
+    }
+  }, [isOnline]);
 
   return (
     <QueueContext.Provider
