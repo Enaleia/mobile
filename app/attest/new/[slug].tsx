@@ -37,6 +37,8 @@ import { LocationPermissionRequest } from "@/components/features/location/Locati
 import { LocationSchema } from "@/services/locationService";
 import QRTextInput from "@/components/features/scanning/QRTextInput";
 import { useUserInfo } from "@/hooks/data/useUserInfo";
+import SelectField from "@/components/shared/SelectField";
+import { useProducts } from "@/hooks/data/useProducts";
 
 const eventFormSchema = z.object({
   type: z
@@ -73,7 +75,7 @@ const eventFormSchema = z.object({
     .object({
       weightInKg: z.number().min(0).optional(),
       quantity: z.number().min(0).optional(),
-      product: z.string().min(0).optional(),
+      product: z.number().min(0).optional(),
     })
     .optional(),
 });
@@ -93,7 +95,11 @@ const NewActionScreen = () => {
     useState(false);
 
   const { materialsData, isLoading: materialsLoading } = useMaterials();
-
+  const {
+    productsData,
+    isLoading: productsLoading,
+    error: productsError,
+  } = useProducts();
   const [showIncompleteModal, setShowIncompleteModal] = useState(false);
   const [pendingSubmission, setPendingSubmission] = useState(false);
   const [showLeaveModal, setShowLeaveModal] = useState(false);
@@ -182,9 +188,9 @@ const NewActionScreen = () => {
       incomingMaterials: [] as MaterialDetail[],
       outgoingMaterials: [] as MaterialDetail[],
       manufacturing: {
-        product: "",
-        quantity: 0,
-        weightInKg: 0,
+        product: undefined,
+        quantity: undefined,
+        weightInKg: undefined,
       },
     },
     onSubmit: async ({ value }) => {
@@ -385,90 +391,109 @@ const NewActionScreen = () => {
                 />
               )}
             </form.Field>
-            <View className="h-[1.5px] bg-slate-200 my-5" />
             {currentAction?.name !== "Manufacturing" && (
               <form.Field name="outgoingMaterials">
                 {(field) => (
-                  <MaterialSection
-                    materials={materialsData}
-                    category="outgoing"
-                    isModalVisible={isOutgoingMaterialsPickerVisible}
-                    setModalVisible={setIsOutgoingMaterialsPickerVisible}
-                    selectedMaterials={field.state.value as MaterialDetail[]}
-                    setSelectedMaterials={(materials: MaterialDetail[]) =>
-                      field.handleChange(materials)
-                    }
-                    hideCodeInput={currentAction?.category === "Collection"}
-                  />
+                  <>
+                    <View className="h-[1.5px] bg-slate-200 my-5" />
+                    <MaterialSection
+                      materials={materialsData}
+                      category="outgoing"
+                      isModalVisible={isOutgoingMaterialsPickerVisible}
+                      setModalVisible={setIsOutgoingMaterialsPickerVisible}
+                      selectedMaterials={field.state.value as MaterialDetail[]}
+                      setSelectedMaterials={(materials: MaterialDetail[]) =>
+                        field.handleChange(materials)
+                      }
+                      hideCodeInput={currentAction?.category === "Collection"}
+                    />
+                  </>
                 )}
               </form.Field>
             )}
             {currentAction?.name === "Manufacturing" && (
               <View className="mt-10 rounded-lg">
-                <View className="flex-row items-center space-x-0.5">
+                <View className="flex-row items-center space-x-0.5 mb-4">
                   <Text className="text-xl font-dm-light text-enaleia-black tracking-tighter">
-                    Manufacturing informations
+                    Manufacturing information
                   </Text>
-                  <View className="-rotate-45">
-                    <Ionicons name="arrow-down" size={24} color="#8E8E93" />
-                  </View>
                 </View>
 
                 <FormSection>
                   <View className="space-y-0.5">
-                    <Text className="text-base font-dm-bold text-enaleia-black tracking-tighter mb-2">
+                    <Text className="text-base font-dm-medium text-enaleia-black tracking-tighter mb-2">
                       Choose product
                     </Text>
                     <form.Field name="manufacturing.product">
-                      {(field) => (
-                        <TextInput
-                          value={field.state.value as string}
-                          onChangeText={(text) => {
-                            field.handleChange(text);
-                          }}
-                          className="flex-1 rounded-md px-3 bg-white"
-                          placeholder="Product name"
-                        />
-                      )}
+                      {(field) => {
+                        const options =
+                          productsData?.map((product) => ({
+                            label: `${
+                              product.product_name || "Unknown Product"
+                            }`,
+                            value: product.product_id,
+                          })) || [];
+
+                        return (
+                          <>
+                            {productsError && (
+                              <Text className="text-sm text-red-500 mb-2">
+                                Failed to load products
+                              </Text>
+                            )}
+                            <SelectField
+                              value={field.state.value}
+                              onChange={(value) => field.handleChange(value)}
+                              options={options}
+                              placeholder="Choose a product"
+                              isLoading={productsLoading}
+                              error={productsError?.toString()}
+                              disabled={productsLoading || !!productsError}
+                            />
+                          </>
+                        );
+                      }}
                     </form.Field>
                   </View>
-                  <form.Field name="manufacturing.quantity">
-                    {(field) => (
-                      <View className="space-y-0.5">
-                        <Text className="text-base font-dm-bold text-enaleia-black tracking-tighter mb-2">
-                          Quantity
-                        </Text>
-                        <TextInput
-                          value={field.state.value?.toString() || ""}
-                          onChangeText={(text) => {
-                            field.handleChange(Number(text));
-                          }}
-                          className="flex-1 rounded-md px-3 bg-white"
-                          placeholder="Quantity"
-                          inputMode="numeric"
-                        />
-                      </View>
-                    )}
-                  </form.Field>
-                  <form.Field
-                    name="manufacturing.weightInKg"
-                    children={(field) => (
-                      <View className="space-y-0.5">
-                        <Text className="text-base font-dm-bold text-enaleia-black tracking-tighter mb-2">
-                          Weight
-                        </Text>
-                        <TextInput
-                          value={field.state.value?.toString() || ""}
-                          onChangeText={(text) => {
-                            field.handleChange(Number(text));
-                          }}
-                          className="flex-1 rounded-md px-3 bg-white"
-                          placeholder="Weight in kg"
-                          inputMode="numeric"
-                        />
-                      </View>
-                    )}
-                  ></form.Field>
+                  <View className="flex-row space-x-2">
+                    <form.Field name="manufacturing.quantity">
+                      {(field) => (
+                        <View className="space-y-0.5 flex-1">
+                          <Text className="text-base font-dm-medium text-enaleia-black tracking-tighter mb-2">
+                            Quantity
+                          </Text>
+                          <TextInput
+                            value={field.state.value?.toString() || ""}
+                            onChangeText={(text) => {
+                              field.handleChange(Number(text));
+                            }}
+                            className="flex-1 rounded-md px-3 bg-white border border-slate-200 focus:border-primary-dark-blue"
+                            placeholder="Quantity"
+                            inputMode="numeric"
+                          />
+                        </View>
+                      )}
+                    </form.Field>
+                    <form.Field
+                      name="manufacturing.weightInKg"
+                      children={(field) => (
+                        <View className="space-y-0.5 flex-1 ml-3">
+                          <Text className="text-base font-dm-medium text-enaleia-black tracking-tighter mb-2">
+                            Weight in kg
+                          </Text>
+                          <TextInput
+                            value={field.state.value?.toString() || ""}
+                            onChangeText={(text) => {
+                              field.handleChange(Number(text));
+                            }}
+                            className="flex-1 rounded-md px-3 bg-white border border-slate-200 focus:border-primary-dark-blue"
+                            placeholder="Weight in kg"
+                            inputMode="numeric"
+                          />
+                        </View>
+                      )}
+                    ></form.Field>
+                  </View>
                 </FormSection>
               </View>
             )}
