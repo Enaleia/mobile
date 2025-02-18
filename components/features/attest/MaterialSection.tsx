@@ -108,6 +108,10 @@ const MaterialSection = ({
                     <View className="flex-row items-center justify-end">
                       <TextInput
                         value={material.weight?.toString() || ""}
+                        style={{
+                          textAlign: "right",
+                          direction: "rtl",
+                        }}
                         className="flex-1 h-[28px] py-0 font-dm-bold tracking-tighter text-enaleia-black text-xl text-right"
                         onChangeText={(text) => {
                           const parsedWeight = Number(text);
