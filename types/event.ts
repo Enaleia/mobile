@@ -20,8 +20,10 @@ export interface MaterialTrackingEvent {
   Verified?: boolean;
   Ready_for_EAS_submission?: boolean;
   event_output_id?: MaterialTrackingEventOutput[];
-  production_id?: number[];
   event_input_id?: MaterialTrackingEventInput[];
+  Batch_quantity?: number;
+  manufactured_products?: number[];
+  weight_per_item?: string;
 }
 
 export interface MaterialTrackingEventInput {

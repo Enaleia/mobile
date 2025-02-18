@@ -157,6 +157,10 @@ export async function processQueueItems(itemsToProcess?: QueueItem[]) {
           event_location: locationString,
           collector_name: collectorDbId,
           company: item.company,
+          manufactured_products: item.manufacturing?.product ?? undefined,
+          Batch_quantity: item.manufacturing?.quantity ?? undefined,
+          weight_per_item:
+            item.manufacturing?.weightInKg?.toString() ?? undefined,
         } as MaterialTrackingEvent);
 
         console.log("directusEvent", JSON.stringify(directusEvent, null, 2));
