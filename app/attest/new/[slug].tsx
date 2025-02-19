@@ -39,6 +39,7 @@ import QRTextInput from "@/components/features/scanning/QRTextInput";
 import { useUserInfo } from "@/hooks/data/useUserInfo";
 import SelectField from "@/components/shared/SelectField";
 import { useProducts } from "@/hooks/data/useProducts";
+import DecimalInput from "@/components/shared/DecimalInput";
 
 const eventFormSchema = z.object({
   type: z
@@ -458,7 +459,7 @@ const NewActionScreen = () => {
                   <View className="flex-row space-x-2">
                     <form.Field name="manufacturing.quantity">
                       {(field) => (
-                        <View className="space-y-0.5 flex-1">
+                        <View className="flex-1">
                           <Text className="text-base font-dm-medium text-enaleia-black tracking-tighter mb-2">
                             Quantity
                           </Text>
@@ -467,32 +468,24 @@ const NewActionScreen = () => {
                             onChangeText={(text) => {
                               field.handleChange(Number(text));
                             }}
-                            className="flex-1 rounded-md px-3 bg-white border border-slate-200 focus:border-primary-dark-blue"
+                            className="rounded-md px-3 bg-white border border-slate-200 focus:border-primary-dark-blue"
                             placeholder="Quantity"
                             inputMode="numeric"
                           />
                         </View>
                       )}
                     </form.Field>
+                    <View className="h-[1.5px] bg-slate-200 mx-1" />
                     <form.Field
                       name="manufacturing.weightInKg"
                       children={(field) => (
-                        <View className="space-y-0.5 flex-1 ml-3">
-                          <Text className="text-base font-dm-medium text-enaleia-black tracking-tighter mb-2">
-                            Weight in kg
-                          </Text>
-                          <TextInput
-                            value={field.state.value?.toString() || ""}
-                            onChangeText={(text) => {
-                              field.handleChange(Number(text));
-                            }}
-                            className="flex-1 rounded-md px-3 bg-white border border-slate-200 focus:border-primary-dark-blue"
-                            placeholder="Weight in kg"
-                            inputMode="numeric"
-                          />
-                        </View>
+                        <DecimalInput
+                          field={field}
+                          label="Weight in kg"
+                          placeholder="Weight in kg"
+                        />
                       )}
-                    ></form.Field>
+                    />
                   </View>
                 </FormSection>
               </View>
