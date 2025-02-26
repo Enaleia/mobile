@@ -70,13 +70,21 @@
 ✅ Completed
 
 ## Implementation Priority
-
+### Critical
+1. Session Management
+   - Fix session persistence (don't sign out on app close)
+   - Only sign out on explicit user action
+2. Batch Fetcher Improvements
+   - Update collectors fetch to retrieve all entries
+### Important
 1. Queue System
+   - Complete the Queue page as per design
    - Make queue list scrollable
    - Fix "Retry all" button functionality
    - Display completed items section
    - Remove completed tasks after 30 days
-
+### Nice to have
+(Need to sort this section more, please address the critical and important ones)
 2. iOS Form Issues (High Impact)
    - ✅ Fix material weights handling
    - ✅ Fix keyboard hiding inputs issue
@@ -87,12 +95,10 @@
    - ⏳ Fix QR code button crash
    - ⏳ Update QRCodeTextInput design consistency
    - ⏳ Address idle form error issue
-
 3. Session Management
    - Implement offline login with previously used credentials
    - Fix session persistence (don't sign out on app close)
    - Only sign out on explicit user action
-
 4. Batch Fetcher Improvements
    - Optimize queries to fetch only necessary fields
    - Update collectors fetch to retrieve all entries
