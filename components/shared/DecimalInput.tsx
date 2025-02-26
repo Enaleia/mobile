@@ -41,7 +41,7 @@ export default function DecimalInput({
             }
           }
         }}
-        className="rounded-md px-3 bg-white border border-slate-200 focus:border-primary-dark-blue"
+        className="rounded-md px-3 py-3 h-12 bg-white border-[1.5px] border-slate-200 focus:border-primary-dark-blue"
         inputMode="decimal"
         keyboardType="decimal-pad"
         {...props}
