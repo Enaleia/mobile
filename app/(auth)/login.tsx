@@ -72,7 +72,7 @@ export default function LoginScreen() {
               ecosystem partners to securely submit data to the blockchain. If
               you have lost your login information, please{" "}
               <Link
-                href="mailto:enaleia@pollenlabs.org"
+                href="mailto:app-support@enaleia.com"
                 className="text-blue-ocean font-dm-bold underline"
                 accessibilityLabel="Email support"
                 accessibilityRole="link"
