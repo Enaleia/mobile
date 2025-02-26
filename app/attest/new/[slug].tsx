@@ -20,12 +20,14 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useForm } from "@tanstack/react-form";
 import { zodValidator } from "@tanstack/zod-form-adapter";
 import { router, useLocalSearchParams } from "expo-router";
-import { useMemo, useState, useEffect } from "react";
+import { useMemo, useState, useEffect, useRef } from "react";
 import {
   ActivityIndicator,
   Alert,
   GestureResponderEvent,
   Image,
+  Keyboard,
+  Platform,
   Pressable,
   ScrollView,
   Text,
@@ -88,6 +90,7 @@ const NewActionScreen = () => {
   const { slug } = useLocalSearchParams(); // slug format
   const location = useCurrentLocation();
   const { userData } = useUserInfo();
+  const scrollViewRef = useRef<ScrollView>(null);
 
   const [isSentToQueue, setIsSentToQueue] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -281,6 +284,38 @@ const NewActionScreen = () => {
     }
   }, [locationData]);
 
+  // Add keyboard handling effect
+  useEffect(() => {
+    const keyboardDidShowListener = Keyboard.addListener(
+      "keyboardDidShow",
+      (e) => {
+        // Only needed for iOS
+        if (Platform.OS === "ios") {
+          // Add a small delay to ensure the input is focused
+          setTimeout(() => {
+            // Scroll down a bit to ensure the focused input is visible
+            scrollViewRef.current?.scrollTo({ y: 100, animated: true });
+          }, 100);
+        }
+      }
+    );
+
+    const keyboardDidHideListener = Keyboard.addListener(
+      "keyboardDidHide",
+      () => {
+        // Optional: Reset scroll position when keyboard hides
+        if (Platform.OS === "ios") {
+          scrollViewRef.current?.scrollTo({ y: 0, animated: true });
+        }
+      }
+    );
+
+    return () => {
+      keyboardDidShowListener.remove();
+      keyboardDidHideListener.remove();
+    };
+  }, []);
+
   return (
     <SafeAreaContent>
       <View className="absolute top-20 right-[-30px] bg-white-sand opacity-20">
@@ -334,8 +369,14 @@ const NewActionScreen = () => {
       </Text>
       <View className="flex-1">
         <ScrollView
+          ref={scrollViewRef}
           showsVerticalScrollIndicator={false}
-          contentContainerStyle={{ flexGrow: 0, paddingBottom: 20 }}
+          keyboardShouldPersistTaps="handled"
+          keyboardDismissMode="on-drag"
+          contentContainerStyle={{
+            flexGrow: 0,
+            paddingBottom: Platform.OS === "ios" ? 120 : 20,
+          }}
         >
           <View className="flex-1">
             <form.Subscribe selector={(state) => state.values}>
@@ -413,10 +454,11 @@ const NewActionScreen = () => {
                 )}
               </form.Field>
             )}
+
             {currentAction?.name === "Manufacturing" && (
-              <View className="mt-10 rounded-lg">
+              <View className="mt-10 rounded-lg p-2 border-[1.5px] border-slate-200 bg-white">
                 <View className="flex-row items-center space-x-0.5 mb-4">
-                  <Text className="text-xl font-dm-light text-enaleia-black tracking-tighter">
+                  <Text className="text-xl font-dm-regular text-enaleia-black tracking-tighter">
                     Manufacturing information
                   </Text>
                 </View>
@@ -469,7 +511,7 @@ const NewActionScreen = () => {
                             onChangeText={(text) => {
                               field.handleChange(Number(text));
                             }}
-                            className="rounded-md px-3 bg-white border border-slate-200 focus:border-primary-dark-blue"
+                            className="rounded-md px-3 py-3 h-12 bg-white border-[1.5px] border-slate-200 focus:border-primary-dark-blue"
                             placeholder="Quantity"
                             inputMode="numeric"
                           />
@@ -532,16 +574,15 @@ const NewActionScreen = () => {
                   <>
                     {/* Error message */}
                     {submitError && (
-                      <ErrorMessage
-                        message={submitError}
-                        className="mt-3 mb-3"
-                      />
+                      <View className="mt-2">
+                        <ErrorMessage message={submitError} />
+                      </View>
                     )}
 
                     <Pressable
                       onPress={handleSubmitClick}
                       className={`flex-row items-center justify-center ${
-                        submitError ? "mt-0" : "mt-4"
+                        submitError ? "mt-2" : "mt-3"
                       } p-3 rounded-full ${
                         !canSubmit || isSubmitting
                           ? "bg-primary-dark-blue"
@@ -555,20 +596,6 @@ const NewActionScreen = () => {
                         {isSubmitting ? "Saving..." : "Create Attestation"}
                       </Text>
                     </Pressable>
-
-                    {/* Test button for error message */}
-                    {process.env.NODE_ENV === "development" && (
-                      <Pressable
-                        onPress={() => {
-                          setSubmitError("This is a test error message");
-                        }}
-                        className="flex-row items-center justify-center mt-2 p-2 rounded-full bg-orange-500"
-                      >
-                        <Text className="text-sm font-dm-medium text-slate-50 tracking-tight">
-                          Test Error Message
-                        </Text>
-                      </Pressable>
-                    )}
 
                     <IncompleteAttestationModal
                       isVisible={showIncompleteModal}
@@ -587,50 +614,6 @@ const NewActionScreen = () => {
                 );
               }}
             </form.Subscribe>
-            {/* DEBUG SECTION */}
-            {/* <View className="px-4 mt-4">
-              <form.Subscribe selector={(state) => state.values}>
-                {(values) => (
-                  <Text className="text-xs font-dm-regular text-slate-500 bg-slate-100 p-2 rounded">
-                    {JSON.stringify(values, null, 2)}
-                  </Text>
-                )}
-              </form.Subscribe>
-              {submitError && (
-                <Text className="text-sm font-dm-regular text-red-500 mt-2">
-                  {submitError}
-                </Text>
-              )}
-              <form.Subscribe selector={(state) => state.errorMap}>
-                {(errorMap) => {
-                  return Object.entries(errorMap).map(
-                    ([validationType, errors]) => {
-                      if (
-                        typeof errors === "object" &&
-                        errors !== null &&
-                        "fields" in errors
-                      ) {
-                        return Object.entries(errors.fields).map(
-                          ([fieldName, error]) => (
-                            <Text
-                              key={`${validationType}-${fieldName}`}
-                              className="text-red-600"
-                            >
-                              {fieldName}: {String(error)}
-                            </Text>
-                          )
-                        );
-                      }
-                      return (
-                        <Text key={validationType} className="text-red-600">
-                          {validationType}: {String(errors)}
-                        </Text>
-                      );
-                    }
-                  );
-                }}
-              </form.Subscribe>
-            </View> */}
           </View>
         </ScrollView>
       </View>
