@@ -3,6 +3,7 @@ import { LeaveAttestationModal } from "@/components/features/attest/LeaveAttesta
 import MaterialSection from "@/components/features/attest/MaterialSection";
 import { SentToQueueModal } from "@/components/features/attest/SentToQueueModal";
 import TypeInformationModal from "@/components/features/attest/TypeInformationModal";
+import ErrorMessage from "@/components/shared/ErrorMessage";
 import FormSection from "@/components/shared/FormSection";
 import SafeAreaContent from "@/components/shared/SafeAreaContent";
 import { ACTION_SLUGS } from "@/constants/action";
@@ -174,8 +175,7 @@ const NewActionScreen = () => {
           ? "Queue functionality is not properly configured. Please contact support."
           : "Failed to add item to queue. Please try again.";
 
-      Alert.alert("Error", errorMessage, [{ text: "OK" }]);
-
+      setSubmitError(errorMessage);
       throw error;
     }
   };
@@ -231,14 +231,15 @@ const NewActionScreen = () => {
         };
 
         await addItemToQueue(queueItem);
+        setSubmitError(null);
         setIsSentToQueue(true);
       } catch (error) {
         setIsSentToQueue(false);
-        setSubmitError(
+        const errorMsg =
           error instanceof Error && error.message.includes("Cache key")
-            ? "Queue system is not properly configured"
-            : "An error occurred while adding to queue"
-        );
+            ? "Unable to access queue storage. Please try again or contact support"
+            : "Failed to add action to queue. Please try again or contact support";
+        setSubmitError(errorMsg);
         console.error("Error adding to queue:", error);
       } finally {
         setIsSubmitting(false);
@@ -499,6 +500,7 @@ const NewActionScreen = () => {
             >
               {([canSubmit, isSubmitting, values]) => {
                 const handleSubmitClick = (e: GestureResponderEvent) => {
+                  setSubmitError(null);
                   e.preventDefault();
                   e.stopPropagation();
 
@@ -528,9 +530,19 @@ const NewActionScreen = () => {
 
                 return (
                   <>
+                    {/* Error message */}
+                    {submitError && (
+                      <ErrorMessage
+                        message={submitError}
+                        className="mt-3 mb-3"
+                      />
+                    )}
+
                     <Pressable
                       onPress={handleSubmitClick}
-                      className={`flex-row items-center justify-center mt-4 p-3 rounded-full ${
+                      className={`flex-row items-center justify-center ${
+                        submitError ? "mt-0" : "mt-4"
+                      } p-3 rounded-full ${
                         !canSubmit || isSubmitting
                           ? "bg-primary-dark-blue"
                           : "bg-blue-ocean"
@@ -543,6 +555,21 @@ const NewActionScreen = () => {
                         {isSubmitting ? "Saving..." : "Create Attestation"}
                       </Text>
                     </Pressable>
+
+                    {/* Test button for error message */}
+                    {process.env.NODE_ENV === "development" && (
+                      <Pressable
+                        onPress={() => {
+                          setSubmitError("This is a test error message");
+                        }}
+                        className="flex-row items-center justify-center mt-2 p-2 rounded-full bg-orange-500"
+                      >
+                        <Text className="text-sm font-dm-medium text-slate-50 tracking-tight">
+                          Test Error Message
+                        </Text>
+                      </Pressable>
+                    )}
+
                     <IncompleteAttestationModal
                       isVisible={showIncompleteModal}
                       onClose={() => {
