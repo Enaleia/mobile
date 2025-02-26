@@ -1,7 +1,9 @@
-import { useMemo } from "react";
+import { useMemo, useRef } from "react";
 import { Pressable, Text, TextInput, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import QRTextInput from "@/components/features/scanning/QRTextInput";
+import QRTextInput, {
+  QRTextInputRef,
+} from "@/components/features/scanning/QRTextInput";
 import { MaterialDetail, MaterialsData } from "@/types/material";
 import AddMaterialModal from "@/components/features/attest/AddMaterialModal";
 
@@ -26,6 +28,11 @@ const MaterialSection = ({
 }: MaterialSectionProps) => {
   const title = category === "incoming" ? "Incoming" : "Outgoing";
   const icon = category === "incoming" ? "arrow-down" : "arrow-up";
+
+  // Create refs array for weight inputs
+  const weightInputRefs = useRef<Array<TextInput | null>>([]);
+  // Create refs array for QR code inputs
+  const codeInputRefs = useRef<Array<QRTextInputRef | null>>([]);
 
   const getMaterialCount = useMemo(() => {
     return (id: number, currentIndex: number) => {
@@ -80,11 +87,30 @@ const MaterialSection = ({
                   }`}
                 >
                   {!hideCodeInput && (
-                    <View className="flex-1 border-[1.5px] border-grey-3 rounded-l-2xl p-2 bg-white">
+                    <Pressable
+                      className="flex-1 border-[1.5px] border-grey-3 rounded-l-2xl p-2 bg-white"
+                      onPress={() => {
+                        // Focus the QRTextInput when its container is tapped
+                        if (codeInputRefs.current[index]) {
+                          codeInputRefs.current[index]?.focus();
+                        }
+                      }}
+                    >
                       <Text className="text-sm font-dm-bold text-grey-6 tracking-tighter">
                         Code
                       </Text>
                       <QRTextInput
+                        ref={(ref) => {
+                          // Store ref in the array
+                          if (codeInputRefs.current.length <= index) {
+                            codeInputRefs.current = [
+                              ...codeInputRefs.current,
+                              ref,
+                            ];
+                          } else {
+                            codeInputRefs.current[index] = ref;
+                          }
+                        }}
                         placeholder="Enter code"
                         value={material.code || ""}
                         onChangeText={(text) => {
@@ -93,20 +119,37 @@ const MaterialSection = ({
                           setSelectedMaterials(newMaterials);
                         }}
                       />
-                    </View>
+                    </Pressable>
                   )}
-                  <View
+                  <Pressable
                     className={`border-[1.5px] border-grey-3 ${
                       !hideCodeInput
                         ? "flex-[0.75] border-l-0 rounded-r-2xl"
                         : "flex-1 rounded-2xl"
                     } p-2 bg-white justify-end`}
+                    onPress={() => {
+                      // Focus the weight input when its container is tapped
+                      if (weightInputRefs.current[index]) {
+                        weightInputRefs.current[index]?.focus();
+                      }
+                    }}
                   >
                     <Text className="w-full text-sm font-dm-bold text-grey-6 tracking-tighter text-right">
                       Weight
                     </Text>
                     <View className="flex-row items-center justify-end">
                       <TextInput
+                        ref={(ref) => {
+                          // Store ref in the array
+                          if (weightInputRefs.current.length <= index) {
+                            weightInputRefs.current = [
+                              ...weightInputRefs.current,
+                              ref,
+                            ];
+                          } else {
+                            weightInputRefs.current[index] = ref;
+                          }
+                        }}
                         value={material.weight?.toString() || ""}
                         style={{
                           textAlign: "right",
@@ -114,11 +157,10 @@ const MaterialSection = ({
                         }}
                         className="flex-1 h-[28px] py-0 font-dm-bold tracking-tighter text-enaleia-black text-xl text-right"
                         onChangeText={(text) => {
-                          const parsedWeight = Number(text);
                           const newMaterials = [...selectedMaterials];
                           newMaterials[index] = {
                             ...material,
-                            weight: isNaN(parsedWeight) ? 0 : parsedWeight,
+                            weight: text === "" ? null : Number(text),
                           };
                           setSelectedMaterials(newMaterials);
                         }}
@@ -128,7 +170,7 @@ const MaterialSection = ({
                         kg
                       </Text>
                     </View>
-                  </View>
+                  </Pressable>
                 </View>
               </View>
             ))}

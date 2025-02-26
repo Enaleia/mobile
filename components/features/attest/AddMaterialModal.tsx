@@ -98,7 +98,7 @@ export default function AddMaterialModal({
       ...currentMaterials,
       {
         id: materialId,
-        weight: 0,
+        weight: null,
         code: "",
       },
     ];
