@@ -1,17 +1,13 @@
 import { JsonValue } from "@/types/json";
 import { DirectusItemStatus } from "./directus";
 
-export interface Product {
-  id: number;
-  name: string;
-  type: string;
-}
-
-export const processProducts = (products: any[]): Product[] => {
-  return products.map((product: any) => ({
-    id: product.product_id,
-    name: product.product_name,
-    type: product.product_type,
+export const processProducts = (
+  products: DirectusProduct[]
+): Pick<DirectusProduct, "product_id" | "product_name" | "product_type">[] => {
+  return products.map(({ product_id, product_name, product_type }) => ({
+    product_id,
+    product_name,
+    product_type,
   }));
 };
 

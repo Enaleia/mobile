@@ -6,6 +6,9 @@ import { DirectusProduct } from "@/types/product";
 export interface BatchData {
   actions: Action[];
   materials: MaterialsData;
-  collectors: DirectusCollector[];
-  products: DirectusProduct[];
+  collectors: Pick<DirectusCollector, "collector_id" | "collector_name">[];
+  products: Pick<
+    DirectusProduct,
+    "product_id" | "product_name" | "product_type"
+  >[];
 }
