@@ -1,7 +1,6 @@
 import ActionSelection from "@/components/features/home/ActionSelect";
 import { InitializationModal } from "@/components/features/initialization/InitializationModal";
 import SafeAreaContent from "@/components/shared/SafeAreaContent";
-import { useUserInfo } from "@/hooks/data/useUserInfo";
 import { groupActionsByCategory, processActions } from "@/types/action";
 import { BatchData } from "@/types/batch";
 import { processCollectors } from "@/types/collector";
@@ -12,84 +11,67 @@ import { Ionicons } from "@expo/vector-icons";
 import { onlineManager, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Text, View, Pressable } from "react-native";
 import React, { useEffect } from "react";
-import AsyncStorage from "@react-native-async-storage/async-storage";
 import { DirectusCollector } from "@/types/collector";
 import { DirectusProduct } from "@/types/product";
-import { EnaleiaUser } from "@/types/user";
 import { useNetwork } from "@/contexts/NetworkContext";
 import NetworkStatus from "@/components/shared/NetworkStatus";
+import { useAuth } from "@/contexts/AuthContext";
 
 function Home() {
-  const { userData } = useUserInfo();
+  const { user } = useAuth();
   const queryClient = useQueryClient();
-  const { isConnected, isInternetReachable, connectionType } = useNetwork();
+  const { isConnected, isInternetReachable } = useNetwork();
   const isOnline = isConnected && isInternetReachable;
-
-  useEffect(() => {
-    const initializeUserData = async () => {
-      try {
-        const storedUserInfo = await AsyncStorage.getItem("userInfo");
-        if (storedUserInfo) {
-          const userInfo = JSON.parse(storedUserInfo);
-          await queryClient.setQueryData<EnaleiaUser>(["user-info"], userInfo);
-        }
-      } catch (error) {
-        console.error("Error initializing user data:", error);
-      }
-    };
-
-    initializeUserData();
-  }, []);
-
-  useEffect(() => {
-    const debugStorage = async () => {
-      const userInfo = await AsyncStorage.getItem("userInfo");
-      console.log("Stored User Info:", userInfo);
-    };
-    debugStorage();
-  }, []);
 
   const {
     data: batchData,
-    error,
     isLoading,
-  } = useQuery<BatchData | null, Error>({
+    error,
+    refetch,
+  } = useQuery({
     queryKey: ["batchData"],
     queryFn: async () => {
+      if (!isOnline) {
+        console.log("Offline, using cached data");
+        return queryClient.getQueryData<BatchData>(["batchData"]);
+      }
+
+      if (!user) {
+        throw new Error("User not authenticated");
+      }
+
       try {
         const data = await batchFetchData();
-        if (
-          !data.actions.length &&
-          !data.materials.length &&
-          !data.collectors.length &&
-          !data.products.length
-        ) {
-          return null;
+        if (!data) {
+          throw new Error("Failed to fetch batch data");
         }
 
-        const actions = processActions(data.actions);
-        const materials = processMaterials(data.materials);
-        const collectors = data.collectors as DirectusCollector[];
-        const products = data.products as DirectusProduct[];
+        // Process the data
+        const processedData: BatchData = {
+          collectors: processCollectors(data.collectors as DirectusCollector[]),
+          materials: processMaterials(data.materials),
+          products: processProducts(data.products as DirectusProduct[]),
+          actions: processActions(data.actions),
+        };
 
-        if (!actions || !materials || !collectors || !products) {
-          throw new Error("Missing required data");
-        }
-
-        return { actions, materials, collectors, products };
-      } catch (error: any) {
-        if (!error?.message?.includes("FORBIDDEN")) {
-          throw error;
-        }
-        return null;
+        return processedData;
+      } catch (error) {
+        console.error("Error fetching batch data:", error);
+        throw error;
       }
     },
-    staleTime: 1000 * 60 * 60 * 24,
-    enabled: !!userData,
+    enabled: !!user,
+    staleTime: 1000 * 60 * 60, // 1 hour
   });
 
-  const isComplete = userData && batchData;
-  const isAuthError = !userData || (error?.message || "").includes("FORBIDDEN");
+  useEffect(() => {
+    if (isOnline && user) {
+      refetch();
+    }
+  }, [isOnline, user]);
+
+  const isComplete = user && batchData;
+  const isAuthError = !user || (error?.message || "").includes("FORBIDDEN");
   const groupedActions = batchData?.actions
     ? groupActionsByCategory(batchData.actions)
     : undefined;
@@ -100,23 +82,11 @@ function Home() {
         <View>
           <Pressable
             onPress={async () => {
-              const userInfo = await AsyncStorage.getItem("userInfo");
-              console.log("Stored User Info:", userInfo);
+              console.log("Current user:", user);
             }}
             className="p-3 my-1 bg-blue-500 rounded"
           >
-            <Text className="text-white text-center">Debug: Show Storage</Text>
-          </Pressable>
-          <Pressable
-            onPress={async () => {
-              await AsyncStorage.clear();
-              await queryClient.invalidateQueries({ queryKey: ["user-info"] });
-              await queryClient.resetQueries({ queryKey: ["user-info"] });
-              console.log("Storage cleared and queries invalidated");
-            }}
-            className="p-3 my-1 bg-red-500 rounded"
-          >
-            <Text className="text-white text-center">Debug: Clear Storage</Text>
+            <Text className="text-white text-center">Debug: Show User</Text>
           </Pressable>
         </View>
       )}
@@ -124,7 +94,7 @@ function Home() {
         <View className="flex-row items-center justify-center gap-0.5">
           <Ionicons name="person-circle-outline" size={24} color="#0D0D0D" />
           <Text className="text-sm font-bold text-enaleia-black">
-            {userData?.first_name || "User"}
+            {user?.first_name || "User"}
           </Text>
         </View>
         <NetworkStatus />
@@ -138,18 +108,6 @@ function Home() {
           isLoading={isLoading && !isAuthError}
         />
       </View>
-      <InitializationModal
-        isVisible={!isComplete}
-        progress={{
-          user: Boolean(userData),
-          actions: Boolean(batchData?.actions),
-          materials: Boolean(batchData?.materials),
-          collectors: Boolean(batchData?.collectors),
-          products: Boolean(batchData?.products),
-        }}
-        error={error}
-        isAuthError={isAuthError}
-      />
     </SafeAreaContent>
   );
 }
