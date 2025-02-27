@@ -16,6 +16,9 @@ import * as Notifications from "expo-notifications";
 import { getCacheKey, getQueueCacheKey } from "@/utils/storage";
 import { DirectusCollector } from "@/types/collector";
 import { BatchData } from "@/types/batch";
+import { ensureValidToken } from "@/utils/directus";
+import Constants from "expo-constants";
+import { directus } from "@/utils/directus";
 
 async function updateItemInCache(itemId: string, updates: Partial<QueueItem>) {
   const cacheKey = getQueueCacheKey();
@@ -67,11 +70,61 @@ export async function processQueueItems(itemsToProcess?: QueueItem[]) {
 
   try {
     isProcessing = true;
+
+    // Check if we can reach the API
+    const apiUrl = process.env.EXPO_PUBLIC_API_URL;
+    if (!apiUrl) {
+      console.log("API URL not configured");
+      if (itemsToProcess) {
+        for (const item of itemsToProcess) {
+          await updateItemInCache(item.localId, {
+            status: QueueItemStatus.OFFLINE,
+            lastError: "API URL not configured",
+          });
+        }
+      }
+      return;
+    }
+
+    // Test API connection
+    try {
+      await fetch(apiUrl);
+    } catch (error) {
+      console.log("Cannot reach API, marking items as offline");
+      if (itemsToProcess) {
+        for (const item of itemsToProcess) {
+          await updateItemInCache(item.localId, {
+            status: QueueItemStatus.OFFLINE,
+            lastError: "Cannot reach API - please check your connection",
+          });
+        }
+      }
+      return;
+    }
+
+    // Ensure we have a valid token before proceeding
+    const validToken = await ensureValidToken();
+    if (!validToken) {
+      console.log("No valid token available, marking items as offline");
+      if (itemsToProcess) {
+        for (const item of itemsToProcess) {
+          await updateItemInCache(item.localId, {
+            status: QueueItemStatus.OFFLINE,
+            lastError: "Authentication required - please log in again",
+          });
+        }
+      }
+      return;
+    }
+
     const cacheKey = getCacheKey();
 
     const storedData = await AsyncStorage.getItem(cacheKey);
 
-    let directusCollectors: DirectusCollector[] = [];
+    let directusCollectors: Pick<
+      DirectusCollector,
+      "collector_id" | "collector_name" | "collector_identity"
+    >[] = [];
     if (storedData) {
       try {
         const cache = JSON.parse(storedData);

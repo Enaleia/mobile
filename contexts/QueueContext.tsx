@@ -15,19 +15,41 @@ interface QueueContextType {
   updateQueueItems: (items: QueueItem[]) => Promise<void>;
   clearStaleData: () => void;
   retryItems: (items: QueueItem[]) => Promise<void>;
+  completedCount: number;
 }
 
 const QueueContext = createContext<QueueContextType | null>(null);
 
 const ONE_DAY = 24 * 60 * 60 * 1000; // 24 hours in milliseconds
+const COMPLETED_COUNT_KEY = "@queue/completed_count";
+
+interface RetryResult {
+  success: boolean;
+  localId: string;
+  error?: string;
+}
 
 export function QueueProvider({ children }: { children: React.ReactNode }) {
   const [queueItems, setQueueItems] = useState<QueueItem[]>([]);
+  const [completedCount, setCompletedCount] = useState(0);
   const { isConnected, isInternetReachable, isMetered } = useNetwork();
   const processingRef = useRef(false);
   const queryClient = new QueryClient();
   const isOnline = isConnected && isInternetReachable;
   const backgroundManager = BackgroundTaskManager.getInstance();
+
+  // Load completed count on init
+  useEffect(() => {
+    AsyncStorage.getItem(COMPLETED_COUNT_KEY)
+      .then((value) => setCompletedCount(value ? parseInt(value, 10) : 0))
+      .catch(console.error);
+  }, []);
+
+  const updateCompletedCount = async (increment: number) => {
+    const newCount = completedCount + increment;
+    await AsyncStorage.setItem(COMPLETED_COUNT_KEY, newCount.toString());
+    setCompletedCount(newCount);
+  };
 
   const loadQueueItems = async (): Promise<void> => {
     try {
@@ -156,9 +178,9 @@ export function QueueProvider({ children }: { children: React.ReactNode }) {
     });
 
     try {
+      // Reset all items to pending state first
       const updatedItems = queueItems.map((item) => {
         if (items.some((i) => i.localId === item.localId)) {
-          console.log(`Resetting item ${item.localId} to pending state`);
           return {
             ...item,
             status: QueueItemStatus.PENDING,
@@ -170,34 +192,85 @@ export function QueueProvider({ children }: { children: React.ReactNode }) {
         return item;
       });
 
-      console.log("Updating queue with retried items");
+      // Update queue with reset items
       await updateQueueItems(updatedItems);
 
-      // Force immediate processing
-      console.log("Forcing immediate processing of retried items");
-      const itemsToProcess = items.map((item) => ({
-        ...item,
-        status: QueueItemStatus.PENDING,
-        retryCount: 0,
-        lastError: undefined,
-        lastAttempt: undefined,
-      }));
+      // Process items in batch but track individual results
+      const results: RetryResult[] = [];
 
-      await processQueueItems(itemsToProcess).catch((error) => {
-        console.error("Failed to process retried items:", error);
-        // Update items to failed state if processing fails
-        updateQueueItems(
-          updatedItems.map((item) =>
-            itemsToProcess.some((i) => i.localId === item.localId)
-              ? {
-                  ...item,
-                  status: QueueItemStatus.FAILED,
-                  lastError: error.message,
-                }
-              : item
-          )
-        );
+      for (const item of items) {
+        try {
+          await processQueueItems([
+            {
+              ...item,
+              status: QueueItemStatus.PENDING,
+              retryCount: 0,
+              lastError: undefined,
+              lastAttempt: undefined,
+            },
+          ]);
+          results.push({ success: true, localId: item.localId });
+        } catch (error) {
+          console.error(`Failed to process item ${item.localId}:`, error);
+          const errorMessage =
+            error instanceof Error ? error.message : "Unknown error";
+
+          // Check if it's an auth error
+          const isAuthError =
+            errorMessage.toLowerCase().includes("token") ||
+            errorMessage.toLowerCase().includes("auth") ||
+            errorMessage.toLowerCase().includes("unauthorized");
+
+          if (isAuthError) {
+            console.log("Auth error detected, keeping items in original state");
+            // Don't mark as failed, keep original state
+            results.push({
+              success: false,
+              localId: item.localId,
+              error:
+                "Authentication error - please try again after restarting the app",
+            });
+            // Exit the retry loop on auth errors
+            break;
+          } else {
+            results.push({
+              success: false,
+              localId: item.localId,
+              error: errorMessage,
+            });
+          }
+        }
+      }
+
+      // Update final states based on results
+      const finalItems = queueItems.map((item) => {
+        const result = results.find((r) => r.localId === item.localId);
+        if (result) {
+          if (!result.success) {
+            // For auth errors, keep the original state
+            const isAuthError = result.error
+              ?.toLowerCase()
+              .includes("authentication");
+            if (isAuthError) {
+              return {
+                ...item,
+                lastError: result.error,
+                lastAttempt: new Date(),
+              };
+            }
+            // For other errors, mark as failed
+            return {
+              ...item,
+              status: QueueItemStatus.FAILED,
+              lastError: result.error,
+              lastAttempt: new Date(),
+            };
+          }
+        }
+        return item;
       });
+
+      await updateQueueItems(finalItems);
     } catch (error) {
       console.error("Error in retryItems:", error);
       throw error;
@@ -268,6 +341,16 @@ export function QueueProvider({ children }: { children: React.ReactNode }) {
     }
   }, [isOnline]);
 
+  // Update completed count when items complete
+  useEffect(() => {
+    const completedItems = queueItems.filter(
+      (item) => item.status === QueueItemStatus.COMPLETED
+    );
+    if (completedItems.length !== completedCount) {
+      updateCompletedCount(completedItems.length - completedCount);
+    }
+  }, [queueItems]);
+
   return (
     <QueueContext.Provider
       value={{
@@ -276,6 +359,7 @@ export function QueueProvider({ children }: { children: React.ReactNode }) {
         updateQueueItems,
         clearStaleData,
         retryItems,
+        completedCount,
       }}
     >
       {children}
