@@ -33,7 +33,11 @@ function Home() {
     queryFn: async () => {
       if (!isOnline) {
         console.log("Offline, using cached data");
-        return queryClient.getQueryData<BatchData>(["batchData"]);
+        const cachedData = queryClient.getQueryData<BatchData>(["batchData"]);
+        if (!cachedData) {
+          console.log("No cached data available");
+        }
+        return cachedData;
       }
 
       if (!user) {
@@ -62,6 +66,7 @@ function Home() {
     },
     enabled: !!user,
     staleTime: 1000 * 60 * 60, // 1 hour
+    retry: 2,
   });
 
   useEffect(() => {
@@ -76,8 +81,28 @@ function Home() {
     ? groupActionsByCategory(batchData.actions)
     : undefined;
 
+  // Track initialization progress
+  const progress = {
+    user: !!user,
+    actions: !!batchData?.actions,
+    materials: !!batchData?.materials,
+    collectors: !!batchData?.collectors,
+    products: !!batchData?.products,
+  };
+
+  // Show initialization modal if loading or error
+  const showInitModal =
+    isLoading || (!isComplete && !isAuthError) || (!!error && !isAuthError);
+
   return (
     <SafeAreaContent>
+      <InitializationModal
+        isVisible={showInitModal}
+        progress={progress}
+        error={error instanceof Error ? error : null}
+        isAuthError={isAuthError}
+      />
+
       {__DEV__ && (
         <View>
           <Pressable
