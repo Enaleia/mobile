@@ -2,12 +2,21 @@ import { JsonValue } from "@/types/json";
 import { DirectusItemStatus } from "./directus";
 
 export const processCollectors = (
-  collectors: Pick<DirectusCollector, "collector_id" | "collector_name">[]
-): Pick<DirectusCollector, "collector_id" | "collector_name">[] => {
-  return collectors.map(({ collector_id, collector_name }) => ({
-    collector_id,
-    collector_name,
-  }));
+  collectors: Pick<
+    DirectusCollector,
+    "collector_id" | "collector_name" | "collector_identity"
+  >[]
+): Pick<
+  DirectusCollector,
+  "collector_id" | "collector_name" | "collector_identity"
+>[] => {
+  return collectors.map(
+    ({ collector_id, collector_name, collector_identity }) => ({
+      collector_id,
+      collector_name,
+      collector_identity,
+    })
+  );
 };
 
 export interface DirectusCollector {
