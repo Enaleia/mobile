@@ -1,12 +1,11 @@
-import { EnaleiaUser } from "@/types/user";
-import { directus } from "@/utils/directus";
-import { readItem, readMe } from "@directus/sdk";
-import { Ionicons } from "@expo/vector-icons";
+import ErrorMessage from "@/components/shared/ErrorMessage";
+import { useAuth } from "@/contexts/AuthContext";
+import { useNetwork } from "@/contexts/NetworkContext";
 import { useForm } from "@tanstack/react-form";
 import { useQueryClient } from "@tanstack/react-query";
-import { zodValidator } from "@tanstack/zod-form-adapter";
 import { router } from "expo-router";
-import { useEffect, useState, useRef } from "react";
+import * as SecureStore from "expo-secure-store";
+import { useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Pressable,
@@ -15,9 +14,6 @@ import {
   View,
 } from "react-native";
 import { z } from "zod";
-import AsyncStorage from "@react-native-async-storage/async-storage";
-import { Company } from "@/types/company";
-import ErrorMessage from "@/components/shared/ErrorMessage";
 
 const LoginData = z.object({
   email: z.string().email("Please enter a valid email"),
@@ -30,71 +26,61 @@ export default function LoginForm() {
   const emailInputRef = useRef<TextInput>(null);
   const passwordInputRef = useRef<TextInput>(null);
   const [formError, setFormError] = useState<string | null>(null);
+  const { login, isLoading, isAuthenticated, lastLoggedInUser, offlineLogin } =
+    useAuth();
+  const { isConnected, isInternetReachable } = useNetwork();
+  const isOnline = isConnected && isInternetReachable;
+  const queryClient = useQueryClient();
 
   useEffect(() => {
-    const checkExistingToken = async () => {
-      try {
-        const token = await directus.getToken();
+    // If already authenticated, redirect to tabs
+    if (isAuthenticated) {
+      router.replace("/(tabs)");
+    }
+  }, [isAuthenticated]);
 
-        if (token) {
-          await queryClient.setQueryData(["user-info"], {
-            token,
-          });
-          router.replace("/(tabs)");
+  // Try to auto-login when offline
+  useEffect(() => {
+    const tryOfflineLogin = async () => {
+      if (!isOnline && lastLoggedInUser) {
+        try {
+          // Get stored password
+          const storedPassword = await SecureStore.getItemAsync(
+            "user_password"
+          );
+          if (storedPassword) {
+            const success = await offlineLogin(
+              lastLoggedInUser,
+              storedPassword
+            );
+            if (success) {
+              router.replace("/(tabs)");
+            }
+          }
+        } catch (error) {
+          console.error("Failed to auto-login offline:", error);
         }
-      } catch (error) {
-        console.error("Error checking token:", error);
       }
     };
 
-    checkExistingToken();
-  }, []);
-  const queryClient = useQueryClient();
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [showPassword, setShowPassword] = useState(false);
+    tryOfflineLogin();
+  }, [isOnline, lastLoggedInUser]);
 
   const handleLogin = async (values: LoginData) => {
     try {
-      const loginResult = await directus.login(values.email, values.password);
-      const token = loginResult.access_token;
-
-      // Store credentials
-      await directus.setToken(token);
-      await AsyncStorage.setItem("userEmail", values.email);
-
-      // Get basic user info
-      const basicUserData = await directus.request(readMe());
-      if (!basicUserData) throw new Error("No user data found");
-
-      let userInfo: EnaleiaUser = {
-        id: basicUserData.id,
-        first_name: basicUserData.first_name,
-        last_name: basicUserData.last_name,
-        email: basicUserData.email,
-        token,
-      };
-
-      // If user has a company, fetch company details
-      if (basicUserData.Company) {
-        try {
-          const companyData = await directus.request(
-            readItem("Companies", basicUserData.Company as number)
-          );
-          console.log("Company data:", companyData);
-          const company: Pick<Company, "id" | "name"> = {
-            id: companyData.id,
-            name: companyData.name,
-          };
-          userInfo.Company = company;
-        } catch (error) {
-          console.warn("Failed to fetch company data:", error);
+      if (isOnline) {
+        // Online login
+        await login(values.email, values.password);
+        router.replace("/(tabs)");
+      } else {
+        // Offline login
+        const success = await offlineLogin(values.email, values.password);
+        if (success) {
+          router.replace("/(tabs)");
+        } else {
+          setFormError("Cannot login offline with these credentials");
         }
       }
-
-      await AsyncStorage.setItem("userInfo", JSON.stringify(userInfo));
-      await queryClient.setQueryData<EnaleiaUser>(["user-info"], userInfo);
-
-      router.replace("/(tabs)");
     } catch (error) {
       console.error(JSON.stringify(error, null, 2));
       setFormError("Your email or password is incorrect");
@@ -104,61 +90,58 @@ export default function LoginForm() {
 
   const form = useForm<LoginData>({
     defaultValues: {
-      email: "",
+      email: lastLoggedInUser || "",
       password: "",
     },
     onSubmit: async ({ value }) => {
       setFormError(null);
-      setIsSubmitting(true);
       try {
         // Check if both fields are filled
         if (!value.email && !value.password) {
           setFormError("Please enter your email and password");
-          setIsSubmitting(false);
           return;
         }
 
         // Check if only one field is filled
         if (!value.email) {
           setFormError("Please enter your email");
-          setIsSubmitting(false);
           return;
         }
 
         if (!value.password) {
           setFormError("Please enter your password");
-          setIsSubmitting(false);
           return;
         }
 
         // Validate email format
         if (value.email && !value.email.includes("@")) {
           setFormError("Please enter a valid email address");
-          setIsSubmitting(false);
           return;
         }
 
         // Validate password length
         if (value.password && value.password.length < 8) {
           setFormError("Password must be at least 8 characters");
-          setIsSubmitting(false);
           return;
         }
 
         await handleLogin(value);
       } catch (error) {
         console.error("Login failed:", error);
-      } finally {
-        setIsSubmitting(false);
       }
     },
   });
 
   return (
     <View>
-      {formError && (
-        <View className="mb-4">
-          <ErrorMessage message={formError} />
+      {!isOnline && (
+        <View className="mb-4 p-4 bg-yellow-50 rounded-xl border border-yellow-200">
+          <Text className="font-dm-medium text-base mb-2">
+            You are currently offline
+          </Text>
+          <Text className="font-dm-light text-sm">
+            Limited functionality is available in offline mode.
+          </Text>
         </View>
       )}
 
@@ -166,7 +149,7 @@ export default function LoginForm() {
         {(field) => (
           <Pressable
             onPress={() => emailInputRef.current?.focus()}
-            className={`bg-white p-2 rounded-xl h-[100px] border-[1.5px] ${
+            className={`bg-white p-2 rounded-xl h-[88px] border-[1.5px] ${
               formError && !field.state.value
                 ? "border-red-300"
                 : field.state.meta.isTouched
@@ -186,6 +169,7 @@ export default function LoginForm() {
               }}
               autoCapitalize="none"
               keyboardType="email-address"
+              inputMode="email"
             />
           </Pressable>
         )}
@@ -197,7 +181,7 @@ export default function LoginForm() {
         {(field) => (
           <Pressable
             onPress={() => passwordInputRef.current?.focus()}
-            className={`bg-white p-2 rounded-xl h-[100px] border-[1.5px] ${
+            className={`bg-white p-2 rounded-xl h-[88px] border-[1.5px] ${
               formError && !field.state.value
                 ? "border-red-300"
                 : field.state.meta.isTouched
@@ -206,37 +190,35 @@ export default function LoginForm() {
             }`}
           >
             <Text className="font-dm-light text-grey-6 text-sm">Password</Text>
-            <View className="flex flex-row items-center justify-between">
+            <View className="flex-row items-center">
               <TextInput
                 ref={passwordInputRef}
-                className="h-12 border-neutral-300 focus:border-blue-600 focus:shadow-outline focus:ring-offset-2 font-dm-bold text-[20px] flex-1"
-                placeholder="********"
+                className="flex-1 h-12 px-0 focus:shadow-outline focus:ring-offset-2 font-dm-bold text-[20px]"
+                placeholder="••••••••"
                 value={field.state.value}
                 onChangeText={(text) => {
                   field.handleChange(text);
                   if (formError) setFormError(null);
                 }}
-                secureTextEntry={!showPassword}
-                autoCapitalize="none"
+                secureTextEntry={true}
               />
-              <Pressable onPress={() => setShowPassword(!showPassword)}>
-                <Text className="text-blue-ocean font-dm-medium text-base">
-                  {showPassword ? (
-                    <Ionicons name="eye-off" size={24} color="black" />
-                  ) : (
-                    <Ionicons name="eye" size={24} color="black" />
-                  )}
-                </Text>
-              </Pressable>
             </View>
           </Pressable>
         )}
       </form.Field>
 
+      <View className="p-2" />
+
+      {formError && (
+        <View className="mb-4">
+          <ErrorMessage message={formError} />
+        </View>
+      )}
+
       <form.Subscribe
         selector={(state) => ({
-          canSubmit: !state.isSubmitting,
-          isSubmitting: state.isSubmitting,
+          canSubmit: !isLoading,
+          isSubmitting: isLoading,
         })}
       >
         {({ canSubmit, isSubmitting }) => (
@@ -252,7 +234,9 @@ export default function LoginForm() {
                 </Text>
               </View>
             ) : (
-              <Text className="text-white font-dm-medium text-base">Login</Text>
+              <Text className="text-white font-dm-medium text-base">
+                {isOnline ? "Login" : "Login Offline"}
+              </Text>
             )}
           </Pressable>
         )}

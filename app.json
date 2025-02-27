@@ -10,17 +10,17 @@
     "scheme": "myapp",
     "userInterfaceStyle": "light",
     "ios": {
-			"jsEngine": "jsc",
+      "jsEngine": "jsc",
       "supportsTablet": true,
       "bundleIdentifier": "com.anonymous.enaleia",
       "infoPlist": {
         "UIViewControllerBasedStatusBarAppearance": true
       },
       "icon": {
-				"dark": "./assets/images/ios-dark.png",
-				"light": "./assets/images/ios-light.png",
-				"tinted": "./assets/images/ios-tinted.png"
-			}
+        "dark": "./assets/images/ios-dark.png",
+        "light": "./assets/images/ios-light.png",
+        "tinted": "./assets/images/ios-tinted.png"
+      }
     },
     "android": {
       "adaptiveIcon": {
@@ -41,7 +41,7 @@
       "favicon": "./assets/images/favicon.png"
     },
     "plugins": [
-			[
+      [
         "expo-splash-screen",
         {
           "backgroundColor": "#F6F4F2",
@@ -67,7 +67,8 @@
         }
       ],
       "expo-font",
-      "expo-localization"
+      "expo-localization",
+      "expo-secure-store"
     ],
     "experiments": {
       "typedRoutes": true

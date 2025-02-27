@@ -7,9 +7,13 @@ import {
   readMe,
 } from "@directus/sdk";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import * as SecureStore from "expo-secure-store";
 
-const AUTH_TOKEN_KEY = "directus_auth_token";
-const REFRESH_TOKEN_KEY = "directus_refresh_token";
+// Secure storage keys
+const SECURE_STORE_KEYS = {
+  AUTH_TOKEN: "auth_token",
+  REFRESH_TOKEN: "refresh_token",
+};
 
 export const createDirectusClient = () => {
   const apiUrl = process.env.EXPO_PUBLIC_API_URL;
@@ -33,40 +37,83 @@ export const directus = createDirectusClient();
 
 export async function storeAuthTokens(
   accessToken: string,
-  refreshToken: string
+  refreshToken?: string
 ) {
-  await AsyncStorage.setItem(AUTH_TOKEN_KEY, accessToken);
-  await AsyncStorage.setItem(REFRESH_TOKEN_KEY, refreshToken);
+  await SecureStore.setItemAsync(SECURE_STORE_KEYS.AUTH_TOKEN, accessToken);
+
+  if (refreshToken) {
+    await SecureStore.setItemAsync(
+      SECURE_STORE_KEYS.REFRESH_TOKEN,
+      refreshToken
+    );
+  }
+
   // Set the token in the client for immediate use
   directus.setToken(accessToken);
 }
 
 export async function getStoredAuthToken(): Promise<string | null> {
-  return AsyncStorage.getItem(AUTH_TOKEN_KEY);
+  return SecureStore.getItemAsync(SECURE_STORE_KEYS.AUTH_TOKEN);
 }
 
 export async function getStoredRefreshToken(): Promise<string | null> {
-  return AsyncStorage.getItem(REFRESH_TOKEN_KEY);
+  return SecureStore.getItemAsync(SECURE_STORE_KEYS.REFRESH_TOKEN);
 }
 
 export async function clearAuthTokens() {
-  await AsyncStorage.removeItem(AUTH_TOKEN_KEY);
-  await AsyncStorage.removeItem(REFRESH_TOKEN_KEY);
+  await SecureStore.deleteItemAsync(SECURE_STORE_KEYS.AUTH_TOKEN);
+  await SecureStore.deleteItemAsync(SECURE_STORE_KEYS.REFRESH_TOKEN);
   directus.setToken(null);
 }
 
 export async function refreshAuthToken(): Promise<boolean> {
   try {
     const refreshToken = await getStoredRefreshToken();
-    if (!refreshToken) return false;
+    if (!refreshToken) {
+      // If no refresh token, try to use the existing token
+      const token = await getStoredAuthToken();
+      if (!token) return false;
 
-    const result = await directus.refresh();
-    if (!result?.access_token || !result?.refresh_token) return false;
+      try {
+        // Verify if the token is still valid
+        directus.setToken(token);
+        await directus.request(readMe());
+        return true;
+      } catch (error) {
+        console.error("Token validation failed:", error);
+        await clearAuthTokens();
+        return false;
+      }
+    }
 
-    await storeAuthTokens(result.access_token, result.refresh_token);
-    return true;
+    // If we have a refresh token, try to use it
+    try {
+      const result = await directus.refresh();
+      if (!result?.access_token) return false;
+
+      // Store the new access token
+      await SecureStore.setItemAsync(
+        SECURE_STORE_KEYS.AUTH_TOKEN,
+        result.access_token
+      );
+
+      // Store the new refresh token if available
+      if (result.refresh_token) {
+        await SecureStore.setItemAsync(
+          SECURE_STORE_KEYS.REFRESH_TOKEN,
+          result.refresh_token
+        );
+      }
+
+      directus.setToken(result.access_token);
+      return true;
+    } catch (error) {
+      console.error("Failed to refresh auth token:", error);
+      await clearAuthTokens();
+      return false;
+    }
   } catch (error) {
-    console.error("Failed to refresh auth token:", error);
+    console.error("Error in refreshAuthToken:", error);
     await clearAuthTokens();
     return false;
   }
@@ -87,6 +134,8 @@ export async function ensureValidToken(): Promise<string | null> {
     if (refreshed) {
       return await getStoredAuthToken();
     }
+
+    // If refresh failed, clear tokens
     await clearAuthTokens();
     return null;
   }
