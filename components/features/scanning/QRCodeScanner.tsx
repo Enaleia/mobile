@@ -1,5 +1,5 @@
 import { CameraView, useCameraPermissions } from "expo-camera";
-import React from "react";
+import React, { useEffect, useState } from "react";
 import {
   Animated,
   Button,
@@ -8,6 +8,10 @@ import {
   Text,
   View,
 } from "react-native";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { CameraEducationalModal } from "./CameraEducationalModal";
+
+const CAMERA_PERMISSION_SEEN_KEY = "@camera_permission_seen";
 
 interface QRCodeScannerProps {
   onScan: (data: string) => void;
@@ -17,8 +21,9 @@ interface QRCodeScannerProps {
 const QRCodeScanner: React.FC<QRCodeScannerProps> = ({ onScan, onClose }) => {
   const [permission, requestPermission] = useCameraPermissions();
   const scanLineAnimation = React.useRef(new Animated.Value(0)).current;
+  const [showEducationalModal, setShowEducationalModal] = useState(false);
 
-  React.useEffect(() => {
+  useEffect(() => {
     const screenHeight = Dimensions.get("window").height;
     Animated.loop(
       Animated.sequence([
@@ -34,7 +39,31 @@ const QRCodeScanner: React.FC<QRCodeScannerProps> = ({ onScan, onClose }) => {
         }),
       ])
     ).start();
+
+    checkFirstTime();
   }, []);
+
+  // Re-check permission status when component mounts or permission changes
+  useEffect(() => {
+    if (permission) {
+      checkFirstTime();
+    }
+  }, [permission?.granted]);
+
+  const checkFirstTime = async () => {
+    const hasSeenPermissionModal = await AsyncStorage.getItem(
+      CAMERA_PERMISSION_SEEN_KEY
+    );
+
+    // Only consider it "seen" if they've actually granted permission
+    if (!hasSeenPermissionModal || !permission?.granted) {
+      setShowEducationalModal(true);
+    }
+  };
+
+  const handleRequestPermission = async () => {
+    await requestPermission();
+  };
 
   const handleBarCodeScanned = ({ data }: { data: string }) => {
     if (data) {
@@ -51,66 +80,74 @@ const QRCodeScanner: React.FC<QRCodeScannerProps> = ({ onScan, onClose }) => {
 
   if (!permission.granted) {
     return (
-      <View className="flex-1 flex-col justify-center items-center">
-        <Text className="text-center p-4">
-          We need your permission to show the camera
-        </Text>
-        <Button onPress={requestPermission} title="grant permission" />
-      </View>
+      <CameraEducationalModal
+        isVisible={showEducationalModal}
+        onClose={() => setShowEducationalModal(false)}
+        onRequestPermission={handleRequestPermission}
+        onSkip={onClose}
+      />
     );
   }
 
   return (
-    <View
-      className="flex-1 flex-col justify-center"
-      accessibilityRole="none"
-      accessibilityLabel="QR Code Scanner"
-    >
-      <Text
-        className="text-center p-4 text-sm font-dm-bold text-enaleia-black tracking-tighter bg-white-sand"
-        accessibilityRole="header"
-      >
-        Point the camera at a QR code
-      </Text>
-
+    <>
+      <CameraEducationalModal
+        isVisible={showEducationalModal}
+        onClose={() => setShowEducationalModal(false)}
+        onRequestPermission={handleRequestPermission}
+        onSkip={onClose}
+      />
       <View
-        className="flex-1 relative"
-        accessibilityRole="image"
-        accessibilityLabel="Camera view for QR scanning"
+        className="flex-1 flex-col justify-center"
+        accessibilityRole="none"
+        accessibilityLabel="QR Code Scanner"
       >
-        <CameraView
-          facing={"back"}
-          className="flex-1"
-          onBarcodeScanned={handleBarCodeScanned}
-          accessibilityLabel="QR code camera view"
-          accessibilityHint="Point camera at QR code to scan"
-        />
-        <Animated.View
-          style={{
-            transform: [{ translateY: scanLineAnimation }],
-            position: "absolute",
-            left: 0,
-            right: 0,
-            height: 2,
-            backgroundColor: "#2985D0",
-            opacity: 0.7,
-          }}
-        />
-      </View>
-      <View className="absolute bottom-10 left-0 right-0 items-center">
-        <Pressable
-          className="bg-blue-ocean min-w-[60px] px-3 py-2 rounded-3xl flex flex-row items-center justify-center mx-1 my-1"
-          onPress={onClose}
-          accessibilityRole="button"
-          accessibilityLabel="Close scanner"
-          accessibilityHint="Double tap to close QR code scanner"
+        <Text
+          className="text-center p-4 text-sm font-dm-bold text-enaleia-black tracking-tighter bg-white-sand"
+          accessibilityRole="header"
         >
-          <Text className="text-sm font-dm-bold text-white tracking-tighter text-center">
-            Close scanner
-          </Text>
-        </Pressable>
+          Point the camera at a QR code
+        </Text>
+
+        <View
+          className="flex-1 relative"
+          accessibilityRole="image"
+          accessibilityLabel="Camera view for QR scanning"
+        >
+          <CameraView
+            facing={"back"}
+            className="flex-1"
+            onBarcodeScanned={handleBarCodeScanned}
+            accessibilityLabel="QR code camera view"
+            accessibilityHint="Point camera at QR code to scan"
+          />
+          <Animated.View
+            style={{
+              transform: [{ translateY: scanLineAnimation }],
+              position: "absolute",
+              left: 0,
+              right: 0,
+              height: 2,
+              backgroundColor: "#2985D0",
+              opacity: 0.7,
+            }}
+          />
+        </View>
+        <View className="absolute bottom-10 left-0 right-0 items-center">
+          <Pressable
+            className="bg-blue-ocean min-w-[60px] px-3 py-2 rounded-3xl flex flex-row items-center justify-center mx-1 my-1"
+            onPress={onClose}
+            accessibilityRole="button"
+            accessibilityLabel="Close scanner"
+            accessibilityHint="Double tap to close QR code scanner"
+          >
+            <Text className="text-sm font-dm-bold text-white tracking-tighter text-center">
+              Close scanner
+            </Text>
+          </Pressable>
+        </View>
       </View>
-    </View>
+    </>
   );
 };
 
