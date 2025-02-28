@@ -10,6 +10,7 @@ import {
 } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { CameraEducationalModal } from "./CameraEducationalModal";
+import * as Haptics from "expo-haptics";
 
 const CAMERA_PERMISSION_SEEN_KEY = "@camera_permission_seen";
 
@@ -67,6 +68,11 @@ const QRCodeScanner: React.FC<QRCodeScannerProps> = ({ onScan, onClose }) => {
 
   const handleBarCodeScanned = ({ data }: { data: string }) => {
     if (data) {
+      // Trigger success haptic feedback
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(
+        (error) => console.log("Haptic feedback error:", error)
+      );
+
       onScan(data);
       onClose();
     }
