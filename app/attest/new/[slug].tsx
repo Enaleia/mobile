@@ -203,8 +203,22 @@ const NewActionScreen = () => {
       setIsSubmitting(true);
 
       try {
+           // Add runtime validation for collectorId
+          const runtimeSchema = eventFormSchema.refine(
+          (data) => {
+            if (currentAction?.category === "Collection" && !data.collectorId) {
+              return false; // Validation fails if collectorId is empty
+            }
+            return true; // Validation passes otherwise
+          },
+          {
+            message: "Collector ID is required for Collection actions",
+            path: ["collectorId"], // Specify the field to attach the error to
+          }
+        );
+
         const { success: isValid, error: validationError } =
-          eventFormSchema.safeParse(value);
+          runtimeSchema.safeParse(value);
         if (!isValid) {
           setSubmitError("Please fix the form errors before submitting");
           console.error("Form validation errors:", validationError);
@@ -408,12 +422,20 @@ const NewActionScreen = () => {
                 </Text>
                 <form.Field name="collectorId">
                   {(field) => (
+                  <>
                     <QRTextInput
                       value={field.state.value || ""}
                       onChangeText={field.handleChange}
                       placeholder="Scan or enter collector ID"
                       variant="standalone"
                     />
+                    {/* Display validation error */}
+                    {!field.state.value && (
+                    <Text className="text-sm text-red-500 mt-1">
+                     This field is required!
+                    </Text>
+                    )}
+                    </>
                   )}
                 </form.Field>
               </View>
