@@ -8,8 +8,6 @@ const BACKGROUND_SYNC_TASK = "BACKGROUND_SYNC_TASK";
 
 TaskManager.defineTask(BACKGROUND_SYNC_TASK, async () => {
   try {
-    queueEventEmitter.emit(QueueEvents.UPDATED);
-
     const cacheKey = process.env.EXPO_PUBLIC_CACHE_KEY;
     if (!cacheKey) return BackgroundFetch.BackgroundFetchResult.NoData;
 
@@ -19,13 +17,19 @@ TaskManager.defineTask(BACKGROUND_SYNC_TASK, async () => {
     const items: QueueItem[] = JSON.parse(data);
     const pendingItems = items.filter(
       (item) =>
-        item.status === QueueItemStatus.PENDING ||
-        item.status === QueueItemStatus.OFFLINE
+        (item.status === QueueItemStatus.PENDING ||
+          item.status === QueueItemStatus.OFFLINE) &&
+        (!item.lastAttempt ||
+          new Date(item.lastAttempt).getTime() < Date.now() - 30000)
     );
 
-    return pendingItems.length > 0
-      ? BackgroundFetch.BackgroundFetchResult.Failed
-      : BackgroundFetch.BackgroundFetchResult.NewData;
+    // Only emit update event if there are pending items
+    if (pendingItems.length > 0) {
+      queueEventEmitter.emit(QueueEvents.UPDATED);
+      return BackgroundFetch.BackgroundFetchResult.NewData;
+    }
+
+    return BackgroundFetch.BackgroundFetchResult.NoData;
   } catch (error) {
     console.error("Background sync failed:", error);
     return BackgroundFetch.BackgroundFetchResult.Failed;
