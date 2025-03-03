@@ -4,6 +4,7 @@ import {
   fetchCollectors,
   fetchProducts,
 } from "@/services/directus";
+import { router } from "expo-router";
 
 const createEmptyBatchData = () => ({
   actions: [],
@@ -24,21 +25,33 @@ export async function batchFetchData() {
     const errors: string[] = [];
     const endpoints = ["actions", "materials", "collectors", "products"];
 
+    let hasAuthError = false;
     for (let i = 0; i < results.length; i++) {
       const result = results[i];
-      if (
-        result.status === "rejected" &&
-        !result.reason.message?.includes("FORBIDDEN")
-      ) {
-        errors.push(`${endpoints[i]}: ${result.reason.message}`);
+      if (result.status === "rejected") {
+        const error = result.reason;
+        const isAuthError =
+          error.message?.includes("FORBIDDEN") ||
+          error.message?.includes("TOKEN_EXPIRED") ||
+          error.message?.includes("TOKEN_INVALID");
+
+        if (isAuthError) {
+          hasAuthError = true;
+          break;
+        }
+
+        if (!isAuthError) {
+          errors.push(`${endpoints[i]}: ${error.message}`);
+        }
       }
     }
 
+    if (hasAuthError) {
+      router.replace("/login");
+      return createEmptyBatchData();
+    }
+
     if (errors.length > 0) {
-      // If all errors are auth related, handle quietly
-      if (errors.every((err) => err.includes("FORBIDDEN"))) {
-        return createEmptyBatchData();
-      }
       throw new Error(`Batch fetch failed:\n${errors.join("\n")}`);
     }
 
@@ -53,7 +66,12 @@ export async function batchFetchData() {
       products: products || [],
     };
   } catch (error: any) {
-    if (error.message?.includes("FORBIDDEN")) {
+    if (
+      error.message?.includes("FORBIDDEN") ||
+      error.message?.includes("TOKEN_EXPIRED") ||
+      error.message?.includes("TOKEN_INVALID")
+    ) {
+      router.replace("/login");
       return createEmptyBatchData();
     }
     throw error;
