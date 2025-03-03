@@ -4,10 +4,12 @@ import * as BackgroundFetch from "expo-background-fetch";
 import NetInfo, { NetInfoState } from "@react-native-community/netinfo";
 import { QueueItem, QueueItemStatus } from "@/types/queue";
 import { QueueEvents, queueEventEmitter } from "@/services/events";
-import { getQueueCacheKey } from "@/utils/storage";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { processQueueItems as processItems } from "@/services/queueProcessor";
 import { ensureValidToken } from "@/utils/directus";
+import * as SecureStore from "expo-secure-store";
+import { directus } from "@/utils/directus";
+import { getActiveQueue, updateActiveQueue } from "@/utils/queueStorage";
 
 const BACKGROUND_SYNC_TASK = "BACKGROUND_SYNC_TASK";
 const LOW_BATTERY_THRESHOLD = 0.2; // 20%
@@ -122,9 +124,22 @@ export class BackgroundTaskManager {
     power: PowerCondition,
     network: NetworkCondition
   ): boolean {
-    // Always process critical items
+    // Never process completed items
+    if (item.status === QueueItemStatus.COMPLETED) {
+      return false;
+    }
+
+    // Always process failed items
     if (item.status === QueueItemStatus.FAILED) {
       return true;
+    }
+
+    // Don't process items that were attempted recently (30 seconds)
+    if (
+      item.lastAttempt &&
+      new Date(item.lastAttempt).getTime() > Date.now() - 30000
+    ) {
+      return false;
     }
 
     // Don't process on very low battery unless charging
@@ -137,7 +152,29 @@ export class BackgroundTaskManager {
       return item.status === QueueItemStatus.PENDING;
     }
 
-    return true;
+    // Only process pending or offline items
+    return (
+      item.status === QueueItemStatus.PENDING ||
+      item.status === QueueItemStatus.OFFLINE
+    );
+  }
+
+  private async reauthorizeWithStoredCredentials(): Promise<boolean> {
+    try {
+      const email = await SecureStore.getItemAsync("last_logged_in_user");
+      const password = await SecureStore.getItemAsync("user_password");
+
+      if (!email || !password) {
+        console.log("No stored credentials found for reauthorization");
+        return false;
+      }
+
+      await directus.login(email, password);
+      return true;
+    } catch (error) {
+      console.error("Failed to reauthorize with stored credentials:", error);
+      return false;
+    }
   }
 
   async processQueueItems(): Promise<BackgroundFetch.BackgroundFetchResult> {
@@ -148,13 +185,15 @@ export class BackgroundTaskManager {
     try {
       this.isProcessing = true;
 
-      // Ensure we have a valid token before processing
+      // Try to get a valid token, if not, try to reauthorize
       const token = await ensureValidToken();
       if (!token) {
-        console.log(
-          "No valid auth token available, deferring queue processing"
-        );
-        return BackgroundFetch.BackgroundFetchResult.NoData;
+        console.log("No valid token, attempting reauthorization");
+        const reauthorized = await this.reauthorizeWithStoredCredentials();
+        if (!reauthorized) {
+          console.log("Reauthorization failed, deferring queue processing");
+          return BackgroundFetch.BackgroundFetchResult.NoData;
+        }
       }
 
       const [power, network] = await Promise.all([
@@ -167,13 +206,11 @@ export class BackgroundTaskManager {
         return BackgroundFetch.BackgroundFetchResult.NoData;
       }
 
-      const key = getQueueCacheKey();
-      const data = await AsyncStorage.getItem(key);
-      if (!data) {
+      const items = await getActiveQueue();
+      if (!items.length) {
         return BackgroundFetch.BackgroundFetchResult.NoData;
       }
 
-      const items: QueueItem[] = JSON.parse(data);
       const itemsToProcess = items.filter((item) =>
         this.shouldProcessItem(item, power, network)
       );
@@ -212,7 +249,7 @@ export class BackgroundTaskManager {
 
       return BackgroundFetch.BackgroundFetchResult.NewData;
     } catch (error) {
-      console.error("Background task failed:", error);
+      console.error("Error processing queue items:", error);
       return BackgroundFetch.BackgroundFetchResult.Failed;
     } finally {
       this.isProcessing = false;

@@ -3,11 +3,21 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { MAX_RETRIES, QueueItem, QueueItemStatus } from "@/types/queue";
 import { processQueueItems } from "@/services/queueProcessor";
 import { QueueEvents, queueEventEmitter } from "@/services/events";
-import { getQueueCacheKey } from "@/utils/storage";
 import { QueryClient } from "@tanstack/react-query";
 import { useNetwork } from "./NetworkContext";
 import { BackgroundTaskManager } from "@/services/backgroundTaskManager";
 import { AppState } from "react-native";
+import * as SecureStore from "expo-secure-store";
+import { directus } from "@/utils/directus";
+import {
+  getActiveQueue,
+  getCompletedQueue,
+  updateActiveQueue,
+  addToCompletedQueue,
+  cleanupExpiredItems,
+  removeFromActiveQueue,
+  CompletedQueueItem,
+} from "@/utils/queueStorage";
 
 interface QueueContextType {
   queueItems: QueueItem[];
@@ -53,36 +63,19 @@ export function QueueProvider({ children }: { children: React.ReactNode }) {
 
   const loadQueueItems = async (): Promise<void> => {
     try {
-      const key = getQueueCacheKey();
-      const data = await AsyncStorage.getItem(key);
-      const items: QueueItem[] = data ? JSON.parse(data) : [];
+      // Load both active and completed queues
+      const [activeItems, completedItems] = await Promise.all([
+        getActiveQueue(),
+        getCompletedQueue(),
+      ]);
 
-      // Filter out completed items older than 24 hours
-      const now = Date.now();
-      const incompleteItems = items.filter((item) => {
-        if (item.status !== QueueItemStatus.COMPLETED) return true;
-        const itemDate = new Date(item.lastAttempt || item.date).getTime();
-        return now - itemDate < ONE_DAY;
-      });
+      // Clean up expired completed items
+      await cleanupExpiredItems();
 
-      // If we filtered out any items, update storage
-      if (incompleteItems.length !== items.length) {
-        await AsyncStorage.setItem(key, JSON.stringify(incompleteItems));
-        console.log(
-          `Cleaned up ${items.length - incompleteItems.length} completed items`
-        );
-      }
-
-      setQueueItems(incompleteItems);
+      // Combine items for display, with completed items at the end
+      setQueueItems([...activeItems, ...completedItems]);
     } catch (error) {
-      if (
-        error instanceof Error &&
-        error.message.includes("Cache key is not configured")
-      ) {
-        console.error("Queue functionality disabled:", error.message);
-      } else {
-        console.error("Error loading queue items:", error);
-      }
+      console.error("Error loading queue items:", error);
       setQueueItems([]);
     }
   };
@@ -100,7 +93,6 @@ export function QueueProvider({ children }: { children: React.ReactNode }) {
 
     try {
       processingRef.current = true;
-      // Use direct processing in foreground
       await processQueueItems(items);
     } finally {
       processingRef.current = false;
@@ -134,11 +126,28 @@ export function QueueProvider({ children }: { children: React.ReactNode }) {
 
   const updateQueueItems = async (items: QueueItem[]): Promise<void> => {
     try {
-      const key = getQueueCacheKey();
-      await AsyncStorage.setItem(key, JSON.stringify(items));
+      // Separate active and completed items
+      const completedItems = items.filter(
+        (item) => item.status === QueueItemStatus.COMPLETED
+      );
+      const activeItems = items.filter(
+        (item) => item.status !== QueueItemStatus.COMPLETED
+      );
+
+      // Update active queue
+      await updateActiveQueue(activeItems);
+
+      // Move newly completed items to completed queue
+      await Promise.all(
+        completedItems
+          .filter((item) => !item.hasOwnProperty("completedAt"))
+          .map((item) => addToCompletedQueue(item))
+      );
+
+      // Update state with combined items
       setQueueItems(items);
 
-      const pendingItems = items.filter(
+      const pendingItems = activeItems.filter(
         (i) =>
           i.status === QueueItemStatus.PENDING ||
           i.status === QueueItemStatus.OFFLINE
@@ -152,20 +161,12 @@ export function QueueProvider({ children }: { children: React.ReactNode }) {
         );
 
         if (appState === "active") {
-          // Process immediately in foreground
           await processQueue(pendingItems);
         } else {
-          // Use background processing when app is not active
           await backgroundManager.processQueueItems();
         }
       }
     } catch (error) {
-      if (
-        error instanceof Error &&
-        error.message.includes("Cache key is not configured")
-      ) {
-        throw new Error("Unable to update queue: Cache key is not configured");
-      }
       console.error("Error updating queue items:", error);
       throw error;
     }
@@ -300,6 +301,24 @@ export function QueueProvider({ children }: { children: React.ReactNode }) {
     });
   };
 
+  const reauthorizeWithStoredCredentials = async (): Promise<boolean> => {
+    try {
+      const email = await SecureStore.getItemAsync("last_logged_in_user");
+      const password = await SecureStore.getItemAsync("user_password");
+
+      if (!email || !password) {
+        console.log("No stored credentials found for reauthorization");
+        return false;
+      }
+
+      await directus.login(email, password);
+      return true;
+    } catch (error) {
+      console.error("Failed to reauthorize with stored credentials:", error);
+      return false;
+    }
+  };
+
   // Network recovery handler
   useEffect(() => {
     console.log("Network state changed:", {
@@ -326,18 +345,30 @@ export function QueueProvider({ children }: { children: React.ReactNode }) {
       queueItems.length > 0 &&
       AppState.currentState === "active"
     ) {
-      // Only process in foreground when network recovers
-      console.log("Network recovered, processing in foreground");
-      const pendingItems = queueItems.filter(
-        (item) =>
-          item.status === QueueItemStatus.PENDING ||
-          item.status === QueueItemStatus.OFFLINE
-      );
-      if (pendingItems.length > 0) {
-        processQueue(pendingItems).catch((err) =>
-          console.error("Failed to process queue on network recovery:", err)
+      // Attempt reauthorization before processing items
+      reauthorizeWithStoredCredentials().then((reauthorized) => {
+        if (!reauthorized) {
+          console.log("Failed to reauthorize, skipping queue processing");
+          return;
+        }
+
+        // Only process pending and offline items in foreground when network recovers
+        console.log(
+          "Network recovered, processing pending items in foreground"
         );
-      }
+        const pendingItems = queueItems.filter(
+          (item) =>
+            (item.status === QueueItemStatus.PENDING ||
+              item.status === QueueItemStatus.OFFLINE) &&
+            (!item.lastAttempt ||
+              new Date(item.lastAttempt).getTime() < Date.now() - 30000) // Don't retry items attempted in last 30 seconds
+        );
+        if (pendingItems.length > 0) {
+          processQueue(pendingItems).catch((err) =>
+            console.error("Failed to process queue on network recovery:", err)
+          );
+        }
+      });
     }
   }, [isOnline]);
 

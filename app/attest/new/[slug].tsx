@@ -14,7 +14,7 @@ import { useCurrentLocation } from "@/hooks/useCurrentLocation";
 import { ActionTitle, typeModalMap } from "@/types/action";
 import { MaterialDetail } from "@/types/material";
 import { QueueItem, QueueItemStatus } from "@/types/queue";
-import { getQueueCacheKey } from "@/utils/storage";
+import { getActiveQueue, updateActiveQueue } from "@/utils/queueStorage";
 import { Ionicons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useForm } from "@tanstack/react-form";
@@ -141,35 +141,19 @@ const NewActionScreen = () => {
 
   const addItemToQueue = async (queueItem: QueueItem) => {
     try {
-      const queueCacheKey = getQueueCacheKey();
-
       console.log("Adding queue item:", JSON.stringify(queueItem, null, 2));
 
-      const existingData = await AsyncStorage.getItem(queueCacheKey);
+      const activeItems = await getActiveQueue();
+      const updatedItems = [...activeItems, queueItem];
 
-      let existingItems: QueueItem[] = [];
-      if (existingData) {
-        try {
-          existingItems = JSON.parse(existingData);
-          if (!Array.isArray(existingItems)) {
-            console.warn("Stored data is not an array, resetting");
-            existingItems = [];
-          }
-        } catch (parseError) {
-          console.error("Error parsing stored data:", parseError);
-          throw new Error("Failed to parse existing queue data");
-        }
-      }
+      await updateActiveQueue(updatedItems);
 
-      const updatedItems = [...existingItems, queueItem];
-
-      await updateQueueItems(updatedItems);
-
-      const savedData = await AsyncStorage.getItem(queueCacheKey);
-      if (!savedData) {
+      // Verify the item was saved
+      const savedItems = await getActiveQueue();
+      if (!savedItems.find((item) => item.localId === queueItem.localId)) {
         throw new Error("Failed to verify queue item was saved");
       }
-      console.log("Verified saved data:", savedData);
+      console.log("Verified saved data:", JSON.stringify(savedItems, null, 2));
     } catch (error) {
       console.error("Error in addItemToQueue:", error);
 
@@ -203,8 +187,8 @@ const NewActionScreen = () => {
       setIsSubmitting(true);
 
       try {
-           // Add runtime validation for collectorId
-          const runtimeSchema = eventFormSchema.refine(
+        // Add runtime validation for collectorId
+        const runtimeSchema = eventFormSchema.refine(
           (data) => {
             if (currentAction?.category === "Collection" && !data.collectorId) {
               return false; // Validation fails if collectorId is empty
@@ -422,19 +406,19 @@ const NewActionScreen = () => {
                 </Text>
                 <form.Field name="collectorId">
                   {(field) => (
-                  <>
-                    <QRTextInput
-                      value={field.state.value || ""}
-                      onChangeText={field.handleChange}
-                      placeholder="Scan or enter collector ID"
-                      variant="standalone"
-                    />
-                    {/* Display validation error */}
-                    {!field.state.value && (
-                    <Text className="text-sm text-red-500 mt-1">
-                     This field is required!
-                    </Text>
-                    )}
+                    <>
+                      <QRTextInput
+                        value={field.state.value || ""}
+                        onChangeText={field.handleChange}
+                        placeholder="Scan or enter collector ID"
+                        variant="standalone"
+                      />
+                      {/* Display validation error */}
+                      {!field.state.value && (
+                        <Text className="text-sm text-red-500 mt-1">
+                          This field is required!
+                        </Text>
+                      )}
                     </>
                   )}
                 </form.Field>

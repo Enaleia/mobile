@@ -13,36 +13,53 @@ import { MAX_RETRIES, QueueItem, QueueItemStatus } from "@/types/queue";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import NetInfo from "@react-native-community/netinfo";
 import * as Notifications from "expo-notifications";
-import { getCacheKey, getQueueCacheKey } from "@/utils/storage";
+import { getBatchCacheKey } from "@/utils/storage";
 import { DirectusCollector } from "@/types/collector";
 import { BatchData } from "@/types/batch";
 import { ensureValidToken } from "@/utils/directus";
 import Constants from "expo-constants";
 import { directus } from "@/utils/directus";
+import {
+  getActiveQueue,
+  updateActiveQueue,
+  addToCompletedQueue,
+  removeFromActiveQueue,
+} from "@/utils/queueStorage";
 
 async function updateItemInCache(itemId: string, updates: Partial<QueueItem>) {
-  const cacheKey = getQueueCacheKey();
-  if (!cacheKey) return;
+  try {
+    const items = await getActiveQueue();
+    const updatedItems = items.map((item) =>
+      item.localId === itemId
+        ? {
+            ...item,
+            ...updates,
+            retryCount:
+              updates.status === QueueItemStatus.PROCESSING
+                ? (item.retryCount || 0) + 1
+                : item.retryCount,
+          }
+        : item
+    );
 
-  const data = await AsyncStorage.getItem(cacheKey);
-  if (!data) return;
+    // If item is completed, move it to completed queue
+    if (updates.status === QueueItemStatus.COMPLETED) {
+      const completedItem = updatedItems.find(
+        (item) => item.localId === itemId
+      );
+      if (completedItem) {
+        await addToCompletedQueue(completedItem);
+        await removeFromActiveQueue(itemId);
+      }
+    } else {
+      await updateActiveQueue(updatedItems);
+    }
 
-  const items: QueueItem[] = JSON.parse(data);
-  const updatedItems = items.map((item) =>
-    item.localId === itemId
-      ? {
-          ...item,
-          ...updates,
-          retryCount:
-            updates.status === QueueItemStatus.PROCESSING
-              ? (item.retryCount || 0) + 1
-              : item.retryCount,
-        }
-      : item
-  );
-
-  await AsyncStorage.setItem(cacheKey, JSON.stringify(updatedItems));
-  queueEventEmitter.emit(QueueEvents.UPDATED);
+    queueEventEmitter.emit(QueueEvents.UPDATED);
+  } catch (error) {
+    console.error("Error updating item in cache:", error);
+    throw error;
+  }
 }
 
 async function notifyUser(title: string, body: string) {
@@ -117,7 +134,7 @@ export async function processQueueItems(itemsToProcess?: QueueItem[]) {
       return;
     }
 
-    const cacheKey = getCacheKey();
+    const cacheKey = getBatchCacheKey();
 
     const storedData = await AsyncStorage.getItem(cacheKey);
 
@@ -143,7 +160,7 @@ export async function processQueueItems(itemsToProcess?: QueueItem[]) {
     }
 
     if (!itemsToProcess) {
-      const queueKey = getQueueCacheKey();
+      const queueKey = getBatchCacheKey();
       if (!queueKey) return;
 
       const data = await AsyncStorage.getItem(queueKey);
