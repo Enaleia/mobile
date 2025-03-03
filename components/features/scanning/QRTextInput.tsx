@@ -148,12 +148,13 @@ const QRTextInput = forwardRef<QRTextInputRef, QRTextInputProps>(
           <View className="flex-1">
             <TextInput
               ref={inputRef}
-              value={value.toUpperCase()}
+              value={value}
               onChangeText={(text) => {
                 setError(null);
                 onChangeText(text);
                 setScanner(false);
               }}
+              autoCapitalize="characters"
               placeholder={placeholder}
               accessibilityLabel={placeholder}
               accessibilityRole="text"
