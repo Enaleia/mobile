@@ -19,7 +19,7 @@ function formatDirectusError(endpoint: string, error: any): Error {
 
 export async function fetchMaterials() {
   try {
-    return await directus.request(readItems("Materials"));
+    return await directus.request(readItems("Materials", {limit:-1}));
   } catch (error: any) {
     throw formatDirectusError("Materials", error);
   }
@@ -27,7 +27,7 @@ export async function fetchMaterials() {
 
 export async function fetchActions() {
   try {
-    return await directus.request(readItems("Actions"));
+    return await directus.request(readItems("Actions", {limit:-1}));
   } catch (error: any) {
     throw formatDirectusError("Actions", error);
   }
@@ -35,7 +35,7 @@ export async function fetchActions() {
 
 export async function fetchCollectors() {
   try {
-    return await directus.request(readItems("Collectors"));
+    return await directus.request(readItems("Collectors", {limit:-1}));
   } catch (error: any) {
     throw formatDirectusError("Collectors", error);
   }
@@ -43,7 +43,7 @@ export async function fetchCollectors() {
 
 export async function fetchProducts() {
   try {
-    return await directus.request(readItems("Products"));
+    return await directus.request(readItems("Products", {limit:-1}));
   } catch (error: any) {
     throw formatDirectusError("Products", error);
   }
