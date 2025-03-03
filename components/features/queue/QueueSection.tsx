@@ -19,8 +19,12 @@ const QueueSection = ({
   showRetry = true,
   isCollapsible = false,
 }: QueueSectionProps) => {
-  const [isCollapsed, setIsCollapsed] = useState(title === "Completed");
+  const [isCollapsed, setIsCollapsed] = useState(
+    title === "Completed" || title === "Failed" || items.length === 0
+  );
   const [isRetrying, setIsRetrying] = useState(false);
+
+  const showBadge = items.length > 0;
 
   const handleRetry = async () => {
     setIsRetrying(true);
@@ -39,7 +43,13 @@ const QueueSection = ({
       >
         <View className="flex-row items-center">
           <Text className="text-lg font-dm-bold">{title}</Text>
-          <Text className="text-sm text-gray-600 ml-2">({items.length})</Text>
+          {showBadge && (
+            <View className="bg-red-500 rounded-full px-2 py-0.5 ml-2">
+              <Text className="text-white text-sm font-dm-medium">
+                {items.length}
+              </Text>
+            </View>
+          )}
           {isCollapsible && (
             <Ionicons
               name={isCollapsed ? "chevron-forward" : "chevron-down"}

@@ -3,48 +3,28 @@ import NetworkStatus from "@/components/shared/NetworkStatus";
 import SafeAreaContent from "@/components/shared/SafeAreaContent";
 import { useQueue } from "@/contexts/QueueContext";
 import { QueueEvents, queueEventEmitter } from "@/services/events";
-import { QueueItemStatus } from "@/types/queue";
+import { filterQueueItems, getAttentionCount } from "@/utils/queue";
+import { clearOldCache } from "@/utils/queueStorage";
 import { Ionicons } from "@expo/vector-icons";
 import { useEventListener } from "expo";
 import { useNavigation } from "expo-router";
 import { useEffect } from "react";
-import { Text, View, ScrollView } from "react-native";
+import { Text, View, ScrollView, Pressable } from "react-native";
 
 const QueueScreen = () => {
-  const { queueItems, loadQueueItems, retryItems, completedCount } = useQueue();
+  const { queueItems, loadQueueItems, retryItems } = useQueue();
   const navigation = useNavigation();
 
   const items = queueItems.length > 0 ? queueItems : [];
-
-  const pendingItems = items.filter(
-    (i) => i && i.status === QueueItemStatus.PENDING
-  );
-
-  const processingItems = items.filter(
-    (i) => i && i.status === QueueItemStatus.PROCESSING
-  );
-
-  const failedItems = items.filter(
-    (i) => i && i.status === QueueItemStatus.FAILED
-  );
-
-  const offlineItems = items.filter(
-    (i) => i && i.status === QueueItemStatus.OFFLINE
-  );
-
-  const completedItems = items.filter(
-    (i) => i && i.status === QueueItemStatus.COMPLETED
-  );
+  const { processingItems, pendingItems, failedItems, completedItems } =
+    filterQueueItems(items);
+  const attentionCount = getAttentionCount(items);
 
   useEffect(() => {
-    const numPending = items.filter(
-      (i) => i && i.status !== QueueItemStatus.COMPLETED
-    ).length;
-
     navigation.setOptions({
-      tabBarBadge: numPending > 0 ? numPending : undefined,
+      tabBarBadge: attentionCount > 0 ? attentionCount : undefined,
     });
-  }, [items]);
+  }, [attentionCount]);
 
   useEffect(() => {
     const unsubscribe = navigation.addListener("focus", loadQueueItems);
@@ -52,6 +32,11 @@ const QueueScreen = () => {
   }, [navigation]);
 
   useEventListener(queueEventEmitter, QueueEvents.UPDATED, loadQueueItems);
+
+  const handleClearOldCache = async () => {
+    await clearOldCache();
+    await loadQueueItems();
+  };
 
   const hasNoItems = items.length === 0;
 
@@ -78,22 +63,32 @@ const QueueScreen = () => {
                 All actions have been processed successfully. Create a new
                 action to see it here.
               </Text>
+              <Pressable
+                onPress={handleClearOldCache}
+                className="mt-8 bg-gray-100 px-4 py-2 rounded-lg"
+              >
+                <Text className="text-sm text-gray-600">
+                  Clear Old Cache Data
+                </Text>
+              </Pressable>
             </View>
           ) : (
             <View className="flex-1 py-4">
-              {pendingItems.length > 0 && (
-                <QueueSection
-                  title="Pending"
-                  items={pendingItems}
-                  onRetry={retryItems}
-                />
-              )}
-
               {processingItems.length > 0 && (
                 <QueueSection
                   title="Processing"
                   items={processingItems}
                   onRetry={retryItems}
+                  showRetry={false}
+                />
+              )}
+
+              {pendingItems.length > 0 && (
+                <QueueSection
+                  title="Pending"
+                  items={pendingItems}
+                  onRetry={retryItems}
+                  showRetry={true}
                 />
               )}
 
@@ -106,16 +101,7 @@ const QueueScreen = () => {
                 />
               )}
 
-              {offlineItems.length > 0 && (
-                <QueueSection
-                  title="Offline"
-                  items={offlineItems}
-                  onRetry={retryItems}
-                  showRetry={true}
-                />
-              )}
-
-              {completedItems && completedItems.length > 0 && (
+              {completedItems.length > 0 && (
                 <QueueSection
                   title="Completed"
                   items={completedItems}
@@ -124,6 +110,15 @@ const QueueScreen = () => {
                   isCollapsible={true}
                 />
               )}
+
+              <Pressable
+                onPress={handleClearOldCache}
+                className="mt-8 bg-gray-100 px-4 py-2 rounded-lg self-center"
+              >
+                <Text className="text-sm text-gray-600">
+                  Clear Old Cache Data
+                </Text>
+              </Pressable>
             </View>
           )}
         </ScrollView>
