@@ -4,7 +4,7 @@
 
 - ⏳ Update batch fetch queries to retrieve only necessary fields
   - ⏳ Determine necessary fields for the following collections: Collectors, Actions, User
-- ⏳ Update collectors fetch to retrieve all entries, not just the first 100
+- ✅ [QUAN] Update collectors fetch to retrieve all entries, not just the first 100
 
 ## Attestation Form Improvements
 
@@ -91,12 +91,6 @@
   - ✅ Add proper typing for BatchData
   - ✅ Ensure actions are available in queue items
 
-Previous items...
-- ✅ Remove completed tasks from the queue after 30 days
-- ✅ Fix "Retry all" button functionality
-- ✅ Make queue list scrollable
-- ✅ Display completed items section if there are any
-
 ## Auth Improvements ✅
 
 - ✅ Offline: Allow users to login with previously used credentials
@@ -139,7 +133,7 @@ Previous items...
 ### QR Scanner
 
 - ➡️ Add voice guidance for scanning process (**FUTURE**)
-- ⏳ Add haptic feedback for successful scans
+- ✅ Add haptic feedback for successful scans
 
 --------------------------------------------------
 --------------------------------------------------
@@ -155,45 +149,20 @@ Previous items...
 
 ### Critical
 
-1. ✅ Session Management
-   - ✅ Fix session persistence (don't sign out on app close)
-   - ✅ Only sign out on explicit user action
-   - ✅ Create AuthContext to centralize authentication logic
-   - ✅ Implement secure credential storage with expo-secure-store
-   - ✅ Add offline authentication support
-   - ✅ Ensure proper integration with existing queue system
-2. Batch Fetcher Improvements
-   - Update collectors fetch to retrieve all entries
+1. Batch Fetcher Improvements
+   - ⏳ Update batch fetch queries to retrieve only necessary fields
+   - ✅ Update collectors fetch to retrieve all entries
 
 ### Important
 
-1. Queue System
-   - Complete the Queue page as per design
-   - Make queue list scrollable
-   - Fix "Retry all" button functionality
-   - Display completed items section
-   - Remove completed tasks after 30 days
+1. iOS Form Issues (High Impact)
+   - ⏳ Fix QR code button crash
+   - ⏳ Update QRCodeTextInput design consistency
+   - ⏳ Address idle form error issue
+   - ⏳ Remove bottom padding of action selection page
 
 ### Nice to have
 
-(Need to sort this section more, please address the critical and important ones)
-2. iOS Form Issues (High Impact)
-
-- ✅ Fix material weights handling
-- ✅ Fix keyboard hiding inputs issue
-- ✅ Make inputs easier to focus by tapping parent containers
-  - ✅ Weight inputs
-  - ✅ Code inputs
-- ✅ Fix modal spacing in TypeInformationModal
-- ✅ Fix QRTextInput uppercase handling (moved to onBlur)
-- ⏳ Fix QR code button crash
-- ⏳ Update QRCodeTextInput design consistency
-- ⏳ Address idle form error issue
-
-3. Camera Permissions & Accessibility
-   - ✅ Implement permission handling and context
-     - ✅ Created CameraEducationalModal with clear explanation
-     - ✅ Added proper permission flow with skip option
-     - ✅ Fixed issue with users getting stuck on permission screen
-     - ✅ Improved UX with educational content before system prompt
-   - ✅ Add haptic feedback for successful scans
+1. Queue System Testing
+   - ⏳ Complete test scenarios for queue storage separation
+   - ⏳ Implement toast notification system
