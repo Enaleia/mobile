@@ -34,7 +34,14 @@ This is an [Expo](https://expo.dev) project created with [`create-expo-app`](htt
 
 Make sure you have a .env file with the following content:
 ```
-   EXPO_PUBLIC_API_URL = https://hq.enaleia.dev
+   EXPO_PUBLIC_API_URL=https://hq.enaleia-hub.com/
+
+   # Uncomment the following line for dev. environment
+   # NODE_ENV=development
+
+   QUEUE_PROCESSOR_INTERVAL=10000
+   EXPO_PUBLIC_CACHE_KEY=enaleia-cache-v0
+   EXPO_PUBLIC_QUEUE_CACHE_KEY=enaleia-queue-v0
 ```
 
 ## Get started
