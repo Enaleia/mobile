@@ -4,7 +4,7 @@
   "version": "1.0.0",
   "scripts": {
     "start": "expo start",
-    "start-new": "EXPO_PUBLIC_CACHE_KEY=$(date +%s) expo start",
+    "start-new": "EXPO_PUBLIC_CACHE_KEY=$(date +%s) EXPO_PUBLIC_QUEUE_CACHE_KEY=$(date +%s) expo start",
     "reset-project": "node ./scripts/reset-project.js",
     "locales:compile": "lingui compile --typescript",
     "locales:extract": "lingui extract",
