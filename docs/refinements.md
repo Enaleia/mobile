@@ -44,13 +44,56 @@
   - ✅ When "Skip for Now": close modal and scanner
   - ✅ On subsequent QR button clicks: check permission status first
 
-## Queue System Improvements ✅
+## Queue System Improvements
 
+### Queue Storage Separation ✅
+- ✅ Separate completed items into dedicated storage
+  - ✅ Create new AsyncStorage keys for active and completed queues
+  - ✅ Update QueueContext to handle dual storage
+  - ✅ Add completion timestamp to completed items
+  - ✅ Implement 30-day expiration cleanup
+  - ✅ Add button to clear old cache data
+  - ✅ Update related services:
+    - ✅ Update backgroundTaskManager to use new storage
+    - ✅ Update queueProcessor to handle completed items
+    - ✅ Fix storage key imports across files
+    - ✅ Update new action form to use active queue
+  - ⏳ Test scenarios:
+    - ⏳ Items moving to completed queue on completion
+    - ⏳ Expired items cleanup (30+ days old)
+    - ⏳ Loading performance with large completed queue
+    - ⏳ Background task handling of separate queues
+    - ⏳ Network recovery with separate queues
+    - ⏳ Memory usage with separate queues
+    - ⏳ Old cache cleanup functionality
+
+### Queue Page Redesign 🟡
+- ✅ Create queue utils for better status categorization
+  - ✅ Move status checks to utils/queue.ts
+  - ✅ Add helper functions for Processing/Pending/Failed states
+  - ✅ Refactor existing queue logic to use new helpers
+- 🟡 Update UI Components
+  - ✅ Create ProcessingPill with Reanimated pulse animation
+  - ✅ Add red badge component for pending items count
+  - ✅ Update QueueSection to use new categorization
+  - ✅ Implement new section order (Processing > Pending > Failed > Completed)
+- ⏳ Add toast notification system
+  - ⏳ Create toast component for 5+ pending items
+  - ⏳ Add persistence for toast dismissal
+  - ⏳ Implement toast visibility logic
+
+### Queue System Fixes ✅
+- ✅ Fix token expiration handling
+  - ✅ Redirect to login when token expires
+  - ✅ Update batchFetcher to handle token expiration gracefully
+- ✅ Fix actions not showing in queue
+  - ✅ Update useActions hook to handle query state properly
+  - ✅ Add proper typing for BatchData
+  - ✅ Ensure actions are available in queue items
+
+Previous items...
 - ✅ Remove completed tasks from the queue after 30 days
 - ✅ Fix "Retry all" button functionality
-  - ✅ Added proper API connection checks
-  - ✅ Added token validation/refresh before processing
-  - ✅ Better error handling for offline/auth states
 - ✅ Make queue list scrollable
 - ✅ Display completed items section if there are any
 
@@ -70,6 +113,26 @@
   - ✅ Improved error messages to be more user-friendly
   - ✅ Added visual feedback with red borders on empty required fields
   - ✅ Clear error message when user starts typing
+- 🟡 Token Refresh Improvements
+  - ✅ Disable auto-refresh by default for better offline support
+  - ✅ Add network-aware token refresh
+  - ✅ Refresh tokens when coming back online
+  - ⏳ Test reauthorization behavior in various scenarios:
+    - ⏳ Test automatic reauthorization when network recovers
+    - ⏳ Test reauthorization in background task
+    - ⏳ Test reauthorization with invalid stored credentials
+    - ⏳ Test reauthorization when API is unreachable
+    - ⏳ Test reauthorization with expired token
+    - ⏳ Test queue processing after successful reauthorization
+    - ⏳ Test queue processing after failed reauthorization
+    - ⏳ Test reauthorization while processing queue items
+    - ⏳ Test reauthorization with multiple devices
+  - ⏳ Test token refresh behavior in various scenarios:
+    - ⏳ Going offline while logged in
+    - ⏳ Coming back online with valid token
+    - ⏳ Coming back online with expired token
+    - ⏳ Token refresh while using the app
+    - ⏳ Multiple devices logged in simultaneously
 
 ## Accessibility Improvements ⏳
 
@@ -122,6 +185,7 @@
   - ✅ Weight inputs
   - ✅ Code inputs
 - ✅ Fix modal spacing in TypeInformationModal
+- ✅ Fix QRTextInput uppercase handling (moved to onBlur)
 - ⏳ Fix QR code button crash
 - ⏳ Update QRCodeTextInput design consistency
 - ⏳ Address idle form error issue
