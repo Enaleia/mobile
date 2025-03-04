@@ -30,6 +30,13 @@ The Enaleia Hub mobile app is designed with the users’ physical and digital co
 
 This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
 
+## Environment
+
+Make sure you have a .env file with the following content:
+```
+   EXPO_PUBLIC_API_URL = https://hq.enaleia.dev
+```
+
 ## Get started
 
 1. Install dependencies
