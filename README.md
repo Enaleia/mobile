@@ -41,7 +41,9 @@ Make sure you have a .env file with the following content:
 
    QUEUE_PROCESSOR_INTERVAL=10000
    EXPO_PUBLIC_CACHE_KEY=enaleia-cache-v0
-   EXPO_PUBLIC_QUEUE_CACHE_KEY=enaleia-queue-v0
+   EXPO_PUBLIC_BATCH_CACHE_KEY=@enaleia-batch
+   EXPO_PUBLIC_ACTIVE_QUEUE_CACHE_KEY=@enaleia-queue/active
+   EXPO_PUBLIC_COMPLETED_QUEUE_CACHE_KEY=@enaleia-queue/completed
 ```
 
 ## Get started
