@@ -90,7 +90,6 @@ const QRCodeScanner: React.FC<QRCodeScannerProps> = ({ onScan, onClose }) => {
         isVisible={showEducationalModal}
         onClose={() => setShowEducationalModal(false)}
         onRequestPermission={handleRequestPermission}
-        onSkip={onClose}
       />
     );
   }
@@ -101,7 +100,6 @@ const QRCodeScanner: React.FC<QRCodeScannerProps> = ({ onScan, onClose }) => {
         isVisible={showEducationalModal}
         onClose={() => setShowEducationalModal(false)}
         onRequestPermission={handleRequestPermission}
-        onSkip={onClose}
       />
       <View
         className="flex-1 flex-col justify-center"

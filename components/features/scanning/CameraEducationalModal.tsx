@@ -24,14 +24,12 @@ interface CameraEducationalModalProps {
   isVisible: boolean;
   onClose: () => void;
   onRequestPermission: () => void;
-  onSkip: () => void;
 }
 
 export function CameraEducationalModal({
   isVisible,
   onClose,
   onRequestPermission,
-  onSkip,
 }: CameraEducationalModalProps) {
   const handleDismiss = async () => {
     onClose();
@@ -44,7 +42,6 @@ export function CameraEducationalModal({
   };
 
   const handleSkip = () => {
-    onSkip();
     onClose();
   };
 
