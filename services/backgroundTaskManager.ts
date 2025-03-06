@@ -184,12 +184,19 @@ export class BackgroundTaskManager {
         SECURE_STORE_KEYS.AUTH_TOKEN,
         loginResult.access_token
       );
-      if (loginResult.expires_at) {
-        await SecureStore.setItemAsync(
-          SECURE_STORE_KEYS.TOKEN_EXPIRY,
-          new Date(loginResult.expires_at).toISOString()
-        );
-      }
+
+      // Set expiry using the actual expiry value from login result
+      const expiryDate = loginResult.expires_at
+        ? new Date(loginResult.expires_at)
+        : loginResult.expires
+        ? new Date(loginResult.expires)
+        : new Date(Date.now() + 24 * 24 * 60 * 60 * 1000); // Fallback to 24 days
+
+      await SecureStore.setItemAsync(
+        SECURE_STORE_KEYS.TOKEN_EXPIRY,
+        expiryDate.toISOString()
+      );
+
       if (loginResult.refresh_token) {
         await SecureStore.setItemAsync(
           SECURE_STORE_KEYS.REFRESH_TOKEN,
