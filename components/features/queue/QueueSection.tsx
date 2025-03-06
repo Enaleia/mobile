@@ -26,6 +26,10 @@ const QueueSection = ({
 
   const showBadge = items.length > 0;
 
+  const itemsSortedByMostRecent = items.sort(
+    (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
+  );
+
   const handleRetry = async () => {
     setIsRetrying(true);
     try {
@@ -77,7 +81,7 @@ const QueueSection = ({
       </Pressable>
       {!isCollapsed && (
         <View className="rounded-lg overflow-hidden border border-gray-200">
-          {items.map((item) => (
+          {itemsSortedByMostRecent.map((item) => (
             <QueuedAction key={item.localId} item={item} />
           ))}
         </View>
