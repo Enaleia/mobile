@@ -49,7 +49,7 @@ export function CameraEducationalModal({
     <ModalBase isVisible={isVisible} onClose={onClose}>
       <View className="p-4 space-y-6">
         <View className="items-center">
-          <View className="bg-blue-50 rounded-full p-4 mb-4">
+          <View className="bg-blue-50 rounded-3xl p-4 mb-4">
             <Ionicons name="camera" size={24} color="#3B82F6" />
           </View>
           <Text className="text-2xl font-dm-bold text-enaleia-black tracking-tighter text-center mb-2">
@@ -64,7 +64,7 @@ export function CameraEducationalModal({
         <View className="space-y-4">
           {CAMERA_POINTS.map((point) => (
             <View className="flex-row items-start space-x-3" key={point.title}>
-              <View className="bg-green-50 rounded-full p-2 mt-1">
+              <View className="bg-green-50 rounded-3xl p-2 mt-1">
                 <Ionicons name={point.icon as any} size={20} color="#10B981" />
               </View>
               <View className="flex-1">
@@ -82,7 +82,7 @@ export function CameraEducationalModal({
         <View className="space-y-3 pt-4">
           <Pressable
             onPress={handleRequestPermission}
-            className="bg-blue-ocean p-3 rounded-full"
+            className="bg-blue-ocean p-3 rounded-3xl"
           >
             <Text className="text-base font-dm-bold tracking-tight text-white text-center">
               Enable Camera

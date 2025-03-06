@@ -31,10 +31,10 @@ const SelectMaterialChip = React.memo(
         accessibilityLabel={`Select ${label}`}
         accessibilityRole="button"
         accessibilityHint={`Double tap to select ${label} material`}
-        className={`bg-white min-w-[72px] px-4 py-3 rounded-3xl flex flex-row items-center justify-center mx-1 my-1 border-[1.5px] border-grey-3`}
+        className="bg-white w-full px-4 py-3 rounded-3xl flex flex-row items-center justify-center border-[1.5px] border-grey-3"
         onPress={handlePress}
       >
-        <Text className="text-base font-dm-bold text-enaleia-black tracking-tighter">
+        <Text className="text-base font-dm-bold text-enaleia-black tracking-tighter text-center">
           {label}
         </Text>
       </Pressable>
@@ -60,17 +60,30 @@ const SelectMaterial = React.memo(
         </Text>
         <View className="p-1 mt-5">
           <View
-            className="flex-row flex-wrap gap-2 justify-center"
+            style={{
+              flexDirection: 'row',
+              flexWrap: 'wrap',
+              marginHorizontal: -4,
+              width: '100%'
+            }}
             accessibilityRole="none"
             accessibilityLabel="Available materials"
           >
             {materials.map(({ label, value }) => (
-              <SelectMaterialChip
-                key={value}
-                label={label as MaterialNames}
-                value={value}
-                handleAddMaterial={handleAddMaterial}
-              />
+              <View 
+                key={value} 
+                style={{
+                  width: '50%',
+                  paddingHorizontal: 4,
+                  marginBottom: 8
+                }}
+              >
+                <SelectMaterialChip
+                  label={label as MaterialNames}
+                  value={value}
+                  handleAddMaterial={handleAddMaterial}
+                />
+              </View>
             ))}
           </View>
         </View>
@@ -126,7 +139,7 @@ export default function AddMaterialModal({
           }}
           keyboardShouldPersistTaps="handled"
         >
-          <View className="bg-slate-50 p-6 rounded-3xl relative">
+          <View className="bg-slate-50 p-5 rounded-3xl relative">
             <SelectMaterial
               materials={materials}
               handleAddMaterial={handleAddMaterial}

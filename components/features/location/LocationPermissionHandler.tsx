@@ -1,6 +1,7 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useCurrentLocation } from "@/hooks/useCurrentLocation";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { LocationEducationalModal } from "./LocationEducationalModal";
 
 const LOCATION_INTRO_KEY = "@location_intro_seen";
 
@@ -17,6 +18,7 @@ export function LocationPermissionHandler({
     permissionStatus,
     requestPermission,
   } = useCurrentLocation();
+  const [showEducationalModal, setShowEducationalModal] = useState(false);
 
   useEffect(() => {
     checkFirstTime();
@@ -25,14 +27,28 @@ export function LocationPermissionHandler({
   const checkFirstTime = async () => {
     const hasSeenIntro = await AsyncStorage.getItem(LOCATION_INTRO_KEY);
     if (!hasSeenIntro && permissionStatus !== "granted") {
-      const { status } = await requestPermission();
-      if (status === "granted") {
-        onPermissionGranted?.();
-      } else {
-        onPermissionDenied?.();
-      }
+      setShowEducationalModal(true);
     }
   };
 
-  return null; // This component doesn't render anything
+  const handleRequestPermission = async () => {
+    const { status } = await requestPermission();
+    if (status === "granted") {
+      onPermissionGranted?.();
+    } else {
+      onPermissionDenied?.();
+    }
+  };
+
+  return (
+    <LocationEducationalModal
+      isVisible={showEducationalModal}
+      onClose={() => setShowEducationalModal(false)}
+      onRequestLocation={handleRequestPermission}
+      onSkip={() => {
+        setShowEducationalModal(false);
+        onPermissionDenied?.();
+      }}
+    />
+  );
 } 

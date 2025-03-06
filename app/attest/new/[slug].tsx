@@ -426,7 +426,7 @@ const NewActionScreen = () => {
             </form.Subscribe>
 
             {currentAction?.category === "Collection" && (
-              <View className="mt-1 mb-8">
+              <View className="mb-8">
                 <Text className="text-[18px] font-dm-regular text-enaleia-black tracking-tighter mb-2">
                   Collector ID *
                 </Text>
@@ -446,7 +446,7 @@ const NewActionScreen = () => {
             )}
             <form.Field name="incomingMaterials">
               {(field) => (
-                <View className="mb-6">
+                <View className="mb-8">
                   <MaterialSection
                     materials={materialsData}
                     category="incoming"
@@ -464,7 +464,7 @@ const NewActionScreen = () => {
             {currentAction?.name !== "Manufacturing" && (
               <form.Field name="outgoingMaterials">
                 {(field) => (
-                  <View className="mb-6">
+                  <View className="mb-8">
                     <MaterialSection
                       materials={materialsData}
                       category="outgoing"
@@ -482,7 +482,7 @@ const NewActionScreen = () => {
             )}
 
             {currentAction?.name === "Manufacturing" && (
-              <View className="mt-10 rounded-lg p-2 border-[1.5px] border-slate-200 bg-white">
+              <View className="mt-10">
                 <View className="flex-row items-center space-x-0.5 mb-4">
                   <Text className="text-xl font-dm-regular text-enaleia-black tracking-tighter">
                     Manufacturing information
@@ -491,8 +491,8 @@ const NewActionScreen = () => {
 
                 <FormSection>
                   <View className="space-y-0.5">
-                    <Text className="text-base font-dm-medium text-enaleia-black tracking-tighter mb-2">
-                      Choose product
+                    <Text className="text-base font-dm-bold text-enaleia-black tracking-tighter mb-2">
+                      Product
                     </Text>
                     <form.Field name="manufacturing.product">
                       {(field) => {
@@ -508,14 +508,14 @@ const NewActionScreen = () => {
                           <>
                             {productsError && (
                               <Text className="text-sm text-red-500 mb-2">
-                                Failed to load products
+                                Failed to load products list
                               </Text>
                             )}
                             <SelectField
                               value={field.state.value}
                               onChange={(value) => field.handleChange(value)}
                               options={options}
-                              placeholder="Choose a product"
+                              placeholder="Select product"
                               isLoading={productsLoading}
                               error={productsError?.toString()}
                               disabled={productsLoading || !!productsError}
@@ -525,20 +525,20 @@ const NewActionScreen = () => {
                       }}
                     </form.Field>
                   </View>
-                  <View className="flex-row space-x-2">
+                  <View className="space-y-4">
                     <form.Field name="manufacturing.quantity">
                       {(field) => (
-                        <View className="flex-1">
-                          <Text className="text-base font-dm-medium text-enaleia-black tracking-tighter mb-2">
-                            Quantity
+                        <View className="w-full">
+                          <Text className="text-base font-dm-bold text-enaleia-black tracking-tighter mb-2">
+                            Batch Quantity
                           </Text>
                           <TextInput
                             value={field.state.value?.toString() || ""}
                             onChangeText={(text) => {
                               field.handleChange(Number(text));
                             }}
-                            className="rounded-md px-3 py-3 h-12 bg-white border-[1.5px] border-slate-200 focus:border-primary-dark-blue"
-                            placeholder="Quantity"
+                            className="rounded-3xl px-4 py-3 h-14 bg-white border-[1.5px] border-slate-200 focus:border-primary-dark-blue w-full"
+                            placeholder="0"
                             inputMode="numeric"
                           />
                         </View>
@@ -549,8 +549,9 @@ const NewActionScreen = () => {
                       children={(field) => (
                         <DecimalInput
                           field={field}
-                          label="Weight in kg"
-                          placeholder="Weight in kg"
+                          label="Weight per item"
+                          placeholder="Weight per item"
+                          fullWidth
                         />
                       )}
                     />
