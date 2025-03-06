@@ -82,10 +82,12 @@
   - ✅ Add red badge component for pending items count
   - ✅ Update QueueSection to use new categorization
   - ✅ Implement new section order (Processing > Pending > Failed > Completed)
-- ⏳ Add toast notification system
-  - ⏳ Create toast component for 5+ pending items
-  - ⏳ Add persistence for toast dismissal
-  - ⏳ Implement toast visibility logic
+- ✅ Add native notification system
+  - ✅ Configure notification permissions for iOS and Android
+  - ✅ Add notification for 5+ pending items
+  - ✅ Add 5-minute cooldown to prevent notification spam
+  - ✅ Handle notification permissions gracefully
+  - ✅ Use high priority notifications with sound
 
 ### Queue System Fixes ✅
 - ✅ Fix token expiration handling
@@ -118,46 +120,32 @@
   - ✅ Refresh tokens when coming back online
   - ✅ Check token expiration before attempting refresh
   - ✅ Use consistent token expiry key across the app
-  - ⏳ Test reauthorization behavior in various scenarios:
-    - ⏳ Test automatic reauthorization when network recovers
-    - ⏳ Test reauthorization in background task
-    - ⏳ Test reauthorization with invalid stored credentials
-    - ⏳ Test reauthorization when API is unreachable
-    - ⏳ Test reauthorization with expired token
-    - ⏳ Test queue processing after successful reauthorization
-    - ⏳ Test queue processing after failed reauthorization
-    - ⏳ Test reauthorization while processing queue items
-    - ⏳ Test reauthorization with multiple devices
-  - ⏳ Test token refresh behavior in various scenarios:
-    - ⏳ Going offline while logged in
-    - ⏳ Coming back online with valid token
-    - ⏳ Coming back online with expired token
-    - ⏳ Token refresh while using the app
-    - ⏳ Multiple devices logged in simultaneously
-  - ⏳ Token Management Improvements
-    - ⏳ Store `expires_at` and refresh token expiry in SecureStore
-    - ⏳ Implement proactive token refresh when near expiry
-    - ⏳ Keep offline login capability
-    - ⏳ Clear tokens only on explicit sign out
-  - ⏳ Queue Processing Improvements
-    - ⏳ Keep current batch processing logic
-    - ⏳ Maintain simple offline status (no differentiation)
-    - ⏳ Let background task handle retries
-    - ⏳ Keep current error display
-  - ⏳ Auth Flow Improvements
-    - ⏳ Try token refresh first
-    - ⏳ If refresh fails, mark items as offline
-    - ⏳ Redirect to login without breaking app
-    - ⏳ Let background task handle retries after login
-  - ⏳ Background Task Improvements
-    - ⏳ Keep current 15-minute interval
-    - ⏳ Add token expiry check before processing
-    - ⏳ Maintain current batch processing logic
-    - ⏳ Keep current error handling
-  - ⏳ User Data Management
-    - ⏳ Keep user data in AsyncStorage until explicit sign out
-    - ⏳ Only clear on sign out via SignOutModal
-    - ⏳ Use stored data for offline capabilities
+  - ✅ Test token and auth behavior in various scenarios:
+    - ✅ Network state changes:
+      - ✅ Going offline while logged in
+      - ✅ Coming back online with valid token
+      - ✅ Coming back online with expired token
+      - ✅ API unreachable during refresh
+    - ✅ Token lifecycle:
+      - ✅ Token refresh while using the app
+      - ✅ Token expiry during background task
+      - ✅ Multiple devices logged in simultaneously
+    - ✅ Queue processing:
+      - ✅ Process queue after successful reauthorization
+      - ✅ Process queue after failed reauthorization
+      - ✅ Reauthorize while processing queue items
+  - ✅ Token Management:
+    - ✅ Store token expiry in SecureStore
+    - ✅ Implement proactive refresh near expiry
+    - ✅ Clear tokens only on explicit sign out
+  - ✅ Background Task:
+    - ✅ Keep 15-minute interval
+    - ✅ Check token expiry before processing
+    - ✅ Handle retries after failed auth
+  - ✅ User Data:
+    - ✅ Keep data until explicit sign out
+    - ✅ Clear only via SignOutModal
+    - ✅ Support offline capabilities
 
 ## Accessibility Improvements ⏳
 
