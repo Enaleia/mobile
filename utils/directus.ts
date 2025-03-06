@@ -102,7 +102,7 @@ export const createDirectusClient = () => {
         authentication("json", {
           storage,
           autoRefresh: true,
-          msRefreshBeforeExpires: 24 * 60 * 60 * 1000, // Refresh 24 hours before expiry
+          msRefreshBeforeExpires: 60 * 60 * 1000, // Refresh 1 hour before expiry
         })
       )
       .with(rest({ credentials: "include" }));
