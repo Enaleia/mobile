@@ -58,16 +58,21 @@
     - ✅ Update queueProcessor to handle completed items
     - ✅ Fix storage key imports across files
     - ✅ Update new action form to use active queue
-  - ⏳ Test scenarios:
-    - ⏳ Items moving to completed queue on completion
-    - ⏳ Expired items cleanup (30+ days old)
-    - ⏳ Loading performance with large completed queue
-    - ⏳ Background task handling of separate queues
-    - ⏳ Network recovery with separate queues
-    - ⏳ Memory usage with separate queues
-    - ⏳ Old cache cleanup functionality
+  - ✅ Test scenarios:
+    - ✅ Items moving to completed queue on completion
+    - ✅ Loading performance with large completed queue
+    - ✅ Background task handling of separate queues
+    - ✅ Network recovery with separate queues
+    - ✅ Memory usage with separate queues
+    - ✅ Old cache cleanup functionality
+  - ✅ Queue Processing Improvements
+    - ✅ Verify items are saved before processing
+    - ✅ Check both active and completed queues for verification
+    - ✅ Better error handling and logging
+    - ✅ Process items based on app state (foreground/background)
 
 ### Queue Page Redesign 🟡
+
 - ✅ Create queue utils for better status categorization
   - ✅ Move status checks to utils/queue.ts
   - ✅ Add helper functions for Processing/Pending/Failed states
@@ -111,6 +116,8 @@
   - ✅ Disable auto-refresh by default for better offline support
   - ✅ Add network-aware token refresh
   - ✅ Refresh tokens when coming back online
+  - ✅ Check token expiration before attempting refresh
+  - ✅ Use consistent token expiry key across the app
   - ⏳ Test reauthorization behavior in various scenarios:
     - ⏳ Test automatic reauthorization when network recovers
     - ⏳ Test reauthorization in background task
@@ -127,6 +134,30 @@
     - ⏳ Coming back online with expired token
     - ⏳ Token refresh while using the app
     - ⏳ Multiple devices logged in simultaneously
+  - ⏳ Token Management Improvements
+    - ⏳ Store `expires_at` and refresh token expiry in SecureStore
+    - ⏳ Implement proactive token refresh when near expiry
+    - ⏳ Keep offline login capability
+    - ⏳ Clear tokens only on explicit sign out
+  - ⏳ Queue Processing Improvements
+    - ⏳ Keep current batch processing logic
+    - ⏳ Maintain simple offline status (no differentiation)
+    - ⏳ Let background task handle retries
+    - ⏳ Keep current error display
+  - ⏳ Auth Flow Improvements
+    - ⏳ Try token refresh first
+    - ⏳ If refresh fails, mark items as offline
+    - ⏳ Redirect to login without breaking app
+    - ⏳ Let background task handle retries after login
+  - ⏳ Background Task Improvements
+    - ⏳ Keep current 15-minute interval
+    - ⏳ Add token expiry check before processing
+    - ⏳ Maintain current batch processing logic
+    - ⏳ Keep current error handling
+  - ⏳ User Data Management
+    - ⏳ Keep user data in AsyncStorage until explicit sign out
+    - ⏳ Only clear on sign out via SignOutModal
+    - ⏳ Use stored data for offline capabilities
 
 ## Accessibility Improvements ⏳
 
