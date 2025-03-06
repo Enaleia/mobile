@@ -9,7 +9,7 @@ import { processProducts } from "@/types/product";
 import { batchFetchData } from "@/utils/batchFetcher";
 import { Ionicons } from "@expo/vector-icons";
 import { onlineManager, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Text, View, Pressable } from "react-native";
+import { Text, View, Pressable, ScrollView } from "react-native";
 import React, { useEffect } from "react";
 import { DirectusCollector } from "@/types/collector";
 import { DirectusProduct } from "@/types/product";
@@ -103,36 +103,41 @@ function Home() {
         isAuthError={isAuthError}
       />
 
-      {__DEV__ && (
-        <View>
-          <Pressable
-            onPress={async () => {
-              console.log("Current user:", user);
-            }}
-            className="p-3 my-1 bg-blue-500 rounded"
-          >
-            <Text className="text-white text-center">Debug: Show User</Text>
-          </Pressable>
+      <ScrollView
+        className="flex-1"
+        showsVerticalScrollIndicator={false}
+      >
+        {__DEV__ && (
+          <View>
+            <Pressable
+              onPress={async () => {
+                console.log("Current user:", user);
+              }}
+              className="p-3 my-1 bg-blue-500 rounded"
+            >
+              <Text className="text-white text-center">Debug: Show User</Text>
+            </Pressable>
+          </View>
+        )}
+        <View className="flex-row items-start justify-between pb-2 font-dm-regular">
+          <View className="flex-row items-center justify-center gap-0.5">
+            <Ionicons name="person-circle-outline" size={24} color="#0D0D0D" />
+            <Text className="text-sm font-bold text-enaleia-black">
+              {user?.first_name || "User"}
+            </Text>
+          </View>
+          <NetworkStatus />
         </View>
-      )}
-      <View className="flex-row items-start justify-between pb-2 font-dm-regular">
-        <View className="flex-row items-center justify-center gap-0.5">
-          <Ionicons name="person-circle-outline" size={24} color="#0D0D0D" />
-          <Text className="text-sm font-bold text-enaleia-black">
-            {user?.first_name || "User"}
+        <View className="mt-4">
+          <Text className="text-3xl font-dm-bold tracking-[-1.5px] mb-2 text-enaleia-black">
+            Hello, what action will you be doing today?
           </Text>
+          <ActionSelection
+            actions={groupedActions ?? undefined}
+            isLoading={isLoading && !isAuthError}
+          />
         </View>
-        <NetworkStatus />
-      </View>
-      <View className="flex-1 mt-4">
-        <Text className="text-3xl font-dm-bold tracking-[-1.5px] mb-2 text-enaleia-black">
-          Hello, what action will you be doing today?
-        </Text>
-        <ActionSelection
-          actions={groupedActions ?? undefined}
-          isLoading={isLoading && !isAuthError}
-        />
-      </View>
+      </ScrollView>
     </SafeAreaContent>
   );
 }
