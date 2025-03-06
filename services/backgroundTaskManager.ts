@@ -1,15 +1,22 @@
-import * as Battery from "expo-battery";
-import * as TaskManager from "expo-task-manager";
-import * as BackgroundFetch from "expo-background-fetch";
-import NetInfo, { NetInfoState } from "@react-native-community/netinfo";
-import { QueueItem, QueueItemStatus } from "@/types/queue";
 import { QueueEvents, queueEventEmitter } from "@/services/events";
-import AsyncStorage from "@react-native-async-storage/async-storage";
 import { processQueueItems as processItems } from "@/services/queueProcessor";
-import { ensureValidToken } from "@/utils/directus";
+import { QueueItem, QueueItemStatus } from "@/types/queue";
+import { directus, ensureValidToken } from "@/utils/directus";
+import { getActiveQueue } from "@/utils/queueStorage";
+import NetInfo from "@react-native-community/netinfo";
+import * as BackgroundFetch from "expo-background-fetch";
+import * as Battery from "expo-battery";
 import * as SecureStore from "expo-secure-store";
-import { directus } from "@/utils/directus";
-import { getActiveQueue, updateActiveQueue } from "@/utils/queueStorage";
+import * as TaskManager from "expo-task-manager";
+
+// Secure storage keys
+const SECURE_STORE_KEYS = {
+  AUTH_TOKEN: "auth_token",
+  REFRESH_TOKEN: "refresh_token",
+  TOKEN_EXPIRY: "token_expiry",
+  USER_EMAIL: "user_email",
+  USER_PASSWORD: "user_password",
+};
 
 const BACKGROUND_SYNC_TASK = "BACKGROUND_SYNC_TASK";
 const LOW_BATTERY_THRESHOLD = 0.2; // 20%
@@ -161,7 +168,7 @@ export class BackgroundTaskManager {
 
   private async reauthorizeWithStoredCredentials(): Promise<boolean> {
     try {
-      const email = await SecureStore.getItemAsync("last_logged_in_user");
+      const email = await SecureStore.getItemAsync("user_email");
       const password = await SecureStore.getItemAsync("user_password");
 
       if (!email || !password) {
@@ -169,7 +176,27 @@ export class BackgroundTaskManager {
         return false;
       }
 
-      await directus.login(email, password);
+      const loginResult = await directus.login(email, password);
+      if (!loginResult.access_token) return false;
+
+      // Store the new tokens and expiry
+      await SecureStore.setItemAsync(
+        SECURE_STORE_KEYS.AUTH_TOKEN,
+        loginResult.access_token
+      );
+      if (loginResult.expires_at) {
+        await SecureStore.setItemAsync(
+          SECURE_STORE_KEYS.TOKEN_EXPIRY,
+          new Date(loginResult.expires_at).toISOString()
+        );
+      }
+      if (loginResult.refresh_token) {
+        await SecureStore.setItemAsync(
+          SECURE_STORE_KEYS.REFRESH_TOKEN,
+          loginResult.refresh_token
+        );
+      }
+
       return true;
     } catch (error) {
       console.error("Failed to reauthorize with stored credentials:", error);
