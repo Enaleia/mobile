@@ -31,10 +31,10 @@ const SelectMaterialChip = React.memo(
         accessibilityLabel={`Select ${label}`}
         accessibilityRole="button"
         accessibilityHint={`Double tap to select ${label} material`}
-        className={`bg-white min-w-[60px] px-3 py-2 rounded-3xl flex flex-row items-center justify-center mx-1 my-1 border-[1.5px] border-grey-3`}
+        className={`bg-white min-w-[72px] px-4 py-3 rounded-3xl flex flex-row items-center justify-center mx-1 my-1 border-[1.5px] border-grey-3`}
         onPress={handlePress}
       >
-        <Text className="text-sm font-dm-bold text-enaleia-black tracking-tighter">
+        <Text className="text-base font-dm-bold text-enaleia-black tracking-tighter">
           {label}
         </Text>
       </Pressable>
@@ -126,7 +126,7 @@ export default function AddMaterialModal({
           }}
           keyboardShouldPersistTaps="handled"
         >
-          <View className="bg-slate-50 p-3 rounded-lg relative">
+          <View className="bg-slate-50 p-6 rounded-3xl relative">
             <SelectMaterial
               materials={materials}
               handleAddMaterial={handleAddMaterial}
