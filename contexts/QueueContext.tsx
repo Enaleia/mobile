@@ -134,8 +134,12 @@ export function QueueProvider({ children }: { children: React.ReactNode }) {
         (item) => item.status !== QueueItemStatus.COMPLETED
       );
 
-      // Update active queue
+      // Update active queue and verify
       await updateActiveQueue(activeItems);
+      const savedItems = await getActiveQueue();
+      if (!savedItems.length) {
+        throw new Error("Failed to save active queue items");
+      }
 
       // Move newly completed items to completed queue
       await Promise.all(
@@ -303,7 +307,16 @@ export function QueueProvider({ children }: { children: React.ReactNode }) {
 
   const reauthorizeWithStoredCredentials = async (): Promise<boolean> => {
     try {
-      const email = await SecureStore.getItemAsync("last_logged_in_user");
+      // First check if we have a valid token
+      const token = await SecureStore.getItemAsync("auth_token");
+      if (token) {
+        // Set the token in directus client
+        directus.setToken(token);
+        return true;
+      }
+
+      // If no valid token, try to login with stored credentials
+      const email = await SecureStore.getItemAsync("user_email");
       const password = await SecureStore.getItemAsync("user_password");
 
       if (!email || !password) {
@@ -311,10 +324,22 @@ export function QueueProvider({ children }: { children: React.ReactNode }) {
         return false;
       }
 
-      await directus.login(email, password);
-      return true;
+      try {
+        const loginResult = await directus.login(email, password);
+        if (!loginResult.access_token) {
+          console.error("No access token in login result");
+          return false;
+        }
+        return true;
+      } catch (error) {
+        console.error("Failed to reauthorize with stored credentials:", error);
+        // Clear stored credentials on auth failure
+        await SecureStore.deleteItemAsync("user_email");
+        await SecureStore.deleteItemAsync("user_password");
+        return false;
+      }
     } catch (error) {
-      console.error("Failed to reauthorize with stored credentials:", error);
+      console.error("Error in reauthorizeWithStoredCredentials:", error);
       return false;
     }
   };
@@ -345,30 +370,60 @@ export function QueueProvider({ children }: { children: React.ReactNode }) {
       queueItems.length > 0 &&
       AppState.currentState === "active"
     ) {
-      // Attempt reauthorization before processing items
-      reauthorizeWithStoredCredentials().then((reauthorized) => {
-        if (!reauthorized) {
-          console.log("Failed to reauthorize, skipping queue processing");
-          return;
-        }
+      // Check token expiration before attempting reauthorization
+      const checkTokenAndProcess = async () => {
+        try {
+          // First check if we have a valid token
+          const token = await SecureStore.getItemAsync("auth_token");
+          if (token) {
+            // Set the token in directus client
+            directus.setToken(token);
+            console.log("Using existing valid token");
+          } else {
+            // If no token, check expiry and try to reauthorize
+            const expiryStr = await SecureStore.getItemAsync("token_expiry");
+            const now = new Date();
 
-        // Only process pending and offline items in foreground when network recovers
-        console.log(
-          "Network recovered, processing pending items in foreground"
-        );
-        const pendingItems = queueItems.filter(
-          (item) =>
-            (item.status === QueueItemStatus.PENDING ||
-              item.status === QueueItemStatus.OFFLINE) &&
-            (!item.lastAttempt ||
-              new Date(item.lastAttempt).getTime() < Date.now() - 30000) // Don't retry items attempted in last 30 seconds
-        );
-        if (pendingItems.length > 0) {
-          processQueue(pendingItems).catch((err) =>
-            console.error("Failed to process queue on network recovery:", err)
+            if (
+              !expiryStr ||
+              new Date(expiryStr).getTime() - now.getTime() <
+                24 * 60 * 60 * 1000
+            ) {
+              console.log(
+                "Token expired or near expiry, attempting reauthorization"
+              );
+              const reauthorized = await reauthorizeWithStoredCredentials();
+              if (!reauthorized) {
+                console.log("Failed to reauthorize, skipping queue processing");
+                return;
+              }
+            } else {
+              console.log(
+                "Token still valid, proceeding with queue processing"
+              );
+            }
+          }
+
+          // Only process pending and offline items in foreground when network recovers
+          console.log(
+            "Network recovered, processing pending items in foreground"
           );
+          const pendingItems = queueItems.filter(
+            (item) =>
+              (item.status === QueueItemStatus.PENDING ||
+                item.status === QueueItemStatus.OFFLINE) &&
+              (!item.lastAttempt ||
+                new Date(item.lastAttempt).getTime() < Date.now() - 30000) // Don't retry items attempted in last 30 seconds
+          );
+          if (pendingItems.length > 0) {
+            await processQueue(pendingItems);
+          }
+        } catch (error) {
+          console.error("Error in network recovery handler:", error);
         }
-      });
+      };
+
+      checkTokenAndProcess();
     }
   }, [isOnline]);
 

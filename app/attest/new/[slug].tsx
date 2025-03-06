@@ -14,7 +14,11 @@ import { useCurrentLocation } from "@/hooks/useCurrentLocation";
 import { ActionTitle, typeModalMap } from "@/types/action";
 import { MaterialDetail } from "@/types/material";
 import { QueueItem, QueueItemStatus } from "@/types/queue";
-import { getActiveQueue, updateActiveQueue } from "@/utils/queueStorage";
+import {
+  getActiveQueue,
+  updateActiveQueue,
+  getCompletedQueue,
+} from "@/utils/queueStorage";
 import { Ionicons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useForm } from "@tanstack/react-form";
@@ -33,6 +37,7 @@ import {
   Text,
   TextInput,
   View,
+  AppState,
 } from "react-native";
 import uuid from "react-native-uuid";
 import { z } from "zod";
@@ -43,6 +48,8 @@ import { useUserInfo } from "@/hooks/data/useUserInfo";
 import SelectField from "@/components/shared/SelectField";
 import { useProducts } from "@/hooks/data/useProducts";
 import DecimalInput from "@/components/shared/DecimalInput";
+import { processQueueItems } from "@/services/queueProcessor";
+import { BackgroundTaskManager } from "@/services/backgroundTaskManager";
 
 const eventFormSchema = z.object({
   type: z
@@ -143,17 +150,40 @@ const NewActionScreen = () => {
     try {
       console.log("Adding queue item:", JSON.stringify(queueItem, null, 2));
 
-      const activeItems = await getActiveQueue();
+      // Get current items, defaulting to empty array if none exist
+      const activeItems = (await getActiveQueue()) || [];
       const updatedItems = [...activeItems, queueItem];
 
-      await updateActiveQueue(updatedItems);
+      // Use QueueContext to handle both storage and processing
+      await updateQueueItems(updatedItems);
 
-      // Verify the item was saved
-      const savedItems = await getActiveQueue();
-      if (!savedItems.find((item) => item.localId === queueItem.localId)) {
+      // Verify the item was saved by checking both active and completed queues
+      const [savedActiveItems, savedCompletedItems] = await Promise.all([
+        getActiveQueue(),
+        getCompletedQueue(),
+      ]);
+
+      const isInActiveQueue = savedActiveItems?.find(
+        (item) => item.localId === queueItem.localId
+      );
+      const isInCompletedQueue = savedCompletedItems?.find(
+        (item) => item.localId === queueItem.localId
+      );
+
+      if (!isInActiveQueue && !isInCompletedQueue) {
+        console.error(
+          "Failed to verify queue item was saved. Active items:",
+          savedActiveItems,
+          "Completed items:",
+          savedCompletedItems
+        );
         throw new Error("Failed to verify queue item was saved");
       }
-      console.log("Verified saved data:", JSON.stringify(savedItems, null, 2));
+
+      console.log("Verified saved data:", {
+        active: savedActiveItems,
+        completed: savedCompletedItems,
+      });
     } catch (error) {
       console.error("Error in addItemToQueue:", error);
 
