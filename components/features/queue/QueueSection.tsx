@@ -75,8 +75,13 @@ const QueueSection = ({
           </Pressable>
         )}
       </Pressable>
-      {!isCollapsed &&
-        items.map((item) => <QueuedAction key={item.localId} item={item} />)}
+      {!isCollapsed && (
+        <View className="rounded-lg overflow-hidden border border-gray-200">
+          {items.map((item) => (
+            <QueuedAction key={item.localId} item={item} />
+          ))}
+        </View>
+      )}
     </View>
   );
 };

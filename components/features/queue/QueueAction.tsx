@@ -21,19 +21,21 @@ const QueuedAction = ({ item }: QueuedActionProps) => {
     minute: "2-digit",
   }).format(new Date(timestamp));
   if (!action) return null;
+  const isProcessing = isProcessingItem(item);
 
   return (
-    <View className="bg-white rounded-lg p-4 mb-2 shadow-sm">
+    <View className="bg-white px-4 py-2 shadow-sm border-b border-gray-200">
       <View className="flex-row justify-between items-center">
         <View className="flex-1">
-          <Text className="font-dm-medium text-base" numberOfLines={1}>
+          <Text
+            className="font-dm-bold text-base tracking-tight"
+            numberOfLines={1}
+          >
             {action.name}
           </Text>
+          <Text className="text-gray-600 text-xs">{formattedTime}</Text>
         </View>
-        <View className="flex-row items-center gap-2">
-          {isProcessingItem(item) && <ProcessingPill />}
-          <Text className="text-gray-500 text-sm">{formattedTime}</Text>
-        </View>
+        {isProcessing && <ProcessingPill />}
       </View>
       {item.lastError && item.status !== QueueItemStatus.COMPLETED && (
         <Text className="text-red-500 text-sm mt-1" numberOfLines={2}>

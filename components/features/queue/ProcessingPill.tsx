@@ -31,10 +31,12 @@ const ProcessingPill = () => {
   return (
     <Animated.View
       style={animatedStyle}
-      className="flex-row items-center bg-blue-500 rounded-full px-2 py-1"
+      className="flex-row items-center bg-stone-100 rounded-full px-2 py-1 border border-stone-500"
     >
-      <Ionicons name="sync" size={12} color="white" />
-      <Text className="text-white text-xs font-dm-medium ml-1">Processing</Text>
+      <Ionicons name="sync" size={12} color="black" />
+      <Text className="text-stone-600 text-xs font-dm-medium ml-1">
+        Processing
+      </Text>
     </Animated.View>
   );
 };
