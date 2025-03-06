@@ -3,7 +3,7 @@ import * as SecureStore from "expo-secure-store";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { EnaleiaUser } from "@/types/user";
 import { directus } from "@/utils/directus";
-import { readItem, readMe } from "@directus/sdk";
+import { readItem, readMe, refresh } from "@directus/sdk";
 import { useNetwork } from "./NetworkContext";
 import { router } from "expo-router";
 import { Company } from "@/types/company";
@@ -14,6 +14,7 @@ const SECURE_STORE_KEYS = {
   REFRESH_TOKEN: "refresh_token",
   USER_EMAIL: "user_email",
   USER_PASSWORD: "user_password",
+  TOKEN_EXPIRY: "token_expiry",
 };
 
 // AsyncStorage keys
@@ -31,6 +32,7 @@ interface AuthContextType {
   autoLogin: () => Promise<boolean>;
   lastLoggedInUser: string | null;
   offlineLogin: (email: string, password: string) => Promise<boolean>;
+  refreshTokenIfNeeded: () => Promise<boolean>;
 }
 
 const AuthContext = createContext<AuthContextType | null>(null);
@@ -79,6 +81,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       // Store credentials securely
       await SecureStore.setItemAsync(SECURE_STORE_KEYS.AUTH_TOKEN, token);
+      if (loginResult.expires_at) {
+        await SecureStore.setItemAsync(
+          SECURE_STORE_KEYS.TOKEN_EXPIRY,
+          new Date(loginResult.expires_at).toISOString()
+        );
+      }
 
       // Store refresh token if available
       if (loginResult.refresh_token) {
@@ -154,10 +162,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       // Clear tokens from directus client
       directus.setToken(null);
 
-      // Clear secure storage
-      await SecureStore.deleteItemAsync(SECURE_STORE_KEYS.AUTH_TOKEN);
-      await SecureStore.deleteItemAsync(SECURE_STORE_KEYS.REFRESH_TOKEN);
-      // Note: We keep USER_EMAIL and USER_PASSWORD for offline login capability
+      // Clear all secure storage
+      await Promise.all([
+        SecureStore.deleteItemAsync(SECURE_STORE_KEYS.AUTH_TOKEN),
+        SecureStore.deleteItemAsync(SECURE_STORE_KEYS.REFRESH_TOKEN),
+        SecureStore.deleteItemAsync(SECURE_STORE_KEYS.TOKEN_EXPIRY),
+        // Note: We keep USER_EMAIL and USER_PASSWORD for offline login capability
+      ]);
 
       // Clear user info from AsyncStorage
       await AsyncStorage.removeItem(STORAGE_KEYS.USER_INFO);
@@ -182,10 +193,29 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const token = await SecureStore.getItemAsync(
         SECURE_STORE_KEYS.AUTH_TOKEN
       );
-
       if (!token) {
         setIsLoading(false);
         return false;
+      }
+
+      // Check if token needs refresh
+      const needsRefresh = !(await isTokenValid());
+      if (needsRefresh) {
+        const refreshed = await refreshTokenIfNeeded();
+        if (!refreshed) {
+          // Token refresh failed, try offline login
+          const email = await SecureStore.getItemAsync(
+            SECURE_STORE_KEYS.USER_EMAIL
+          );
+          const password = await SecureStore.getItemAsync(
+            SECURE_STORE_KEYS.USER_PASSWORD
+          );
+          if (email && password) {
+            return await offlineLogin(email, password);
+          }
+          await logout();
+          return false;
+        }
       }
 
       // Set token in directus client
@@ -279,9 +309,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
       }
 
+      // If we get here, we couldn't validate the token or login offline
+      await logout();
       return false;
     } catch (error) {
       console.error("Auto login failed:", error);
+      await logout();
       return false;
     } finally {
       setIsLoading(false);
@@ -324,6 +357,48 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
+  // Add new function to check token validity
+  const isTokenValid = async (): Promise<boolean> => {
+    try {
+      const expiryStr = await SecureStore.getItemAsync(
+        SECURE_STORE_KEYS.TOKEN_EXPIRY
+      );
+      if (!expiryStr) return false;
+
+      const expiry = new Date(expiryStr);
+      const now = new Date();
+
+      // Consider token invalid if it expires in less than 24 hours
+      return expiry.getTime() - now.getTime() > 24 * 60 * 60 * 1000;
+    } catch (error) {
+      console.error("Error checking token validity:", error);
+      return false;
+    }
+  };
+
+  // Add new function to refresh token if needed
+  const refreshTokenIfNeeded = async (): Promise<boolean> => {
+    try {
+      const isValid = await isTokenValid();
+      if (isValid) return true;
+
+      const refreshToken = await SecureStore.getItemAsync(
+        SECURE_STORE_KEYS.REFRESH_TOKEN
+      );
+      if (!refreshToken) return false;
+
+      // Attempt to refresh token using SDK's refresh function
+      const result = await directus.request(refresh("json", refreshToken));
+      if (!result?.access_token) return false;
+
+      // The SDK's authentication module will handle storing the tokens
+      return true;
+    } catch (error) {
+      console.error("Error refreshing token:", error);
+      return false;
+    }
+  };
+
   return (
     <AuthContext.Provider
       value={{
@@ -335,6 +410,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         autoLogin,
         lastLoggedInUser,
         offlineLogin,
+        refreshTokenIfNeeded,
       }}
     >
       {children}
