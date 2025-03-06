@@ -26,6 +26,10 @@ export const getCompletedQueueCacheKey = (): string => {
   return key;
 };
 
+/**
+ * Gets the batch cache key and validates it exists
+ * @throws Error if batch cache key is not configured
+ */
 export const getBatchCacheKey = (): string => {
   const key = process.env.EXPO_PUBLIC_BATCH_CACHE_KEY;
   if (!key) {
