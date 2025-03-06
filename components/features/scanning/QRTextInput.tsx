@@ -150,9 +150,7 @@ const QRTextInput = forwardRef<QRTextInputRef, QRTextInputProps>(
               ref={inputRef}
               value={value}
               onChangeText={(text) => {
-                setError(null);
                 onChangeText(text);
-                setScanner(false);
               }}
               autoCapitalize="characters"
               placeholder={placeholder}
