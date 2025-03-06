@@ -432,7 +432,7 @@ const NewActionScreen = () => {
             {currentAction?.category === "Collection" && (
               <View className="mt-4 mb-2">
                 <Text className="text-[20px] font-dm-regular text-enaleia-black tracking-tighter mb-2">
-                  Collector ID
+                  Collector ID *
                 </Text>
                 <form.Field name="collectorId">
                   {(field) => (
@@ -444,11 +444,11 @@ const NewActionScreen = () => {
                         variant="standalone"
                       />
                       {/* Display validation error */}
-                      {!field.state.value && field.state.meta.isTouched && (
+                      {/* {!field.state.value && (
                         <Text className="text-sm text-red-500 mt-1">
                           This field is required!
                         </Text>
-                      )}
+                      )} */}
                     </>
                   )}
                 </form.Field>

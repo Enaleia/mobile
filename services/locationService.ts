@@ -42,16 +42,17 @@ interface CachedLocation extends LocationData {
 export const locationService = {
   async requestPermission() {
     try {
-      const { status: existingStatus } =
-        await Location.getForegroundPermissionsAsync();
+      const { status: existingStatus } = await Location.getForegroundPermissionsAsync();
+      console.log("Existing permission status:", existingStatus);
 
       if (existingStatus === "granted") {
         return { status: existingStatus, isNew: false };
       }
 
       const { status } = await Location.requestForegroundPermissionsAsync();
+      console.log("New permission status:", status);
+      
       await AsyncStorage.setItem(LOCATION_PERMISSION_KEY, status);
-
       return { status, isNew: true };
     } catch (error) {
       console.error("Error requesting location permission:", error);
