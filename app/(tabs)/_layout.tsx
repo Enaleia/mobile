@@ -15,15 +15,19 @@ const TabsLayout = () => {
     <Tabs
       screenOptions={{
         headerShown: false,
-        tabBarActiveTintColor: "#24548b",
+        tabBarActiveTintColor: "#0D0D0D",
       }}
     >
       <Tabs.Screen
         name="index"
         options={{
           tabBarLabel: "Home",
-          tabBarIcon: ({ color }) => (
-            <Ionicons name="home" size={24} color={color} />
+          tabBarIcon: ({ color, focused }) => (
+            <Ionicons 
+              name={focused ? "home" : "home-outline"} 
+              size={24} 
+              color={color} 
+            />
           ),
           href: "/",
         }}
@@ -33,8 +37,12 @@ const TabsLayout = () => {
         options={{
           tabBarLabel: "Queue",
           tabBarBadge: incompleteItems.length || undefined,
-          tabBarIcon: ({ color }) => (
-            <Ionicons name="archive" size={24} color={color} />
+          tabBarIcon: ({ color, focused }) => (
+            <Ionicons 
+              name={focused ? "file-tray" : "file-tray-outline"} 
+              size={24} 
+              color={color} 
+            />
           ),
           href: "/queue",
         }}
@@ -43,8 +51,12 @@ const TabsLayout = () => {
         name="settings"
         options={{
           tabBarLabel: "Settings",
-          tabBarIcon: ({ color }) => (
-            <Ionicons name="settings" size={24} color={color} />
+          tabBarIcon: ({ color, focused }) => (
+            <Ionicons 
+              name={focused ? "settings" : "settings-outline"} 
+              size={24} 
+              color={color} 
+            />
           ),
           href: "/settings",
         }}
