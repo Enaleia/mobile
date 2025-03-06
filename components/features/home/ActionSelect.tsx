@@ -31,7 +31,7 @@ export default function ActionSelection({
           <Text className="text-[18px] mb-3 font-dm-bold text-enaleia-black w-full tracking-tight">
             {category}
           </Text>
-          <View className="flex-row flex-wrap">
+          <View className="flex-row flex-wrap justify-between">
             {categoryActions.map((action: Action) => (
               <ActionButton
                 key={action.id}

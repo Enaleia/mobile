@@ -3,6 +3,7 @@ import { Tabs } from "expo-router/tabs";
 import React from "react";
 import { useQueue } from "@/contexts/QueueContext";
 import { QueueItemStatus } from "@/types/queue";
+import { Icon } from "../../components/shared/Icon";
 
 const TabsLayout = () => {
   const { queueItems } = useQueue();
@@ -16,17 +17,18 @@ const TabsLayout = () => {
       screenOptions={{
         headerShown: false,
         tabBarActiveTintColor: "#0D0D0D",
+        tabBarInactiveTintColor: "#8E8E93",
       }}
     >
       <Tabs.Screen
         name="index"
         options={{
           tabBarLabel: "Home",
-          tabBarIcon: ({ color, focused }) => (
-            <Ionicons 
-              name={focused ? "home" : "home-outline"} 
+          tabBarIcon: ({ focused }) => (
+            <Icon 
+              name={focused ? 'home-active' : 'home-inactive'} 
               size={24} 
-              color={color} 
+              color={focused ? "#0D0D0D" : "#8E8E93"} 
             />
           ),
           href: "/",
@@ -37,11 +39,11 @@ const TabsLayout = () => {
         options={{
           tabBarLabel: "Queue",
           tabBarBadge: incompleteItems.length || undefined,
-          tabBarIcon: ({ color, focused }) => (
-            <Ionicons 
-              name={focused ? "file-tray" : "file-tray-outline"} 
+          tabBarIcon: ({ focused }) => (
+            <Icon 
+              name={focused ? 'queue-active' : 'queue-inactive'} 
               size={24} 
-              color={color} 
+              color={focused ? "#0D0D0D" : "#8E8E93"} 
             />
           ),
           href: "/queue",
@@ -51,11 +53,11 @@ const TabsLayout = () => {
         name="settings"
         options={{
           tabBarLabel: "Settings",
-          tabBarIcon: ({ color, focused }) => (
-            <Ionicons 
-              name={focused ? "settings" : "settings-outline"} 
+          tabBarIcon: ({ focused }) => (
+            <Icon 
+              name={focused ? 'settings-active' : 'settings-inactive'} 
               size={24} 
-              color={color} 
+              color={focused ? "#0D0D0D" : "#8E8E93"} 
             />
           ),
           href: "/settings",
