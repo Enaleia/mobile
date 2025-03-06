@@ -63,16 +63,38 @@ async function updateItemInCache(itemId: string, updates: Partial<QueueItem>) {
 }
 
 async function notifyUser(title: string, body: string) {
-  await Notifications.scheduleNotificationAsync({
-    content: {
-      title,
-      body,
-    },
-    trigger: null,
-  });
+  try {
+    const { status: existingStatus } =
+      await Notifications.getPermissionsAsync();
+    let finalStatus = existingStatus;
+
+    if (existingStatus !== "granted") {
+      const { status } = await Notifications.requestPermissionsAsync();
+      finalStatus = status;
+    }
+
+    if (finalStatus !== "granted") {
+      console.log("Failed to get push token for push notification!");
+      return;
+    }
+
+    await Notifications.scheduleNotificationAsync({
+      content: {
+        title,
+        body,
+        sound: true,
+        priority: Notifications.AndroidNotificationPriority.HIGH,
+      },
+      trigger: null,
+    });
+  } catch (error) {
+    console.error("Error sending notification:", error);
+  }
 }
 
 let isProcessing = false;
+let lastNotificationTime = 0;
+const NOTIFICATION_COOLDOWN = 5 * 60 * 1000; // 5 minutes
 
 export async function processQueueItems(itemsToProcess?: QueueItem[]) {
   console.log("processQueueItems called:", {
@@ -188,6 +210,26 @@ export async function processQueueItems(itemsToProcess?: QueueItem[]) {
         });
       }
       return;
+    }
+
+    // Get items to process
+    const items = itemsToProcess || (await getActiveQueue());
+    const pendingItems = items.filter(
+      (item) =>
+        item.status === QueueItemStatus.PENDING ||
+        item.status === QueueItemStatus.OFFLINE
+    );
+
+    // Notify if there are pending items and enough time has passed since last notification
+    if (
+      pendingItems.length >= 5 &&
+      Date.now() - lastNotificationTime > NOTIFICATION_COOLDOWN
+    ) {
+      await notifyUser(
+        "Pending Items",
+        `You have ${pendingItems.length} items waiting to be processed`
+      );
+      lastNotificationTime = Date.now();
     }
 
     for (const item of itemsToProcess) {

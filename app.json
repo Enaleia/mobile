@@ -14,7 +14,8 @@
       "supportsTablet": true,
       "bundleIdentifier": "com.anonymous.enaleia",
       "infoPlist": {
-        "UIViewControllerBasedStatusBarAppearance": true
+        "UIViewControllerBasedStatusBarAppearance": true,
+        "UIBackgroundModes": ["remote-notification"]
       },
       "icon": {
         "dark": "./assets/images/ios-dark.png",
@@ -31,7 +32,8 @@
         "android.permission.ACCESS_COARSE_LOCATION",
         "android.permission.ACCESS_FINE_LOCATION",
         "android.permission.CAMERA",
-        "android.permission.RECORD_AUDIO"
+        "android.permission.RECORD_AUDIO",
+        "android.permission.POST_NOTIFICATIONS"
       ],
       "package": "com.anonymous.enaleia"
     },
@@ -64,6 +66,14 @@
         "expo-camera",
         {
           "cameraPermission": "Allow $(PRODUCT_NAME) to access your camera."
+        }
+      ],
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/images/splash-icon.png",
+          "color": "#24548b",
+          "sounds": ["./assets/sounds/notification.wav"]
         }
       ],
       "expo-font",
