@@ -9,7 +9,7 @@ import { processProducts } from "@/types/product";
 import { batchFetchData } from "@/utils/batchFetcher";
 import { Ionicons } from "@expo/vector-icons";
 import { onlineManager, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Text, View, Pressable } from "react-native";
+import { Text, View, Pressable, Platform } from "react-native";
 import React, { useEffect } from "react";
 import { DirectusCollector } from "@/types/collector";
 import { DirectusProduct } from "@/types/product";
@@ -124,7 +124,9 @@ function Home() {
         </View>
         <NetworkStatus />
       </View>
-      <View className="flex-1 mt-4">
+      <View className={`${
+        Platform.OS === "ios" ? "-mb-10" : ""
+      } flex-1 mt-4`}>
         <Text className="text-3xl font-dm-bold tracking-[-1.5px] mb-2 text-enaleia-black">
           Hello, what action will you be doing today?
         </Text>

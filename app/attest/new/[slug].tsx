@@ -444,7 +444,7 @@ const NewActionScreen = () => {
                         variant="standalone"
                       />
                       {/* Display validation error */}
-                      {!field.state.value && (
+                      {!field.state.value && field.state.meta.isTouched && (
                         <Text className="text-sm text-red-500 mt-1">
                           This field is required!
                         </Text>
