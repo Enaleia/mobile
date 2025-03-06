@@ -41,7 +41,7 @@ import {
 } from "react-native";
 import uuid from "react-native-uuid";
 import { z } from "zod";
-import { LocationPermissionRequest } from "@/components/features/location/LocationPermissionRequest";
+import { LocationPermissionHandler } from "@/components/features/location/LocationPermissionHandler";
 import { LocationSchema } from "@/services/locationService";
 import QRTextInput from "@/components/features/scanning/QRTextInput";
 import { useUserInfo } from "@/hooks/data/useUserInfo";
@@ -410,7 +410,7 @@ const NewActionScreen = () => {
             <form.Subscribe selector={(state) => state.values}>
               {(values) => (
                 <View className="mb-2 mt-4">
-                  <LocationPermissionRequest
+                  <LocationPermissionHandler
                     onPermissionGranted={() => {
                       // Location will be automatically updated via the effect
                     }}
@@ -420,18 +420,14 @@ const NewActionScreen = () => {
                         "Location helps verify where events take place. You can still use saved locations or change this later in settings."
                       );
                     }}
-                    onLocationSelected={(location) => {
-                      form.setFieldValue("location", location);
-                    }}
-                    currentLocation={values.location}
                   />
                 </View>
               )}
             </form.Subscribe>
 
             {currentAction?.category === "Collection" && (
-              <View className="mt-4 mb-2">
-                <Text className="text-[20px] font-dm-regular text-enaleia-black tracking-tighter mb-2">
+              <View className="mt-1 mb-8">
+                <Text className="text-[18px] font-dm-regular text-enaleia-black tracking-tighter mb-2">
                   Collector ID *
                 </Text>
                 <form.Field name="collectorId">
@@ -443,38 +439,32 @@ const NewActionScreen = () => {
                         placeholder="Scan or enter collector ID"
                         variant="standalone"
                       />
-                      {/* Display validation error */}
-                      {/* {!field.state.value && (
-                        <Text className="text-sm text-red-500 mt-1">
-                          This field is required!
-                        </Text>
-                      )} */}
                     </>
                   )}
                 </form.Field>
               </View>
             )}
-            <View className="h-[1.5px] bg-slate-200 my-5" />
             <form.Field name="incomingMaterials">
               {(field) => (
-                <MaterialSection
-                  materials={materialsData}
-                  category="incoming"
-                  isModalVisible={isIncomingMaterialsPickerVisible}
-                  setModalVisible={setIsIncomingMaterialsPickerVisible}
-                  selectedMaterials={field.state.value as MaterialDetail[]}
-                  setSelectedMaterials={(materials: MaterialDetail[]) =>
-                    field.handleChange(materials)
-                  }
-                  hideCodeInput={currentAction?.category === "Collection"}
-                />
+                <View className="mb-6">
+                  <MaterialSection
+                    materials={materialsData}
+                    category="incoming"
+                    isModalVisible={isIncomingMaterialsPickerVisible}
+                    setModalVisible={setIsIncomingMaterialsPickerVisible}
+                    selectedMaterials={field.state.value as MaterialDetail[]}
+                    setSelectedMaterials={(materials: MaterialDetail[]) =>
+                      field.handleChange(materials)
+                    }
+                    hideCodeInput={currentAction?.category === "Collection"}
+                  />
+                </View>
               )}
             </form.Field>
             {currentAction?.name !== "Manufacturing" && (
               <form.Field name="outgoingMaterials">
                 {(field) => (
-                  <>
-                    <View className="h-[1.5px] bg-slate-200 my-5" />
+                  <View className="mb-6">
                     <MaterialSection
                       materials={materialsData}
                       category="outgoing"
@@ -486,7 +476,7 @@ const NewActionScreen = () => {
                       }
                       hideCodeInput={currentAction?.category === "Collection"}
                     />
-                  </>
+                  </View>
                 )}
               </form.Field>
             )}
@@ -554,7 +544,6 @@ const NewActionScreen = () => {
                         </View>
                       )}
                     </form.Field>
-                    <View className="h-[1.5px] bg-slate-200 mx-1" />
                     <form.Field
                       name="manufacturing.weightInKg"
                       children={(field) => (
@@ -629,7 +618,7 @@ const NewActionScreen = () => {
                         <ActivityIndicator color="white" className="mr-2" />
                       ) : null}
                       <Text className="text-base font-dm-medium text-slate-50 tracking-tight">
-                        {isSubmitting ? "Saving..." : "Create Attestation"}
+                        {isSubmitting ? "Preparing..." : "Submit Attestation"}
                       </Text>
                     </Pressable>
 

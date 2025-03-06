@@ -11,8 +11,8 @@ import { Ionicons } from "@expo/vector-icons";
 import { useCallback, useEffect, useState } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { LocationEducationalModal } from "./LocationEducationalModal";
-// import { SavedLocationsSelector } from "./SavedLocationsSelector";
-// import { SaveLocationModal } from "./SaveLocationModal";
+import { SavedLocationsSelector } from "./SavedLocationsSelector";
+import { SaveLocationModal } from "./SaveLocationModal";
 import { locationService, LocationData } from "@/services/locationService";
 import * as Location from "expo-location";
 
@@ -38,9 +38,9 @@ export function LocationPermissionRequest({
   } = useCurrentLocation();
   const [isRequesting, setIsRequesting] = useState(false);
   const [showEducationalModal, setShowEducationalModal] = useState(false);
-  // const [showSavedLocations, setShowSavedLocations] = useState(false);
-  // const [showSaveLocationModal, setShowSaveLocationModal] = useState(false);
-  // const [isSaving, setIsSaving] = useState(false);
+  const [showSavedLocations, setShowSavedLocations] = useState(false);
+  const [showSaveLocationModal, setShowSaveLocationModal] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
     checkFirstTime();
@@ -82,7 +82,7 @@ export function LocationPermissionRequest({
 
       if (status === "granted") {
         onPermissionGranted?.();
-      } else if (status === "denied") {
+      } else if (isNew && status === "denied") {
         onPermissionDenied?.();
       }
     } catch (error) {
@@ -93,68 +93,68 @@ export function LocationPermissionRequest({
     }
   };
 
-  // const handleSaveCurrentLocation = async () => {
-  //   if (!currentLocationData) return;
+  const handleSaveCurrentLocation = async () => {
+    if (!currentLocationData) return;
 
-  //   setIsSaving(true);
-  //   try {
-  //     // Check for nearby locations first
-  //     const savedLocations = await locationService.getSavedLocations();
-  //     const nearbyLocation = savedLocations.find((saved) => {
-  //       const distance = locationService.calculateDistance(
-  //         saved.coords,
-  //         currentLocationData.coords
-  //       );
-  //       return distance < 0.1; // Within 100 meters
-  //     });
+    setIsSaving(true);
+    try {
+      // Check for nearby locations first
+      const savedLocations = await locationService.getSavedLocations();
+      const nearbyLocation = savedLocations.find((saved) => {
+        const distance = locationService.calculateDistance(
+          saved.coords,
+          currentLocationData.coords
+        );
+        return distance < 0.1; // Within 100 meters
+      });
 
-  //     if (nearbyLocation) {
-  //       Alert.alert(
-  //         "Location Already Saved",
-  //         `You already have a saved location "${nearbyLocation.name}" near this point. Would you like to update it instead?`,
-  //         [
-  //           {
-  //             text: "Cancel",
-  //             style: "cancel",
-  //             onPress: () => setIsSaving(false),
-  //           },
-  //           {
-  //             text: "Update",
-  //             onPress: () => {
-  //               setShowSaveLocationModal(true);
-  //             },
-  //           },
-  //         ]
-  //       );
-  //     } else {
-  //       setShowSaveLocationModal(true);
-  //     }
-  //   } catch (error) {
-  //     console.error("Error checking for nearby locations:", error);
-  //     Alert.alert("Error", "Failed to check for nearby locations");
-  //   } finally {
-  //     setIsSaving(false);
-  //   }
-  // };
+      if (nearbyLocation) {
+        Alert.alert(
+          "Location Already Saved",
+          `You already have a saved location "${nearbyLocation.name}" near this point. Would you like to update it instead?`,
+          [
+            {
+              text: "Cancel",
+              style: "cancel",
+              onPress: () => setIsSaving(false),
+            },
+            {
+              text: "Update",
+              onPress: () => {
+                setShowSaveLocationModal(true);
+              },
+            },
+          ]
+        );
+      } else {
+        setShowSaveLocationModal(true);
+      }
+    } catch (error) {
+      console.error("Error checking for nearby locations:", error);
+      Alert.alert("Error", "Failed to check for nearby locations");
+    } finally {
+      setIsSaving(false);
+    }
+  };
 
-  // const handleSaveLocation = async (name: string) => {
-  //   if (!currentLocationData || !name) return;
+  const handleSaveLocation = async (name: string) => {
+    if (!currentLocationData || !name) return;
 
-  //   setIsSaving(true);
-  //   try {
-  //     const saved = await locationService.saveLocation(
-  //       name,
-  //       currentLocationData
-  //     );
-  //     console.log("Location saved:", saved);
-  //     Alert.alert("Success", "Location saved successfully");
-  //   } catch (error) {
-  //     console.error("Error saving location:", error);
-  //     Alert.alert("Error", "Failed to save location");
-  //   } finally {
-  //     setIsSaving(false);
-  //   }
-  // };
+    setIsSaving(true);
+    try {
+      const saved = await locationService.saveLocation(
+        name,
+        currentLocationData
+      );
+      console.log("Location saved:", saved);
+      Alert.alert("Success", "Location saved successfully");
+    } catch (error) {
+      console.error("Error saving location:", error);
+      Alert.alert("Error", "Failed to save location");
+    } finally {
+      setIsSaving(false);
+    }
+  };
 
   if (permissionStatus === "granted") {
     return (
@@ -173,7 +173,7 @@ export function LocationPermissionRequest({
               Location Enabled
             </Text>
           </View>
-          {/* <View className="flex-row space-x-2">
+          <View className="flex-row space-x-2">
             <Pressable
               onPress={() => setShowSavedLocations(true)}
               className="bg-gray-50 p-2 rounded-full"
@@ -198,7 +198,7 @@ export function LocationPermissionRequest({
                 <Ionicons name="add" size={20} color="#4B5563" />
               )}
             </Pressable>
-          </View> */}
+          </View>
         </View>
 
         <LocationEducationalModal
@@ -208,7 +208,7 @@ export function LocationPermissionRequest({
           onSkip={() => setShowEducationalModal(false)}
         />
 
-        {/* <SavedLocationsSelector
+        <SavedLocationsSelector
           isVisible={showSavedLocations}
           onClose={() => setShowSavedLocations(false)}
           onSelect={(location) => {
@@ -216,7 +216,7 @@ export function LocationPermissionRequest({
             setShowSavedLocations(false);
           }}
           currentLocationId={currentLocation?.savedLocationId}
-        /> */}
+        />
       </View>
     );
   }
@@ -229,6 +229,9 @@ export function LocationPermissionRequest({
         accessibilityLabel="Location permission request"
       >
         <View className="flex-row items-center space-x-3">
+          <View className="bg-blue-50 rounded-full p-2">
+            <Ionicons name="location-outline" size={24} color="#3B82F6" />
+          </View>
           <View className="flex-1">
             <Text
               className="text-lg font-dm-bold text-enaleia-black tracking-tight"
@@ -237,10 +240,40 @@ export function LocationPermissionRequest({
               Add location to the event
             </Text>
             <Text className="text-sm font-dm-regular text-gray-600">
-              Help us to verify where the event took place
+              Help us to verify where this event took place
             </Text>
           </View>
         </View>
+
+        <View className="space-y-3">
+          <View
+            className="flex-row items-center space-x-2"
+            accessibilityRole="text"
+          >
+            <Ionicons name="checkmark-circle" size={20} color="#10B981" />
+            <Text className="text-sm font-dm-regular text-gray-700">
+              Verify event location accuracy
+            </Text>
+          </View>
+          <View
+            className="flex-row items-center space-x-2"
+            accessibilityRole="text"
+          >
+            <Ionicons name="checkmark-circle" size={20} color="#10B981" />
+            <Text className="text-sm font-dm-regular text-gray-700">
+              Works offline with location caching
+            </Text>
+          </View>
+          <View
+            className="flex-row items-center space-x-2"
+            accessibilityRole="text"
+          >
+            <Ionicons name="checkmark-circle" size={20} color="#10B981" />
+            <Text className="text-sm font-dm-regular text-gray-700">
+              Battery efficient location updates
+            </Text>
+          </View>
+        </View> */}
 
         <View className="flex-row space-x-2">
           <Pressable
@@ -269,15 +302,15 @@ export function LocationPermissionRequest({
             </Text>
           </Pressable>
 
-          {/* <Pressable
+          <Pressable
             onPress={() => setShowSavedLocations(true)}
-            className="bg-white-sand border border-sand-beige p-2 rounded-full w-[40px] h-[40px] items-center justify-center"
+            className="bg-white-sand border border-sand-beige p-2 rounded-full aspect-square items-center justify-center"
             accessibilityRole="button"
             accessibilityLabel="View saved locations"
             accessibilityHint="Double tap to view and select from saved locations"
           >
-            <Ionicons name="bookmark-outline" size={16} color="enaleia-black" />
-          </Pressable> */}
+            <Ionicons name="bookmark-outline" size={20} color="#4B5563" />
+          </Pressable>
         </View>
       </View>
 
@@ -288,7 +321,7 @@ export function LocationPermissionRequest({
         onSkip={() => setShowEducationalModal(false)}
       />
 
-      {/* <SavedLocationsSelector
+      <SavedLocationsSelector
         isVisible={showSavedLocations}
         onClose={() => setShowSavedLocations(false)}
         onSelect={(location) => {
@@ -302,7 +335,7 @@ export function LocationPermissionRequest({
         isVisible={showSaveLocationModal}
         onClose={() => setShowSaveLocationModal(false)}
         onSave={handleSaveLocation}
-      /> */}
+      />
     </>
   );
 }
