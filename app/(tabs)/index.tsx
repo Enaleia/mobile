@@ -9,7 +9,7 @@ import { processProducts } from "@/types/product";
 import { batchFetchData } from "@/utils/batchFetcher";
 import { Ionicons } from "@expo/vector-icons";
 import { onlineManager, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Text, View, Pressable } from "react-native";
+import { Text, View, Pressable, ScrollView } from "react-native";
 import React, { useEffect } from "react";
 import { DirectusCollector } from "@/types/collector";
 import { DirectusProduct } from "@/types/product";
@@ -103,24 +103,30 @@ function Home() {
         isAuthError={isAuthError}
       />
 
-      <View className="flex-row items-start justify-between pb-2 font-dm-regular">
-        <View className="flex-row items-center justify-center gap-0.5">
-          <Ionicons name="person-circle-outline" size={24} color="#0D0D0D" />
-          <Text className="text-sm font-bold text-enaleia-black">
-            {user?.first_name || "User"}
-          </Text>
+      <ScrollView 
+        className="flex-1" 
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={{ flexGrow: 1 }}
+      >
+        <View className="flex-row items-start justify-between pb-2 font-dm-regular">
+          <View className="flex-row items-center justify-center gap-0.5">
+            <Ionicons name="person-circle-outline" size={24} color="#0D0D0D" />
+            <Text className="text-sm font-bold text-enaleia-black">
+              {user?.first_name || "User"}
+            </Text>
+          </View>
+          <NetworkStatus />
         </View>
-        <NetworkStatus />
-      </View>
-      <View className="mt-4">
-        <Text className="text-[33px] font-dm-bold tracking-[-1.5px] mb-2 text-enaleia-black">
-          Hello, what action will you be doing today?
-        </Text>
-        <ActionSelection
-          actions={groupedActions ?? undefined}
-          isLoading={isLoading && !isAuthError}
-        />
-      </View>
+        <View className="mt-4">
+          <Text className="text-[33px] font-dm-bold tracking-[-1.5px] mb-2 text-enaleia-black">
+            Hello, what action will you be doing today?
+          </Text>
+          <ActionSelection
+            actions={groupedActions ?? undefined}
+            isLoading={isLoading && !isAuthError}
+          />
+        </View>
+      </ScrollView>
     </SafeAreaContent>
   );
 }
