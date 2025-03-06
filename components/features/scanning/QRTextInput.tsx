@@ -134,7 +134,7 @@ const QRTextInput = forwardRef<QRTextInputRef, QRTextInputProps>(
 
     const containerClass =
       variant === "standalone"
-        ? "h-12 border-[1.5px] border-grey-3 rounded-lg p-2 bg-white items-center"
+        ? "h-[56px] border-[1.5px] border-grey-3 rounded-2xl p-2 bg-white items-center"
         : "";
 
     const inputClass =
