@@ -368,8 +368,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const expiry = new Date(expiryStr);
       const now = new Date();
 
-      // Consider token invalid if it expires in less than 24 hours
-      return expiry.getTime() - now.getTime() > 24 * 60 * 60 * 1000;
+      // Consider token invalid if it expires in less than 24 days
+      return expiry.getTime() - now.getTime() > 24 * 24 * 60 * 60 * 1000;
     } catch (error) {
       console.error("Error checking token validity:", error);
       return false;

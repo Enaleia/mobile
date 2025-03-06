@@ -387,7 +387,7 @@ export function QueueProvider({ children }: { children: React.ReactNode }) {
             if (
               !expiryStr ||
               new Date(expiryStr).getTime() - now.getTime() <
-                24 * 60 * 60 * 1000
+                24 * 24 * 60 * 60 * 1000
             ) {
               console.log(
                 "Token expired or near expiry, attempting reauthorization"
