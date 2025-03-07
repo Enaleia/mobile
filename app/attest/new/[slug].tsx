@@ -3,6 +3,7 @@ import { LeaveAttestationModal } from "@/components/features/attest/LeaveAttesta
 import MaterialSection from "@/components/features/attest/MaterialSection";
 import { SentToQueueModal } from "@/components/features/attest/SentToQueueModal";
 import TypeInformationModal from "@/components/features/attest/TypeInformationModal";
+import ErrorMessage from "@/components/shared/ErrorMessage";
 import FormSection from "@/components/shared/FormSection";
 import SafeAreaContent from "@/components/shared/SafeAreaContent";
 import { ACTION_SLUGS } from "@/constants/action";
@@ -13,23 +14,30 @@ import { useCurrentLocation } from "@/hooks/useCurrentLocation";
 import { ActionTitle, typeModalMap } from "@/types/action";
 import { MaterialDetail } from "@/types/material";
 import { QueueItem, QueueItemStatus } from "@/types/queue";
-import { getQueueCacheKey } from "@/utils/storage";
+import {
+  getActiveQueue,
+  updateActiveQueue,
+  getCompletedQueue,
+} from "@/utils/queueStorage";
 import { Ionicons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useForm } from "@tanstack/react-form";
 import { zodValidator } from "@tanstack/zod-form-adapter";
 import { router, useLocalSearchParams } from "expo-router";
-import { useMemo, useState, useEffect } from "react";
+import { useMemo, useState, useEffect, useRef } from "react";
 import {
   ActivityIndicator,
   Alert,
   GestureResponderEvent,
   Image,
+  Keyboard,
+  Platform,
   Pressable,
   ScrollView,
   Text,
   TextInput,
   View,
+  AppState,
 } from "react-native";
 import uuid from "react-native-uuid";
 import { z } from "zod";
@@ -40,6 +48,8 @@ import { useUserInfo } from "@/hooks/data/useUserInfo";
 import SelectField from "@/components/shared/SelectField";
 import { useProducts } from "@/hooks/data/useProducts";
 import DecimalInput from "@/components/shared/DecimalInput";
+import { processQueueItems } from "@/services/queueProcessor";
+import { BackgroundTaskManager } from "@/services/backgroundTaskManager";
 
 const eventFormSchema = z.object({
   type: z
@@ -87,6 +97,7 @@ const NewActionScreen = () => {
   const { slug } = useLocalSearchParams(); // slug format
   const location = useCurrentLocation();
   const { userData } = useUserInfo();
+  const scrollViewRef = useRef<ScrollView>(null);
 
   const [isSentToQueue, setIsSentToQueue] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -137,35 +148,42 @@ const NewActionScreen = () => {
 
   const addItemToQueue = async (queueItem: QueueItem) => {
     try {
-      const queueCacheKey = getQueueCacheKey();
-
       console.log("Adding queue item:", JSON.stringify(queueItem, null, 2));
 
-      const existingData = await AsyncStorage.getItem(queueCacheKey);
+      // Get current items, defaulting to empty array if none exist
+      const activeItems = (await getActiveQueue()) || [];
+      const updatedItems = [...activeItems, queueItem];
 
-      let existingItems: QueueItem[] = [];
-      if (existingData) {
-        try {
-          existingItems = JSON.parse(existingData);
-          if (!Array.isArray(existingItems)) {
-            console.warn("Stored data is not an array, resetting");
-            existingItems = [];
-          }
-        } catch (parseError) {
-          console.error("Error parsing stored data:", parseError);
-          throw new Error("Failed to parse existing queue data");
-        }
-      }
-
-      const updatedItems = [...existingItems, queueItem];
-
+      // Use QueueContext to handle both storage and processing
       await updateQueueItems(updatedItems);
 
-      const savedData = await AsyncStorage.getItem(queueCacheKey);
-      if (!savedData) {
+      // Verify the item was saved by checking both active and completed queues
+      const [savedActiveItems, savedCompletedItems] = await Promise.all([
+        getActiveQueue(),
+        getCompletedQueue(),
+      ]);
+
+      const isInActiveQueue = savedActiveItems?.find(
+        (item) => item.localId === queueItem.localId
+      );
+      const isInCompletedQueue = savedCompletedItems?.find(
+        (item) => item.localId === queueItem.localId
+      );
+
+      if (!isInActiveQueue && !isInCompletedQueue) {
+        console.error(
+          "Failed to verify queue item was saved. Active items:",
+          savedActiveItems,
+          "Completed items:",
+          savedCompletedItems
+        );
         throw new Error("Failed to verify queue item was saved");
       }
-      console.log("Verified saved data:", savedData);
+
+      console.log("Verified saved data:", {
+        active: savedActiveItems,
+        completed: savedCompletedItems,
+      });
     } catch (error) {
       console.error("Error in addItemToQueue:", error);
 
@@ -174,8 +192,7 @@ const NewActionScreen = () => {
           ? "Queue functionality is not properly configured. Please contact support."
           : "Failed to add item to queue. Please try again.";
 
-      Alert.alert("Error", errorMessage, [{ text: "OK" }]);
-
+      setSubmitError(errorMessage);
       throw error;
     }
   };
@@ -200,8 +217,22 @@ const NewActionScreen = () => {
       setIsSubmitting(true);
 
       try {
+        // Add runtime validation for collectorId
+        const runtimeSchema = eventFormSchema.refine(
+          (data) => {
+            if (currentAction?.category === "Collection" && !data.collectorId) {
+              return false; // Validation fails if collectorId is empty
+            }
+            return true; // Validation passes otherwise
+          },
+          {
+            message: "Collector ID is required for Collection actions",
+            path: ["collectorId"], // Specify the field to attach the error to
+          }
+        );
+
         const { success: isValid, error: validationError } =
-          eventFormSchema.safeParse(value);
+          runtimeSchema.safeParse(value);
         if (!isValid) {
           setSubmitError("Please fix the form errors before submitting");
           console.error("Form validation errors:", validationError);
@@ -231,14 +262,15 @@ const NewActionScreen = () => {
         };
 
         await addItemToQueue(queueItem);
+        setSubmitError(null);
         setIsSentToQueue(true);
       } catch (error) {
         setIsSentToQueue(false);
-        setSubmitError(
+        const errorMsg =
           error instanceof Error && error.message.includes("Cache key")
-            ? "Queue system is not properly configured"
-            : "An error occurred while adding to queue"
-        );
+            ? "Unable to access queue storage. Please try again or contact support"
+            : "Failed to add action to queue. Please try again or contact support";
+        setSubmitError(errorMsg);
         console.error("Error adding to queue:", error);
       } finally {
         setIsSubmitting(false);
@@ -279,6 +311,38 @@ const NewActionScreen = () => {
       form.setFieldValue("location", locationData);
     }
   }, [locationData]);
+
+  // Add keyboard handling effect
+  useEffect(() => {
+    const keyboardDidShowListener = Keyboard.addListener(
+      "keyboardDidShow",
+      (e) => {
+        // Only needed for iOS
+        if (Platform.OS === "ios") {
+          // Add a small delay to ensure the input is focused
+          setTimeout(() => {
+            // Scroll down a bit to ensure the focused input is visible
+            scrollViewRef.current?.scrollTo({ y: 100, animated: true });
+          }, 100);
+        }
+      }
+    );
+
+    const keyboardDidHideListener = Keyboard.addListener(
+      "keyboardDidHide",
+      () => {
+        // Optional: Reset scroll position when keyboard hides
+        if (Platform.OS === "ios") {
+          scrollViewRef.current?.scrollTo({ y: 0, animated: true });
+        }
+      }
+    );
+
+    return () => {
+      keyboardDidShowListener.remove();
+      keyboardDidHideListener.remove();
+    };
+  }, []);
 
   return (
     <SafeAreaContent>
@@ -333,8 +397,14 @@ const NewActionScreen = () => {
       </Text>
       <View className="flex-1">
         <ScrollView
+          ref={scrollViewRef}
           showsVerticalScrollIndicator={false}
-          contentContainerStyle={{ flexGrow: 0, paddingBottom: 20 }}
+          keyboardShouldPersistTaps="handled"
+          keyboardDismissMode="on-drag"
+          contentContainerStyle={{
+            flexGrow: 0,
+            paddingBottom: Platform.OS === "ios" ? 120 : 20,
+          }}
         >
           <View className="flex-1">
             <form.Subscribe selector={(state) => state.values}>
@@ -366,12 +436,20 @@ const NewActionScreen = () => {
                 </Text>
                 <form.Field name="collectorId">
                   {(field) => (
-                    <QRTextInput
-                      value={field.state.value || ""}
-                      onChangeText={field.handleChange}
-                      placeholder="Scan or enter collector ID"
-                      variant="standalone"
-                    />
+                    <>
+                      <QRTextInput
+                        value={field.state.value || ""}
+                        onChangeText={field.handleChange}
+                        placeholder="Scan or enter collector ID"
+                        variant="standalone"
+                      />
+                      {/* Display validation error */}
+                      {!field.state.value && field.state.meta.isTouched && (
+                        <Text className="text-sm text-red-500 mt-1">
+                          This field is required!
+                        </Text>
+                      )}
+                    </>
                   )}
                 </form.Field>
               </View>
@@ -412,10 +490,11 @@ const NewActionScreen = () => {
                 )}
               </form.Field>
             )}
+
             {currentAction?.name === "Manufacturing" && (
-              <View className="mt-10 rounded-lg">
+              <View className="mt-10 rounded-lg p-2 border-[1.5px] border-slate-200 bg-white">
                 <View className="flex-row items-center space-x-0.5 mb-4">
-                  <Text className="text-xl font-dm-light text-enaleia-black tracking-tighter">
+                  <Text className="text-xl font-dm-regular text-enaleia-black tracking-tighter">
                     Manufacturing information
                   </Text>
                 </View>
@@ -468,7 +547,7 @@ const NewActionScreen = () => {
                             onChangeText={(text) => {
                               field.handleChange(Number(text));
                             }}
-                            className="rounded-md px-3 bg-white border border-slate-200 focus:border-primary-dark-blue"
+                            className="rounded-md px-3 py-3 h-12 bg-white border-[1.5px] border-slate-200 focus:border-primary-dark-blue"
                             placeholder="Quantity"
                             inputMode="numeric"
                           />
@@ -499,6 +578,7 @@ const NewActionScreen = () => {
             >
               {([canSubmit, isSubmitting, values]) => {
                 const handleSubmitClick = (e: GestureResponderEvent) => {
+                  setSubmitError(null);
                   e.preventDefault();
                   e.stopPropagation();
 
@@ -528,9 +608,18 @@ const NewActionScreen = () => {
 
                 return (
                   <>
+                    {/* Error message */}
+                    {submitError && (
+                      <View className="mt-2">
+                        <ErrorMessage message={submitError} />
+                      </View>
+                    )}
+
                     <Pressable
                       onPress={handleSubmitClick}
-                      className={`flex-row items-center justify-center mt-4 p-3 rounded-full ${
+                      className={`flex-row items-center justify-center ${
+                        submitError ? "mt-2" : "mt-3"
+                      } p-3 rounded-full ${
                         !canSubmit || isSubmitting
                           ? "bg-primary-dark-blue"
                           : "bg-blue-ocean"
@@ -543,6 +632,7 @@ const NewActionScreen = () => {
                         {isSubmitting ? "Saving..." : "Create Attestation"}
                       </Text>
                     </Pressable>
+
                     <IncompleteAttestationModal
                       isVisible={showIncompleteModal}
                       onClose={() => {
@@ -560,50 +650,6 @@ const NewActionScreen = () => {
                 );
               }}
             </form.Subscribe>
-            {/* DEBUG SECTION */}
-            {/* <View className="px-4 mt-4">
-              <form.Subscribe selector={(state) => state.values}>
-                {(values) => (
-                  <Text className="text-xs font-dm-regular text-slate-500 bg-slate-100 p-2 rounded">
-                    {JSON.stringify(values, null, 2)}
-                  </Text>
-                )}
-              </form.Subscribe>
-              {submitError && (
-                <Text className="text-sm font-dm-regular text-red-500 mt-2">
-                  {submitError}
-                </Text>
-              )}
-              <form.Subscribe selector={(state) => state.errorMap}>
-                {(errorMap) => {
-                  return Object.entries(errorMap).map(
-                    ([validationType, errors]) => {
-                      if (
-                        typeof errors === "object" &&
-                        errors !== null &&
-                        "fields" in errors
-                      ) {
-                        return Object.entries(errors.fields).map(
-                          ([fieldName, error]) => (
-                            <Text
-                              key={`${validationType}-${fieldName}`}
-                              className="text-red-600"
-                            >
-                              {fieldName}: {String(error)}
-                            </Text>
-                          )
-                        );
-                      }
-                      return (
-                        <Text key={validationType} className="text-red-600">
-                          {validationType}: {String(errors)}
-                        </Text>
-                      );
-                    }
-                  );
-                }}
-              </form.Subscribe>
-            </View> */}
           </View>
         </ScrollView>
       </View>

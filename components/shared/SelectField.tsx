@@ -41,7 +41,7 @@ export default function SelectField({
     <>
       <Pressable
         onPress={() => !disabled && setIsOpen(true)}
-        className={`flex-row items-center justify-between rounded-md px-3 py-2 bg-white border ${
+        className={`flex-row items-center justify-between rounded-md px-3 py-3 h-12 bg-white border-[1.5px] ${
           error ? "border-red-500" : "border-slate-200"
         } ${disabled ? "opacity-50" : ""}`}
         accessibilityRole="button"

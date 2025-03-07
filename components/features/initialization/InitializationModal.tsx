@@ -1,6 +1,7 @@
 import ModalBase from "@/components/shared/ModalBase";
 import { View, Text, ActivityIndicator } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
+import ErrorMessage from "@/components/shared/ErrorMessage";
 
 interface InitializationModalProps {
   isVisible: boolean;
@@ -79,13 +80,11 @@ export function InitializationModal({
         </View>
 
         {error && !isAuthError && (
-          <View
-            className="mt-4 p-4 bg-red-50 rounded-lg"
-            accessibilityRole="alert"
-            accessibilityLabel="Error message"
-          >
-            <Text className="text-red-600">Error: {error.message}</Text>
-          </View>
+          <ErrorMessage
+            message={`Error: ${error.message}`}
+            secondaryMessage=""
+            className="mt-4"
+          />
         )}
 
         {isAuthError && (

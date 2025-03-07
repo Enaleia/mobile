@@ -1,28 +1,20 @@
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { Redirect } from "expo-router";
-import { directus } from "@/utils/directus";
 import { ActivityIndicator, View } from "react-native";
+import { useAuth } from "@/contexts/AuthContext";
+import { useNetwork } from "@/contexts/NetworkContext";
 
 const App = () => {
-  const [isChecking, setIsChecking] = useState(true);
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const { isAuthenticated, isLoading, autoLogin } = useAuth();
+  const { isConnected, isInternetReachable } = useNetwork();
+  const isOnline = isConnected && isInternetReachable;
 
   useEffect(() => {
-    checkAuth();
+    // Try to auto login when the app starts
+    autoLogin();
   }, []);
 
-  const checkAuth = async () => {
-    try {
-      const token = await directus.getToken();
-      setIsAuthenticated(!!token);
-    } catch (error) {
-      console.error("Error checking authentication:", error);
-    } finally {
-      setIsChecking(false);
-    }
-  };
-
-  if (isChecking) {
+  if (isLoading) {
     return (
       <View className="flex-1 items-center justify-center">
         <ActivityIndicator size="large" />
@@ -30,6 +22,8 @@ const App = () => {
     );
   }
 
+  // If authenticated, go to tabs
+  // If not authenticated but offline with stored credentials, autoLogin will handle it
   return <Redirect href={isAuthenticated ? "/(tabs)" : "/login"} />;
 };
 

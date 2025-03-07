@@ -13,46 +13,88 @@ import { MAX_RETRIES, QueueItem, QueueItemStatus } from "@/types/queue";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import NetInfo from "@react-native-community/netinfo";
 import * as Notifications from "expo-notifications";
-import { getCacheKey, getQueueCacheKey } from "@/utils/storage";
+import { getBatchCacheKey } from "@/utils/storage";
 import { DirectusCollector } from "@/types/collector";
 import { BatchData } from "@/types/batch";
+import { ensureValidToken } from "@/utils/directus";
+import Constants from "expo-constants";
+import { directus } from "@/utils/directus";
+import {
+  getActiveQueue,
+  updateActiveQueue,
+  addToCompletedQueue,
+  removeFromActiveQueue,
+} from "@/utils/queueStorage";
 
 async function updateItemInCache(itemId: string, updates: Partial<QueueItem>) {
-  const cacheKey = getQueueCacheKey();
-  if (!cacheKey) return;
+  try {
+    const items = await getActiveQueue();
+    const updatedItems = items.map((item) =>
+      item.localId === itemId
+        ? {
+            ...item,
+            ...updates,
+            retryCount:
+              updates.status === QueueItemStatus.PROCESSING
+                ? (item.retryCount || 0) + 1
+                : item.retryCount,
+          }
+        : item
+    );
 
-  const data = await AsyncStorage.getItem(cacheKey);
-  if (!data) return;
+    // If item is completed, move it to completed queue
+    if (updates.status === QueueItemStatus.COMPLETED) {
+      const completedItem = updatedItems.find(
+        (item) => item.localId === itemId
+      );
+      if (completedItem) {
+        await addToCompletedQueue(completedItem);
+        await removeFromActiveQueue(itemId);
+      }
+    } else {
+      await updateActiveQueue(updatedItems);
+    }
 
-  const items: QueueItem[] = JSON.parse(data);
-  const updatedItems = items.map((item) =>
-    item.localId === itemId
-      ? {
-          ...item,
-          ...updates,
-          retryCount:
-            updates.status === QueueItemStatus.PROCESSING
-              ? (item.retryCount || 0) + 1
-              : item.retryCount,
-        }
-      : item
-  );
-
-  await AsyncStorage.setItem(cacheKey, JSON.stringify(updatedItems));
-  queueEventEmitter.emit(QueueEvents.UPDATED);
+    queueEventEmitter.emit(QueueEvents.UPDATED);
+  } catch (error) {
+    console.error("Error updating item in cache:", error);
+    throw error;
+  }
 }
 
 async function notifyUser(title: string, body: string) {
-  await Notifications.scheduleNotificationAsync({
-    content: {
-      title,
-      body,
-    },
-    trigger: null,
-  });
+  try {
+    const { status: existingStatus } =
+      await Notifications.getPermissionsAsync();
+    let finalStatus = existingStatus;
+
+    if (existingStatus !== "granted") {
+      const { status } = await Notifications.requestPermissionsAsync();
+      finalStatus = status;
+    }
+
+    if (finalStatus !== "granted") {
+      console.log("Failed to get push token for push notification!");
+      return;
+    }
+
+    await Notifications.scheduleNotificationAsync({
+      content: {
+        title,
+        body,
+        sound: true,
+        priority: Notifications.AndroidNotificationPriority.HIGH,
+      },
+      trigger: null,
+    });
+  } catch (error) {
+    console.error("Error sending notification:", error);
+  }
 }
 
 let isProcessing = false;
+let lastNotificationTime = 0;
+const NOTIFICATION_COOLDOWN = 5 * 60 * 1000; // 5 minutes
 
 export async function processQueueItems(itemsToProcess?: QueueItem[]) {
   console.log("processQueueItems called:", {
@@ -67,11 +109,61 @@ export async function processQueueItems(itemsToProcess?: QueueItem[]) {
 
   try {
     isProcessing = true;
-    const cacheKey = getCacheKey();
+
+    // Check if we can reach the API
+    const apiUrl = process.env.EXPO_PUBLIC_API_URL;
+    if (!apiUrl) {
+      console.log("API URL not configured");
+      if (itemsToProcess) {
+        for (const item of itemsToProcess) {
+          await updateItemInCache(item.localId, {
+            status: QueueItemStatus.OFFLINE,
+            lastError: "API URL not configured",
+          });
+        }
+      }
+      return;
+    }
+
+    // Test API connection
+    try {
+      await fetch(apiUrl);
+    } catch (error) {
+      console.log("Cannot reach API, marking items as offline");
+      if (itemsToProcess) {
+        for (const item of itemsToProcess) {
+          await updateItemInCache(item.localId, {
+            status: QueueItemStatus.OFFLINE,
+            lastError: "Cannot reach API - please check your connection",
+          });
+        }
+      }
+      return;
+    }
+
+    // Ensure we have a valid token before proceeding
+    const validToken = await ensureValidToken();
+    if (!validToken) {
+      console.log("No valid token available, marking items as offline");
+      if (itemsToProcess) {
+        for (const item of itemsToProcess) {
+          await updateItemInCache(item.localId, {
+            status: QueueItemStatus.OFFLINE,
+            lastError: "Authentication required - please log in again",
+          });
+        }
+      }
+      return;
+    }
+
+    const cacheKey = getBatchCacheKey();
 
     const storedData = await AsyncStorage.getItem(cacheKey);
 
-    let directusCollectors: DirectusCollector[] = [];
+    let directusCollectors: Pick<
+      DirectusCollector,
+      "collector_id" | "collector_name" | "collector_identity"
+    >[] = [];
     if (storedData) {
       try {
         const cache = JSON.parse(storedData);
@@ -90,7 +182,7 @@ export async function processQueueItems(itemsToProcess?: QueueItem[]) {
     }
 
     if (!itemsToProcess) {
-      const queueKey = getQueueCacheKey();
+      const queueKey = getBatchCacheKey();
       if (!queueKey) return;
 
       const data = await AsyncStorage.getItem(queueKey);
@@ -118,6 +210,26 @@ export async function processQueueItems(itemsToProcess?: QueueItem[]) {
         });
       }
       return;
+    }
+
+    // Get items to process
+    const items = itemsToProcess || (await getActiveQueue());
+    const pendingItems = items.filter(
+      (item) =>
+        item.status === QueueItemStatus.PENDING ||
+        item.status === QueueItemStatus.OFFLINE
+    );
+
+    // Notify if there are pending items and enough time has passed since last notification
+    if (
+      pendingItems.length >= 5 &&
+      Date.now() - lastNotificationTime > NOTIFICATION_COOLDOWN
+    ) {
+      await notifyUser(
+        "Pending Items",
+        `You have ${pendingItems.length} items waiting to be processed`
+      );
+      lastNotificationTime = Date.now();
     }
 
     for (const item of itemsToProcess) {

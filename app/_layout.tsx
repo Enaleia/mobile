@@ -14,11 +14,13 @@ import * as Localization from "expo-localization";
 
 import { NetworkProvider } from "@/contexts/NetworkContext";
 import { QueueProvider, useQueue } from "@/contexts/QueueContext";
+import { AuthProvider } from "@/contexts/AuthContext";
 import { defaultLocale, dynamicActivate } from "@/lib/i18n";
-import { getCacheKey } from "@/utils/storage";
+import { getBatchCacheKey } from "@/utils/storage";
 import { BackgroundTaskManager } from "@/services/backgroundTaskManager";
 import { Asset } from "expo-asset";
 import { ACTION_ICONS } from "@/constants/action";
+import { getQueryClientConfig } from "@/utils/directus";
 
 SplashScreen.preventAutoHideAsync();
 
@@ -33,26 +35,11 @@ const preloadedActionIcons = Object.values(ACTION_ICONS).map(
   (icon) => icon as number
 );
 
-const queryClient = new QueryClient({
-  defaultOptions: {
-    queries: {
-      gcTime: 1000 * 60 * 60 * 24,
-      staleTime: 1000 * 60 * 60 * 24,
-      structuralSharing: true,
-      refetchOnMount: false,
-      refetchOnWindowFocus: false,
-      refetchOnReconnect: "always",
-    },
-    mutations: {
-      retry: 3,
-      gcTime: Infinity,
-    },
-  },
-});
+const queryClient = new QueryClient(getQueryClientConfig());
 
 const asyncStoragePersister = createAsyncStoragePersister({
   storage: AsyncStorage,
-  key: getCacheKey(),
+  key: getBatchCacheKey(),
   throttleTime: 2000,
 });
 
@@ -112,32 +99,34 @@ export default function RootLayout() {
 
   return (
     <NetworkProvider>
-      <QueueProvider>
-        <PersistQueryClientProvider
-          client={queryClient}
-          persistOptions={{
-            persister: asyncStoragePersister,
-            dehydrateOptions: {
-              shouldDehydrateQuery: ({ queryKey }) => {
-                return queryKey.includes("batchData");
+      <AuthProvider>
+        <QueueProvider>
+          <PersistQueryClientProvider
+            client={queryClient}
+            persistOptions={{
+              persister: asyncStoragePersister,
+              dehydrateOptions: {
+                shouldDehydrateQuery: ({ queryKey }) => {
+                  return queryKey.includes("batchData");
+                },
               },
-            },
-          }}
-        >
-          <QueueNetworkHandler />
-          <Stack screenOptions={{ headerShown: false }}>
-            <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-            <Stack.Screen
-              name="(auth)/login"
-              options={{ headerShown: false }}
-            />
-            <Stack.Screen
-              name="attest/new/[slug]"
-              options={{ headerShown: false }}
-            />
-          </Stack>
-        </PersistQueryClientProvider>
-      </QueueProvider>
+            }}
+          >
+            <QueueNetworkHandler />
+            <Stack screenOptions={{ headerShown: false }}>
+              <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+              <Stack.Screen
+                name="(auth)/login"
+                options={{ headerShown: false }}
+              />
+              <Stack.Screen
+                name="attest/new/[slug]"
+                options={{ headerShown: false }}
+              />
+            </Stack>
+          </PersistQueryClientProvider>
+        </QueueProvider>
+      </AuthProvider>
     </NetworkProvider>
   );
 }

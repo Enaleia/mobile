@@ -1,11 +1,11 @@
 import { EventFormType } from "@/app/attest/new/[slug]";
 
 export enum QueueItemStatus {
-  PENDING = "PENDING",
-  PROCESSING = "PROCESSING",
-  OFFLINE = "OFFLINE",
-  FAILED = "FAILED",
-  COMPLETED = "COMPLETED",
+  "PENDING",
+  "PROCESSING",
+  "OFFLINE",
+  "FAILED",
+  "COMPLETED",
 }
 
 export interface QueueItem extends Omit<EventFormType, "type"> {

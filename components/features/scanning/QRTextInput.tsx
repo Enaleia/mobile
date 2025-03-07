@@ -1,6 +1,11 @@
 import QRCodeScanner from "@/components/features/scanning/QRCodeScanner";
 import { Ionicons } from "@expo/vector-icons";
-import React, { useCallback, useReducer } from "react";
+import React, {
+  useCallback,
+  useReducer,
+  forwardRef,
+  useImperativeHandle,
+} from "react";
 import { Modal, Pressable, Text, TextInput, View } from "react-native";
 
 interface QRTextInputProps {
@@ -8,9 +13,13 @@ interface QRTextInputProps {
   onChangeText: (text: string) => void;
   placeholder?: string;
   className?: string;
-  ref?: React.RefObject<TextInput>;
   id?: string;
   variant?: "standalone" | "embedded";
+}
+
+export interface QRTextInputRef {
+  focus: () => void;
+  blur: () => void;
 }
 
 const scannerReducer = (state: any, action: any) => {
@@ -36,16 +45,30 @@ const scannerReducer = (state: any, action: any) => {
   }
 };
 
-const QRTextInput: React.FC<QRTextInputProps> = React.memo(
-  ({
-    value,
-    onChangeText,
-    placeholder = "",
-    className = "",
-    id = "default",
-    variant = "embedded",
-  }) => {
+const QRTextInput = forwardRef<QRTextInputRef, QRTextInputProps>(
+  (
+    {
+      value,
+      onChangeText,
+      placeholder = "",
+      className = "",
+      id = "default",
+      variant = "embedded",
+    },
+    ref
+  ) => {
     const [scannerStates, dispatch] = useReducer(scannerReducer, {});
+    const inputRef = React.useRef<TextInput>(null);
+
+    // Expose methods to parent component
+    useImperativeHandle(ref, () => ({
+      focus: () => {
+        inputRef.current?.focus();
+      },
+      blur: () => {
+        inputRef.current?.blur();
+      },
+    }));
 
     const currentState = scannerStates[id] || { isVisible: false, error: null };
 
@@ -124,12 +147,12 @@ const QRTextInput: React.FC<QRTextInputProps> = React.memo(
         <View className="relative flex-row items-center gap-2">
           <View className="flex-1">
             <TextInput
+              ref={inputRef}
               value={value}
               onChangeText={(text) => {
-                setError(null);
                 onChangeText(text);
-                setScanner(false);
               }}
+              autoCapitalize="characters"
               placeholder={placeholder}
               accessibilityLabel={placeholder}
               accessibilityRole="text"

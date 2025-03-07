@@ -13,7 +13,7 @@ function FormSection({ children }: { children: React.ReactNode }) {
   return (
     <View className="flex-1">
       {React.Children.map(children, (child) => (
-        <View className="mb-4">{child}</View>
+        <View className="mb-3">{child}</View>
       ))}
     </View>
   );
