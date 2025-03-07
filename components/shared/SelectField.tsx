@@ -41,8 +41,8 @@ export default function SelectField({
     <>
       <Pressable
         onPress={() => !disabled && setIsOpen(true)}
-        className={`flex-row items-center justify-between rounded-3xl px-4 py-3 h-14 bg-white border-[1.5px] ${
-          error ? "border-red-500" : "border-slate-200"
+        className={`flex-row items-center justify-between rounded-2xl p-2 px-4 h-[72px] bg-white border-[1.5px] ${
+          error ? "border-red-500" : "border-grey-3"
         } ${disabled ? "opacity-50" : ""}`}
         accessibilityRole="button"
         accessibilityLabel={placeholder}
@@ -52,12 +52,17 @@ export default function SelectField({
         {isLoading ? (
           <ActivityIndicator size="small" className="mr-2" />
         ) : (
-          <Text
-            className="flex-1 font-dm-regular text-enaleia-black"
-            numberOfLines={1}
-          >
-            {selectedOption?.label || placeholder}
-          </Text>
+          <View className="flex-1">
+            <Text className="text-sm font-dm-bold text-grey-6 tracking-tighter">
+              {placeholder}
+            </Text>
+            <Text
+              className="font-dm-bold text-xl tracking-tighter text-enaleia-black"
+              numberOfLines={1}
+            >
+              {selectedOption?.label || "Select"}
+            </Text>
+          </View>
         )}
         <Ionicons
           name="chevron-down"
@@ -80,7 +85,7 @@ export default function SelectField({
                   onChange(option.value);
                   setIsOpen(false);
                 }}
-                className="bg-white w-full px-4 py-3 rounded-3xl flex flex-row items-center justify-between border-[1.5px] border-grey-3 mb-2"
+                className="bg-white w-full px-4 py-3 rounded-2xl flex flex-row items-center justify-between border-[1.5px] border-grey-3 mb-2"
                 accessibilityRole="menuitem"
                 accessibilityLabel={option.label}
                 accessibilityState={{ selected: option.value === value }}

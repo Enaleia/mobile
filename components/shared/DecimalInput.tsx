@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { TextInput, TextInputProps, Text, View } from "react-native";
+import { TextInput, Text, View, Pressable } from "react-native";
 import { FieldApi } from "@tanstack/react-form";
 
 interface DecimalInputProps {
@@ -7,6 +7,8 @@ interface DecimalInputProps {
   label: string;
   placeholder: string;
   fullWidth?: boolean;
+  allowDecimals?: boolean;
+  suffix?: string;
 }
 
 export default function DecimalInput({
@@ -14,39 +16,55 @@ export default function DecimalInput({
   label,
   placeholder,
   fullWidth = false,
+  allowDecimals = true,
+  suffix,
 }: DecimalInputProps) {
   const [localValue, setLocalValue] = useState(
     field.state.value?.toString() || ""
   );
 
   return (
-    <View className={`${fullWidth ? 'w-full' : 'flex-1'}`}>
-      <Text className="text-base font-dm-bold text-enaleia-black tracking-tighter mb-2">
-        {label}
-      </Text>
-      <TextInput
-        value={localValue}
-        onChangeText={(text) => {
-          const numericValue = text.replace(/[^0-9.]/g, "");
-          if (numericValue.match(/^\d*\.?\d*$/)) {
-            setLocalValue(numericValue);
-          }
-        }}
-        onBlur={() => {
-          field.handleBlur();
-          if (localValue === "" || localValue === ".") {
-            field.handleChange(undefined);
-          } else {
-            const numericValue = parseFloat(localValue);
-            if (!isNaN(numericValue)) {
-              field.handleChange(numericValue);
-            }
-          }
-        }}
-        className="rounded-3xl px-4 py-3 h-14 bg-white border-[1.5px] border-slate-200 focus:border-primary-dark-blue w-full"
-        placeholder={placeholder}
-        inputMode="decimal"
-      />
+    <View className={`${fullWidth ? 'w-full' : 'flex-1'} mb-2`}>
+      <Pressable className="rounded-2xl bg-white border-[1.5px] border-grey-3 p-2 px-4 h-[72px]">
+        <Text className="w-full text-sm font-dm-bold text-grey-6 tracking-tighter">
+          {label}
+        </Text>
+        <View className="flex-row items-center">
+          <TextInput
+            value={localValue}
+            onChangeText={(text) => {
+              const regex = allowDecimals ? /[^0-9.]/g : /[^0-9]/g;
+              const numericValue = text.replace(regex, "");
+              if (allowDecimals) {
+                if (numericValue.match(/^\d*\.?\d*$/)) {
+                  setLocalValue(numericValue);
+                }
+              } else {
+                setLocalValue(numericValue);
+              }
+            }}
+            onBlur={() => {
+              field.handleBlur();
+              if (localValue === "" || localValue === ".") {
+                field.handleChange(undefined);
+              } else {
+                const numericValue = allowDecimals ? parseFloat(localValue) : parseInt(localValue);
+                if (!isNaN(numericValue)) {
+                  field.handleChange(numericValue);
+                }
+              }
+            }}
+            className="flex-1 h-[28px] py-0 font-dm-bold tracking-tighter text-enaleia-black text-xl"
+            placeholder={placeholder}
+            inputMode={allowDecimals ? "decimal" : "numeric"}
+          />
+          {suffix && (
+            <Text className="text-sm font-dm-bold text-grey-6 tracking-tighter ml-1">
+              {suffix}
+            </Text>
+          )}
+        </View>
+      </Pressable>
       {field.state.meta.errors ? (
         <Text className="text-sm text-red-500 mt-1">
           {field.state.meta.errors.join(", ")}

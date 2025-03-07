@@ -483,80 +483,72 @@ const NewActionScreen = () => {
 
             {currentAction?.name === "Manufacturing" && (
               <View className="mt-10">
-                <View className="flex-row items-center space-x-0.5 mb-4">
+                <View className="flex-row items-center mb-4">
                   <Text className="text-xl font-dm-regular text-enaleia-black tracking-tighter">
                     Manufacturing information
                   </Text>
+                  <View className="ml-2">
+                    <Ionicons name="gift-outline" size={24} color="#0D0D0D" />
+                  </View>
                 </View>
 
-                <FormSection>
-                  <View className="space-y-0.5">
-                    <Text className="text-base font-dm-bold text-enaleia-black tracking-tighter mb-2">
-                      Product
-                    </Text>
-                    <form.Field name="manufacturing.product">
-                      {(field) => {
-                        const options =
-                          productsData?.map((product) => ({
-                            label: `${
-                              product.product_name || "Unknown Product"
-                            }`,
-                            value: product.product_id,
-                          })) || [];
+                <View>
+                  <form.Field name="manufacturing.product">
+                    {(field) => {
+                      const options =
+                        productsData?.map((product) => ({
+                          label: `${
+                            product.product_name || "Unknown Product"
+                          }`,
+                          value: product.product_id,
+                        })) || [];
 
-                        return (
-                          <>
-                            {productsError && (
-                              <Text className="text-sm text-red-500 mb-2">
-                                Failed to load products list
-                              </Text>
-                            )}
-                            <SelectField
-                              value={field.state.value}
-                              onChange={(value) => field.handleChange(value)}
-                              options={options}
-                              placeholder="Select product"
-                              isLoading={productsLoading}
-                              error={productsError?.toString()}
-                              disabled={productsLoading || !!productsError}
-                            />
-                          </>
-                        );
-                      }}
-                    </form.Field>
-                  </View>
-                  <View className="space-y-4">
+                      return (
+                        <>
+                          {productsError && (
+                            <Text className="text-sm text-red-500 mb-2">
+                              Failed to load products list
+                            </Text>
+                          )}
+                          <SelectField
+                            value={field.state.value}
+                            onChange={(value) => field.handleChange(value)}
+                            options={options}
+                            placeholder="Product"
+                            isLoading={productsLoading}
+                            error={productsError?.toString()}
+                            disabled={productsLoading || !!productsError}
+                          />
+                        </>
+                      );
+                    }}
+                  </form.Field>
+                  <View className="mt-2">
                     <form.Field name="manufacturing.quantity">
                       {(field) => (
-                        <View className="w-full">
-                          <Text className="text-base font-dm-bold text-enaleia-black tracking-tighter mb-2">
-                            Batch Quantity
-                          </Text>
-                          <TextInput
-                            value={field.state.value?.toString() || ""}
-                            onChangeText={(text) => {
-                              field.handleChange(Number(text));
-                            }}
-                            className="rounded-3xl px-4 py-3 h-14 bg-white border-[1.5px] border-slate-200 focus:border-primary-dark-blue w-full"
-                            placeholder="0"
-                            inputMode="numeric"
-                          />
-                        </View>
+                        <DecimalInput
+                          field={field}
+                          label="Batch Quantity"
+                          placeholder="0"
+                          fullWidth
+                          allowDecimals={false}
+                          suffix="Unit"
+                        />
                       )}
                     </form.Field>
-                    <form.Field
-                      name="manufacturing.weightInKg"
-                      children={(field) => (
+                    <form.Field name="manufacturing.weightInKg">
+                      {(field) => (
                         <DecimalInput
                           field={field}
                           label="Weight per item"
-                          placeholder="Weight per item"
+                          placeholder="0"
                           fullWidth
+                          suffix="kg"
                         />
                       )}
-                    />
+                    </form.Field>
                   </View>
-                </FormSection>
+                </View>
               </View>
             )}
             <form.Subscribe
