@@ -234,8 +234,23 @@ const NewActionScreen = () => {
         const { success: isValid, error: validationError } =
           runtimeSchema.safeParse(value);
         if (!isValid) {
-          setSubmitError("Please fix the form errors before submitting");
+          // Set field-specific errors
+          validationError.errors.forEach((error) => {
+            const fieldPath = error.path.join('.') as keyof typeof value;
+            form.setFieldMeta(fieldPath, (old) => ({
+              ...old,
+              errors: [...(old?.errors || []), error.message],
+            }));
+          });
+          
+          // Set general submit error
+          setSubmitError("Please fill in all required fields");
           console.error("Form validation errors:", validationError);
+
+          // Scroll to the first error if possible
+          if (scrollViewRef.current && validationError.errors[0]?.path[0]) {
+            scrollViewRef.current.scrollTo({ y: 0, animated: true });
+          }
           return;
         }
 
@@ -438,6 +453,7 @@ const NewActionScreen = () => {
                         onChangeText={field.handleChange}
                         variant="standalone"
                         label="Collector ID Card"
+                        error={field.state.meta.errors?.[0] || undefined}
                       />
                     </>
                   )}
@@ -483,7 +499,6 @@ const NewActionScreen = () => {
 
             {currentAction?.name === "Manufacturing" && (
               <View className="mt-4">
-                {/* Manufacturing information */}
                 <View className="flex-row items-center mb-4">
                   <Text className="text-xl font-dm-regular text-enaleia-black tracking-tighter">
                     Manufacturing information
@@ -506,7 +521,7 @@ const NewActionScreen = () => {
                           })) || []}
                           placeholder="Product"
                           isLoading={productsLoading}
-                          error={productsError?.toString()}
+                          error={field.state.meta.errors?.[0] || productsError?.toString()}
                           disabled={productsLoading || !!productsError}
                         />
                       );
@@ -525,6 +540,7 @@ const NewActionScreen = () => {
                               placeholder="0"
                               allowDecimals={false}
                               suffix="Unit"
+                              error={typeof field.state.meta.errors?.[0] === 'string' ? field.state.meta.errors[0] : undefined}
                             />
                           );
                           return <QuantityField />;
@@ -541,6 +557,7 @@ const NewActionScreen = () => {
                               label="Weight per item"
                               placeholder="0"
                               suffix="kg"
+                              error={typeof field.state.meta.errors?.[0] === 'string' ? field.state.meta.errors[0] : undefined}
                             />
                           );
                           return <WeightField />;

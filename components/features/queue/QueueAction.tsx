@@ -20,12 +20,13 @@ const QueuedAction = ({ item }: QueuedActionProps) => {
     hour: "2-digit",
     minute: "2-digit",
   }).format(new Date(timestamp));
+  
   if (!action) return null;
   const isProcessing = isProcessingItem(item);
 
   return (
-    <View className="bg-white px-4 py-2 shadow-sm border-b border-gray-200">
-      <View className="flex-row justify-between items-center">
+    <View className="bg-white px-4 py-3 border-b border-gray-200">
+      <View className="flex-row justify-between items-start">
         <View className="flex-1">
           <Text
             className="font-dm-bold text-base tracking-tight"
@@ -33,12 +34,12 @@ const QueuedAction = ({ item }: QueuedActionProps) => {
           >
             {action.name}
           </Text>
-          <Text className="text-gray-600 text-xs">{formattedTime}</Text>
+          <Text className="text-gray-600 text-sm">{formattedTime}</Text>
         </View>
         {isProcessing && <ProcessingPill />}
       </View>
       {item.lastError && item.status !== QueueItemStatus.COMPLETED && (
-        <Text className="text-red-500 text-sm mt-1" numberOfLines={2}>
+        <Text className="text-red-500 text-sm mt-2" numberOfLines={2}>
           {item.lastError}
         </Text>
       )}

@@ -16,6 +16,7 @@ interface QRTextInputProps {
   id?: string;
   variant?: "standalone" | "embedded";
   label?: string;
+  error?: string;
 }
 
 export interface QRTextInputRef {
@@ -56,6 +57,7 @@ const QRTextInput = forwardRef<QRTextInputRef, QRTextInputProps>(
       id = "default",
       variant = "embedded",
       label,
+      error,
     },
     ref
   ) => {
@@ -168,7 +170,7 @@ const QRTextInput = forwardRef<QRTextInputRef, QRTextInputProps>(
                 disabled: false,
               }}
               accessibilityHint="Enter text or tap QR code button to scan"
-              className={`${inputClass} ${className}`}
+              className={`${inputClass} ${className} ${error ? 'border-red-500' : 'border-gray-300'}`}
             />
           </View>
           <View className="w-6 h-6 justify-center items-center">
