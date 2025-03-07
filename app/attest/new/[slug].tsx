@@ -415,7 +415,7 @@ const NewActionScreen = () => {
     const subscription = AppState.addEventListener('change', handleAppStateChange);
     return () => {
       // Clean up timeout
-      if (saveTimeoutRef.current) {
+      if (saveTimeoutRef?.current) {
         clearTimeout(saveTimeoutRef.current);
       }
       unsubscribe();
@@ -742,6 +742,11 @@ const NewActionScreen = () => {
         isVisible={showLeaveModal}
         onClose={() => setShowLeaveModal(false)}
         onConfirmLeave={() => {
+          // Clean up timeout, remove state from storage
+          if (saveTimeoutRef?.current) {
+            clearTimeout(saveTimeoutRef.current);
+          }
+          deleteFormState();
           setShowLeaveModal(false);
           router.back();
         }}
