@@ -41,7 +41,7 @@ import {
 } from "react-native";
 import uuid from "react-native-uuid";
 import { z } from "zod";
-import { LocationPermissionRequest } from "@/components/features/location/LocationPermissionRequest";
+import { LocationPermissionHandler } from "@/components/features/location/LocationPermissionHandler";
 import { LocationSchema } from "@/services/locationService";
 import QRTextInput from "@/components/features/scanning/QRTextInput";
 import { useUserInfo } from "@/hooks/data/useUserInfo";
@@ -403,14 +403,14 @@ const NewActionScreen = () => {
           keyboardDismissMode="on-drag"
           contentContainerStyle={{
             flexGrow: 0,
-            paddingBottom: Platform.OS === "ios" ? 120 : 20,
+            paddingBottom: 100,
           }}
         >
           <View className="flex-1">
             <form.Subscribe selector={(state) => state.values}>
               {(values) => (
                 <View className="mb-2 mt-4">
-                  <LocationPermissionRequest
+                  <LocationPermissionHandler
                     onPermissionGranted={() => {
                       // Location will be automatically updated via the effect
                     }}
@@ -420,19 +420,15 @@ const NewActionScreen = () => {
                         "Location helps verify where events take place. You can still use saved locations or change this later in settings."
                       );
                     }}
-                    onLocationSelected={(location) => {
-                      form.setFieldValue("location", location);
-                    }}
-                    currentLocation={values.location}
                   />
                 </View>
               )}
             </form.Subscribe>
 
             {currentAction?.category === "Collection" && (
-              <View className="mt-4 mb-2">
-                <Text className="text-[20px] font-dm-regular text-enaleia-black tracking-tighter mb-2">
-                  Collector ID
+              <View className="mb-8">
+                <Text className="text-[18px] font-dm-regular text-enaleia-black tracking-tighter mb-2">
+                  Collector
                 </Text>
                 <form.Field name="collectorId">
                   {(field) => (
@@ -440,41 +436,35 @@ const NewActionScreen = () => {
                       <QRTextInput
                         value={field.state.value || ""}
                         onChangeText={field.handleChange}
-                        placeholder="Scan or enter collector ID"
                         variant="standalone"
+                        label="Collector ID Card"
                       />
-                      {/* Display validation error */}
-                      {!field.state.value && field.state.meta.isTouched && (
-                        <Text className="text-sm text-red-500 mt-1">
-                          This field is required!
-                        </Text>
-                      )}
                     </>
                   )}
                 </form.Field>
               </View>
             )}
-            <View className="h-[1.5px] bg-slate-200 my-5" />
             <form.Field name="incomingMaterials">
               {(field) => (
-                <MaterialSection
-                  materials={materialsData}
-                  category="incoming"
-                  isModalVisible={isIncomingMaterialsPickerVisible}
-                  setModalVisible={setIsIncomingMaterialsPickerVisible}
-                  selectedMaterials={field.state.value as MaterialDetail[]}
-                  setSelectedMaterials={(materials: MaterialDetail[]) =>
-                    field.handleChange(materials)
-                  }
-                  hideCodeInput={currentAction?.category === "Collection"}
-                />
+                <View className="mb-8">
+                  <MaterialSection
+                    materials={materialsData}
+                    category="incoming"
+                    isModalVisible={isIncomingMaterialsPickerVisible}
+                    setModalVisible={setIsIncomingMaterialsPickerVisible}
+                    selectedMaterials={field.state.value as MaterialDetail[]}
+                    setSelectedMaterials={(materials: MaterialDetail[]) =>
+                      field.handleChange(materials)
+                    }
+                    hideCodeInput={currentAction?.category === "Collection"}
+                  />
+                </View>
               )}
             </form.Field>
             {currentAction?.name !== "Manufacturing" && (
               <form.Field name="outgoingMaterials">
                 {(field) => (
-                  <>
-                    <View className="h-[1.5px] bg-slate-200 my-5" />
+                  <View className="mb-8">
                     <MaterialSection
                       materials={materialsData}
                       category="outgoing"
@@ -486,172 +476,166 @@ const NewActionScreen = () => {
                       }
                       hideCodeInput={currentAction?.category === "Collection"}
                     />
-                  </>
+                  </View>
                 )}
               </form.Field>
             )}
 
             {currentAction?.name === "Manufacturing" && (
-              <View className="mt-10 rounded-lg p-2 border-[1.5px] border-slate-200 bg-white">
-                <View className="flex-row items-center space-x-0.5 mb-4">
+              <View className="mt-4">
+                {/* Manufacturing information */}
+                <View className="flex-row items-center mb-4">
                   <Text className="text-xl font-dm-regular text-enaleia-black tracking-tighter">
                     Manufacturing information
                   </Text>
+                  <View className="ml-2">
+                    <Ionicons name="gift-outline" size={24} color="#0D0D0D" />
+                  </View>
                 </View>
 
-                <FormSection>
-                  <View className="space-y-0.5">
-                    <Text className="text-base font-dm-medium text-enaleia-black tracking-tighter mb-2">
-                      Choose product
-                    </Text>
-                    <form.Field name="manufacturing.product">
-                      {(field) => {
-                        const options =
-                          productsData?.map((product) => ({
-                            label: `${
-                              product.product_name || "Unknown Product"
-                            }`,
+                <View className="space-y-2">
+                  <form.Field name="manufacturing.product">
+                    {(field) => {
+                      const ProductField = () => (
+                        <SelectField
+                          value={field.state.value}
+                          onChange={(value) => field.handleChange(value)}
+                          options={productsData?.map((product) => ({
+                            label: `${product.product_name || "Unknown Product"}`,
                             value: product.product_id,
-                          })) || [];
-
-                        return (
-                          <>
-                            {productsError && (
-                              <Text className="text-sm text-red-500 mb-2">
-                                Failed to load products
-                              </Text>
-                            )}
-                            <SelectField
-                              value={field.state.value}
-                              onChange={(value) => field.handleChange(value)}
-                              options={options}
-                              placeholder="Choose a product"
-                              isLoading={productsLoading}
-                              error={productsError?.toString()}
-                              disabled={productsLoading || !!productsError}
-                            />
-                          </>
-                        );
-                      }}
-                    </form.Field>
-                  </View>
-                  <View className="flex-row space-x-2">
-                    <form.Field name="manufacturing.quantity">
-                      {(field) => (
-                        <View className="flex-1">
-                          <Text className="text-base font-dm-medium text-enaleia-black tracking-tighter mb-2">
-                            Quantity
-                          </Text>
-                          <TextInput
-                            value={field.state.value?.toString() || ""}
-                            onChangeText={(text) => {
-                              field.handleChange(Number(text));
-                            }}
-                            className="rounded-md px-3 py-3 h-12 bg-white border-[1.5px] border-slate-200 focus:border-primary-dark-blue"
-                            placeholder="Quantity"
-                            inputMode="numeric"
-                          />
-                        </View>
-                      )}
-                    </form.Field>
-                    <View className="h-[1.5px] bg-slate-200 mx-1" />
-                    <form.Field
-                      name="manufacturing.weightInKg"
-                      children={(field) => (
-                        <DecimalInput
-                          field={field}
-                          label="Weight in kg"
-                          placeholder="Weight in kg"
+                          })) || []}
+                          placeholder="Product"
+                          isLoading={productsLoading}
+                          error={productsError?.toString()}
+                          disabled={productsLoading || !!productsError}
                         />
-                      )}
-                    />
+                      );
+                      return <ProductField />;
+                    }}
+                  </form.Field>
+
+                  <View className="flex-row gap-2">
+                    <View className="flex-1">
+                      <form.Field name="manufacturing.quantity">
+                        {(field) => {
+                          const QuantityField = () => (
+                            <DecimalInput
+                              field={field}
+                              label="Batch Quantity"
+                              placeholder="0"
+                              allowDecimals={false}
+                              suffix="Unit"
+                            />
+                          );
+                          return <QuantityField />;
+                        }}
+                      </form.Field>
+                    </View>
+
+                    <View className="flex-1">
+                      <form.Field name="manufacturing.weightInKg">
+                        {(field) => {
+                          const WeightField = () => (
+                            <DecimalInput
+                              field={field}
+                              label="Weight per item"
+                              placeholder="0"
+                              suffix="kg"
+                            />
+                          );
+                          return <WeightField />;
+                        }}
+                      </form.Field>
+                    </View>
                   </View>
-                </FormSection>
+                </View>
               </View>
             )}
-            <form.Subscribe
-              selector={(state) => [
-                state.canSubmit,
-                state.isSubmitting,
-                state.values,
-              ]}
-            >
-              {([canSubmit, isSubmitting, values]) => {
-                const handleSubmitClick = (e: GestureResponderEvent) => {
-                  setSubmitError(null);
-                  e.preventDefault();
-                  e.stopPropagation();
-
-                  const hasValidIncoming = validateMaterials(
-                    typeof values === "object" &&
-                      values !== null &&
-                      "incomingMaterials" in values
-                      ? values.incomingMaterials || []
-                      : []
-                  );
-                  const hasValidOutgoing = validateMaterials(
-                    typeof values === "object" &&
-                      values !== null &&
-                      "outgoingMaterials" in values
-                      ? values.outgoingMaterials || []
-                      : []
-                  );
-
-                  if (!hasValidIncoming && !hasValidOutgoing) {
-                    setShowIncompleteModal(true);
-                    setPendingSubmission(true);
-                    return;
-                  }
-
-                  form.handleSubmit();
-                };
-
-                return (
-                  <>
-                    {/* Error message */}
-                    {submitError && (
-                      <View className="mt-2">
-                        <ErrorMessage message={submitError} />
-                      </View>
-                    )}
-
-                    <Pressable
-                      onPress={handleSubmitClick}
-                      className={`flex-row items-center justify-center ${
-                        submitError ? "mt-2" : "mt-3"
-                      } p-3 rounded-full ${
-                        !canSubmit || isSubmitting
-                          ? "bg-primary-dark-blue"
-                          : "bg-blue-ocean"
-                      }`}
-                    >
-                      {isSubmitting ? (
-                        <ActivityIndicator color="white" className="mr-2" />
-                      ) : null}
-                      <Text className="text-base font-dm-medium text-slate-50 tracking-tight">
-                        {isSubmitting ? "Saving..." : "Create Attestation"}
-                      </Text>
-                    </Pressable>
-
-                    <IncompleteAttestationModal
-                      isVisible={showIncompleteModal}
-                      onClose={() => {
-                        setShowIncompleteModal(false);
-                        setPendingSubmission(false);
-                      }}
-                      onSubmitAnyway={() => {
-                        setShowIncompleteModal(false);
-                        if (pendingSubmission) {
-                          form.handleSubmit();
-                        }
-                      }}
-                    />
-                  </>
-                );
-              }}
-            </form.Subscribe>
           </View>
         </ScrollView>
+
+        {/* Fixed Submit Button */}
+        <View className="absolute bottom-[48px] left-0 right-0 bg-white-sand px-5">
+          <form.Subscribe
+            selector={(state) => [
+              state.canSubmit,
+              state.isSubmitting,
+              state.values,
+            ]}
+          >
+            {([canSubmit, isSubmitting, values]) => {
+              const handleSubmitClick = (e: GestureResponderEvent) => {
+                setSubmitError(null);
+                e.preventDefault();
+                e.stopPropagation();
+
+                const hasValidIncoming = validateMaterials(
+                  typeof values === "object" &&
+                    values !== null &&
+                    "incomingMaterials" in values
+                    ? values.incomingMaterials || []
+                    : []
+                );
+                const hasValidOutgoing = validateMaterials(
+                  typeof values === "object" &&
+                    values !== null &&
+                    "outgoingMaterials" in values
+                    ? values.outgoingMaterials || []
+                    : []
+                );
+
+                if (!hasValidIncoming && !hasValidOutgoing) {
+                  setShowIncompleteModal(true);
+                  setPendingSubmission(true);
+                  return;
+                }
+
+                form.handleSubmit();
+              };
+
+              return (
+                <>
+                  {/* Error message */}
+                  {submitError && (
+                    <View className="mb-2">
+                      <ErrorMessage message={submitError} />
+                    </View>
+                  )}
+
+                  <Pressable
+                    onPress={handleSubmitClick}
+                    className={`w-full flex-row items-center justify-center p-3 rounded-full ${
+                      !canSubmit || isSubmitting
+                        ? "bg-primary-dark-blue"
+                        : "bg-blue-ocean"
+                    }`}
+                  >
+                    {isSubmitting ? (
+                      <ActivityIndicator color="white" className="mr-2" />
+                    ) : null}
+                    <Text className="text-base font-dm-medium text-slate-50 tracking-tight">
+                      {isSubmitting ? "Preparing..." : "Submit Attestation"}
+                    </Text>
+                  </Pressable>
+
+                  <IncompleteAttestationModal
+                    isVisible={showIncompleteModal}
+                    onClose={() => {
+                      setShowIncompleteModal(false);
+                      setPendingSubmission(false);
+                    }}
+                    onSubmitAnyway={() => {
+                      setShowIncompleteModal(false);
+                      if (pendingSubmission) {
+                        form.handleSubmit();
+                      }
+                    }}
+                  />
+                </>
+              );
+            }}
+          </form.Subscribe>
+        </View>
       </View>
       {isSentToQueue && (
         <SentToQueueModal isVisible={isSentToQueue} onClose={() => {}} />

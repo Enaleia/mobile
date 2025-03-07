@@ -15,6 +15,7 @@ interface QRTextInputProps {
   className?: string;
   id?: string;
   variant?: "standalone" | "embedded";
+  label?: string;
 }
 
 export interface QRTextInputRef {
@@ -54,6 +55,7 @@ const QRTextInput = forwardRef<QRTextInputRef, QRTextInputProps>(
       className = "",
       id = "default",
       variant = "embedded",
+      label,
     },
     ref
   ) => {
@@ -134,16 +136,21 @@ const QRTextInput = forwardRef<QRTextInputRef, QRTextInputProps>(
 
     const containerClass =
       variant === "standalone"
-        ? "h-12 border-[1.5px] border-grey-3 rounded-lg p-2 bg-white items-center"
+        ? "h-[65px] border-[1.5px] border-grey-3 rounded-2xl px-4 py-2 bg-white"
         : "";
 
     const inputClass =
       variant === "standalone"
-        ? "overflow-hidden my-0 py-0 font-dm-regular tracking-tighter text-base items-center h-full"
+        ? "overflow-hidden my-0 py-0 font-dm-bold tracking-tighter text-xl text-enaleia-black items-center h-[28px]"
         : "w-[100px] h-[28px] overflow-hidden my-0 py-0 font-dm-bold tracking-tighter text-lg items-center";
 
     return (
       <View className={containerClass}>
+        {variant === "standalone" && label && (
+          <Text className="text-sm font-dm-bold text-grey-6 tracking-tighter">
+            {label}
+          </Text>
+        )}
         <View className="relative flex-row items-center gap-2">
           <View className="flex-1">
             <TextInput

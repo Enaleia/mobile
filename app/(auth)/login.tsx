@@ -21,7 +21,7 @@ export default function LoginScreen() {
       <View className="absolute top-36 right-[-30px] bg-white-sand">
         <Image
           source={require("@/assets/images/animals/Turtle.png")}
-          className="w-[223px] h-[228px]"
+          className="w-[280px] h-[280px]"
           accessibilityLabel="Decorative turtle illustration"
           accessibilityRole="image"
         />

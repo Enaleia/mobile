@@ -3,6 +3,7 @@ import { Tabs } from "expo-router/tabs";
 import React from "react";
 import { useQueue } from "@/contexts/QueueContext";
 import { QueueItemStatus } from "@/types/queue";
+import { Icon } from "../../components/shared/Icon";
 
 const TabsLayout = () => {
   const { queueItems } = useQueue();
@@ -15,15 +16,20 @@ const TabsLayout = () => {
     <Tabs
       screenOptions={{
         headerShown: false,
-        tabBarActiveTintColor: "#24548b",
+        tabBarActiveTintColor: "#0D0D0D",
+        tabBarInactiveTintColor: "#8E8E93",
       }}
     >
       <Tabs.Screen
         name="index"
         options={{
           tabBarLabel: "Home",
-          tabBarIcon: ({ color }) => (
-            <Ionicons name="home" size={24} color={color} />
+          tabBarIcon: ({ focused }) => (
+            <Icon 
+              name={focused ? 'home-active' : 'home-inactive'} 
+              size={24} 
+              color={focused ? "#0D0D0D" : "#8E8E93"} 
+            />
           ),
           href: "/",
         }}
@@ -33,8 +39,12 @@ const TabsLayout = () => {
         options={{
           tabBarLabel: "Queue",
           tabBarBadge: incompleteItems.length || undefined,
-          tabBarIcon: ({ color }) => (
-            <Ionicons name="archive" size={24} color={color} />
+          tabBarIcon: ({ focused }) => (
+            <Icon 
+              name={focused ? 'queue-active' : 'queue-inactive'} 
+              size={24} 
+              color={focused ? "#0D0D0D" : "#8E8E93"} 
+            />
           ),
           href: "/queue",
         }}
@@ -43,8 +53,12 @@ const TabsLayout = () => {
         name="settings"
         options={{
           tabBarLabel: "Settings",
-          tabBarIcon: ({ color }) => (
-            <Ionicons name="settings" size={24} color={color} />
+          tabBarIcon: ({ focused }) => (
+            <Icon 
+              name={focused ? 'settings-active' : 'settings-inactive'} 
+              size={24} 
+              color={focused ? "#0D0D0D" : "#8E8E93"} 
+            />
           ),
           href: "/settings",
         }}
