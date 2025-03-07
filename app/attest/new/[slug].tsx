@@ -51,6 +51,36 @@ import DecimalInput from "@/components/shared/DecimalInput";
 import { processQueueItems } from "@/services/queueProcessor";
 import { BackgroundTaskManager } from "@/services/backgroundTaskManager";
 
+const ATTEST_FORM_KEY = 'attest_form_state'
+// Save state to AsyncStorage
+const saveFormState = async (state) => {
+  try {
+    await AsyncStorage.setItem(ATTEST_FORM_KEY, JSON.stringify(state));
+  } catch (error) {
+    console.error('Error saving form state:', error);
+  }
+};
+
+// Load state from AsyncStorage
+const loadFormState = async () => {
+  try {
+    const savedState = await AsyncStorage.getItem(ATTEST_FORM_KEY);
+    return savedState ? JSON.parse(savedState) : null;
+  } catch (error) {
+    console.error('Error loading form state:', error);
+    return null;
+  }
+};
+
+// Delete state from AsyncStorage
+const deleteFormState = async () => {
+  try {
+    await AsyncStorage.removeItem(ATTEST_FORM_KEY);
+  } catch (error) {
+    console.error('Error deleting form state:', error);
+  }
+};
+
 const eventFormSchema = z.object({
   type: z
     .string()
@@ -274,6 +304,7 @@ const NewActionScreen = () => {
         console.error("Error adding to queue:", error);
       } finally {
         setIsSubmitting(false);
+        await deleteFormState()
       }
     },
     validatorAdapter: zodValidator(),
@@ -341,6 +372,57 @@ const NewActionScreen = () => {
     return () => {
       keyboardDidShowListener.remove();
       keyboardDidHideListener.remove();
+    };
+  }, []);
+
+  /** for issue #32 **/
+  const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  useEffect(() => {
+
+    const loadState = async () => {
+      const savedState = await loadFormState();
+      if (savedState) {
+          // Restore state on resume
+        form.update({ values: savedState });
+      }
+    };
+    loadState();
+    // Save state with debouncing
+    const saveState = () => {
+      if (saveTimeoutRef.current) {
+        clearTimeout(saveTimeoutRef.current); // Clear the previous timeout
+      }
+
+      // Set a new timeout to save the state after 500ms of inactivity
+      saveTimeoutRef.current = setTimeout(() => {
+        const formValues = form.store.state.values;
+        saveFormState(formValues);
+        console.log('Form state saved:', formValues);
+      }, 500); // Adjust the delay as needed
+    };
+
+    // Manually track changes to the form state
+    const unsubscribe = form.store.subscribe(saveState);
+
+    const handleAppStateChange = (nextAppState: string) => {
+      if (nextAppState === 'active') {
+        // Reload state when app comes back to foreground
+        loadState();
+      } else{
+      }
+    };
+
+    const subscription = AppState.addEventListener('change', handleAppStateChange);
+    return () => {
+      // Clean up timeout
+      if (saveTimeoutRef.current) {
+        clearTimeout(saveTimeoutRef.current);
+      }
+      unsubscribe();
+      // Delete state when component unmounts (longer needed at the moment)
+      deleteFormState();
+      // Clean up the AppState subscription
+      subscription.remove();
     };
   }, []);
 
