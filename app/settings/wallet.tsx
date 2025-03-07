@@ -3,8 +3,18 @@ import React from "react";
 import SafeAreaContent from "@/components/shared/SafeAreaContent";
 import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
+import { useWallet } from "@/contexts/WalletContext";
+import Clipboard from "expo-clipboard";
 
 const WalletScreen = () => {
+  const { wallet } = useWallet();
+
+  const copyAddress = () => {
+    if (wallet?.address) {
+      Clipboard.setStringAsync(wallet.address);
+    }
+  };
+
   return (
     <SafeAreaContent>
       <View className="absolute bottom-20 right-[-10px] bg-white-sand">
@@ -34,8 +44,21 @@ const WalletScreen = () => {
         Wallet
       </Text>
       <View className="flex-1">
-        <Text>Your wallet is connected to the following address:</Text>
-        <Text>0x1234567890</Text>
+        <Text className="font-dm-medium text-base mb-2">
+          Your wallet is connected to the following address:
+        </Text>
+        <Pressable
+          onPress={copyAddress}
+          className="flex-row items-center space-x-2"
+        >
+          <Text className="font-dm-regular text-base text-grey-6">
+            {wallet?.address || "No wallet found"}
+          </Text>
+          <Ionicons name="copy-outline" size={20} color="#666" />
+        </Pressable>
+        <Text className="font-dm-light text-sm text-grey-6 mt-2">
+          Network: {wallet?.network || "Not connected"}
+        </Text>
       </View>
     </SafeAreaContent>
   );
