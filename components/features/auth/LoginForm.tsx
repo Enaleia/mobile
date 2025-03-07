@@ -153,7 +153,7 @@ export default function LoginForm() {
       <form.Field name="email">
         {(field) => (
           <View
-            className={`bg-white px-4 py-2 rounded-2xl h-[65px] border-[1.5px] ${
+            className={`bg-white px-4 py-2 rounded-2xl h-3xl border-[1.5px] ${
               formError && !field.state.value
                 ? "border-red-300"
                 : field.state.meta.isTouched
@@ -164,7 +164,7 @@ export default function LoginForm() {
             <Text className="font-dm-light text-grey-6 text-sm">Email</Text>
             <TextInput
               ref={emailInputRef}
-              className="h-10 px-0 focus:shadow-outline focus:ring-offset-2 font-dm-bold text-[20px]"
+              className="h-10 px-0 focus:shadow-outline focus:ring-offset-2 font-dm-bold text-xl"
               placeholder="email@email.com"
               value={field.state.value}
               onChangeText={(text) => {
@@ -186,7 +186,7 @@ export default function LoginForm() {
       <form.Field name="password">
         {(field) => (
           <View
-            className={`bg-white px-4 py-2 rounded-2xl h-[65px] border-[1.5px] ${
+            className={`bg-white px-4 py-2 rounded-2xl h-3xl border-[1.5px] ${
               formError && !field.state.value
                 ? "border-red-300"
                 : field.state.meta.isTouched
@@ -198,7 +198,7 @@ export default function LoginForm() {
             <View className="flex-row items-center">
               <TextInput
                 ref={passwordInputRef}
-                className="flex-1 h-10 px-0 focus:shadow-outline focus:ring-offset-2 font-dm-bold text-[20px]"
+                className="flex-1 h-10 px-0 focus:shadow-outline focus:ring-offset-2 font-dm-bold text-xl"
                 placeholder="••••••••"
                 value={field.state.value}
                 onChangeText={(text) => {
