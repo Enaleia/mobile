@@ -103,20 +103,23 @@ function Home() {
         isAuthError={isAuthError}
       />
 
+      {/* Header - Fixed at top */}
+      <View className="flex-row items-start justify-between pb-2 font-dm-regular">
+        <View className="flex-row items-center justify-center gap-0.5">
+          <Ionicons name="person-circle-outline" size={24} color="#0D0D0D" />
+          <Text className="text-sm font-bold text-enaleia-black">
+            {user?.first_name || "User"}
+          </Text>
+        </View>
+        <NetworkStatus />
+      </View>
+
+      {/* Scrollable Content */}
       <ScrollView 
-        className="flex-1" 
+        className="flex-1"
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{ flexGrow: 1 }}
       >
-        <View className="flex-row items-start justify-between pb-2 font-dm-regular">
-          <View className="flex-row items-center justify-center gap-0.5">
-            <Ionicons name="person-circle-outline" size={24} color="#0D0D0D" />
-            <Text className="text-sm font-bold text-enaleia-black">
-              {user?.first_name || "User"}
-            </Text>
-          </View>
-          <NetworkStatus />
-        </View>
         <View className="mt-4">
           <Text className="text-[33px] font-dm-bold tracking-[-1.5px] mb-2 text-enaleia-black">
             Hello, what action will you be doing today?

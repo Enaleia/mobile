@@ -403,7 +403,7 @@ const NewActionScreen = () => {
           keyboardDismissMode="on-drag"
           contentContainerStyle={{
             flexGrow: 0,
-            paddingBottom: Platform.OS === "ios" ? 120 : 20,
+            paddingBottom: 100,
           }}
         >
           <View className="flex-1">
@@ -428,7 +428,7 @@ const NewActionScreen = () => {
             {currentAction?.category === "Collection" && (
               <View className="mb-8">
                 <Text className="text-[18px] font-dm-regular text-enaleia-black tracking-tighter mb-2">
-                  Collector ID *
+                  Collector
                 </Text>
                 <form.Field name="collectorId">
                   {(field) => (
@@ -436,8 +436,8 @@ const NewActionScreen = () => {
                       <QRTextInput
                         value={field.state.value || ""}
                         onChangeText={field.handleChange}
-                        placeholder="Scan or enter collector ID"
                         variant="standalone"
+                        label="Collector ID Card"
                       />
                     </>
                   )}
@@ -551,89 +551,91 @@ const NewActionScreen = () => {
                 </View>
               </View>
             )}
-            <form.Subscribe
-              selector={(state) => [
-                state.canSubmit,
-                state.isSubmitting,
-                state.values,
-              ]}
-            >
-              {([canSubmit, isSubmitting, values]) => {
-                const handleSubmitClick = (e: GestureResponderEvent) => {
-                  setSubmitError(null);
-                  e.preventDefault();
-                  e.stopPropagation();
-
-                  const hasValidIncoming = validateMaterials(
-                    typeof values === "object" &&
-                      values !== null &&
-                      "incomingMaterials" in values
-                      ? values.incomingMaterials || []
-                      : []
-                  );
-                  const hasValidOutgoing = validateMaterials(
-                    typeof values === "object" &&
-                      values !== null &&
-                      "outgoingMaterials" in values
-                      ? values.outgoingMaterials || []
-                      : []
-                  );
-
-                  if (!hasValidIncoming && !hasValidOutgoing) {
-                    setShowIncompleteModal(true);
-                    setPendingSubmission(true);
-                    return;
-                  }
-
-                  form.handleSubmit();
-                };
-
-                return (
-                  <>
-                    {/* Error message */}
-                    {submitError && (
-                      <View className="mt-2">
-                        <ErrorMessage message={submitError} />
-                      </View>
-                    )}
-
-                    <Pressable
-                      onPress={handleSubmitClick}
-                      className={`flex-row items-center justify-center ${
-                        submitError ? "mt-2" : "mt-3"
-                      } p-3 rounded-full ${
-                        !canSubmit || isSubmitting
-                          ? "bg-primary-dark-blue"
-                          : "bg-blue-ocean"
-                      }`}
-                    >
-                      {isSubmitting ? (
-                        <ActivityIndicator color="white" className="mr-2" />
-                      ) : null}
-                      <Text className="text-base font-dm-medium text-slate-50 tracking-tight">
-                        {isSubmitting ? "Preparing..." : "Submit Attestation"}
-                      </Text>
-                    </Pressable>
-
-                    <IncompleteAttestationModal
-                      isVisible={showIncompleteModal}
-                      onClose={() => {
-                        setShowIncompleteModal(false);
-                        setPendingSubmission(false);
-                      }}
-                      onSubmitAnyway={() => {
-                        setShowIncompleteModal(false);
-                        if (pendingSubmission) {
-                          form.handleSubmit();
-                        }
-                      }}
-                    />
-                  </>
-                );
-              }}
-            </form.Subscribe>
           </View>
         </ScrollView>
+
+        {/* Fixed Submit Button */}
+        <View className="absolute bottom-[48px] left-0 right-0 bg-white-sand px-5">
+          <form.Subscribe
+            selector={(state) => [
+              state.canSubmit,
+              state.isSubmitting,
+              state.values,
+            ]}
+          >
+            {([canSubmit, isSubmitting, values]) => {
+              const handleSubmitClick = (e: GestureResponderEvent) => {
+                setSubmitError(null);
+                e.preventDefault();
+                e.stopPropagation();
+
+                const hasValidIncoming = validateMaterials(
+                  typeof values === "object" &&
+                    values !== null &&
+                    "incomingMaterials" in values
+                    ? values.incomingMaterials || []
+                    : []
+                );
+                const hasValidOutgoing = validateMaterials(
+                  typeof values === "object" &&
+                    values !== null &&
+                    "outgoingMaterials" in values
+                    ? values.outgoingMaterials || []
+                    : []
+                );
+
+                if (!hasValidIncoming && !hasValidOutgoing) {
+                  setShowIncompleteModal(true);
+                  setPendingSubmission(true);
+                  return;
+                }
+
+                form.handleSubmit();
+              };
+
+              return (
+                <>
+                  {/* Error message */}
+                  {submitError && (
+                    <View className="mb-2">
+                      <ErrorMessage message={submitError} />
+                    </View>
+                  )}
+
+                  <Pressable
+                    onPress={handleSubmitClick}
+                    className={`flex-row items-center justify-center p-3 rounded-full ${
+                      !canSubmit || isSubmitting
+                        ? "bg-primary-dark-blue"
+                        : "bg-blue-ocean"
+                    }`}
+                  >
+                    {isSubmitting ? (
+                      <ActivityIndicator color="white" className="mr-2" />
+                    ) : null}
+                    <Text className="text-base font-dm-medium text-slate-50 tracking-tight">
+                      {isSubmitting ? "Preparing..." : "Submit Attestation"}
+                    </Text>
+                  </Pressable>
+
+                  <IncompleteAttestationModal
+                    isVisible={showIncompleteModal}
+                    onClose={() => {
+                      setShowIncompleteModal(false);
+                      setPendingSubmission(false);
+                    }}
+                    onSubmitAnyway={() => {
+                      setShowIncompleteModal(false);
+                      if (pendingSubmission) {
+                        form.handleSubmit();
+                      }
+                    }}
+                  />
+                </>
+              );
+            }}
+          </form.Subscribe>
+        </View>
       </View>
       {isSentToQueue && (
         <SentToQueueModal isVisible={isSentToQueue} onClose={() => {}} />

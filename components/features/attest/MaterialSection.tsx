@@ -88,7 +88,7 @@ const MaterialSection = ({
                 >
                   {!hideCodeInput && (
                     <Pressable
-                      className="flex-1 border-[1.5px] border-grey-3 rounded-l-2xl p-2 px-4 bg-white"
+                      className="flex-1 border-[1.5px] border-grey-3 rounded-l-2xl p-2 px-4 bg-white h-[65px]"
                       onPress={() => {
                         // Focus the QRTextInput when its container is tapped
                         if (codeInputRefs.current[index]) {
@@ -122,7 +122,7 @@ const MaterialSection = ({
                     </Pressable>
                   )}
                   <Pressable
-                    className={`border-[1.5px] border-grey-3 ${
+                    className={`border-[1.5px] border-grey-3 h-[65px] ${
                       !hideCodeInput
                         ? "flex-[0.75] border-l-0 rounded-r-2xl"
                         : "flex-1 rounded-2xl"

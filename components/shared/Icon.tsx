@@ -24,12 +24,17 @@ export const Icon: React.FC<IconProps> = ({
   }
 
   const IconComponent = icon.component;
+  if (typeof IconComponent !== 'function') {
+    console.warn(`Invalid icon component for "${name}"`);
+    return null;
+  }
+
   return (
     <IconComponent 
       width={size} 
       height={size} 
       style={style}
-      fill={color as string}
+      color={color as string}
       {...props}
     />
   );

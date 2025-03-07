@@ -25,7 +25,7 @@ export default function DecimalInput({
 
   return (
     <View className={`${fullWidth ? 'w-full' : 'flex-1'} mb-2`}>
-      <Pressable className="rounded-2xl bg-white border-[1.5px] border-grey-3 p-2 px-4 h-[72px]">
+      <Pressable className="rounded-2xl bg-white border-[1.5px] border-grey-3 p-2 px-4 h-[65px]">
         <Text className="w-full text-sm font-dm-bold text-grey-6 tracking-tighter">
           {label}
         </Text>

@@ -153,7 +153,7 @@ export default function LoginForm() {
       <form.Field name="email">
         {(field) => (
           <View
-            className={`bg-white px-4 py-2 rounded-2xl h-[72px] border-[1.5px] ${
+            className={`bg-white px-4 py-2 rounded-2xl h-[65px] border-[1.5px] ${
               formError && !field.state.value
                 ? "border-red-300"
                 : field.state.meta.isTouched
@@ -186,7 +186,7 @@ export default function LoginForm() {
       <form.Field name="password">
         {(field) => (
           <View
-            className={`bg-white px-4 py-2 rounded-2xl h-[72px] border-[1.5px] ${
+            className={`bg-white px-4 py-2 rounded-2xl h-[65px] border-[1.5px] ${
               formError && !field.state.value
                 ? "border-red-300"
                 : field.state.meta.isTouched
