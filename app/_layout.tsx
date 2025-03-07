@@ -21,6 +21,7 @@ import { BackgroundTaskManager } from "@/services/backgroundTaskManager";
 import { Asset } from "expo-asset";
 import { ACTION_ICONS } from "@/constants/action";
 import { getQueryClientConfig } from "@/utils/directus";
+import { WalletProvider } from "@/contexts/WalletContext";
 
 SplashScreen.preventAutoHideAsync();
 
@@ -99,34 +100,36 @@ export default function RootLayout() {
 
   return (
     <NetworkProvider>
-      <AuthProvider>
-        <QueueProvider>
-          <PersistQueryClientProvider
-            client={queryClient}
-            persistOptions={{
-              persister: asyncStoragePersister,
-              dehydrateOptions: {
-                shouldDehydrateQuery: ({ queryKey }) => {
-                  return queryKey.includes("batchData");
+      <WalletProvider>
+        <AuthProvider>
+          <QueueProvider>
+            <PersistQueryClientProvider
+              client={queryClient}
+              persistOptions={{
+                persister: asyncStoragePersister,
+                dehydrateOptions: {
+                  shouldDehydrateQuery: ({ queryKey }) => {
+                    return queryKey.includes("batchData");
+                  },
                 },
-              },
-            }}
-          >
-            <QueueNetworkHandler />
-            <Stack screenOptions={{ headerShown: false }}>
-              <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-              <Stack.Screen
-                name="(auth)/login"
-                options={{ headerShown: false }}
-              />
-              <Stack.Screen
-                name="attest/new/[slug]"
-                options={{ headerShown: false }}
-              />
-            </Stack>
-          </PersistQueryClientProvider>
-        </QueueProvider>
-      </AuthProvider>
+              }}
+            >
+              <QueueNetworkHandler />
+              <Stack screenOptions={{ headerShown: false }}>
+                <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+                <Stack.Screen
+                  name="(auth)/login"
+                  options={{ headerShown: false }}
+                />
+                <Stack.Screen
+                  name="attest/new/[slug]"
+                  options={{ headerShown: false }}
+                />
+              </Stack>
+            </PersistQueryClientProvider>
+          </QueueProvider>
+        </AuthProvider>
+      </WalletProvider>
     </NetworkProvider>
   );
 }
