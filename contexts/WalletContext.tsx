@@ -1,7 +1,7 @@
 import { createContext, useContext, useState, useEffect } from "react";
 import * as SecureStore from "expo-secure-store";
 import { WalletInfo, WalletContextType } from "@/types/wallet";
-import { EAS } from "eas-lib";
+import { EAS } from "@/utils/eas-wrapper";
 
 const SECURE_STORE_KEYS = {
   WALLET_MNEMONIC: "wallet_mnemonic",
