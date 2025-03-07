@@ -6,12 +6,11 @@ const { transformer, resolver } = config;
 
 config.transformer = {
   ...transformer,
-  babelTransformerPath: require.resolve("react-native-svg-transformer"),
+  babelTransformerPath: require.resolve("@lingui/metro-transformer/expo"),
 };
 
 config.resolver = {
   ...resolver,
-  assetExts: resolver.assetExts.filter((ext) => ext !== 'svg'),
   sourceExts: [...resolver.sourceExts, 'svg'],
 };
 

@@ -7,11 +7,13 @@
     "reset-project": "node ./scripts/reset-project.js",
     "locales:compile": "lingui compile --typescript",
     "locales:extract": "lingui extract",
-    "android": "expo run:android",
-    "ios": "expo run:ios",
+    "android": "expo start --android",
+    "ios": "expo start --ios",
     "web": "expo start --web",
     "test": "jest --watchAll",
-    "lint": "expo lint"
+    "lint": "expo lint",
+    "build:icons": "node scripts/convert-svg.js",
+    "prebuild": "pnpm build:icons"
   },
   "jest": {
     "preset": "jest-expo"
@@ -73,6 +75,10 @@
     "@lingui/babel-plugin-lingui-macro": "^5.0.0",
     "@lingui/cli": "^5.0.0",
     "@lingui/metro-transformer": "^5.0.0",
+    "@svgr/cli": "^8.1.0",
+    "@svgr/core": "^8.1.0",
+    "@svgr/plugin-jsx": "^8.1.0",
+    "@svgr/plugin-svgo": "^8.1.0",
     "@types/jest": "^29.5.12",
     "@types/react": "~18.3.12",
     "@types/react-test-renderer": "^18.0.7",

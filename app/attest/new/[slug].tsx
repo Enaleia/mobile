@@ -482,7 +482,8 @@ const NewActionScreen = () => {
             )}
 
             {currentAction?.name === "Manufacturing" && (
-              <View className="mt-10">
+              <View className="mt-4">
+                {/* Manufacturing information */}
                 <View className="flex-row items-center mb-4">
                   <Text className="text-xl font-dm-regular text-enaleia-black tracking-tighter">
                     Manufacturing information
@@ -492,61 +493,60 @@ const NewActionScreen = () => {
                   </View>
                 </View>
 
-                <View>
+                <View className="space-y-2">
                   <form.Field name="manufacturing.product">
                     {(field) => {
-                      const options =
-                        productsData?.map((product) => ({
-                          label: `${
-                            product.product_name || "Unknown Product"
-                          }`,
-                          value: product.product_id,
-                        })) || [];
-
-                      return (
-                        <>
-                          {productsError && (
-                            <Text className="text-sm text-red-500 mb-2">
-                              Failed to load products list
-                            </Text>
-                          )}
-                          <SelectField
-                            value={field.state.value}
-                            onChange={(value) => field.handleChange(value)}
-                            options={options}
-                            placeholder="Product"
-                            isLoading={productsLoading}
-                            error={productsError?.toString()}
-                            disabled={productsLoading || !!productsError}
-                          />
-                        </>
+                      const ProductField = () => (
+                        <SelectField
+                          value={field.state.value}
+                          onChange={(value) => field.handleChange(value)}
+                          options={productsData?.map((product) => ({
+                            label: `${product.product_name || "Unknown Product"}`,
+                            value: product.product_id,
+                          })) || []}
+                          placeholder="Product"
+                          isLoading={productsLoading}
+                          error={productsError?.toString()}
+                          disabled={productsLoading || !!productsError}
+                        />
                       );
+                      return <ProductField />;
                     }}
                   </form.Field>
-                  <View className="mt-2">
-                    <form.Field name="manufacturing.quantity">
-                      {(field) => (
-                        <DecimalInput
-                          field={field}
-                          label="Batch Quantity"
-                          placeholder="0"
-                          fullWidth
-                          allowDecimals={false}
-                          suffix="Unit"
-                        />
-                      )}
-                    </form.Field>
-                    <form.Field name="manufacturing.weightInKg">
-                      {(field) => (
-                        <DecimalInput
-                          field={field}
-                          label="Weight per item"
-                          placeholder="0"
-                          fullWidth
-                          suffix="kg"
-                        />
-                      )}
-                    </form.Field>
+
+                  <View className="flex-row gap-2">
+                    <View className="flex-1">
+                      <form.Field name="manufacturing.quantity">
+                        {(field) => {
+                          const QuantityField = () => (
+                            <DecimalInput
+                              field={field}
+                              label="Batch Quantity"
+                              placeholder="0"
+                              allowDecimals={false}
+                              suffix="Unit"
+                            />
+                          );
+                          return <QuantityField />;
+                        }}
+                      </form.Field>
+                    </View>
+
+                    <View className="flex-1">
+                      <form.Field name="manufacturing.weightInKg">
+                        {(field) => {
+                          const WeightField = () => (
+                            <DecimalInput
+                              field={field}
+                              label="Weight per item"
+                              placeholder="0"
+                              suffix="kg"
+                            />
+                          );
+                          return <WeightField />;
+                        }}
+                      </form.Field>
+                    </View>
                   </View>
                 </View>
               </View>
@@ -604,7 +604,7 @@ const NewActionScreen = () => {
 
                   <Pressable
                     onPress={handleSubmitClick}
-                    className={`flex-row items-center justify-center p-3 rounded-full ${
+                    className={`w-full flex-row items-center justify-center p-3 rounded-full ${
                       !canSubmit || isSubmitting
                         ? "bg-primary-dark-blue"
                         : "bg-blue-ocean"

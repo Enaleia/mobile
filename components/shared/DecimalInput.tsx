@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React from "react";
 import { TextInput, Text, View, Pressable } from "react-native";
 import { FieldApi } from "@tanstack/react-form";
 
@@ -19,14 +19,14 @@ export default function DecimalInput({
   allowDecimals = true,
   suffix,
 }: DecimalInputProps) {
-  const [localValue, setLocalValue] = useState(
+  const [localValue, setLocalValue] = React.useState(
     field.state.value?.toString() || ""
   );
 
   return (
-    <View className={`${fullWidth ? 'w-full' : 'flex-1'} mb-2`}>
-      <Pressable className="rounded-2xl bg-white border-[1.5px] border-grey-3 p-2 px-4 h-[65px]">
-        <Text className="w-full text-sm font-dm-bold text-grey-6 tracking-tighter">
+    <View className={fullWidth ? 'w-full' : 'flex-1'}>
+      <View className="rounded-2xl bg-white border-[1.5px] border-grey-3 p-2 px-4 h-[65px]">
+        <Text className="text-sm font-dm-bold text-grey-6 tracking-tighter">
           {label}
         </Text>
         <View className="flex-row items-center">
@@ -64,12 +64,12 @@ export default function DecimalInput({
             </Text>
           )}
         </View>
-      </Pressable>
-      {field.state.meta.errors ? (
+      </View>
+      {field.state.meta.errors && (
         <Text className="text-sm text-red-500 mt-1">
           {field.state.meta.errors.join(", ")}
         </Text>
-      ) : null}
+      )}
     </View>
   );
 }
