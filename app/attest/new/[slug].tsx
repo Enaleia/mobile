@@ -444,6 +444,10 @@ const NewActionScreen = () => {
                 if (hasAnyMaterials(values)) {
                   setShowLeaveModal(true);
                 } else {
+                  if (saveTimeoutRef?.current) {
+                    clearTimeout(saveTimeoutRef.current);
+                  }
+                  deleteFormState();
                   router.back();
                 }
               }}
