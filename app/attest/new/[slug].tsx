@@ -418,7 +418,8 @@ const NewActionScreen = () => {
             flexGrow: 0,
             paddingBottom: 100,
           }}
-        >      <Text className="text-3xl font-dm-bold text-enaleia-black tracking-[-1px] mb-2">
+        >      
+      <Text className="text-3xl font-dm-bold text-enaleia-black tracking-[-1px] mb-2">
         {currentAction?.name}
       </Text>
           <View className="flex-1">

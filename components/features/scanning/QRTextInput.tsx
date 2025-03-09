@@ -1,12 +1,13 @@
 import QRCodeScanner from "@/components/features/scanning/QRCodeScanner";
 import { Ionicons } from "@expo/vector-icons";
+import { Camera } from "expo-camera";
 import React, {
   useCallback,
   useReducer,
   forwardRef,
   useImperativeHandle,
 } from "react";
-import { Modal, Pressable, Text, TextInput, View } from "react-native";
+import { Alert, Linking, Modal, Pressable, Text, TextInput, View } from "react-native";
 
 interface QRTextInputProps {
   value: string;
@@ -176,12 +177,27 @@ const QRTextInput = forwardRef<QRTextInputRef, QRTextInputProps>(
           <View className="w-6 h-6 justify-center items-center">
             <Pressable
               hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-              onPress={(e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                setError(null);
-                setScanner(true);
-              }}
+            onPress={async () => {
+              try {
+                const { status } = await Camera.requestCameraPermissionsAsync();
+ 
+                if (status === 'granted') {
+                  setScanner(true); // Open QR scanner
+                } else {
+                  console.warn("Camera permission denied.");
+                  Alert.alert(
+                    "Camera Permission",
+                    "This persmission is required to scan QR codes, Please enable it in settings.",
+                    [
+                      { text: "Cancel", style: "cancel" },
+                      { text: "Settings", onPress: () => Linking.openSettings() }
+                    ]
+                  );
+                }
+              } catch (error) {
+                console.error("Error requesting camera permissions:", error);
+              }
+            }}
               className="active:scale-75 transition-transform"
               accessibilityRole="button"
               accessibilityLabel="Open QR scanner"

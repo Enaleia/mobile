@@ -91,41 +91,7 @@ const QRCodeScanner: React.FC<QRCodeScannerProps> = ({ onScan, onClose }) => {
     }
   };
 
-  if (!permission?.granted) {
-    return (
-      <View className="flex-1 items-center justify-center p-4 space-y-6 bg-white-sand">
-        <View className="items-center space-y-4">
-          <View className="bg-white/80 rounded-full p-6 mb-2">
-            <Ionicons name="camera-outline" size={48} color="#0D0D0D" />
-          </View>
-          <Text className="text-center text-xl font-dm-bold text-enaleia-black px-4">
-            Camera permission is turned off
-          </Text>
-          <Text className="text-center text-base font-dm-regular text-gray-600 px-8">
-            To use this feature, allow access to your camera
-          </Text>
-        </View>
-        <View className="space-y-3 w-full px-4">
-          <Pressable
-            onPress={requestCameraPermission}
-            className="bg-blue-ocean px-6 py-4 rounded-full w-full"
-          >
-            <Text className="text-white font-dm-bold text-center text-base">
-              Enable Camera
-            </Text>
-          </Pressable>
-          <Pressable
-            onPress={onClose}
-            className="px-6 py-4"
-          >
-            <Text className="text-enaleia-black font-dm-regular text-center text-base">
-              Cancel
-            </Text>
-          </Pressable>
-        </View>
-      </View>
-    );
-  }
+
 
   return (
     <View

@@ -1,6 +1,7 @@
 import { useMemo, useRef } from "react";
-import { Pressable, Text, TextInput, View } from "react-native";
+import { Alert, Linking, Pressable, Text, TextInput, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
+import { Camera } from "expo-camera";
 import QRTextInput, {
   QRTextInputRef,
 } from "@/components/features/scanning/QRTextInput";
@@ -87,15 +88,30 @@ const MaterialSection = ({
                   }`}
                 >
                   {!hideCodeInput && (
-                    <Pressable
-                      className="flex-1 border-[1.5px] border-grey-3 rounded-l-2xl rounded-r-[1.7px]  p-2 px-4 bg-white h-[65px]"
-                      onPress={() => {
-                        // Focus the QRTextInput when its container is tapped
-                        if (codeInputRefs.current[index]) {
-                          codeInputRefs.current[index]?.focus();
+                  <Pressable
+                    className="flex-1 border-[1.5px] border-grey-3 rounded-l-2xl rounded-r-[1.7px]  p-2 px-4 bg-white h-[65px]"
+                    onPress={async () => {
+                      try {
+                        const { status } = await Camera.requestCameraPermissionsAsync();
+ 
+                        if (status === 'granted') {
+                          setModalVisible(true); // Open scanner modal
+                        } else {
+                          console.warn("Camera permission denied.");
+                          Alert.alert(
+                            "Camera Permission Required",
+                            "This persmission is required to scan QR codes, Please enable it in settings.",
+                            [
+                              { text: "Cancel", style: "cancel" },
+                              { text: "Settings", onPress: () => Linking.openSettings() }
+                            ]
+                          );
                         }
-                      }}
-                    >
+                      } catch (error) {
+                        console.error("Error requesting camera permissions:", error);
+                      }
+                    }}
+                  >
                       <Text className="text-sm font-dm-bold text-grey-6 tracking-tighter">
                         Code
                       </Text>

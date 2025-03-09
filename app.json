@@ -15,7 +15,8 @@
       "bundleIdentifier": "com.anonymous.enaleia",
       "infoPlist": {
         "UIViewControllerBasedStatusBarAppearance": true,
-        "UIBackgroundModes": ["remote-notification"]
+        "UIBackgroundModes": ["remote-notification"],
+        "NSCameraUsageDescription": "We need access to your camera to scan QR codes."
       },
       "icon": {
         "dark": "./assets/images/ios-dark.png",
@@ -35,7 +36,8 @@
         "android.permission.RECORD_AUDIO",
         "android.permission.POST_NOTIFICATIONS"
       ],
-      "package": "com.anonymous.enaleia"
+      "package": "com.anonymous.enaleia",
+      "usePermissions": true
     },
     "web": {
       "bundler": "metro",
