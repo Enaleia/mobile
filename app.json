@@ -16,7 +16,7 @@
       "infoPlist": {
         "UIViewControllerBasedStatusBarAppearance": true,
         "UIBackgroundModes": ["remote-notification"],
-        "NSCameraUsageDescription": "We need access to your camera to scan QR codes."
+        "NSCameraUsageDescription": "The app need access to your camera to scan QR codes."
       },
       "icon": {
         "dark": "./assets/images/ios-dark.png",
