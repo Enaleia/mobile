@@ -26,6 +26,15 @@ const QueueSection = ({
 
   const showBadge = items.length > 0;
 
+  const getBadgeColor = (title: string) => {
+    switch (title) {
+      case "Completed":
+        return "bg-grey-6";
+      default:
+        return "bg-red-500";
+    }
+  };
+
   const itemsSortedByMostRecent = items.sort(
     (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
   );
@@ -48,8 +57,8 @@ const QueueSection = ({
         <View className="flex-row items-center">
           <Text className="text-lg font-dm-bold">{title}</Text>
           {showBadge && (
-            <View className="bg-red-500 rounded-full px-2 py-0.5 ml-2">
-              <Text className="text-white text-sm font-dm-medium">
+            <View className={`${getBadgeColor(title)} rounded-full w-6 h-6 ml-2 flex items-center justify-center`}>
+              <Text className="text-white text-xs font-dm-medium">
                 {items.length}
               </Text>
             </View>
@@ -67,20 +76,29 @@ const QueueSection = ({
           <Pressable
             onPress={handleRetry}
             disabled={isRetrying}
-            className={`px-3 py-1 rounded-full flex-row items-center ${
-              isRetrying ? "bg-blue-400" : "bg-blue-500"
+            className={`h-10 px-4 rounded-full flex-row items-center justify-center border min-w-[100px] ${
+              isRetrying 
+                ? "bg-white-sand border-grey-6" 
+                : "bg-white border-grey-6"
             }`}
           >
             {isRetrying ? (
-              <ActivityIndicator size="small" color="white" />
+              <View className="flex-row items-center">
+                <ActivityIndicator size="small" color="#0D0D0D" />
+                <Text className="text-enaleia-black font-dm-medium ml-2">
+                  Retrying...
+                </Text>
+              </View>
             ) : (
-              <Text className="text-white font-dm-medium">Retry All</Text>
+              <Text className="text-enaleia-black font-dm-medium">
+                Retry All
+              </Text>
             )}
           </Pressable>
         )}
       </Pressable>
       {!isCollapsed && (
-        <View className="rounded-lg overflow-hidden border border-gray-200">
+        <View className="rounded-2xl overflow-hidden border border-gray-200">
           {itemsSortedByMostRecent.map((item) => (
             <QueuedAction key={item.localId} item={item} />
           ))}

@@ -65,7 +65,7 @@ const QueueScreen = () => {
           </Text>
         </View>
 
-        <View className="px-4">
+        <View className="">
           {hasNoItems ? (
             <View className="flex-1 items-center justify-center py-8">
               <Ionicons
@@ -82,10 +82,10 @@ const QueueScreen = () => {
               </Text>
               <Pressable
                 onPress={handleClearOldCache}
-                className="mt-8 bg-gray-100 px-4 py-2 rounded-lg"
+                className="mt-8 border border-gray-200 px-4 py-2 rounded-xl"
               >
                 <Text className="text-sm text-gray-600">
-                  Clear Old Cache Data
+                  Clear old cache data
                 </Text>
               </Pressable>
             </View>
@@ -130,10 +130,10 @@ const QueueScreen = () => {
 
               <Pressable
                 onPress={handleClearOldCache}
-                className="mt-8 bg-gray-100 px-4 py-2 rounded-lg self-center"
+                className="mt-8 border border-gray-200 px-4 py-2 rounded-xl self-center"
               >
                 <Text className="text-sm text-gray-600">
-                  Clear Old Cache Data
+                  Clear old cache data
                 </Text>
               </Pressable>
             </View>
