@@ -21,14 +21,6 @@ import { BackgroundTaskManager } from "@/services/backgroundTaskManager";
 import { Asset } from "expo-asset";
 import { ACTION_ICONS } from "@/constants/action";
 import { getQueryClientConfig } from "@/utils/directus";
-import * as Sentry from '@sentry/react-native';
-
-Sentry.init({
-  dsn: 'https://d0181001a3abec3ffdefcfedbb47a66a@o4508949415460864.ingest.us.sentry.io/4508949417426944',
-
-  // uncomment the line below to enable Spotlight (https://spotlightjs.com)
-  // spotlight: __DEV__,
-});
 
 SplashScreen.preventAutoHideAsync();
 
