@@ -1,5 +1,5 @@
 import { QueueItem } from "@/types/queue";
-import { View, Text, Pressable, ActivityIndicator } from "react-native";
+import { View, Text, Pressable, ActivityIndicator, Image } from "react-native";
 import QueuedAction from "@/components/features/queue/QueueAction";
 import { useState } from "react";
 import { Ionicons } from "@expo/vector-icons";
@@ -10,6 +10,7 @@ interface QueueSectionProps {
   onRetry: (items: QueueItem[]) => Promise<void>;
   showRetry?: boolean;
   isCollapsible?: boolean;
+  alwaysShow?: boolean;
 }
 
 const QueueSection = ({
@@ -18,13 +19,15 @@ const QueueSection = ({
   onRetry,
   showRetry = true,
   isCollapsible = false,
+  alwaysShow = false,
 }: QueueSectionProps) => {
   const [isCollapsed, setIsCollapsed] = useState(
-    title === "Completed" || title === "Failed" || items.length === 0
+    title === "Completed" || title === "Failed" || (!alwaysShow && items.length === 0)
   );
   const [isRetrying, setIsRetrying] = useState(false);
 
   const showBadge = items.length > 0;
+  const hasItems = items.length > 0;
 
   const getBadgeColor = (title: string) => {
     switch (title) {
@@ -47,6 +50,8 @@ const QueueSection = ({
       setIsRetrying(false);
     }
   };
+
+  if (!hasItems && !alwaysShow) return null;
 
   return (
     <View className="mb-4">
@@ -75,9 +80,9 @@ const QueueSection = ({
         {showRetry && (
           <Pressable
             onPress={handleRetry}
-            disabled={isRetrying}
+            disabled={isRetrying || !hasItems}
             className={`h-10 px-4 rounded-full flex-row items-center justify-center border min-w-[100px] ${
-              isRetrying 
+              isRetrying || !hasItems
                 ? "bg-white-sand border-grey-6" 
                 : "bg-white border-grey-6"
             }`}
@@ -90,7 +95,7 @@ const QueueSection = ({
                 </Text>
               </View>
             ) : (
-              <Text className="text-enaleia-black font-dm-medium">
+              <Text className={`font-dm-medium ${!hasItems ? "text-gray-400" : "text-enaleia-black"}`}>
                 Retry All
               </Text>
             )}
@@ -98,10 +103,22 @@ const QueueSection = ({
         )}
       </Pressable>
       {!isCollapsed && (
-        <View className="rounded-2xl overflow-hidden border border-gray-200">
-          {itemsSortedByMostRecent.map((item) => (
-            <QueuedAction key={item.localId} item={item} />
-          ))}
+        <View className="rounded-2xl overflow-hidden border border-gray-200 mt-1">
+          {hasItems ? (
+            itemsSortedByMostRecent.map((item) => (
+              <QueuedAction key={item.localId} item={item} />
+            ))
+          ) : (
+            <View className="py-8 px-4 bg-sand-beige">
+              <Text className="text-base font-dm-regular text-gray-500 text-left">
+                {title === "Pending" 
+                  ? "There are no pending items"
+                  : title === "Completed"
+                  ? "There are no completed items"
+                  : `No ${title.toLowerCase()} attestations`}
+              </Text>
+            </View>
+          )}
         </View>
       )}
     </View>

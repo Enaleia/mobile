@@ -23,6 +23,15 @@ const SettingsScreen = () => {
     }
   };
 
+  const contactSupport = async () => {
+    const url = "mailto:app-support@enaleia.com, enaleia@pollenlabs.org";
+    const canOpen = await Linking.canOpenURL(url);
+    
+    if (canOpen) {
+      await Linking.openURL(url);
+    }
+  };
+
   // Helper function to safely get company name
   const getCompanyName = () => {
     if (!user?.Company) return null;
@@ -120,6 +129,22 @@ const SettingsScreen = () => {
           </View>
           <Ionicons
             name="open-outline"
+            size={16}
+            color="#0D0D0D"
+          />
+        </Pressable>
+        <Pressable
+          onPress={contactSupport}
+          className="flex-row items-center justify-between px-4 py-4 border-b border-neutral-200 bg-white"
+        >
+          <View className="flex-row items-center gap-2">
+            <Ionicons name="help-buoy-outline" size={24} color="#0D0D0D" />
+            <Text className="text-base font-dm-bold text-slate-800 tracking-tighter">
+              Contact support
+            </Text>
+          </View>
+          <Ionicons
+            name="send-outline"
             size={16}
             color="#0D0D0D"
           />

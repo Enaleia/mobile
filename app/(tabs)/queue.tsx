@@ -100,14 +100,13 @@ const QueueScreen = () => {
                 />
               )}
 
-              {pendingItems.length > 0 && (
-                <QueueSection
-                  title="Pending"
-                  items={pendingItems}
-                  onRetry={retryItems}
-                  showRetry={true}
-                />
-              )}
+              <QueueSection
+                title="Pending"
+                items={pendingItems}
+                onRetry={retryItems}
+                showRetry={true}
+                alwaysShow={true}
+              />
 
               {failedItems.length > 0 && (
                 <QueueSection
@@ -118,15 +117,14 @@ const QueueScreen = () => {
                 />
               )}
 
-              {completedItems.length > 0 && (
-                <QueueSection
-                  title="Completed"
-                  items={completedItems}
-                  onRetry={retryItems}
-                  showRetry={false}
-                  isCollapsible={true}
-                />
-              )}
+              <QueueSection
+                title="Completed"
+                items={completedItems}
+                onRetry={retryItems}
+                showRetry={false}
+                isCollapsible={true}
+                alwaysShow={true}
+              />
 
               <Pressable
                 onPress={handleClearOldCache}
