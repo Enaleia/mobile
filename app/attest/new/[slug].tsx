@@ -444,7 +444,7 @@ const NewActionScreen = () => {
             {currentAction?.category === "Collection" && (
               <View className="mb-8">
                 <Text className="text-[18px] font-dm-regular text-enaleia-black tracking-tighter mb-2">
-                  Collector
+                  Collector 
                 </Text>
                 <form.Field name="collectorId">
                   {(field) => (
@@ -453,7 +453,7 @@ const NewActionScreen = () => {
                         value={field.state.value || ""}
                         onChangeText={field.handleChange}
                         variant="standalone"
-                        label="Collector ID Card"
+                        label="Collector ID Card (Required)"
                         error={field.state.meta.errors?.[0] || undefined}
                       />
                     </>

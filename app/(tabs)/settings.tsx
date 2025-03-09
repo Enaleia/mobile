@@ -60,12 +60,17 @@ const SettingsScreen = () => {
 
         <View className="mb-6 rounded-2xl border border-gray-400 ">
           <View className="p-4">
-            <View className="flex-row items-center gap-2 mb-2">
+          <View className="pb-4">
+              <Text className="text-base font-dm-bold text-gray-900">
+                Account information
+              </Text>
+            </View>
+            {/* <View className="flex-row items-center gap-2 mb-2">
               <Ionicons name="id-card-outline" size={24} color="#0D0D0D" />
               <Text className="text-lg font-dm-bold text-gray-900">
                 {user?.first_name} {user?.last_name}
               </Text>
-            </View>
+            </View> */}
 
             <View className="space-y-2">
               <View className="flex-row items-center gap-2">
@@ -77,7 +82,7 @@ const SettingsScreen = () => {
 
               {getCompanyName() && (
                 <View className="flex-row items-center gap-2">
-                  <Ionicons name="school-outline" size={24} color="#0D0D0D" />
+                  <Ionicons name="business-outline" size={24} color="#0D0D0D" />
                   <Text className="text-base font-dm-medium text-gray-900">
                     {getCompanyName()}
                   </Text>
