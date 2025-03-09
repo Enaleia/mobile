@@ -36,9 +36,9 @@ export const IncompleteAttestationModal = ({
           </Pressable>
           <Pressable
             onPress={onSubmitAnyway}
-            className="px-4 py-2 rounded-full bg-blue-ocean"
+            className="px-4 py-2 rounded-full bg-blue-ocean w-[50%]"
           >
-            <Text className="text-base font-dm-medium text-white">
+            <Text className="text-base font-dm-medium text-white text-center">
               Continue
             </Text>
           </Pressable>
