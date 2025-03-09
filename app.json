@@ -15,7 +15,9 @@
       "bundleIdentifier": "com.anonymous.enaleia",
       "infoPlist": {
         "UIViewControllerBasedStatusBarAppearance": true,
-        "UIBackgroundModes": ["remote-notification"],
+        "UIBackgroundModes": [
+          "remote-notification"
+        ],
         "NSCameraUsageDescription": "We need access to your camera to scan QR codes."
       },
       "icon": {
@@ -75,12 +77,22 @@
         {
           "icon": "./assets/images/splash-icon.png",
           "color": "#24548b",
-          "sounds": ["./assets/sounds/notification.wav"]
+          "sounds": [
+            "./assets/sounds/notification.wav"
+          ]
         }
       ],
       "expo-font",
       "expo-localization",
-      "expo-secure-store"
+      "expo-secure-store",
+      [
+        "@sentry/react-native/expo",
+        {
+          "url": "https://sentry.io/",
+          "project": "react-native",
+          "organization": "pollen-labs"
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true
