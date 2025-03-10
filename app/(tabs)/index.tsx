@@ -14,7 +14,7 @@ import React, { useEffect } from "react";
 import { DirectusCollector } from "@/types/collector";
 import { DirectusProduct } from "@/types/product";
 import { useNetwork } from "@/contexts/NetworkContext";
-import NetworkStatus from "@/components/shared/NetworkStatus";
+// import NetworkStatus from "@/components/shared/NetworkStatus";
 import { useAuth } from "@/contexts/AuthContext";
 
 function Home() {
@@ -111,7 +111,7 @@ function Home() {
             {user?.first_name || "User"}
           </Text>
         </View>
-        <NetworkStatus />
+        {/* <NetworkStatus /> */}
       </View>
 
       {/* Scrollable Content */}
@@ -121,7 +121,10 @@ function Home() {
         contentContainerStyle={{ flexGrow: 1 }}
       >
         <View className="mt-4">
-          <Text className="text-[33px] font-dm-bold tracking-[-1.5px] mb-2 text-enaleia-black">
+          <Text
+            className="text-[33px] font-dm-bold tracking-[-1.5px] text-enaleia-black pt-1"
+            style={{ marginBottom: 0, lineHeight: 33 }}
+          >
             Hello, what action will you be doing today?
           </Text>
           <ActionSelection

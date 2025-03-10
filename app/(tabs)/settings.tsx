@@ -6,7 +6,7 @@ import { router } from "expo-router";
 import { ScrollView } from "moti";
 import SignOutModal from "@/components/features/auth/SignOutModal";
 import { useAuth } from "@/contexts/AuthContext";
-import NetworkStatus from "@/components/shared/NetworkStatus";
+// import NetworkStatus from "@/components/shared/NetworkStatus";
 import { Company } from "@/types/company";
 import Constants from "expo-constants";
 
@@ -58,7 +58,7 @@ const SettingsScreen = () => {
               {user?.first_name || "User"}
             </Text>
           </View>
-          <NetworkStatus />
+          {/* <NetworkStatus /> */}
         </View>
 
         <View className="mt-4">

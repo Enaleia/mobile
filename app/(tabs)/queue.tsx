@@ -1,5 +1,5 @@
 import QueueSection from "@/components/features/queue/QueueSection";
-import NetworkStatus from "@/components/shared/NetworkStatus";
+// import NetworkStatus from "@/components/shared/NetworkStatus";
 import SafeAreaContent from "@/components/shared/SafeAreaContent";
 import { useQueue } from "@/contexts/QueueContext";
 import { QueueEvents, queueEventEmitter } from "@/services/events";
@@ -44,11 +44,6 @@ const QueueScreen = () => {
 
   return (
     <SafeAreaContent>
-      <ScrollView
-        className="flex-1"
-        contentContainerStyle={{ paddingBottom: 20 }}
-        showsVerticalScrollIndicator={false}
-      >
         <View className="flex-row items-start justify-between pb-2 font-dm-regular">
           <View className="flex-row items-center justify-center gap-0.5">
             <Ionicons name="person-circle-outline" size={24} color="#0D0D0D" />
@@ -56,9 +51,13 @@ const QueueScreen = () => {
               {user?.first_name || "User"}
             </Text>
           </View>
-          <NetworkStatus />
+          {/* <NetworkStatus /> */}
         </View>
-
+      <ScrollView
+        className="flex-1"
+        contentContainerStyle={{ paddingBottom: 20 }}
+        showsVerticalScrollIndicator={false}
+      >
         <View className="mt-4">
           <Text className="text-3xl font-dm-bold text-enaleia-black tracking-[-1px] mb-2">
             Queue
@@ -100,13 +99,14 @@ const QueueScreen = () => {
                 />
               )}
 
-              <QueueSection
-                title="Pending"
-                items={pendingItems}
-                onRetry={retryItems}
-                showRetry={true}
-                alwaysShow={true}
-              />
+              {pendingItems.length > 0 && (
+                <QueueSection
+                  title="Pending"
+                  items={pendingItems}
+                  onRetry={retryItems}
+                  showRetry={true}
+                />
+              )}
 
               {failedItems.length > 0 && (
                 <QueueSection
@@ -117,14 +117,15 @@ const QueueScreen = () => {
                 />
               )}
 
-              <QueueSection
-                title="Completed"
-                items={completedItems}
-                onRetry={retryItems}
-                showRetry={false}
-                isCollapsible={true}
-                alwaysShow={true}
-              />
+              {completedItems.length > 0 && (
+                <QueueSection
+                  title="Completed"
+                  items={completedItems}
+                  onRetry={retryItems}
+                  showRetry={false}
+                  isCollapsible={true}
+                />
+              )}
 
               <Pressable
                 onPress={handleClearOldCache}
