@@ -251,18 +251,16 @@ const NewActionScreen = () => {
       try {
         // Add runtime validation for collectorId
         // NOTE: Comment out this section because we are not forcing the user to scan a collector ID card for collection actions
-        // const runtimeSchema = eventFormSchema.refine(
-        //   (data) => {
-        //     if (currentAction?.category === "Collection" && !data.collectorId) {
-        //       return false; // Validation fails if collectorId is empty
-        //     }
-        //     return true; // Validation passes otherwise
-        //   },
-        //   {
-        //     message: "Collector ID is required for Collection actions",
-        //     path: ["collectorId"], // Specify the field to attach the error to
-        //   }
-        // );
+        const runtimeSchema = eventFormSchema.refine(
+          (data) => {
+            // Remove collector ID validation
+            return true;
+          },
+          {
+            message: "Collector ID is required for Collection actions",
+            path: ["collectorId"], // Specify the field to attach the error to
+          }
+        );
 
         const { success: isValid, error: validationError } =
           runtimeSchema.safeParse(value);
