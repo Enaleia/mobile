@@ -93,7 +93,6 @@ const MaterialSection = ({
                     onPress={async () => {
                       try {
                         const { status } = await Camera.requestCameraPermissionsAsync();
- 
                         if (status === 'granted') {
                           setModalVisible(true); // Open scanner modal
                         } else {
