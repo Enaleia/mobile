@@ -39,7 +39,7 @@ const QueuedAction = ({ item }: QueuedActionProps) => {
         {isProcessing && <ProcessingPill />}
       </View>
       {item.lastError && item.status !== QueueItemStatus.COMPLETED && (
-        <Text className="text-red-500 text-sm mt-2" numberOfLines={2}>
+        <Text className="text-grey-6 text-sm mt-2" numberOfLines={2}>
           {item.lastError}
         </Text>
       )}
