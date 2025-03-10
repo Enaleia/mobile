@@ -61,13 +61,13 @@ export function LocationEducationalModal({
       <View className="p-4 space-y-6">
         <View className="items-center">
           <View className="bg-blue-ocean rounded-full p-4 mb-4">
-            <Ionicons name="location-outline" size={24} color="#F6F4F2" />
+            <Ionicons name="location" size={36} color="#F6F4F2" />
           </View>
-          <Text className="text-3xl font-dm-bold text-enaleia-black tracking-tighter text-center mb-2">
+          <Text className="text-4xl font-dm-bold text-enaleia-black tracking-tighter text-center mb-4 mt-4">
           Add location to your attestations
           </Text>
           <Text className="text-base font-dm-regular text-gray-600 text-center">
-          Help the community verify where the event took place for a greater environmental transparency
+          When adding location to your attestations, you help the community understand where the actions took place for a greater environmental transparency and trust.
           </Text>
         </View>
 
@@ -95,22 +95,22 @@ export function LocationEducationalModal({
             className="bg-blue-ocean p-3 rounded-full"
           >
             <Text className="text-base font-dm-bold tracking-tight text-white text-center p-1">
-              Enable Location
+              Continue
             </Text>
           </Pressable>
 
-          <Pressable
+          {/* <Pressable
             onPress={onSkip}
             className="p-2 rounded-full bg-white border border-gray-600"
           >
             <Text className="text-base font-dm-regular text-gray-600 text-center p-1">
               Skip for Now
             </Text>
-          </Pressable>
+          </Pressable> */}
         </View>
 
         <Text className="text-sm font-dm-regular text-gray-500 text-center">
-        You can always change your location sharing preferences later in settings
+        You can always change your location sharing preferences later in the OS settings
         </Text>
       </View>
     </ModalBase>

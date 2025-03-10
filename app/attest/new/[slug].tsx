@@ -50,6 +50,7 @@ import { useProducts } from "@/hooks/data/useProducts";
 import DecimalInput from "@/components/shared/DecimalInput";
 import { processQueueItems } from "@/services/queueProcessor";
 import { BackgroundTaskManager } from "@/services/backgroundTaskManager";
+import { useNavigation } from "@react-navigation/native";
 
 const eventFormSchema = z.object({
   type: z
@@ -98,6 +99,7 @@ const NewActionScreen = () => {
   const location = useCurrentLocation();
   const { userData } = useUserInfo();
   const scrollViewRef = useRef<ScrollView>(null);
+  const navigation = useNavigation();
 
   const [isSentToQueue, setIsSentToQueue] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -359,6 +361,17 @@ const NewActionScreen = () => {
     };
   }, []);
 
+  useEffect(() => {
+    // Disable swipe back gesture
+    const unsubscribe = navigation.addListener('focus', () => {
+      navigation.setOptions({
+        gestureEnabled: false,
+      });
+    });
+
+    return unsubscribe; // Clean up the listener on unmount
+  }, [navigation]);
+
   return (
     <SafeAreaContent>
       <View className="absolute top-20 right-[-30px] bg-white-sand opacity-20">
@@ -383,7 +396,7 @@ const NewActionScreen = () => {
               className="flex-row items-center space-x-1"
             >
               <Ionicons
-                name="chevron-back-circle-outline"
+                name="chevron-back"
                 size={24}
                 color="#0D0D0D"
               />
@@ -430,10 +443,10 @@ const NewActionScreen = () => {
                       // Location will be automatically updated via the effect
                     }}
                     onPermissionDenied={() => {
-                      Alert.alert(
-                        "Location Access",
-                        "Location helps verify where events take place. You can still use saved locations or change this later in settings."
-                      );
+                      // Alert.alert(
+                      //   "Location Access",
+                      //   "Location helps verify where events take place. You can still use saved locations or change this later in settings."
+                      // );
                     }}
                   />
                 </View>

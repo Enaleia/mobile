@@ -186,11 +186,11 @@ const QRTextInput = forwardRef<QRTextInputRef, QRTextInputProps>(
                 } else {
                   console.warn("Camera permission denied.");
                   Alert.alert(
-                    "Camera Permission",
-                    "This persmission is required to scan QR codes, Please enable it in settings.",
+                    "QR Code scanning",
+                    "Access to the camera is required to scan QR codes, Please toggle on the camera access it in settings.",
                     [
                       { text: "Cancel", style: "cancel" },
-                      { text: "Settings", onPress: () => Linking.openSettings() }
+                      { text: "Settings", style: "bold", onPress: () => Linking.openSettings() }
                     ]
                   );
                 }
