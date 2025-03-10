@@ -34,7 +34,7 @@ const SelectMaterialChip = React.memo(
         className="bg-white w-full px-4 py-3 rounded-3xl flex flex-row items-center justify-center border-[1.5px] border-grey-3"
         onPress={handlePress}
       >
-        <Text className="text-base font-dm-bold text-enaleia-black tracking-tighter text-center">
+        <Text className="text-[15px] font-dm-bold text-enaleia-black tracking-tighter text-center">
           {label}
         </Text>
       </Pressable>
