@@ -144,8 +144,8 @@ const QRTextInput = forwardRef<QRTextInputRef, QRTextInputProps>(
 
     const inputClass =
       variant === "standalone"
-        ? "overflow-hidden my-0 py-0 font-dm-bold tracking-tighter text-xl text-enaleia-black items-center h-[28px]"
-        : "w-[100px] h-[28px] overflow-hidden my-0 py-0 font-dm-bold tracking-tighter text-lg items-center";
+        ? "overflow-hidden my-0 py-0 font-dm-bold tracking-tighter text-xl text-enaleia-black items-center h-[26px]"
+        : "w-[100px] h-[26px] overflow-hidden my-0 py-0 font-dm-bold tracking-tighter text-xl items-center";
 
     return (
       <View className={containerClass}>
@@ -172,6 +172,11 @@ const QRTextInput = forwardRef<QRTextInputRef, QRTextInputProps>(
               }}
               accessibilityHint="Enter text or tap QR code button to scan"
               className={`${inputClass} ${className} ${error ? 'border-red-500' : 'border-gray-300'}`}
+              style={{
+                textAlignVertical: "center", // Ensures text is vertically centered (Android)
+                paddingVertical: 0, // Removes default iOS padding
+                lineHeight: 26, // Ensures proper line height consistency
+              }}
             />
           </View>
           <View className="w-6 h-6 justify-center items-center">
