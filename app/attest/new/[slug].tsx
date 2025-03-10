@@ -458,7 +458,7 @@ const NewActionScreen = () => {
 
   return (
     <SafeAreaContent>
-      <View className="absolute top-20 right-[-30px] bg-white-sand opacity-20">
+      <View className="absolute top-20 right-[-30px] bg-white-sand opacity-60">
         <Image
           source={require("@/assets/images/animals/Turtle.png")}
           className="w-[223px] h-[228px]"
@@ -543,7 +543,7 @@ const NewActionScreen = () => {
             </form.Subscribe>
 
             {currentAction?.category === "Collection" && (
-              <View className="mb-8">
+              <View className="mb-12">
                 <Text className="text-[18px] font-dm-regular text-enaleia-black tracking-tighter mb-2">
                   Collector
                 </Text>
@@ -582,7 +582,7 @@ const NewActionScreen = () => {
             {currentAction?.name !== "Manufacturing" && (
               <form.Field name="outgoingMaterials">
                 {(field) => (
-                  <View className="mb-8">
+                  <View className="mb-8 mt-8">
                     <MaterialSection
                       materials={materialsData}
                       category="outgoing"
