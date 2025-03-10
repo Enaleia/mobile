@@ -72,13 +72,13 @@ const QueueScreen = () => {
           </Text>
         </View>
 
-        <View className="mt-16">
+        <View>
           {hasNoItems ? (
             <View className="flex-1 items-center justify-center mt-4">
             
               <Image
                 source={require("@/assets/images/animals/CrabBubble.png")}
-                className="w-[294px] h-[250px]"
+                className="w-[294px] h-[250px] mt-4"
                 accessibilityLabel="Decorative crab illustration"
                 accessibilityRole="image"
               />
@@ -98,13 +98,20 @@ const QueueScreen = () => {
               )}
 
               {pendingItems.length > 0 && (
-                <QueueSection
-                  title="Pending"
-                  items={pendingItems}
-                  onRetry={retryItems}
-                  showRetry={true}
-                />
+                <View className="mb-4 p-3 bg-red-50 rounded-xl border border-red-300">
+                  <Text className="text-left text-sm text-enaleia-black">
+                    You have items awaiting to submit on blockchain. Get connected whenever possible and retry submitting these attestations.
+                  </Text>
+                </View>
               )}
+
+              <QueueSection
+                title="Pending"
+                items={pendingItems}
+                onRetry={retryItems}
+                showRetry={true}
+                alwaysShow={true}
+              />
 
               {failedItems.length > 0 && (
                 <QueueSection
@@ -114,8 +121,7 @@ const QueueScreen = () => {
                   showRetry={true}
                 />
               )}
-
-              {completedItems.length > 0 && (
+              
                 <QueueSection
                   title="Completed"
                   items={completedItems}
@@ -123,7 +129,7 @@ const QueueScreen = () => {
                   showRetry={false}
                   isCollapsible={true}
                 />
-              )}
+              
 
               <Pressable
                 onPress={handleClearOldCache}

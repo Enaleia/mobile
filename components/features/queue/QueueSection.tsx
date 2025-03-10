@@ -3,6 +3,7 @@ import { View, Text, Pressable, ActivityIndicator, Image } from "react-native";
 import QueuedAction from "@/components/features/queue/QueueAction";
 import { useState } from "react";
 import { Ionicons } from "@expo/vector-icons";
+import { useNetwork } from "@/contexts/NetworkContext";
 
 interface QueueSectionProps {
   title: string;
@@ -22,9 +23,11 @@ const QueueSection = ({
   alwaysShow = false,
 }: QueueSectionProps) => {
   const [isCollapsed, setIsCollapsed] = useState(
-    title === "Completed" || title === "Failed" || (!alwaysShow && items.length === 0)
+    title === "Failed" || (!alwaysShow && items.length === 0)
   );
   const [isRetrying, setIsRetrying] = useState(false);
+  const { isConnected, isInternetReachable } = useNetwork();
+  const isOnline = isConnected && isInternetReachable;
 
   const showBadge = items.length > 0;
   const hasItems = items.length > 0;
@@ -51,7 +54,7 @@ const QueueSection = ({
     }
   };
 
-  if (!hasItems && !alwaysShow) return null;
+  if (!hasItems && !alwaysShow && title !== "Pending") return null;
 
   return (
     <View className="mb-4">
@@ -77,12 +80,12 @@ const QueueSection = ({
             />
           )}
         </View>
-        {showRetry && (
+        {showRetry && hasItems && (
           <Pressable
             onPress={handleRetry}
-            disabled={isRetrying || !hasItems}
+            disabled={isRetrying || !isOnline}
             className={`h-10 px-4 rounded-full flex-row items-center justify-center border min-w-[100px] ${
-              isRetrying || !hasItems
+              isRetrying || !isOnline
                 ? "bg-white-sand border-grey-6" 
                 : "bg-white border-grey-6"
             }`}
@@ -95,8 +98,8 @@ const QueueSection = ({
                 </Text>
               </View>
             ) : (
-              <Text className={`font-dm-medium ${!hasItems ? "text-gray-400" : "text-enaleia-black"}`}>
-                Retry All
+              <Text className={`font-dm-medium ${!isOnline ? "text-gray-400" : "text-enaleia-black"}`}>
+                Retry all
               </Text>
             )}
           </Pressable>
