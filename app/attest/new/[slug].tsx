@@ -535,7 +535,7 @@ const NewActionScreen = () => {
                           })) || []}
                           placeholder="Product"
                           isLoading={productsLoading}
-                          error={field.state.meta.errors?.[0] || productsError?.toString()}
+                          error={productsError?.toString()}
                           disabled={productsLoading || !!productsError}
                         />
                       );
@@ -544,40 +544,38 @@ const NewActionScreen = () => {
                   </form.Field>
 
                   <View className="flex-row gap-2">
-                    <View className="flex-1">
-                      <form.Field name="manufacturing.quantity">
-                        {(field) => {
-                          const QuantityField = () => (
-                            <DecimalInput
-                              field={field}
-                              label="Batch Quantity"
-                              placeholder="0"
-                              allowDecimals={false}
-                              suffix="Unit"
-                              error={typeof field.state.meta.errors?.[0] === 'string' ? field.state.meta.errors[0] : undefined}
-                            />
-                          );
-                          return <QuantityField />;
-                        }}
-                      </form.Field>
-                    </View>
-
-                    <View className="flex-1">
-                      <form.Field name="manufacturing.weightInKg">
-                        {(field) => {
-                          const WeightField = () => (
-                            <DecimalInput
-                              field={field}
-                              label="Weight per item"
-                              placeholder="0"
-                              suffix="kg"
-                              error={typeof field.state.meta.errors?.[0] === 'string' ? field.state.meta.errors[0] : undefined}
-                            />
-                          );
-                          return <WeightField />;
-                        }}
-                      </form.Field>
-                    </View>
+                  <View className="flex-1 ">
+                       <form.Field name="manufacturing.quantity">
+                         {(field) => {
+                           const QuantityField = () => (
+                             <DecimalInput
+                               field={field}
+                               label="Batch Quantity"
+                               placeholder="0"
+                               allowDecimals={false}
+                               suffix="Unit"
+                             />
+                           );
+                           return <QuantityField />;
+                         }}
+                       </form.Field>
+                     </View>
+ 
+                     <View className="flex-1">
+                       <form.Field name="manufacturing.weightInKg">
+                         {(field) => {
+                           const WeightField = () => (
+                             <DecimalInput
+                               field={field}
+                               label="Weight per item"
+                               placeholder="0"
+                               suffix="kg"
+                             />
+                           );
+                           return <WeightField />;
+                         }}
+                       </form.Field>
+                     </View>
                   </View>
                 </View>
               </View>

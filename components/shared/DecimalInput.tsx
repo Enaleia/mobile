@@ -27,43 +27,45 @@ export default function DecimalInput({
 
   return (
     <View className={fullWidth ? 'w-full' : 'flex-1'}>
-      <Text className="text-sm font-dm-regular text-enaleia-black mb-2">
-        {label}
-      </Text>
-      <View className={`flex-row items-center border rounded-lg px-4 py-3 ${error ? 'border-red-500' : 'border-gray-300'}`}>
-        <TextInput
-          value={localValue}
-          onChangeText={(text) => {
-            const regex = allowDecimals ? /[^0-9.]/g : /[^0-9]/g;
-            const numericValue = text.replace(regex, "");
-            if (allowDecimals) {
-              if (numericValue.match(/^\d*\.?\d*$/)) {
+      <View className="rounded-2xl bg-white border-[1.5px] border-grey-3 p-2 px-4 h-[72px]">
+        <Text className="text-sm font-dm-bold text-grey-6 tracking-tighter mb-1">
+          {label}
+        </Text>
+        <View className="flex-row items-center justify-between">
+          <TextInput
+            value={localValue}
+            onChangeText={(text) => {
+              const regex = allowDecimals ? /[^0-9.]/g : /[^0-9]/g;
+              const numericValue = text.replace(regex, "");
+              if (allowDecimals) {
+                if (numericValue.match(/^\d*\.?\d*$/)) {
+                  setLocalValue(numericValue);
+                }
+              } else {
                 setLocalValue(numericValue);
               }
-            } else {
-              setLocalValue(numericValue);
-            }
-          }}
-          onBlur={() => {
-            field.handleBlur();
-            if (localValue === "" || localValue === ".") {
-              field.handleChange(undefined);
-            } else {
-              const numericValue = allowDecimals ? parseFloat(localValue) : parseInt(localValue);
-              if (!isNaN(numericValue)) {
-                field.handleChange(numericValue);
+            }}
+            onBlur={() => {
+              field.handleBlur();
+              if (localValue === "" || localValue === ".") {
+                field.handleChange(undefined);
+              } else {
+                const numericValue = allowDecimals ? parseFloat(localValue) : parseInt(localValue);
+                if (!isNaN(numericValue)) {
+                  field.handleChange(numericValue);
+                }
               }
-            }
-          }}
-          className="flex-1 h-[28px] py-0 font-dm-bold tracking-tighter text-enaleia-black text-xl"
-          placeholder={placeholder}
-          inputMode={allowDecimals ? "decimal" : "numeric"}
-        />
-        {suffix && (
-          <Text className="text-sm font-dm-regular text-gray-500 ml-2">
-            {suffix}
-          </Text>
-        )}
+            }}
+            className="flex-1 h-[32px] py-0 font-dm-bold tracking-tighter text-enaleia-black text-xl"
+            placeholder={placeholder}
+            inputMode={allowDecimals ? "decimal" : "numeric"}
+          />
+          {suffix && (
+            <Text className="text-sm font-dm-bold text-grey-6 ml-2 mt-1">
+              {suffix}
+            </Text>
+          )}
+        </View>
       </View>
       {error && (
         <Text className="text-sm font-dm-regular text-red-500 mt-1">
