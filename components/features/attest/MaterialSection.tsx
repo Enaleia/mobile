@@ -1,6 +1,7 @@
 import { useMemo, useRef } from "react";
-import { Pressable, Text, TextInput, View } from "react-native";
+import { Alert, Linking, Pressable, Text, TextInput, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
+import { Camera } from "expo-camera";
 import QRTextInput, {
   QRTextInputRef,
 } from "@/components/features/scanning/QRTextInput";
@@ -87,15 +88,30 @@ const MaterialSection = ({
                   }`}
                 >
                   {!hideCodeInput && (
-                    <Pressable
-                      className="flex-1 border-[1.5px] border-grey-3 rounded-l-2xl p-2 px-4 bg-white h-[65px]"
-                      onPress={() => {
-                        // Focus the QRTextInput when its container is tapped
-                        if (codeInputRefs.current[index]) {
-                          codeInputRefs.current[index]?.focus();
+                  <Pressable
+                    className="flex-1 border-[1.5px] border-grey-3 rounded-l-2xl rounded-r-[1.7px]  p-2 px-4 bg-white h-[65px]"
+                    onPress={async () => {
+                      try {
+                        const { status } = await Camera.requestCameraPermissionsAsync();
+ 
+                        if (status === 'granted') {
+                          setModalVisible(true); // Open scanner modal
+                        } else {
+                          console.warn("Camera permission denied.");
+                          Alert.alert(
+                            "Camera Permission Required",
+                            "This persmission is required to scan QR codes, Please enable it in settings.",
+                            [
+                              { text: "Cancel", style: "cancel" },
+                              { text: "Settings", onPress: () => Linking.openSettings() }
+                            ]
+                          );
                         }
-                      }}
-                    >
+                      } catch (error) {
+                        console.error("Error requesting camera permissions:", error);
+                      }
+                    }}
+                  >
                       <Text className="text-sm font-dm-bold text-grey-6 tracking-tighter">
                         Code
                       </Text>
@@ -111,7 +127,7 @@ const MaterialSection = ({
                             codeInputRefs.current[index] = ref;
                           }
                         }}
-                        placeholder="Enter code"
+                        placeholder=""
                         value={material.code || ""}
                         onChangeText={(text) => {
                           const newMaterials = [...selectedMaterials];
@@ -124,9 +140,9 @@ const MaterialSection = ({
                   <Pressable
                     className={`border-[1.5px] border-grey-3 h-[65px] ${
                       !hideCodeInput
-                        ? "flex-[0.75] border-l-0 rounded-r-2xl"
+                        ? "flex-[1] border-l-0 rounded-r-2xl"
                         : "flex-1 rounded-2xl"
-                    } p-2 px-4 bg-white justify-end`}
+                    } p-2 px-4 bg-white `}
                     onPress={() => {
                       // Focus the weight input when its container is tapped
                       if (weightInputRefs.current[index]) {
@@ -137,7 +153,7 @@ const MaterialSection = ({
                     <Text className="w-full text-sm font-dm-bold text-grey-6 tracking-tighter text-right">
                       Weight
                     </Text>
-                    <View className="flex-row items-center justify-end">
+                    <View className="flex-row items-center">
                       <TextInput
                         ref={(ref) => {
                           // Store ref in the array
@@ -153,7 +169,7 @@ const MaterialSection = ({
                         value={material.weight?.toString() || ""}
                         style={{
                           textAlign: "right",
-                          direction: "rtl",
+                          direction: "ltr",
                         }}
                         className="flex-1 h-[28px] py-0 font-dm-bold tracking-tighter text-enaleia-black text-xl text-right"
                         onChangeText={(text) => {
@@ -166,7 +182,7 @@ const MaterialSection = ({
                         }}
                         keyboardType="numeric"
                       />
-                      <Text className="text-sm font-dm-bold text-grey-6 tracking-tighter text-right">
+                      <Text className="text-sm font-dm-bold text-grey-6 tracking-tighter text-right self-end pl-1">
                         kg
                       </Text>
                     </View>

@@ -134,7 +134,7 @@ export async function processQueueItems(itemsToProcess?: QueueItem[]) {
         for (const item of itemsToProcess) {
           await updateItemInCache(item.localId, {
             status: QueueItemStatus.OFFLINE,
-            lastError: "Cannot reach API - please check your connection",
+            lastError: "Unable to reach server. Please check your internet connection.",
           });
         }
       }

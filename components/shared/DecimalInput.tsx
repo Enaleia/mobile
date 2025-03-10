@@ -5,19 +5,21 @@ import { FieldApi } from "@tanstack/react-form";
 interface DecimalInputProps {
   field: any;
   label: string;
-  placeholder: string;
+  placeholder?: string;
   fullWidth?: boolean;
   allowDecimals?: boolean;
   suffix?: string;
+  error?: string;
 }
 
 export default function DecimalInput({
   field,
   label,
-  placeholder,
+  placeholder = "0",
   fullWidth = false,
   allowDecimals = true,
   suffix,
+  error,
 }: DecimalInputProps) {
   const [localValue, setLocalValue] = React.useState(
     field.state.value?.toString() || ""
@@ -25,11 +27,11 @@ export default function DecimalInput({
 
   return (
     <View className={fullWidth ? 'w-full' : 'flex-1'}>
-      <View className="rounded-2xl bg-white border-[1.5px] border-grey-3 p-2 px-4 h-[65px]">
-        <Text className="text-sm font-dm-bold text-grey-6 tracking-tighter">
+      <View className="rounded-2xl bg-white border-[1.5px] border-grey-3 p-2 px-4 h-[72px]">
+        <Text className="text-sm font-dm-bold text-grey-6 tracking-tighter mb-1">
           {label}
         </Text>
-        <View className="flex-row items-center">
+        <View className="flex-row items-center justify-between">
           <TextInput
             value={localValue}
             onChangeText={(text) => {
@@ -54,20 +56,20 @@ export default function DecimalInput({
                 }
               }
             }}
-            className="flex-1 h-[28px] py-0 font-dm-bold tracking-tighter text-enaleia-black text-xl"
+            className="flex-1 h-[32px] py-0 font-dm-bold tracking-tighter text-enaleia-black text-xl"
             placeholder={placeholder}
             inputMode={allowDecimals ? "decimal" : "numeric"}
           />
           {suffix && (
-            <Text className="text-sm font-dm-bold text-grey-6 tracking-tighter ml-1">
+            <Text className="text-sm font-dm-bold text-grey-6 ml-2 mt-1">
               {suffix}
             </Text>
           )}
         </View>
       </View>
-      {field.state.meta.errors && (
-        <Text className="text-sm text-red-500 mt-1">
-          {field.state.meta.errors.join(", ")}
+      {error && (
+        <Text className="text-sm font-dm-regular text-red-500 mt-1">
+          {error}
         </Text>
       )}
     </View>

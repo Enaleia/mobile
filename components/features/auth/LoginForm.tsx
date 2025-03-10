@@ -235,7 +235,7 @@ export default function LoginForm() {
         {({ canSubmit, isSubmitting }) => (
           <Pressable
             onPress={() => form.handleSubmit()}
-            className="flex flex-row items-center justify-center p-2 bg-blue-ocean rounded-full tracking-tight"
+            className="flex flex-row items-center justify-center p-3 bg-blue-ocean rounded-full tracking-tight"
           >
             {isSubmitting ? (
               <View className="flex flex-row items-center justify-center gap-2">

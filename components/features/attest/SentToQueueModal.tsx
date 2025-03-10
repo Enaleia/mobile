@@ -22,7 +22,7 @@ export const SentToQueueModal = ({
       </View>
       <View className="space-y-2">
         <Text
-          className="text-xl font-dm-bold text-enaleia-black tracking-tighter text-center"
+          className="text-3xl font-dm-bold text-enaleia-black tracking-tighter text-center"
           accessibilityRole="header"
         >
           Attestation queued successfully

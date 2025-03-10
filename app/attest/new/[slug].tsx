@@ -50,6 +50,7 @@ import { useProducts } from "@/hooks/data/useProducts";
 import DecimalInput from "@/components/shared/DecimalInput";
 import { processQueueItems } from "@/services/queueProcessor";
 import { BackgroundTaskManager } from "@/services/backgroundTaskManager";
+import { useNavigation } from "@react-navigation/native";
 
 const ATTEST_FORM_KEY = 'attest_form_state'
 // Save state to AsyncStorage
@@ -128,6 +129,7 @@ const NewActionScreen = () => {
   const location = useCurrentLocation();
   const { userData } = useUserInfo();
   const scrollViewRef = useRef<ScrollView>(null);
+  const navigation = useNavigation();
 
   const [isSentToQueue, setIsSentToQueue] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -264,8 +266,23 @@ const NewActionScreen = () => {
         const { success: isValid, error: validationError } =
           runtimeSchema.safeParse(value);
         if (!isValid) {
-          setSubmitError("Please fix the form errors before submitting");
+          // Set field-specific errors
+          validationError.errors.forEach((error) => {
+            const fieldPath = error.path.join('.') as keyof typeof value;
+            form.setFieldMeta(fieldPath, (old) => ({
+              ...old,
+              errors: [...(old?.errors || []), error.message],
+            }));
+          });
+          
+          // Set general submit error
+          setSubmitError("Please fill in all required fields");
           console.error("Form validation errors:", validationError);
+
+          // Scroll to the first error if possible
+          if (scrollViewRef.current && validationError.errors[0]?.path[0]) {
+            scrollViewRef.current.scrollTo({ y: 0, animated: true });
+          }
           return;
         }
 
@@ -375,6 +392,18 @@ const NewActionScreen = () => {
     };
   }, []);
 
+
+  useEffect(() => {
+    // Disable swipe back gesture
+    const unsubscribe = navigation.addListener('focus', () => {
+      navigation.setOptions({
+        gestureEnabled: false,
+      });
+    });
+
+    return unsubscribe; // Clean up the listener on unmount
+  }, [navigation]);
+
   /** for issue #32 **/
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   useEffect(() => {
@@ -426,6 +455,7 @@ const NewActionScreen = () => {
     };
   }, []);
 
+
   return (
     <SafeAreaContent>
       <View className="absolute top-20 right-[-30px] bg-white-sand opacity-20">
@@ -454,7 +484,7 @@ const NewActionScreen = () => {
               className="flex-row items-center space-x-1"
             >
               <Ionicons
-                name="chevron-back-circle-outline"
+                name="chevron-back"
                 size={24}
                 color="#0D0D0D"
               />
@@ -478,9 +508,7 @@ const NewActionScreen = () => {
         isVisible={isTypeInformationModalVisible}
         onClose={() => setIsTypeInformationModalVisible(false)}
       />
-      <Text className="text-3xl font-dm-bold text-enaleia-black tracking-[-1px] mb-2">
-        {currentAction?.name}
-      </Text>
+
       <View className="flex-1">
         <ScrollView
           ref={scrollViewRef}
@@ -491,7 +519,10 @@ const NewActionScreen = () => {
             flexGrow: 0,
             paddingBottom: 100,
           }}
-        >
+        >      
+      <Text className="text-3xl font-dm-bold text-enaleia-black tracking-[-1px] mb-2">
+        {currentAction?.name}
+      </Text>
           <View className="flex-1">
             <form.Subscribe selector={(state) => state.values}>
               {(values) => (
@@ -501,10 +532,10 @@ const NewActionScreen = () => {
                       // Location will be automatically updated via the effect
                     }}
                     onPermissionDenied={() => {
-                      Alert.alert(
-                        "Location Access",
-                        "Location helps verify where events take place. You can still use saved locations or change this later in settings."
-                      );
+                      // Alert.alert(
+                      //   "Location Access",
+                      //   "Location helps verify where events take place. You can still use saved locations or change this later in settings."
+                      // );
                     }}
                   />
                 </View>
@@ -524,6 +555,7 @@ const NewActionScreen = () => {
                         onChangeText={field.handleChange}
                         variant="standalone"
                         label="Collector ID Card"
+                        error={field.state.meta.errors?.[0] || undefined}
                       />
                     </>
                   )}
@@ -569,7 +601,6 @@ const NewActionScreen = () => {
 
             {currentAction?.name === "Manufacturing" && (
               <View className="mt-4">
-                {/* Manufacturing information */}
                 <View className="flex-row items-center mb-4">
                   <Text className="text-xl font-dm-regular text-enaleia-black tracking-tighter">
                     Manufacturing information
@@ -601,38 +632,38 @@ const NewActionScreen = () => {
                   </form.Field>
 
                   <View className="flex-row gap-2">
-                    <View className="flex-1">
-                      <form.Field name="manufacturing.quantity">
-                        {(field) => {
-                          const QuantityField = () => (
-                            <DecimalInput
-                              field={field}
-                              label="Batch Quantity"
-                              placeholder="0"
-                              allowDecimals={false}
-                              suffix="Unit"
-                            />
-                          );
-                          return <QuantityField />;
-                        }}
-                      </form.Field>
-                    </View>
-
-                    <View className="flex-1">
-                      <form.Field name="manufacturing.weightInKg">
-                        {(field) => {
-                          const WeightField = () => (
-                            <DecimalInput
-                              field={field}
-                              label="Weight per item"
-                              placeholder="0"
-                              suffix="kg"
-                            />
-                          );
-                          return <WeightField />;
-                        }}
-                      </form.Field>
-                    </View>
+                  <View className="flex-1 ">
+                       <form.Field name="manufacturing.quantity">
+                         {(field) => {
+                           const QuantityField = () => (
+                             <DecimalInput
+                               field={field}
+                               label="Batch Quantity"
+                               placeholder="0"
+                               allowDecimals={false}
+                               suffix="Unit"
+                             />
+                           );
+                           return <QuantityField />;
+                         }}
+                       </form.Field>
+                     </View>
+ 
+                     <View className="flex-1">
+                       <form.Field name="manufacturing.weightInKg">
+                         {(field) => {
+                           const WeightField = () => (
+                             <DecimalInput
+                               field={field}
+                               label="Weight per item"
+                               placeholder="0"
+                               suffix="kg"
+                             />
+                           );
+                           return <WeightField />;
+                         }}
+                       </form.Field>
+                     </View>
                   </View>
                 </View>
               </View>
@@ -641,7 +672,9 @@ const NewActionScreen = () => {
         </ScrollView>
 
         {/* Fixed Submit Button */}
-        <View className="absolute bottom-[48px] left-0 right-0 bg-white-sand px-5">
+
+      </View>
+      <View className="absolute bottom-[0px] left-0 right-0 bg-white px-5 pt-2 pb-9">
           <form.Subscribe
             selector={(state) => [
               state.canSubmit,
@@ -722,7 +755,6 @@ const NewActionScreen = () => {
             }}
           </form.Subscribe>
         </View>
-      </View>
       {isSentToQueue && (
         <SentToQueueModal isVisible={isSentToQueue} onClose={() => {}} />
       )}

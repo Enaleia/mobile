@@ -1,12 +1,13 @@
 import QRCodeScanner from "@/components/features/scanning/QRCodeScanner";
 import { Ionicons } from "@expo/vector-icons";
+import { Camera } from "expo-camera";
 import React, {
   useCallback,
   useReducer,
   forwardRef,
   useImperativeHandle,
 } from "react";
-import { Modal, Pressable, Text, TextInput, View } from "react-native";
+import { Alert, Linking, Modal, Pressable, Text, TextInput, View } from "react-native";
 
 interface QRTextInputProps {
   value: string;
@@ -16,6 +17,7 @@ interface QRTextInputProps {
   id?: string;
   variant?: "standalone" | "embedded";
   label?: string;
+  error?: string;
 }
 
 export interface QRTextInputRef {
@@ -56,6 +58,7 @@ const QRTextInput = forwardRef<QRTextInputRef, QRTextInputProps>(
       id = "default",
       variant = "embedded",
       label,
+      error,
     },
     ref
   ) => {
@@ -168,18 +171,33 @@ const QRTextInput = forwardRef<QRTextInputRef, QRTextInputProps>(
                 disabled: false,
               }}
               accessibilityHint="Enter text or tap QR code button to scan"
-              className={`${inputClass} ${className}`}
+              className={`${inputClass} ${className} ${error ? 'border-red-500' : 'border-gray-300'}`}
             />
           </View>
           <View className="w-6 h-6 justify-center items-center">
             <Pressable
               hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-              onPress={(e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                setError(null);
-                setScanner(true);
-              }}
+            onPress={async () => {
+              try {
+                const { status } = await Camera.requestCameraPermissionsAsync();
+ 
+                if (status === 'granted') {
+                  setScanner(true); // Open QR scanner
+                } else {
+                  console.warn("Camera permission denied.");
+                  Alert.alert(
+                    "QR Code scanning",
+                    "Access to the camera is required to scan QR codes, Please toggle on the camera access it in settings.",
+                    [
+                      { text: "Cancel", style: "cancel" },
+                      { text: "Settings", style: "bold", onPress: () => Linking.openSettings() }
+                    ]
+                  );
+                }
+              } catch (error) {
+                console.error("Error requesting camera permissions:", error);
+              }
+            }}
               className="active:scale-75 transition-transform"
               accessibilityRole="button"
               accessibilityLabel="Open QR scanner"

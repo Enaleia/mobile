@@ -15,7 +15,8 @@
       "bundleIdentifier": "com.anonymous.enaleia",
       "infoPlist": {
         "UIViewControllerBasedStatusBarAppearance": true,
-        "UIBackgroundModes": ["remote-notification"]
+        "UIBackgroundModes": ["remote-notification"],
+        "NSCameraUsageDescription": "The app need access to your camera to scan QR codes."
       },
       "icon": {
         "dark": "./assets/images/ios-dark.png",
@@ -35,7 +36,8 @@
         "android.permission.RECORD_AUDIO",
         "android.permission.POST_NOTIFICATIONS"
       ],
-      "package": "com.anonymous.enaleia"
+      "package": "com.anonymous.enaleia",
+    
     },
     "web": {
       "bundler": "metro",
@@ -52,7 +54,7 @@
             "image": "./assets/images/splash-icon-dark.png",
             "backgroundColor": "#000000"
           },
-          "imageWidth": 200
+          "imageWidth": 400
         }
       ],
       "expo-router",
@@ -73,7 +75,9 @@
         {
           "icon": "./assets/images/splash-icon.png",
           "color": "#24548b",
-          "sounds": ["./assets/sounds/notification.wav"]
+          "sounds": [
+            "./assets/sounds/notification.wav"
+          ]
         }
       ],
       "expo-font",

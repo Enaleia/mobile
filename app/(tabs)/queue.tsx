@@ -1,5 +1,5 @@
 import QueueSection from "@/components/features/queue/QueueSection";
-import NetworkStatus from "@/components/shared/NetworkStatus";
+// import NetworkStatus from "@/components/shared/NetworkStatus";
 import SafeAreaContent from "@/components/shared/SafeAreaContent";
 import { useQueue } from "@/contexts/QueueContext";
 import { QueueEvents, queueEventEmitter } from "@/services/events";
@@ -44,11 +44,6 @@ const QueueScreen = () => {
 
   return (
     <SafeAreaContent>
-      <ScrollView
-        className="flex-1"
-        contentContainerStyle={{ paddingBottom: 20 }}
-        showsVerticalScrollIndicator={false}
-      >
         <View className="flex-row items-start justify-between pb-2 font-dm-regular">
           <View className="flex-row items-center justify-center gap-0.5">
             <Ionicons name="person-circle-outline" size={24} color="#0D0D0D" />
@@ -56,16 +51,20 @@ const QueueScreen = () => {
               {user?.first_name || "User"}
             </Text>
           </View>
-          <NetworkStatus />
+          {/* <NetworkStatus /> */}
         </View>
-
+      <ScrollView
+        className="flex-1"
+        contentContainerStyle={{ paddingBottom: 20 }}
+        showsVerticalScrollIndicator={false}
+      >
         <View className="mt-4">
           <Text className="text-3xl font-dm-bold text-enaleia-black tracking-[-1px] mb-2">
             Queue
           </Text>
         </View>
 
-        <View className="px-4">
+        <View className="">
           {hasNoItems ? (
             <View className="flex-1 items-center justify-center py-8">
               <Ionicons
@@ -82,10 +81,10 @@ const QueueScreen = () => {
               </Text>
               <Pressable
                 onPress={handleClearOldCache}
-                className="mt-8 bg-gray-100 px-4 py-2 rounded-lg"
+                className="mt-8 border border-gray-200 px-4 py-2 rounded-xl"
               >
                 <Text className="text-sm text-gray-600">
-                  Clear Old Cache Data
+                  Clear old cache data
                 </Text>
               </Pressable>
             </View>
@@ -130,10 +129,10 @@ const QueueScreen = () => {
 
               <Pressable
                 onPress={handleClearOldCache}
-                className="mt-8 bg-gray-100 px-4 py-2 rounded-lg self-center"
+                className="mt-8 border border-gray-200 px-4 py-2 rounded-xl self-center"
               >
                 <Text className="text-sm text-gray-600">
-                  Clear Old Cache Data
+                  Clear old cache data
                 </Text>
               </Pressable>
             </View>

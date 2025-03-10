@@ -4,6 +4,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { LocationEducationalModal } from "./LocationEducationalModal";
 
 const LOCATION_INTRO_KEY = "@location_intro_seen";
+const LOCATION_SKIP_KEY = "@location_skip_state";
 
 interface LocationPermissionHandlerProps {
   onPermissionGranted?: () => void;
@@ -25,8 +26,15 @@ export function LocationPermissionHandler({
   }, []);
 
   const checkFirstTime = async () => {
-    const hasSeenIntro = await AsyncStorage.getItem(LOCATION_INTRO_KEY);
-    if (!hasSeenIntro && permissionStatus !== "granted") {
+    const [hasSeenIntro, hasSkipped] = await Promise.all([
+      AsyncStorage.getItem(LOCATION_INTRO_KEY),
+      AsyncStorage.getItem(LOCATION_SKIP_KEY)
+    ]);
+
+    // Show modal if:
+    // 1. User hasn't seen intro AND hasn't skipped AND location is not granted
+    // 2. User has skipped before (to remind them)
+    if ((!hasSeenIntro && !hasSkipped && permissionStatus !== "granted") || hasSkipped) {
       setShowEducationalModal(true);
     }
   };
@@ -49,6 +57,7 @@ export function LocationPermissionHandler({
         setShowEducationalModal(false);
         onPermissionDenied?.();
       }}
+      permissionStatus={permissionStatus}
     />
   );
 } 
