@@ -670,12 +670,7 @@ const NewActionScreen = () => {
               </View>
             )}
           </View>
-        </ScrollView>
-
-        {/* Fixed Submit Button */}
-
-      </View>
-      <View className="absolute bottom-[0px] left-0 right-0 bg-white px-5 pt-2 pb-9">
+          <View className="pt-3">
           <form.Subscribe
             selector={(state) => [
               state.canSubmit,
@@ -755,7 +750,13 @@ const NewActionScreen = () => {
               );
             }}
           </form.Subscribe>
-        </View>
+      </View>
+        </ScrollView>
+
+        {/* Fixed Submit Button */}
+
+      </View>
+
       {isSentToQueue && (
         <SentToQueueModal isVisible={isSentToQueue} onClose={() => {}} />
       )}
