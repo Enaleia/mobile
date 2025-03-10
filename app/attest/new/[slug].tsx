@@ -420,9 +420,7 @@ const NewActionScreen = () => {
         isVisible={isTypeInformationModalVisible}
         onClose={() => setIsTypeInformationModalVisible(false)}
       />
-      <Text className="text-3xl font-dm-bold text-enaleia-black tracking-[-1px] mb-2">
-        {currentAction?.name}
-      </Text>
+
       <View className="flex-1">
         <ScrollView
           ref={scrollViewRef}
@@ -433,7 +431,10 @@ const NewActionScreen = () => {
             flexGrow: 0,
             paddingBottom: 100,
           }}
-        >
+        >      
+      <Text className="text-3xl font-dm-bold text-enaleia-black tracking-[-1px] mb-2">
+        {currentAction?.name}
+      </Text>
           <View className="flex-1">
             <form.Subscribe selector={(state) => state.values}>
               {(values) => (
@@ -553,7 +554,7 @@ const NewActionScreen = () => {
                               placeholder="0"
                               allowDecimals={false}
                               suffix="Unit"
-                              error={field.state.meta.errors?.[0]}
+                              error={typeof field.state.meta.errors?.[0] === 'string' ? field.state.meta.errors[0] : undefined}
                             />
                           );
                           return <QuantityField />;
@@ -570,7 +571,7 @@ const NewActionScreen = () => {
                               label="Weight per item"
                               placeholder="0"
                               suffix="kg"
-                              error={field.state.meta.errors?.[0] || undefined}
+                              error={typeof field.state.meta.errors?.[0] === 'string' ? field.state.meta.errors[0] : undefined}
                             />
                           );
                           return <WeightField />;
@@ -585,7 +586,9 @@ const NewActionScreen = () => {
         </ScrollView>
 
         {/* Fixed Submit Button */}
-        <View className="absolute bottom-[48px] left-0 right-0 bg-white-sand px-5">
+
+      </View>
+      <View className="absolute bottom-[0px] left-0 right-0 bg-white px-5 pt-2 pb-9">
           <form.Subscribe
             selector={(state) => [
               state.canSubmit,
@@ -666,7 +669,6 @@ const NewActionScreen = () => {
             }}
           </form.Subscribe>
         </View>
-      </View>
       {isSentToQueue && (
         <SentToQueueModal isVisible={isSentToQueue} onClose={() => {}} />
       )}
