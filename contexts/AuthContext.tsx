@@ -7,6 +7,7 @@ import { readItem, readMe, refresh } from "@directus/sdk";
 import { useNetwork } from "./NetworkContext";
 import { router } from "expo-router";
 import { Company } from "@/types/company";
+import { useWallet } from "./WalletContext";
 
 // Secure storage keys
 const SECURE_STORE_KEYS = {
@@ -43,6 +44,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [lastLoggedInUser, setLastLoggedInUser] = useState<string | null>(null);
   const { isConnected, isInternetReachable } = useNetwork();
   const isOnline = isConnected && isInternetReachable;
+  const { createWallet, isWalletCreated } = useWallet();
 
   // Initialize auth state
   useEffect(() => {
@@ -143,6 +145,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         STORAGE_KEYS.USER_INFO,
         JSON.stringify(userInfo)
       );
+
+      // Create wallet if it doesn't exist
+      if (!isWalletCreated) {
+        try {
+          await createWallet();
+        } catch (error) {
+          console.error("Failed to create wallet:", error);
+          // Continue with login even if wallet creation fails
+        }
+      }
 
       // Update state
       setUser(userInfo);
