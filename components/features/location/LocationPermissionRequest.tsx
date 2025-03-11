@@ -14,6 +14,7 @@ import { LocationEducationalModal } from "./LocationEducationalModal";
 import { SavedLocationsSelector } from "./SavedLocationsSelector";
 import { SaveLocationModal } from "./SaveLocationModal";
 import { locationService, LocationData } from "@/services/locationService";
+import * as Location from "expo-location";
 
 const LOCATION_INTRO_KEY = "@location_intro_seen";
 
@@ -55,7 +56,29 @@ export function LocationPermissionRequest({
   const handleRequestPermission = async () => {
     setIsRequesting(true);
     try {
+      // First check if location services are enabled
+      const enabled = await Location.hasServicesEnabledAsync();
+      if (!enabled) {
+        Alert.alert(
+          "Location Services Disabled",
+          "Please enable location services in your device settings to use this feature.",
+          [
+            {
+              text: "Cancel",
+              style: "cancel",
+              onPress: () => setIsRequesting(false),
+            },
+            {
+              text: "Open Settings",
+              onPress: () => Location.openSettings(),
+            },
+          ]
+        );
+        return;
+      }
+
       const { status, isNew } = await requestPermission();
+      console.log("Permission request result:", { status, isNew });
 
       if (status === "granted") {
         onPermissionGranted?.();
@@ -64,6 +87,7 @@ export function LocationPermissionRequest({
       }
     } catch (error) {
       console.error("Error requesting permission:", error);
+      onPermissionDenied?.();
     } finally {
       setIsRequesting(false);
     }
@@ -135,13 +159,13 @@ export function LocationPermissionRequest({
   if (permissionStatus === "granted") {
     return (
       <View
-        className="bg-white rounded-lg p-3 shadow-sm border-2 border-enaleia-black/10"
+        className="rounded-2xl p-3 border border-grey-3"
         accessibilityRole="none"
         accessibilityLabel="Location status"
       >
         <View className="flex-row items-center justify-between">
           <View className="flex-row items-center space-x-2">
-            <Ionicons name="location" size={20} color="#10B981" />
+            <Ionicons name="location" size={20} color="enaleia-black" />
             <Text
               className="text-sm font-dm-medium text-gray-700"
               accessibilityRole="text"
@@ -200,7 +224,7 @@ export function LocationPermissionRequest({
   return (
     <>
       <View
-        className="bg-white rounded-lg p-4 shadow-sm space-y-4"
+        className="bg-transparent rounded-2xl p-4 shadow-sm space-y-4 border border-grey-3"
         accessibilityRole="none"
         accessibilityLabel="Location permission request"
       >
@@ -213,10 +237,10 @@ export function LocationPermissionRequest({
               className="text-lg font-dm-bold text-enaleia-black tracking-tight"
               accessibilityRole="header"
             >
-              Add Location to Event
+              Add location to the event
             </Text>
             <Text className="text-sm font-dm-regular text-gray-600">
-              Help verify where this event took place
+              Help us to verify where this event took place
             </Text>
           </View>
         </View>
@@ -249,14 +273,14 @@ export function LocationPermissionRequest({
               Battery efficient location updates
             </Text>
           </View>
-        </View>
+        </View> */}
 
         <View className="flex-row space-x-2">
           <Pressable
             onPress={handleRequestPermission}
             disabled={isRequesting}
-            className={`flex-1 flex-row items-center justify-center p-3 rounded-full ${
-              isRequesting ? "bg-blue-400" : "bg-blue-ocean"
+            className={`flex-1 flex-row items-center justify-center p-2 rounded-full bg-white-sand border border-sand-beige ${
+              isRequesting ? "opacity-50" : ""
             }`}
             accessibilityRole="button"
             accessibilityLabel="Enable location"
@@ -264,23 +288,23 @@ export function LocationPermissionRequest({
             accessibilityState={{ disabled: isRequesting }}
           >
             {isRequesting ? (
-              <ActivityIndicator color="white" className="mr-2" />
+              <ActivityIndicator color="enaleia-black" className="mr-2" />
             ) : (
               <Ionicons
                 name="location"
-                size={20}
-                color="white"
-                style={{ marginRight: 8 }}
+                size={16}
+                color="enaleia-black"
+                style={{ marginRight: 6 }}
               />
             )}
-            <Text className="text-base font-dm-medium text-white tracking-tight">
+            <Text className="text-sm font-dm-medium text-enaleia-black tracking-tight">
               {isRequesting ? "Requesting..." : "Enable Location"}
             </Text>
           </Pressable>
 
           <Pressable
             onPress={() => setShowSavedLocations(true)}
-            className="bg-gray-100 p-3 rounded-full aspect-square items-center justify-center"
+            className="bg-white-sand border border-sand-beige p-2 rounded-full aspect-square items-center justify-center"
             accessibilityRole="button"
             accessibilityLabel="View saved locations"
             accessibilityHint="Double tap to view and select from saved locations"

@@ -1,12 +1,13 @@
 import QRCodeScanner from "@/components/features/scanning/QRCodeScanner";
 import { Ionicons } from "@expo/vector-icons";
+import { Camera } from "expo-camera";
 import React, {
   useCallback,
   useReducer,
   forwardRef,
   useImperativeHandle,
 } from "react";
-import { Modal, Pressable, Text, TextInput, View } from "react-native";
+import { Alert, Linking, Modal, Pressable, Text, TextInput, View } from "react-native";
 
 interface QRTextInputProps {
   value: string;
@@ -15,6 +16,8 @@ interface QRTextInputProps {
   className?: string;
   id?: string;
   variant?: "standalone" | "embedded";
+  label?: string;
+  error?: string;
 }
 
 export interface QRTextInputRef {
@@ -54,6 +57,8 @@ const QRTextInput = forwardRef<QRTextInputRef, QRTextInputProps>(
       className = "",
       id = "default",
       variant = "embedded",
+      label,
+      error,
     },
     ref
   ) => {
@@ -134,16 +139,21 @@ const QRTextInput = forwardRef<QRTextInputRef, QRTextInputProps>(
 
     const containerClass =
       variant === "standalone"
-        ? "h-12 border-[1.5px] border-grey-3 rounded-lg p-2 bg-white items-center"
+        ? "h-[65px] border-[1.5px] border-grey-3 rounded-2xl px-4 py-2 bg-white"
         : "";
 
     const inputClass =
       variant === "standalone"
-        ? "overflow-hidden my-0 py-0 font-dm-regular tracking-tighter text-base items-center h-full"
+        ? "overflow-hidden my-0 py-0 font-dm-bold tracking-tighter text-xl text-enaleia-black items-center h-[28px]"
         : "w-[100px] h-[28px] overflow-hidden my-0 py-0 font-dm-bold tracking-tighter text-lg items-center";
 
     return (
       <View className={containerClass}>
+        {variant === "standalone" && label && (
+          <Text className="text-sm font-dm-bold text-grey-6 tracking-tighter">
+            {label}
+          </Text>
+        )}
         <View className="relative flex-row items-center gap-2">
           <View className="flex-1">
             <TextInput
@@ -161,18 +171,33 @@ const QRTextInput = forwardRef<QRTextInputRef, QRTextInputProps>(
                 disabled: false,
               }}
               accessibilityHint="Enter text or tap QR code button to scan"
-              className={`${inputClass} ${className}`}
+              className={`${inputClass} ${className} ${error ? 'border-red-500' : 'border-gray-300'}`}
             />
           </View>
           <View className="w-6 h-6 justify-center items-center">
             <Pressable
               hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-              onPress={(e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                setError(null);
-                setScanner(true);
-              }}
+            onPress={async () => {
+              try {
+                const { status } = await Camera.requestCameraPermissionsAsync();
+ 
+                if (status === 'granted') {
+                  setScanner(true); // Open QR scanner
+                } else {
+                  console.warn("Camera permission denied.");
+                  Alert.alert(
+                    "QR Code scanning",
+                    "Access to the camera is required to scan QR codes, Please toggle on the camera access it in settings.",
+                    [
+                      { text: "Cancel", style: "cancel" },
+                      { text: "Settings", style: "bold", onPress: () => Linking.openSettings() }
+                    ]
+                  );
+                }
+              } catch (error) {
+                console.error("Error requesting camera permissions:", error);
+              }
+            }}
               className="active:scale-75 transition-transform"
               accessibilityRole="button"
               accessibilityLabel="Open QR scanner"

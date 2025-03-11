@@ -14,10 +14,11 @@ import {
   View,
 } from "react-native";
 import { z } from "zod";
+import Ionicons from "@expo/vector-icons/Ionicons";
 
 const LoginData = z.object({
   email: z.string().email("Please enter a valid email"),
-  password: z.string().min(8, "Password must be at least 8 characters"),
+  password: z.string().min(4, "Password is too short"),
 });
 
 type LoginData = z.infer<typeof LoginData>;
@@ -26,6 +27,7 @@ export default function LoginForm() {
   const emailInputRef = useRef<TextInput>(null);
   const passwordInputRef = useRef<TextInput>(null);
   const [formError, setFormError] = useState<string | null>(null);
+  const [showPassword, setShowPassword] = useState(false);
   const { login, isLoading, isAuthenticated, lastLoggedInUser, offlineLogin } =
     useAuth();
   const { isConnected, isInternetReachable } = useNetwork();
@@ -78,12 +80,16 @@ export default function LoginForm() {
         if (success) {
           router.replace("/(tabs)");
         } else {
-          setFormError("Cannot login offline with these credentials");
+          setFormError("Unable to log in while offline");
         }
       }
     } catch (error) {
       console.error(JSON.stringify(error, null, 2));
-      setFormError("Your email or password is incorrect");
+      if (error instanceof TypeError && error.message === "Network request failed") {
+        setFormError("Unable to connect to the server. Please check your internet connection and try again.");
+      } else {
+        setFormError("Invalid login credentials, please try again");
+      }
       throw error;
     }
   };
@@ -120,8 +126,8 @@ export default function LoginForm() {
         }
 
         // Validate password length
-        if (value.password && value.password.length < 8) {
-          setFormError("Password must be at least 8 characters");
+        if (value.password && value.password.length < 4) {
+          setFormError("Password is too short");
           return;
         }
 
@@ -134,33 +140,31 @@ export default function LoginForm() {
 
   return (
     <View>
-      {!isOnline && (
-        <View className="mb-4 p-4 bg-yellow-50 rounded-xl border border-yellow-200">
-          <Text className="font-dm-medium text-base mb-2">
-            You are currently offline
-          </Text>
-          <Text className="font-dm-light text-sm">
-            Limited functionality is available in offline mode.
-          </Text>
+      {/* {!isOnline && (
+        <View className="mb-4">
+          <View className="flex-row items-center px-3 py-1 bg-sand-beige rounded-full self-start">
+            <Text className="text-sm font-dm-medium text-enaleia-black">
+              Limited functionality is available in offline mode
+            </Text>
+          </View>
         </View>
-      )}
+      )} */}
 
       <form.Field name="email">
         {(field) => (
-          <Pressable
-            onPress={() => emailInputRef.current?.focus()}
-            className={`bg-white p-2 rounded-xl h-[88px] border-[1.5px] ${
+          <View
+            className={`bg-white px-4 py-2 rounded-2xl h-3xl border-[1.5px] ${
               formError && !field.state.value
                 ? "border-red-300"
                 : field.state.meta.isTouched
-                ? "border-blue-ocean"
+                ? "border-sand-beige"
                 : "border-transparent"
             }`}
           >
             <Text className="font-dm-light text-grey-6 text-sm">Email</Text>
             <TextInput
               ref={emailInputRef}
-              className="h-12 px-0 focus:shadow-outline focus:ring-offset-2 font-dm-bold text-[20px]"
+              className="h-10 px-0 focus:shadow-outline focus:ring-offset-2 font-dm-bold text-xl"
               placeholder="email@email.com"
               value={field.state.value}
               onChangeText={(text) => {
@@ -170,22 +174,23 @@ export default function LoginForm() {
               autoCapitalize="none"
               keyboardType="email-address"
               inputMode="email"
+              returnKeyType="next"
+              onSubmitEditing={() => passwordInputRef.current?.focus()}
             />
-          </Pressable>
+          </View>
         )}
       </form.Field>
 
-      <View className="p-2" />
+      <View className="p-1" />
 
       <form.Field name="password">
         {(field) => (
-          <Pressable
-            onPress={() => passwordInputRef.current?.focus()}
-            className={`bg-white p-2 rounded-xl h-[88px] border-[1.5px] ${
+          <View
+            className={`bg-white px-4 py-2 rounded-2xl h-3xl border-[1.5px] ${
               formError && !field.state.value
                 ? "border-red-300"
                 : field.state.meta.isTouched
-                ? "border-blue-ocean"
+                ? "border-sand-beige"
                 : "border-transparent"
             }`}
           >
@@ -193,27 +198,33 @@ export default function LoginForm() {
             <View className="flex-row items-center">
               <TextInput
                 ref={passwordInputRef}
-                className="flex-1 h-12 px-0 focus:shadow-outline focus:ring-offset-2 font-dm-bold text-[20px]"
+                className="flex-1 h-10 px-0 focus:shadow-outline focus:ring-offset-2 font-dm-bold text-xl"
                 placeholder="••••••••"
                 value={field.state.value}
                 onChangeText={(text) => {
                   field.handleChange(text);
                   if (formError) setFormError(null);
                 }}
-                secureTextEntry={true}
+                secureTextEntry={!showPassword}
+                returnKeyType="done"
+                onSubmitEditing={() => form.handleSubmit()}
               />
+              <Pressable
+                onPress={() => setShowPassword(!showPassword)}
+                className="pl-2"
+              >
+                <Ionicons
+                  name={showPassword ? "eye-off-outline" : "eye-outline"}
+                  size={24}
+                  color="#6B7280"
+                />
+              </Pressable>
             </View>
-          </Pressable>
+          </View>
         )}
       </form.Field>
 
-      <View className="p-2" />
-
-      {formError && (
-        <View className="mb-4">
-          <ErrorMessage message={formError} />
-        </View>
-      )}
+      <View className="p-1" />
 
       <form.Subscribe
         selector={(state) => ({
@@ -224,7 +235,7 @@ export default function LoginForm() {
         {({ canSubmit, isSubmitting }) => (
           <Pressable
             onPress={() => form.handleSubmit()}
-            className="flex flex-row items-center justify-center p-2 mt-4 bg-blue-ocean rounded-full tracking-tight"
+            className="flex flex-row items-center justify-center p-3 bg-blue-ocean rounded-full tracking-tight"
           >
             {isSubmitting ? (
               <View className="flex flex-row items-center justify-center gap-2">
@@ -241,6 +252,19 @@ export default function LoginForm() {
           </Pressable>
         )}
       </form.Subscribe>
+
+      <View className="p-1" />
+
+      <View className="min-h-[32px]">
+        {formError && (
+          <ErrorMessage 
+            message={formError} 
+            hideSecondaryMessage={true}
+          />
+        )}
+      </View>
+
+      <View className="p-4" />
     </View>
   );
 }

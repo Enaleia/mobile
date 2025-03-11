@@ -56,7 +56,7 @@ export default function ModalBase({
           accessibilityRole="none"
         >
           <View
-            className="bg-slate-50 p-3 rounded-lg relative"
+            className="bg-slate-50 p-3 rounded-3xl relative"
             accessibilityRole="alert"
             accessibilityLabel="Modal dialog"
             style={{

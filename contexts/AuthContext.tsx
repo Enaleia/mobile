@@ -72,12 +72,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const login = async (email: string, password: string) => {
     setIsLoading(true);
     try {
+      console.log("[Auth] Attempting login with email:", email);
       // Attempt to login with Directus
       const loginResult = await directus.login(email, password);
-      console.log("loginResult", loginResult);
+      console.log("[Auth] Login result received:", loginResult);
       const token = loginResult.access_token;
 
       if (!token) {
+        console.error("[Auth] No token found in login result");
         throw new Error("No token found");
       }
 
@@ -160,7 +162,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       return userInfo;
     } catch (error) {
-      console.error("Login failed:", error);
+      console.error("[Auth] Login failed with error:", error);
+      if (error instanceof Error) {
+        console.error("[Auth] Error details:", {
+          message: error.message,
+          stack: error.stack,
+          name: error.name
+        });
+      }
       throw error;
     } finally {
       setIsLoading(false);

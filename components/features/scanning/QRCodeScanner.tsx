@@ -1,4 +1,4 @@
-import { CameraView, useCameraPermissions } from "expo-camera";
+import { CameraView, useCameraPermissions, Camera } from "expo-camera";
 import React, { useEffect, useState } from "react";
 import {
   Animated,
@@ -7,12 +7,10 @@ import {
   Pressable,
   Text,
   View,
+  Linking,
 } from "react-native";
-import AsyncStorage from "@react-native-async-storage/async-storage";
-import { CameraEducationalModal } from "./CameraEducationalModal";
 import * as Haptics from "expo-haptics";
-
-const CAMERA_PERMISSION_SEEN_KEY = "@camera_permission_seen";
+import { Ionicons } from "@expo/vector-icons";
 
 interface QRCodeScannerProps {
   onScan: (data: string) => void;
@@ -21,50 +19,47 @@ interface QRCodeScannerProps {
 
 const QRCodeScanner: React.FC<QRCodeScannerProps> = ({ onScan, onClose }) => {
   const [permission, requestPermission] = useCameraPermissions();
-  const scanLineAnimation = React.useRef(new Animated.Value(0)).current;
-  const [showEducationalModal, setShowEducationalModal] = useState(false);
+  const [isRequestingPermission, setIsRequestingPermission] = useState(false);
 
+
+  const requestCameraPermission = async () => {
+    if (isRequestingPermission) return;
+    
+    setIsRequestingPermission(true);
+    try {
+      const { status: currentStatus } = await Camera.getCameraPermissionsAsync();
+      
+      if (currentStatus === 'denied') {
+        // If already denied, open settings
+        await Linking.openSettings();
+      } else {
+        // Request permission directly
+        const { status } = await Camera.requestCameraPermissionsAsync();
+        if (status === 'denied') {
+          // If user denies in the modal, give them option to open settings
+          await Linking.openSettings();
+        }
+      }
+    } catch (error) {
+      console.error('Error requesting camera permission:', error);
+    } finally {
+      setIsRequestingPermission(false);
+    }
+  };
+
+  // Initial permission check
   useEffect(() => {
-    const screenHeight = Dimensions.get("window").height;
-    Animated.loop(
-      Animated.sequence([
-        Animated.timing(scanLineAnimation, {
-          toValue: screenHeight * 0.7,
-          duration: 2000,
-          useNativeDriver: true,
-        }),
-        Animated.timing(scanLineAnimation, {
-          toValue: 0,
-          duration: 2000,
-          useNativeDriver: true,
-        }),
-      ])
-    ).start();
-
-    checkFirstTime();
+    const checkInitialPermission = async () => {
+      if (!permission?.granted && !isRequestingPermission) {
+        const { status } = await Camera.getCameraPermissionsAsync();
+        if (status !== 'granted') {
+          await Camera.requestCameraPermissionsAsync();
+        }
+      }
+    };
+    
+    checkInitialPermission();
   }, []);
-
-  // Re-check permission status when component mounts or permission changes
-  useEffect(() => {
-    if (permission) {
-      checkFirstTime();
-    }
-  }, [permission?.granted]);
-
-  const checkFirstTime = async () => {
-    const hasSeenPermissionModal = await AsyncStorage.getItem(
-      CAMERA_PERMISSION_SEEN_KEY
-    );
-
-    // Only consider it "seen" if they've actually granted permission
-    if (!hasSeenPermissionModal || !permission?.granted) {
-      setShowEducationalModal(true);
-    }
-  };
-
-  const handleRequestPermission = async () => {
-    await requestPermission();
-  };
 
   const handleBarCodeScanned = ({ data }: { data: string }) => {
     if (data) {
@@ -78,80 +73,40 @@ const QRCodeScanner: React.FC<QRCodeScannerProps> = ({ onScan, onClose }) => {
     }
   };
 
-  if (!permission) {
-    return (
-      <Text className="text-center p-4">Requesting camera permission</Text>
-    );
-  }
 
-  if (!permission.granted) {
-    return (
-      <CameraEducationalModal
-        isVisible={showEducationalModal}
-        onClose={() => setShowEducationalModal(false)}
-        onRequestPermission={handleRequestPermission}
-      />
-    );
-  }
 
   return (
-    <>
-      <CameraEducationalModal
-        isVisible={showEducationalModal}
-        onClose={() => setShowEducationalModal(false)}
-        onRequestPermission={handleRequestPermission}
-      />
-      <View
-        className="flex-1 flex-col justify-center"
-        accessibilityRole="none"
-        accessibilityLabel="QR Code Scanner"
-      >
-        <Text
-          className="text-center p-4 text-sm font-dm-bold text-enaleia-black tracking-tighter bg-white-sand"
-          accessibilityRole="header"
-        >
-          Point the camera at a QR code
-        </Text>
+    <View
+      className="flex-1 flex-col justify-center"
+      accessibilityRole="none"
+      accessibilityLabel="QR Code Scanner"
+    >
 
-        <View
-          className="flex-1 relative"
-          accessibilityRole="image"
-          accessibilityLabel="Camera view for QR scanning"
-        >
-          <CameraView
-            facing={"back"}
-            className="flex-1"
-            onBarcodeScanned={handleBarCodeScanned}
-            accessibilityLabel="QR code camera view"
-            accessibilityHint="Point camera at QR code to scan"
-          />
-          <Animated.View
-            style={{
-              transform: [{ translateY: scanLineAnimation }],
-              position: "absolute",
-              left: 0,
-              right: 0,
-              height: 2,
-              backgroundColor: "#2985D0",
-              opacity: 0.7,
-            }}
-          />
-        </View>
-        <View className="absolute bottom-10 left-0 right-0 items-center">
-          <Pressable
-            className="bg-blue-ocean min-w-[60px] px-3 py-2 rounded-3xl flex flex-row items-center justify-center mx-1 my-1"
-            onPress={onClose}
-            accessibilityRole="button"
-            accessibilityLabel="Close scanner"
-            accessibilityHint="Double tap to close QR code scanner"
-          >
-            <Text className="text-sm font-dm-bold text-white tracking-tighter text-center">
-              Close scanner
-            </Text>
-          </Pressable>
-        </View>
+      <View
+        className="flex-1 relative"
+        accessibilityRole="image"
+        accessibilityLabel="Camera view for QR scanning"
+      >
+        <CameraView
+          facing={"back"}
+          className="flex-1"
+          onBarcodeScanned={handleBarCodeScanned}
+          accessibilityLabel="QR code camera view"
+          accessibilityHint="Point camera at QR code to scan"
+        />
       </View>
-    </>
+      <View className="absolute top-16 right-8">
+        <Pressable
+          className="bg-black w-10 h-10 rounded-full flex items-center justify-center"
+          onPress={onClose}
+          accessibilityRole="button"
+          accessibilityLabel="Close scanner"
+          accessibilityHint="Double tap to close QR code scanner"
+        >
+          <Ionicons name="close" size={24} color="white" />
+        </Pressable>
+      </View>
+    </View>
   );
 };
 

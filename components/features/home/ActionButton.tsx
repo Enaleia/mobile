@@ -1,9 +1,9 @@
 import { router } from "expo-router";
 import { Image, ImageSourcePropType, Pressable, Text } from "react-native";
 
-const buttonClassName = "items-center justify-center px-2 py-3 rounded-2xl";
+const buttonClassName = "items-center justify-center px-4 rounded-[19px] h-[131px]";
 
-const buttonClasses = `w-[48%] mr-1 mb-1 active:opacity-70 transition-opacity duration-200 active:scale-95 ease-out ${buttonClassName}`;
+const buttonClasses = `w-[49%] mb-2 active:opacity-70 transition-opacity duration-200 active:scale-95 ease-out ${buttonClassName}`;
 const bannerClasses = `w-full ${buttonClassName}`;
 
 const ActionButton = ({
@@ -27,7 +27,7 @@ const ActionButton = ({
         presentation === "button" ? router.push(`/attest/new/${slug}`) : null
       }
     >
-      <Image source={icon} className="w-16 h-16" />
+      <Image source={icon} className="w-[88px] h-[88px]" />
       <Text className="text-sm font-dm-regular tracking-[-0.25px] text-enaleia-black text-center w-full">
         {name}
       </Text>

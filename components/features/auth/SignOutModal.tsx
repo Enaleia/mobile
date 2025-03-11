@@ -1,5 +1,5 @@
 import React from "react";
-import { View, Text, Modal, Pressable } from "react-native";
+import { View, Text, Modal, Pressable, Image } from "react-native";
 import { useAuth } from "@/contexts/AuthContext";
 
 interface SignOutModalProps {
@@ -26,21 +26,27 @@ export default function SignOutModal({
       onRequestClose={onClose}
     >
       <View className="flex-1 justify-center items-center bg-black/50">
-        <View className="bg-white p-6 rounded-xl w-[90%] max-w-[350px]">
-          <Text className="text-xl font-dm-bold mb-4">Sign Out</Text>
-          <Text className="text-base font-dm-light mb-6">
-            Are you sure you want to sign out? You will need an internet
-            connection to sign back in.
+        <View className="bg-white p-6 rounded-3xl w-[90%] max-w-[320px]">
+          <View className="items-center mb-4">
+            <Image 
+              source={require("@/assets/images/animals/JellyFish.png")}
+              className="w-40 h-40 mb-4"
+              resizeMode="contain"
+            />
+            <Text className="text-3xl font-dm-bold text-center">Are you sure you want to sign out?</Text>
+          </View>
+          <Text className="text-base font-dm-light mb-6 text-center">
+            An internet connection will be required when you sign back in.
           </Text>
-          <View className="flex-row justify-end gap-4">
-            <Pressable onPress={onClose} className="py-2 px-4 rounded-full">
-              <Text className="text-blue-ocean font-dm-medium">Cancel</Text>
+          <View className="flex-row gap-3 w-full justify-center">
+            <Pressable onPress={onClose} className="py-4 px-7 rounded-full bg-white border border-grey-3">
+              <Text className="text-enaleia-black font-dm-medium">Never mind</Text>
             </Pressable>
             <Pressable
               onPress={handleSignOut}
-              className="bg-red-500 py-2 px-4 rounded-full"
+              className="bg-blue-ocean py-4 px-6 rounded-full"
             >
-              <Text className="text-white font-dm-medium">Sign Out</Text>
+              <Text className="text-white font-dm-medium">Sign me out</Text>
             </Pressable>
           </View>
         </View>

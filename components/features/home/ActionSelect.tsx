@@ -26,12 +26,12 @@ export default function ActionSelection({
       {Object.entries(actions).map(([category, categoryActions]) => (
         <View
           key={category}
-          className="py-5 border-b-[1.5px] border-neutral-200 last-of-type:border-b-0"
+          className="py-5"
         >
           <Text className="text-[18px] mb-3 font-dm-bold text-enaleia-black w-full tracking-tight">
             {category}
           </Text>
-          <View className="flex-row flex-wrap">
+          <View className="flex-row flex-wrap justify-between">
             {categoryActions.map((action: Action) => (
               <ActionButton
                 key={action.id}

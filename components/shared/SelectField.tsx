@@ -41,8 +41,8 @@ export default function SelectField({
     <>
       <Pressable
         onPress={() => !disabled && setIsOpen(true)}
-        className={`flex-row items-center justify-between rounded-md px-3 py-3 h-12 bg-white border-[1.5px] ${
-          error ? "border-red-500" : "border-slate-200"
+        className={`flex-row items-center justify-between rounded-2xl p-2 px-4 h-[65px] bg-white border-[1.5px] ${
+          error ? "border-red-500" : "border-grey-3"
         } ${disabled ? "opacity-50" : ""}`}
         accessibilityRole="button"
         accessibilityLabel={placeholder}
@@ -52,12 +52,17 @@ export default function SelectField({
         {isLoading ? (
           <ActivityIndicator size="small" className="mr-2" />
         ) : (
-          <Text
-            className="flex-1 font-dm-regular text-enaleia-black"
-            numberOfLines={1}
-          >
-            {selectedOption?.label || placeholder}
-          </Text>
+          <View className="flex-1">
+            <Text className="text-sm font-dm-bold text-grey-6 tracking-tighter">
+              {placeholder}
+            </Text>
+            <Text
+              className="font-dm-bold text-xl tracking-tighter text-enaleia-black"
+              numberOfLines={1}
+            >
+              {selectedOption?.label || "Select"}
+            </Text>
+          </View>
         )}
         <Ionicons
           name="chevron-down"
@@ -68,8 +73,8 @@ export default function SelectField({
       </Pressable>
 
       <ModalBase isVisible={isOpen} onClose={() => setIsOpen(false)}>
-        <View className="pb-8 pt-2">
-          <Text className="text-xl font-dm-medium text-enaleia-black mb-4">
+        <View className="pb-8 pt-4 px-4">
+          <Text className="text-xl font-dm-bold text-enaleia-black tracking-tighter text-center mb-6">
             {placeholder}
           </Text>
           <ScrollView className="max-h-96">
@@ -80,30 +85,23 @@ export default function SelectField({
                   onChange(option.value);
                   setIsOpen(false);
                 }}
-                className={`p-3 border-b border-slate-100 ${
-                  option.value === value ? "bg-slate-100" : ""
-                }`}
+                className="bg-white w-full px-4 py-3 rounded-2xl flex flex-row items-center justify-between border-[1.5px] border-grey-3 mb-2"
                 accessibilityRole="menuitem"
                 accessibilityLabel={option.label}
                 accessibilityState={{ selected: option.value === value }}
               >
-                <View className="flex-row items-center justify-start">
+                <Text
+                  className="text-base font-dm-bold text-enaleia-black tracking-tighter"
+                >
+                  {option.label}
+                </Text>
+                {option.value === value && (
                   <Ionicons
                     name="checkmark-circle"
-                    size={16}
-                    color={option.value === value ? "#0D0D0D" : "transparent"}
-                    style={{ marginRight: 8 }}
+                    size={20}
+                    color="#0D0D0D"
                   />
-                  <Text
-                    className={`font-dm-regular ${
-                      option.value === value
-                        ? "text-primary-dark-blue"
-                        : "text-enaleia-black"
-                    }`}
-                  >
-                    {option.label}
-                  </Text>
-                </View>
+                )}
               </Pressable>
             ))}
           </ScrollView>

@@ -1,4 +1,3 @@
-// Learn more https://docs.expo.io/guides/customizing-metro
 const { getDefaultConfig } = require("expo/metro-config");
 
 const config = getDefaultConfig(__dirname);
@@ -8,9 +7,10 @@ config.transformer = {
   ...transformer,
   babelTransformerPath: require.resolve("@lingui/metro-transformer/expo"),
 };
+
 config.resolver = {
   ...resolver,
-	sourceExts: [...resolver.sourceExts],
+  sourceExts: [...resolver.sourceExts, 'svg'],
 };
 
 module.exports = config;
