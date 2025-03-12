@@ -9,6 +9,7 @@ import { useFonts } from "expo-font";
 import { Stack } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import React, { useEffect, useState } from "react";
+import { StatusBar } from "react-native";
 
 import * as Localization from "expo-localization";
 
@@ -112,16 +113,32 @@ export default function RootLayout() {
               },
             }}
           >
+            <StatusBar barStyle="dark-content" />
             <QueueNetworkHandler />
-            <Stack screenOptions={{ headerShown: false }}>
-              <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+            <Stack 
+              screenOptions={{
+                headerShown: false,
+                contentStyle: { backgroundColor: 'white' },
+                navigationBarHidden: true,
+              }}
+            >
+              <Stack.Screen 
+                name="(tabs)" 
+                options={{ 
+                  headerShown: false,
+                }} 
+              />
               <Stack.Screen
                 name="(auth)/login"
-                options={{ headerShown: false }}
+                options={{ 
+                  headerShown: false,
+                }}
               />
               <Stack.Screen
                 name="attest/new/[slug]"
-                options={{ headerShown: false }}
+                options={{ 
+                  headerShown: false,
+                }}
               />
             </Stack>
           </PersistQueryClientProvider>

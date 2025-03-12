@@ -1,8 +1,10 @@
 import { CameraView } from "expo-camera";
-import React from "react";
+import React, { useState } from "react";
 import {
   Pressable,
   View,
+  StyleSheet,
+  StatusBar,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 
@@ -12,6 +14,13 @@ interface QRCodeScannerProps {
 }
 
 const QRCodeScanner: React.FC<QRCodeScannerProps> = ({ onScan, onClose }) => {
+  const [isReady, setIsReady] = useState(false);
+  const [flash, setFlash] = useState<"on" | "off">("off");
+
+  const onCameraReady = () => {
+    setIsReady(true);
+  };
+
   const handleBarCodeScanned = ({ data }: { data: string }) => {
     if (data) {
       onScan(data);
@@ -25,15 +34,21 @@ const QRCodeScanner: React.FC<QRCodeScannerProps> = ({ onScan, onClose }) => {
       accessibilityRole="none"
       accessibilityLabel="QR Code Scanner"
     >
+      <StatusBar barStyle="dark-content" />
       <View
         className="flex-1 relative"
         accessibilityRole="image"
         accessibilityLabel="Camera view for QR scanning"
       >
         <CameraView
-          facing={"back"}
-          className="flex-1"
-          onBarcodeScanned={handleBarCodeScanned}
+          style={StyleSheet.absoluteFill}
+          facing="back"
+          enableTorch={flash === "on"}
+          onCameraReady={onCameraReady}
+          barcodeScannerSettings={{
+            barcodeTypes: ["qr"],
+          }}
+          onBarcodeScanned={isReady ? handleBarCodeScanned : undefined}
           accessibilityLabel="QR code camera view"
           accessibilityHint="Point camera at QR code to scan"
         />
@@ -44,9 +59,24 @@ const QRCodeScanner: React.FC<QRCodeScannerProps> = ({ onScan, onClose }) => {
           onPress={onClose}
           accessibilityRole="button"
           accessibilityLabel="Close scanner"
-          accessibilityHint="Double tap to close QR code scanner"
+          accessibilityHint="Tap to close QR code scanner"
         >
           <Ionicons name="close" size={24} color="white" />
+        </Pressable>
+      </View>
+      <View className="absolute bottom-16 left-0 right-0 items-center">
+        <Pressable
+          className="bg-black w-12 h-12 rounded-full flex items-center justify-center"
+          onPress={() => setFlash(flash === "on" ? "off" : "on")}
+          accessibilityRole="button"
+          accessibilityLabel="Toggle flash"
+          accessibilityHint="Double tap to toggle camera flash"
+        >
+          <Ionicons 
+            name={flash === "on" ? "flash" : "flash-off"} 
+            size={24} 
+            color="white" 
+          />
         </Pressable>
       </View>
     </View>
