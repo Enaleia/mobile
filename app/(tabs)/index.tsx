@@ -115,7 +115,7 @@ function Home() {
       </View>
 
       {/* Scrollable Content */}
-      <ScrollView 
+      <ScrollView
         className="flex-1"
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{ flexGrow: 1 }}

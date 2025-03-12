@@ -4,7 +4,7 @@ import SafeAreaContent from "@/components/shared/SafeAreaContent";
 import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
 import { useWallet } from "@/contexts/WalletContext";
-import Clipboard from "expo-clipboard";
+import * as Clipboard from "expo-clipboard";
 
 const WalletScreen = () => {
   const { wallet } = useWallet();
