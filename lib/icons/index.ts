@@ -5,7 +5,8 @@ import {
   QueueActive as QueueActiveIcon, 
   QueueInactive as QueueInactiveIcon, 
   SettingsActive as SettingsActiveIcon, 
-  SettingsInactive as SettingsInactiveIcon 
+  SettingsInactive as SettingsInactiveIcon,
+  Close as CloseIcon,
 } from '@/components/icons';
 
 // Define icon categories
@@ -49,6 +50,11 @@ export const Icons = {
     component: SettingsInactiveIcon,
     category: 'ui' as const,
     name: 'settings-inactive',
+  },
+  'close': {
+    component: CloseIcon,
+    category: 'ui' as const,
+    name: 'close',
   },
 } as const;
 

@@ -10,18 +10,21 @@ import { batchFetchData } from "@/utils/batchFetcher";
 import { Ionicons } from "@expo/vector-icons";
 import { onlineManager, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Text, View, Pressable, ScrollView } from "react-native";
-import React, { useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import { DirectusCollector } from "@/types/collector";
 import { DirectusProduct } from "@/types/product";
 import { useNetwork } from "@/contexts/NetworkContext";
 // import NetworkStatus from "@/components/shared/NetworkStatus";
 import { useAuth } from "@/contexts/AuthContext";
+import { router } from 'expo-router';
+import { CollectionHelpModal } from '@/components/features/help/CollectionHelpModal';
 
 function Home() {
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const { isConnected, isInternetReachable } = useNetwork();
   const isOnline = isConnected && isInternetReachable;
+  const [showHelp, setShowHelp] = useState(false);
 
   const {
     data: batchData,
@@ -96,6 +99,19 @@ function Home() {
 
   return (
     <SafeAreaContent>
+      {/* Add this button for direct testing */}
+      <Pressable
+        onPress={() => setShowHelp(true)}
+        className="bg-enaleia-black px-4 py-2 rounded-lg mb-4"
+      >
+        <Text className="text-white font-dm-medium">Show Help Modal</Text>
+      </Pressable>
+
+      <CollectionHelpModal 
+        isVisible={showHelp}
+        onClose={() => setShowHelp(false)}
+      />
+
       <InitializationModal
         isVisible={showInitModal}
         progress={progress}
