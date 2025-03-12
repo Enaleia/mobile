@@ -3,6 +3,8 @@ import { EAS } from "eas-lib";
 export interface WalletInfo {
   address: string;
   network: "optimism" | "sepolia";
+  providerUrl: string;
+  privateKey: string;
   schemaUID?: string;
 }
 

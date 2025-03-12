@@ -1,18 +1,23 @@
 import { createContext, useContext, useState, useEffect } from "react";
 import * as SecureStore from "expo-secure-store";
 import { WalletInfo, WalletContextType } from "@/types/wallet";
-import { EAS } from "@/utils/eas-wrapper";
+import { EAS } from "eas-lib";
 
 const SECURE_STORE_KEYS = {
   WALLET_MNEMONIC: "wallet_mnemonic",
   WALLET_PRIVATE_KEY: "wallet_private_key",
   WALLET_ADDRESS: "wallet_address",
-  SCHEMA_UID: "schema_uid",
 };
 
+const schema = "uint256 eventId, string[] weights, string comment";
+const schemaUID =
+  "0x6123441ae23c2a9ef6c0dfa07ac6ad5bb9a7950c4759e4b5989acb05eb87554e";
+
 const PROVIDER_URLS = {
-  sepolia: "https://sepolia.optimism.io",
-  optimism: "https://mainnet.optimism.io",
+  sepolia:
+    "https://purple-frosty-orb.optimism-sepolia.quiknode.pro/aad424a10b06bf69795d7d8abd05b008f7d4c98c",
+  optimism:
+    "https://purple-frosty-orb.optimism-sepolia.quiknode.pro/aad424a10b06bf69795d7d8abd05b008f7d4c98c",
 };
 
 const WalletContext = createContext<WalletContextType | null>(null);
@@ -31,11 +36,9 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
       const address = await SecureStore.getItemAsync(
         SECURE_STORE_KEYS.WALLET_ADDRESS
       );
+      // TODO: Save private key to secure store
       const privateKey = await SecureStore.getItemAsync(
         SECURE_STORE_KEYS.WALLET_PRIVATE_KEY
-      );
-      const schemaUID = await SecureStore.getItemAsync(
-        SECURE_STORE_KEYS.SCHEMA_UID
       );
 
       if (address && privateKey) {
@@ -46,14 +49,16 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
         const walletInfo: WalletInfo = {
           address,
           network,
-          schemaUID: schemaUID || undefined,
+          schemaUID,
+          providerUrl: PROVIDER_URLS[network],
+          privateKey,
         };
         setWallet(walletInfo);
         setIsWalletCreated(true);
 
         // Initialize EAS helper
         const providerUrl = PROVIDER_URLS[network];
-        setEasHelper(new EAS(providerUrl, privateKey));
+        setEasHelper(new EAS(providerUrl, privateKey, schema, schemaUID));
       }
     } catch (error) {
       console.error("Error checking wallet:", error);
@@ -90,14 +95,20 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
         process.env.EXPO_PUBLIC_NETWORK === "production"
           ? "optimism"
           : "sepolia";
-      const walletInfo: WalletInfo = { address, network };
-
+      const walletInfo: WalletInfo = {
+        address,
+        network,
+        schemaUID,
+        providerUrl: PROVIDER_URLS[network],
+        privateKey,
+      };
+      console.log({ walletInfo });
       setWallet(walletInfo);
       setIsWalletCreated(true);
 
       // Initialize EAS helper
       const providerUrl = PROVIDER_URLS[network];
-      setEasHelper(new EAS(providerUrl, privateKey));
+      setEasHelper(new EAS(providerUrl, privateKey, schema, schemaUID));
 
       return walletInfo;
     } catch (error) {
