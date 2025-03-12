@@ -1,5 +1,5 @@
 import { QueueEvents, queueEventEmitter } from "@/services/events";
-import { processQueueItems as processItems } from "@/services/queueProcessor";
+import { processQueueItems } from "@/services/queueProcessor";
 import { QueueItem, QueueItemStatus } from "@/types/queue";
 import { directus, ensureValidToken } from "@/utils/directus";
 import { getActiveQueue } from "@/utils/queueStorage";
@@ -8,6 +8,7 @@ import * as BackgroundFetch from "expo-background-fetch";
 import * as Battery from "expo-battery";
 import * as SecureStore from "expo-secure-store";
 import * as TaskManager from "expo-task-manager";
+import { WalletInfo } from "@/types/wallet";
 
 // Secure storage keys
 const SECURE_STORE_KEYS = {
@@ -211,7 +212,9 @@ export class BackgroundTaskManager {
     }
   }
 
-  async processQueueItems(): Promise<BackgroundFetch.BackgroundFetchResult> {
+  async processQueueItems(
+    wallet?: WalletInfo | null
+  ): Promise<BackgroundFetch.BackgroundFetchResult> {
     if (this.isProcessing) {
       return BackgroundFetch.BackgroundFetchResult.NoData;
     }
@@ -274,7 +277,7 @@ export class BackgroundTaskManager {
         for (let i = 0; i < group.length; i += batchSize) {
           const batch = group.slice(i, i + batchSize);
           console.log(`Processing batch of ${batch.length} items`);
-          await processItems(batch);
+          await processQueueItems(batch, wallet);
         }
       }
 

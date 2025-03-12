@@ -2,26 +2,20 @@ import "@expo/metro-runtime";
 
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import NetInfo from "@react-native-community/netinfo";
-import { createAsyncStoragePersister } from "@tanstack/query-async-storage-persister";
-import { QueryClient, onlineManager } from "@tanstack/react-query";
-import { PersistQueryClientProvider } from "@tanstack/react-query-persist-client";
-import { useFonts } from "expo-font";
 import { Stack } from "expo-router";
+import { useFonts } from "expo-font";
 import * as SplashScreen from "expo-splash-screen";
 import React, { useEffect, useState } from "react";
-
 import * as Localization from "expo-localization";
 
 import { NetworkProvider } from "@/contexts/NetworkContext";
 import { QueueProvider, useQueue } from "@/contexts/QueueContext";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { defaultLocale, dynamicActivate } from "@/lib/i18n";
-import { getBatchCacheKey } from "@/utils/storage";
 import { BackgroundTaskManager } from "@/services/backgroundTaskManager";
 import { Asset } from "expo-asset";
 import { ACTION_ICONS } from "@/constants/action";
-import { getQueryClientConfig } from "@/utils/directus";
-import { WalletProvider } from "@/contexts/WalletContext";
+import { WalletProvider, useWallet } from "@/contexts/WalletContext";
 
 SplashScreen.preventAutoHideAsync();
 
@@ -36,32 +30,23 @@ const preloadedActionIcons = Object.values(ACTION_ICONS).map(
   (icon) => icon as number
 );
 
-const queryClient = new QueryClient(getQueryClientConfig());
-
-const asyncStoragePersister = createAsyncStoragePersister({
-  storage: AsyncStorage,
-  key: getBatchCacheKey(),
-  throttleTime: 2000,
-});
-
 const QueueNetworkHandler = () => {
   const backgroundManager = BackgroundTaskManager.getInstance();
+  const { wallet } = useWallet();
+  const { loadQueueItems } = useQueue();
 
   useEffect(() => {
     return NetInfo.addEventListener((state) => {
-      const status = !!state.isConnected;
-      onlineManager.setOnline(status);
+      const isOnline = !!state.isConnected;
 
-      if (status) {
-        backgroundManager.processQueueItems().catch((error) => {
-          console.error(
-            "Failed to process queue items on connection restore:",
-            error
-          );
+      if (isOnline) {
+        // Just load queue items, let QueueContext handle processing
+        loadQueueItems().catch((error) => {
+          console.error("Failed to load queue items:", error);
         });
       }
     });
-  }, []);
+  }, [wallet]);
 
   return null;
 };
@@ -103,30 +88,18 @@ export default function RootLayout() {
       <WalletProvider>
         <AuthProvider>
           <QueueProvider>
-            <PersistQueryClientProvider
-              client={queryClient}
-              persistOptions={{
-                persister: asyncStoragePersister,
-                dehydrateOptions: {
-                  shouldDehydrateQuery: ({ queryKey }) => {
-                    return queryKey.includes("batchData");
-                  },
-                },
-              }}
-            >
-              <QueueNetworkHandler />
-              <Stack screenOptions={{ headerShown: false }}>
-                <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-                <Stack.Screen
-                  name="(auth)/login"
-                  options={{ headerShown: false }}
-                />
-                <Stack.Screen
-                  name="attest/new/[slug]"
-                  options={{ headerShown: false }}
-                />
-              </Stack>
-            </PersistQueryClientProvider>
+            <QueueNetworkHandler />
+            <Stack screenOptions={{ headerShown: false }}>
+              <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+              <Stack.Screen
+                name="(auth)/login"
+                options={{ headerShown: false }}
+              />
+              <Stack.Screen
+                name="attest/new/[slug]"
+                options={{ headerShown: false }}
+              />
+            </Stack>
           </QueueProvider>
         </AuthProvider>
       </WalletProvider>

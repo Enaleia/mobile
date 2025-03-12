@@ -1,5 +1,5 @@
 import { QueueItem, ServiceStatus } from "@/types/queue";
-import { View, Text, Pressable, ActivityIndicator, Image } from "react-native";
+import { View, Text, Pressable, ActivityIndicator } from "react-native";
 import QueuedAction from "@/components/features/queue/QueueAction";
 import { useState } from "react";
 import { Ionicons } from "@expo/vector-icons";
@@ -44,12 +44,12 @@ const QueueSection = ({
     }
   };
 
-  // Count items that need retry for each service
+  // Count items that need retry for each service with null checks
   const getServiceRetryCounts = () => {
     return items.reduce(
       (acc, item) => {
-        if (item.directus.status === ServiceStatus.FAILED) acc.directus++;
-        if (item.eas.status === ServiceStatus.FAILED) acc.eas++;
+        if (item?.directus?.status === ServiceStatus.FAILED) acc.directus++;
+        if (item?.eas?.status === ServiceStatus.FAILED) acc.eas++;
         return acc;
       },
       { directus: 0, eas: 0 }
@@ -58,7 +58,7 @@ const QueueSection = ({
 
   const retryCounts = getServiceRetryCounts();
 
-  const itemsSortedByMostRecent = items.sort(
+  const itemsSortedByMostRecent = [...items].sort(
     (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
   );
 

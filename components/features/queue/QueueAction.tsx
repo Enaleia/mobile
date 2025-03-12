@@ -3,9 +3,9 @@ import { View, Text } from "react-native";
 import { isProcessingItem } from "@/utils/queue";
 import ProcessingPill from "./ProcessingPill";
 import { format } from "date-fns";
-import { useActions } from "@/hooks/data/useActions";
 import { Action } from "@/types/action";
 import { Ionicons } from "@expo/vector-icons";
+import { useBatchData } from "@/hooks/data/useBatchData";
 
 interface QueuedActionProps {
   item: QueueItem;
@@ -14,9 +14,11 @@ interface QueuedActionProps {
 const ServiceStatusIndicator = ({
   status,
   type,
+  extraClasses,
 }: {
   status: ServiceStatus;
   type: "directus" | "eas";
+  extraClasses?: string;
 }) => {
   const getStatusColor = () => {
     switch (status) {
@@ -49,7 +51,7 @@ const ServiceStatusIndicator = ({
   };
 
   return (
-    <View className="flex-row items-center gap-1">
+    <View className={`flex-row items-center gap-1 ${extraClasses}`}>
       <Ionicons name={getStatusIcon()} size={16} className={getStatusColor()} />
       <Text className={`text-xs ${getStatusColor()}`}>
         {type === "directus" ? "API" : "Chain"}
@@ -59,8 +61,8 @@ const ServiceStatusIndicator = ({
 };
 
 const QueuedAction = ({ item }: QueuedActionProps) => {
-  const { actionsData } = useActions();
-  const action = actionsData?.find((a: Action) => a.id === item.actionId);
+  const { actions } = useBatchData();
+  const action = actions?.find((a: Action) => a.id === item.actionId);
   const timestamp = item.lastAttempt || item.date;
   const formattedTime = new Intl.DateTimeFormat("en-US", {
     month: "short",
@@ -75,7 +77,7 @@ const QueuedAction = ({ item }: QueuedActionProps) => {
   return (
     <View className="bg-white px-4 py-3 border-b border-gray-200">
       <View className="flex-row justify-between items-start">
-        <View className="flex-1">
+        <View className="flex-1 flex-col gap-1">
           <Text
             className="font-dm-bold text-base tracking-tight"
             numberOfLines={1}
@@ -85,27 +87,31 @@ const QueuedAction = ({ item }: QueuedActionProps) => {
           <Text className="text-gray-600 text-sm">{formattedTime}</Text>
 
           {/* Service Status Indicators */}
-          <View className="flex-row mt-2 gap-3">
+          <View className="flex-row space-x-3">
             <ServiceStatusIndicator
-              status={item.directus.status}
+              status={item.directus?.status || ServiceStatus.PENDING}
               type="directus"
+              extraClasses="mr-3"
             />
-            <ServiceStatusIndicator status={item.eas.status} type="eas" />
+            <ServiceStatusIndicator
+              status={item.eas?.status || ServiceStatus.PENDING}
+              type="eas"
+            />
           </View>
         </View>
         {isProcessing && <ProcessingPill />}
       </View>
 
       {/* Error Messages */}
-      {(item.directus.error || item.eas.error) &&
+      {(item.directus?.error || item.eas?.error) &&
         item.status !== QueueItemStatus.COMPLETED && (
           <View className="mt-2">
-            {item.directus.error && (
+            {item.directus?.error && (
               <Text className="text-red-500 text-sm" numberOfLines={1}>
                 API: {item.directus.error}
               </Text>
             )}
-            {item.eas.error && (
+            {item.eas?.error && (
               <Text className="text-red-500 text-sm" numberOfLines={1}>
                 Chain: {item.eas.error}
               </Text>
@@ -114,7 +120,7 @@ const QueuedAction = ({ item }: QueuedActionProps) => {
         )}
 
       {/* EAS Transaction Hash */}
-      {item.eas.txHash && (
+      {item.eas?.txHash && (
         <Text className="text-xs text-gray-500 mt-1" numberOfLines={1}>
           Tx: {item.eas.txHash.slice(0, 10)}...
         </Text>

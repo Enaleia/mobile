@@ -3,7 +3,6 @@ import NetInfo, {
   NetInfoState,
   NetInfoStateType,
 } from "@react-native-community/netinfo";
-import { onlineManager } from "@tanstack/react-query";
 import { Platform } from "react-native";
 
 interface NetworkContextType {
@@ -36,9 +35,6 @@ export function NetworkProvider({ children }: { children: React.ReactNode }) {
         isInternetReachable: !!state.isInternetReachable,
       };
       setNetworkState(newState);
-      onlineManager.setOnline(
-        newState.isConnected && !!newState.isInternetReachable
-      );
     });
   }, []);
 
