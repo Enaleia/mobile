@@ -9,7 +9,12 @@ import {
   createMaterialOutput,
 } from "@/services/directus";
 import { QueueEvents, queueEventEmitter } from "@/services/events";
-import { MAX_RETRIES, QueueItem, QueueItemStatus } from "@/types/queue";
+import {
+  MAX_RETRIES,
+  QueueItem,
+  QueueItemStatus,
+  ServiceStatus,
+} from "@/types/queue";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import NetInfo from "@react-native-community/netinfo";
 import * as Notifications from "expo-notifications";
@@ -25,6 +30,9 @@ import {
   addToCompletedQueue,
   removeFromActiveQueue,
 } from "@/utils/queueStorage";
+import { EASService, createAttestationBody } from "@/services/eas";
+import { useWallet } from "@/contexts/WalletContext";
+import { Action } from "@/types/action";
 
 async function updateItemInCache(itemId: string, updates: Partial<QueueItem>) {
   try {
@@ -96,6 +104,20 @@ let isProcessing = false;
 let lastNotificationTime = 0;
 const NOTIFICATION_COOLDOWN = 5 * 60 * 1000; // 5 minutes
 
+async function processEASAttestation(
+  actionId: number,
+  actionName: string,
+  easService: EASService
+): Promise<string> {
+  try {
+    const attestationBody = createAttestationBody(actionId, actionName);
+    return await easService.attest(attestationBody);
+  } catch (error) {
+    console.error("EAS attestation failed:", error);
+    throw error;
+  }
+}
+
 export async function processQueueItems(itemsToProcess?: QueueItem[]) {
   console.log("processQueueItems called:", {
     itemCount: itemsToProcess?.length,
@@ -118,7 +140,32 @@ export async function processQueueItems(itemsToProcess?: QueueItem[]) {
         for (const item of itemsToProcess) {
           await updateItemInCache(item.localId, {
             status: QueueItemStatus.OFFLINE,
-            lastError: "API URL not configured",
+            directus: {
+              status: ServiceStatus.OFFLINE,
+              error: "API URL not configured",
+            },
+            eas: {
+              status: ServiceStatus.OFFLINE,
+              error: "API URL not configured",
+            },
+          });
+        }
+      }
+      return;
+    }
+
+    // Get wallet context for EAS
+    const { wallet, easHelper } = useWallet();
+    if (!wallet || !easHelper) {
+      console.log("Wallet not initialized");
+      if (itemsToProcess) {
+        for (const item of itemsToProcess) {
+          await updateItemInCache(item.localId, {
+            status: QueueItemStatus.OFFLINE,
+            eas: {
+              status: ServiceStatus.OFFLINE,
+              error: "Wallet not initialized",
+            },
           });
         }
       }
@@ -134,7 +181,8 @@ export async function processQueueItems(itemsToProcess?: QueueItem[]) {
         for (const item of itemsToProcess) {
           await updateItemInCache(item.localId, {
             status: QueueItemStatus.OFFLINE,
-            lastError: "Unable to reach server. Please check your internet connection.",
+            lastError:
+              "Unable to reach server. Please check your internet connection.",
           });
         }
       }
@@ -238,6 +286,8 @@ export async function processQueueItems(itemsToProcess?: QueueItem[]) {
       try {
         await updateItemInCache(item.localId, {
           status: QueueItemStatus.PROCESSING,
+          directus: { status: ServiceStatus.PROCESSING },
+          eas: { status: ServiceStatus.PROCESSING },
           lastAttempt: new Date(),
         });
 
@@ -335,10 +385,87 @@ export async function processQueueItems(itemsToProcess?: QueueItem[]) {
           );
         }
 
-        console.log(`Successfully processed item ${item.localId}`);
-        await updateItemInCache(item.localId, {
-          status: QueueItemStatus.COMPLETED,
-        });
+        // Process Directus and EAS in parallel
+        const [directusResult, easResult] = await Promise.allSettled([
+          // Existing Directus processing
+          (async () => {
+            try {
+              const directusEvent = await createEvent({
+                action: item.actionId,
+                event_timestamp: new Date(item.date).toISOString(),
+                event_location: locationString,
+                collector_name: collectorDbId,
+                company: item.company,
+                manufactured_products: item.manufacturing?.product ?? undefined,
+                Batch_quantity: item.manufacturing?.quantity ?? undefined,
+                weight_per_item:
+                  item.manufacturing?.weightInKg?.toString() ?? undefined,
+              } as MaterialTrackingEvent);
+              return directusEvent;
+            } catch (error) {
+              console.error("Directus processing failed:", error);
+              throw error;
+            }
+          })(),
+
+          // New EAS processing
+          (async () => {
+            try {
+              // Create a new EAS service instance using wallet credentials
+              const easService = new EASService(
+                wallet.providerUrl,
+                wallet.privateKey
+              );
+              const txHash = await processEASAttestation(
+                item.actionId,
+                item.actionName,
+                easService
+              );
+              return txHash;
+            } catch (error) {
+              console.error("EAS processing failed:", error);
+              throw error;
+            }
+          })(),
+        ]);
+
+        // Update cache based on results
+        const updates: Partial<QueueItem> = {
+          directus: {
+            status:
+              directusResult.status === "fulfilled"
+                ? ServiceStatus.COMPLETED
+                : ServiceStatus.FAILED,
+            error:
+              directusResult.status === "rejected"
+                ? directusResult.reason?.message
+                : undefined,
+          },
+          eas: {
+            status:
+              easResult.status === "fulfilled"
+                ? ServiceStatus.COMPLETED
+                : ServiceStatus.FAILED,
+            error:
+              easResult.status === "rejected"
+                ? easResult.reason?.message
+                : undefined,
+            txHash:
+              easResult.status === "fulfilled" ? easResult.value : undefined,
+          },
+        };
+
+        // Set overall status
+        if (
+          directusResult.status === "fulfilled" &&
+          easResult.status === "fulfilled"
+        ) {
+          updates.status = QueueItemStatus.COMPLETED;
+        } else {
+          updates.status = QueueItemStatus.FAILED;
+        }
+
+        await updateItemInCache(item.localId, updates);
       } catch (error) {
         console.error(`Error processing item ${item.localId}:`, error);
         const errorMessage =
@@ -346,10 +473,16 @@ export async function processQueueItems(itemsToProcess?: QueueItem[]) {
 
         await updateItemInCache(item.localId, {
           status: QueueItemStatus.FAILED,
-          lastError: errorMessage,
+          directus: {
+            status: ServiceStatus.FAILED,
+            error: errorMessage,
+          },
+          eas: {
+            status: ServiceStatus.FAILED,
+            error: errorMessage,
+          },
         });
 
-        // Throw the error to be caught by the caller
         throw error;
       }
     }
