@@ -1,9 +1,15 @@
-import { createContext, useContext, useEffect, useState, useRef } from "react";
+import {
+  createContext,
+  useContext,
+  useEffect,
+  useState,
+  useRef,
+  useCallback,
+} from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { MAX_RETRIES, QueueItem, QueueItemStatus } from "@/types/queue";
 import { processQueueItems } from "@/services/queueProcessor";
 import { QueueEvents, queueEventEmitter } from "@/services/events";
-import { QueryClient } from "@tanstack/react-query";
 import { useNetwork } from "./NetworkContext";
 import { BackgroundTaskManager } from "@/services/backgroundTaskManager";
 import { AppState } from "react-native";
@@ -18,12 +24,13 @@ import {
   removeFromActiveQueue,
   CompletedQueueItem,
 } from "@/utils/queueStorage";
+import { useWallet } from "@/contexts/WalletContext";
+import { getBatchData } from "@/utils/batchStorage";
 
 interface QueueContextType {
   queueItems: QueueItem[];
   loadQueueItems: () => Promise<void>;
   updateQueueItems: (items: QueueItem[]) => Promise<void>;
-  clearStaleData: () => void;
   retryItems: (items: QueueItem[]) => Promise<void>;
   completedCount: number;
 }
@@ -44,9 +51,9 @@ export function QueueProvider({ children }: { children: React.ReactNode }) {
   const [completedCount, setCompletedCount] = useState(0);
   const { isConnected, isInternetReachable, isMetered } = useNetwork();
   const processingRef = useRef(false);
-  const queryClient = new QueryClient();
   const isOnline = isConnected && isInternetReachable;
   const backgroundManager = BackgroundTaskManager.getInstance();
+  const { wallet } = useWallet();
 
   // Load completed count on init
   useEffect(() => {
@@ -80,49 +87,79 @@ export function QueueProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  const processQueue = async (items: QueueItem[]) => {
-    console.log("Process queue called:", {
-      isProcessing: processingRef.current,
-      itemCount: items.length,
-    });
+  const processItems = useCallback(
+    async (items: QueueItem[]) => {
+      try {
+        processingRef.current = true;
+        await processQueueItems(items, wallet);
+      } catch (error) {
+        console.error("Failed to process items:", error);
+      } finally {
+        processingRef.current = false;
+      }
+    },
+    [wallet]
+  );
 
-    if (processingRef.current) {
-      console.log("Already processing queue, skipping");
-      return;
-    }
-
+  const processAllItems = useCallback(async () => {
     try {
       processingRef.current = true;
-      await processQueueItems(items);
+      await backgroundManager.processQueueItems(wallet);
+    } catch (error) {
+      console.error("Failed to process all items:", error);
     } finally {
       processingRef.current = false;
-      console.log("Queue processing completed");
     }
-  };
+  }, [wallet]);
+
+  const processItem = useCallback(
+    async (item: QueueItem) => {
+      try {
+        processingRef.current = true;
+        await processQueueItems([item], wallet);
+      } catch (error) {
+        console.error("Failed to process item:", error);
+      } finally {
+        processingRef.current = false;
+      }
+    },
+    [wallet]
+  );
 
   // Add AppState listener for foreground/background detection
   useEffect(() => {
-    const subscription = AppState.addEventListener("change", (nextAppState) => {
-      if (nextAppState === "active") {
-        // App came to foreground, process any pending items
-        const pendingItems = queueItems.filter(
-          (item) =>
-            item.status === QueueItemStatus.PENDING ||
-            item.status === QueueItemStatus.OFFLINE
-        );
-        if (pendingItems.length > 0 && isOnline) {
-          console.log("App active, processing pending items in foreground");
-          processQueue(pendingItems).catch((err) =>
-            console.error("Failed to process queue in foreground:", err)
+    const subscription = AppState.addEventListener(
+      "change",
+      async (nextAppState) => {
+        if (nextAppState === "active") {
+          // App came to foreground, process any pending items
+          const pendingItems = queueItems.filter(
+            (item) =>
+              item.status === QueueItemStatus.PENDING ||
+              item.status === QueueItemStatus.OFFLINE
           );
+          if (pendingItems.length > 0 && isOnline) {
+            console.log("App active, processing pending items in foreground");
+            // Ensure batch data is loaded before processing
+            const batchData = await getBatchData();
+            if (batchData) {
+              processItems(pendingItems).catch((err) =>
+                console.error("Failed to process queue in foreground:", err)
+              );
+            } else {
+              console.warn(
+                "Batch data not available, skipping queue processing"
+              );
+            }
+          }
         }
       }
-    });
+    );
 
     return () => {
       subscription.remove();
     };
-  }, [queueItems, isOnline]);
+  }, [queueItems, isOnline, processItems]);
 
   const updateQueueItems = async (items: QueueItem[]): Promise<void> => {
     try {
@@ -164,10 +201,17 @@ export function QueueProvider({ children }: { children: React.ReactNode }) {
           appState === "active" ? "foreground" : "background"
         );
 
+        // Ensure batch data is loaded before processing
+        const batchData = await getBatchData();
+        if (!batchData) {
+          console.warn("Batch data not available, skipping queue processing");
+          return;
+        }
+
         if (appState === "active") {
-          await processQueue(pendingItems);
+          await processItems(pendingItems);
         } else {
-          await backgroundManager.processQueueItems();
+          await processAllItems();
         }
       }
     } catch (error) {
@@ -205,7 +249,7 @@ export function QueueProvider({ children }: { children: React.ReactNode }) {
 
       for (const item of items) {
         try {
-          await processQueueItems([
+          await processItems([
             {
               ...item,
               status: QueueItemStatus.PENDING,
@@ -296,54 +340,6 @@ export function QueueProvider({ children }: { children: React.ReactNode }) {
     };
   }, [isOnline]);
 
-  const clearStaleData = () => {
-    queryClient.removeQueries({
-      predicate: (query) => {
-        const hour = 1000 * 60 * 60;
-        return Date.now() - query.state.dataUpdatedAt > hour * 24;
-      },
-    });
-  };
-
-  const reauthorizeWithStoredCredentials = async (): Promise<boolean> => {
-    try {
-      // First check if we have a valid token
-      const token = await SecureStore.getItemAsync("auth_token");
-      if (token) {
-        // Set the token in directus client
-        directus.setToken(token);
-        return true;
-      }
-
-      // If no valid token, try to login with stored credentials
-      const email = await SecureStore.getItemAsync("user_email");
-      const password = await SecureStore.getItemAsync("user_password");
-
-      if (!email || !password) {
-        console.log("No stored credentials found for reauthorization");
-        return false;
-      }
-
-      try {
-        const loginResult = await directus.login(email, password);
-        if (!loginResult.access_token) {
-          console.error("No access token in login result");
-          return false;
-        }
-        return true;
-      } catch (error) {
-        console.error("Failed to reauthorize with stored credentials:", error);
-        // Clear stored credentials on auth failure
-        await SecureStore.deleteItemAsync("user_email");
-        await SecureStore.deleteItemAsync("user_password");
-        return false;
-      }
-    } catch (error) {
-      console.error("Error in reauthorizeWithStoredCredentials:", error);
-      return false;
-    }
-  };
-
   // Network recovery handler
   useEffect(() => {
     console.log("Network state changed:", {
@@ -351,6 +347,7 @@ export function QueueProvider({ children }: { children: React.ReactNode }) {
       queueItemsCount: queueItems.length,
       processingRef: processingRef.current,
       appState: AppState.currentState,
+      hasWallet: !!wallet,
     });
 
     if (!isOnline && queueItems.length > 0) {
@@ -368,7 +365,8 @@ export function QueueProvider({ children }: { children: React.ReactNode }) {
     } else if (
       isOnline &&
       queueItems.length > 0 &&
-      AppState.currentState === "active"
+      AppState.currentState === "active" &&
+      wallet
     ) {
       // Check token expiration before attempting reauthorization
       const checkTokenAndProcess = async () => {
@@ -416,7 +414,15 @@ export function QueueProvider({ children }: { children: React.ReactNode }) {
                 new Date(item.lastAttempt).getTime() < Date.now() - 30000) // Don't retry items attempted in last 30 seconds
           );
           if (pendingItems.length > 0) {
-            await processQueue(pendingItems);
+            // Ensure batch data is available before processing
+            const batchData = await getBatchData();
+            if (!batchData) {
+              console.warn(
+                "Batch data not available, skipping queue processing"
+              );
+              return;
+            }
+            await processItems(pendingItems);
           }
         } catch (error) {
           console.error("Error in network recovery handler:", error);
@@ -425,7 +431,7 @@ export function QueueProvider({ children }: { children: React.ReactNode }) {
 
       checkTokenAndProcess();
     }
-  }, [isOnline]);
+  }, [isOnline, wallet]);
 
   // Update completed count when items complete
   useEffect(() => {
@@ -437,13 +443,51 @@ export function QueueProvider({ children }: { children: React.ReactNode }) {
     }
   }, [queueItems]);
 
+  const reauthorizeWithStoredCredentials = async (): Promise<boolean> => {
+    try {
+      // First check if we have a valid token
+      const token = await SecureStore.getItemAsync("auth_token");
+      if (token) {
+        // Set the token in directus client
+        directus.setToken(token);
+        return true;
+      }
+
+      // If no valid token, try to login with stored credentials
+      const email = await SecureStore.getItemAsync("user_email");
+      const password = await SecureStore.getItemAsync("user_password");
+
+      if (!email || !password) {
+        console.log("No stored credentials found for reauthorization");
+        return false;
+      }
+
+      try {
+        const loginResult = await directus.login(email, password);
+        if (!loginResult.access_token) {
+          console.error("No access token in login result");
+          return false;
+        }
+        return true;
+      } catch (error) {
+        console.error("Failed to reauthorize with stored credentials:", error);
+        // Clear stored credentials on auth failure
+        await SecureStore.deleteItemAsync("user_email");
+        await SecureStore.deleteItemAsync("user_password");
+        return false;
+      }
+    } catch (error) {
+      console.error("Error in reauthorizeWithStoredCredentials:", error);
+      return false;
+    }
+  };
+
   return (
     <QueueContext.Provider
       value={{
         queueItems,
         loadQueueItems,
         updateQueueItems,
-        clearStaleData,
         retryItems,
         completedCount,
       }}
