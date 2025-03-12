@@ -3,31 +3,32 @@ import { LeaveAttestationModal } from "@/components/features/attest/LeaveAttesta
 import MaterialSection from "@/components/features/attest/MaterialSection";
 import { SentToQueueModal } from "@/components/features/attest/SentToQueueModal";
 import TypeInformationModal from "@/components/features/attest/TypeInformationModal";
+import { LocationPermissionHandler } from "@/components/features/location/LocationPermissionHandler";
+import QRTextInput from "@/components/features/scanning/QRTextInput";
+import DecimalInput from "@/components/shared/DecimalInput";
 import ErrorMessage from "@/components/shared/ErrorMessage";
-import FormSection from "@/components/shared/FormSection";
 import SafeAreaContent from "@/components/shared/SafeAreaContent";
+import SelectField from "@/components/shared/SelectField";
 import { ACTION_SLUGS } from "@/constants/action";
 import { useQueue } from "@/contexts/QueueContext";
-import { useActions } from "@/hooks/data/useActions";
-import { useMaterials } from "@/hooks/data/useMaterials";
+import { useBatchData } from "@/hooks/data/useBatchData";
+import { useUserInfo } from "@/hooks/data/useUserInfo";
 import { useCurrentLocation } from "@/hooks/useCurrentLocation";
+import { LocationSchema } from "@/services/locationService";
 import { ActionTitle, typeModalMap } from "@/types/action";
-import { MaterialDetail } from "@/types/material";
-import { QueueItem, QueueItemStatus } from "@/types/queue";
-import {
-  getActiveQueue,
-  updateActiveQueue,
-  getCompletedQueue,
-} from "@/utils/queueStorage";
+import { MaterialDetail, processMaterials } from "@/types/material";
+import { QueueItem, QueueItemStatus, ServiceStatus } from "@/types/queue";
+import { getActiveQueue, getCompletedQueue } from "@/utils/queueStorage";
 import { Ionicons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { useNavigation } from "@react-navigation/native";
 import { useForm } from "@tanstack/react-form";
 import { zodValidator } from "@tanstack/zod-form-adapter";
 import { router, useLocalSearchParams } from "expo-router";
-import { useMemo, useState, useEffect, useRef } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
-  Alert,
+  AppState,
   GestureResponderEvent,
   Image,
   Keyboard,
@@ -35,30 +36,18 @@ import {
   Pressable,
   ScrollView,
   Text,
-  TextInput,
   View,
-  AppState,
 } from "react-native";
 import uuid from "react-native-uuid";
 import { z } from "zod";
-import { LocationPermissionHandler } from "@/components/features/location/LocationPermissionHandler";
-import { LocationSchema } from "@/services/locationService";
-import QRTextInput from "@/components/features/scanning/QRTextInput";
-import { useUserInfo } from "@/hooks/data/useUserInfo";
-import SelectField from "@/components/shared/SelectField";
-import { useProducts } from "@/hooks/data/useProducts";
-import DecimalInput from "@/components/shared/DecimalInput";
-import { processQueueItems } from "@/services/queueProcessor";
-import { BackgroundTaskManager } from "@/services/backgroundTaskManager";
-import { useNavigation } from "@react-navigation/native";
 
-const ATTEST_FORM_KEY = 'attest_form_state'
+const ATTEST_FORM_KEY = "attest_form_state";
 // Save state to AsyncStorage
-const saveFormState = async (state) => {
+const saveFormState = async (state: EventFormType) => {
   try {
     await AsyncStorage.setItem(ATTEST_FORM_KEY, JSON.stringify(state));
   } catch (error) {
-    console.error('Error saving form state:', error);
+    console.error("Error saving form state:", error);
   }
 };
 
@@ -68,7 +57,7 @@ const loadFormState = async () => {
     const savedState = await AsyncStorage.getItem(ATTEST_FORM_KEY);
     return savedState ? JSON.parse(savedState) : null;
   } catch (error) {
-    console.error('Error loading form state:', error);
+    console.error("Error loading form state:", error);
     return null;
   }
 };
@@ -78,7 +67,7 @@ const deleteFormState = async () => {
   try {
     await AsyncStorage.removeItem(ATTEST_FORM_KEY);
   } catch (error) {
-    console.error('Error deleting form state:', error);
+    console.error("Error deleting form state:", error);
   }
 };
 
@@ -127,9 +116,12 @@ export type EventFormType = z.infer<typeof eventFormSchema>;
 const NewActionScreen = () => {
   const { slug } = useLocalSearchParams(); // slug format
   const location = useCurrentLocation();
-  const { userData } = useUserInfo();
+  const { data: userData } = useUserInfo();
   const scrollViewRef = useRef<ScrollView>(null);
   const navigation = useNavigation();
+  const { updateQueueItems } = useQueue();
+  const { data: locationData, isLoading: locationLoading } =
+    useCurrentLocation();
 
   const [isSentToQueue, setIsSentToQueue] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -137,20 +129,29 @@ const NewActionScreen = () => {
   const [hasAttemptedSubmit, setHasAttemptedSubmit] = useState(false);
   const [isTypeInformationModalVisible, setIsTypeInformationModalVisible] =
     useState(false);
-
-  const { materialsData, isLoading: materialsLoading } = useMaterials();
-  const {
-    productsData,
-    isLoading: productsLoading,
-    error: productsError,
-  } = useProducts();
   const [showIncompleteModal, setShowIncompleteModal] = useState(false);
   const [pendingSubmission, setPendingSubmission] = useState(false);
   const [showLeaveModal, setShowLeaveModal] = useState(false);
+  const [
+    isIncomingMaterialsPickerVisible,
+    setIsIncomingMaterialsPickerVisible,
+  ] = useState(false);
+  const [
+    isOutgoingMaterialsPickerVisible,
+    setIsOutgoingMaterialsPickerVisible,
+  ] = useState(false);
 
-  const { updateQueueItems } = useQueue();
+  const {
+    materials: materialsData,
+    materialOptions,
+    products: productsData,
+    actions: actionsData,
+  } = useBatchData();
 
-  const { actionsData } = useActions();
+  const processedMaterials = useMemo(() => {
+    if (!materialsData) return undefined;
+    return processMaterials(materialsData);
+  }, [materialsData]);
 
   const currentAction = useMemo(() => {
     if (!actionsData?.length || !slug) return undefined;
@@ -162,6 +163,217 @@ const NewActionScreen = () => {
     }
     return matchingAction;
   }, [actionsData, slug]);
+
+  const form = useForm({
+    defaultValues: {
+      type: currentAction?.name as ActionTitle,
+      date: new Date().toISOString(),
+      location: undefined,
+      collectorId: "",
+      incomingMaterials: [] as MaterialDetail[],
+      outgoingMaterials: [] as MaterialDetail[],
+      manufacturing: {
+        product: undefined,
+        quantity: undefined,
+        weightInKg: undefined,
+      },
+    },
+    onSubmit: async ({ value }) => {
+      setHasAttemptedSubmit(true);
+      setSubmitError(null);
+      setIsSubmitting(true);
+
+      try {
+        // Add runtime validation for collectorId
+        const runtimeSchema = eventFormSchema.refine(
+          (data) => {
+            if (currentAction?.category === "Collection" && !data.collectorId) {
+              return false; // Validation fails if collectorId is empty
+            }
+            return true; // Validation passes otherwise
+          },
+          {
+            message: "Collector ID is required for Collection actions",
+            path: ["collectorId"], // Specify the field to attach the error to
+          }
+        );
+
+        const { success: isValid, error: validationError } =
+          runtimeSchema.safeParse(value);
+        if (!isValid) {
+          // Set field-specific errors
+          validationError.errors.forEach((error) => {
+            const fieldPath = error.path.join(".") as keyof typeof value;
+            form.setFieldMeta(fieldPath, (old) => ({
+              ...old,
+              errors: [...(old?.errors || []), error.message],
+            }));
+          });
+
+          // Set general submit error
+          setSubmitError("Please fill in all required fields");
+          console.error("Form validation errors:", validationError);
+
+          // Scroll to the first error if possible
+          if (scrollViewRef.current && validationError.errors[0]?.path[0]) {
+            scrollViewRef.current.scrollTo({ y: 0, animated: true });
+          }
+          return;
+        }
+
+        const actionId = currentAction?.id;
+
+        if (!actionId) {
+          throw new Error("Could not find matching action ID");
+        }
+
+        const queueItem: QueueItem = {
+          ...value,
+          actionId,
+          actionName: currentAction.name,
+          localId: uuid.v4() as string,
+          date: new Date().toISOString(),
+          status: QueueItemStatus.PENDING,
+          retryCount: 0,
+          directus: {
+            status: ServiceStatus.PENDING,
+          },
+          eas: {
+            status: ServiceStatus.PENDING,
+            txHash: undefined,
+            verified: false,
+          },
+          incomingMaterials: value.incomingMaterials || [],
+          outgoingMaterials: value.outgoingMaterials || [],
+          location: value.location,
+          company:
+            typeof userData?.Company === "number"
+              ? undefined
+              : userData?.Company?.id,
+        };
+
+        await addItemToQueue(queueItem);
+        setSubmitError(null);
+        setIsSentToQueue(true);
+      } catch (error) {
+        setIsSentToQueue(false);
+        const errorMsg =
+          error instanceof Error && error.message.includes("Cache key")
+            ? "Unable to access queue storage. Please try again or contact support"
+            : "Failed to add action to queue. Please try again or contact support";
+        setSubmitError(errorMsg);
+        console.error("Error adding to queue:", error);
+      } finally {
+        setIsSubmitting(false);
+        await deleteFormState();
+      }
+    },
+    validatorAdapter: zodValidator(),
+    validators: {
+      onChange: eventFormSchema,
+    },
+  });
+
+  useEffect(() => {
+    if (locationData) {
+      form.setFieldValue("location", locationData);
+    }
+  }, [locationData]);
+
+  // Add keyboard handling effect
+  useEffect(() => {
+    const keyboardDidShowListener = Keyboard.addListener(
+      "keyboardDidShow",
+      (e) => {
+        if (Platform.OS === "ios") {
+          setTimeout(() => {
+            scrollViewRef.current?.scrollTo({ y: 100, animated: true });
+          }, 100);
+        }
+      }
+    );
+
+    const keyboardDidHideListener = Keyboard.addListener(
+      "keyboardDidHide",
+      () => {
+        if (Platform.OS === "ios") {
+          scrollViewRef.current?.scrollTo({ y: 0, animated: true });
+        }
+      }
+    );
+
+    return () => {
+      keyboardDidShowListener.remove();
+      keyboardDidHideListener.remove();
+    };
+  }, []);
+
+  useEffect(() => {
+    const unsubscribe = navigation.addListener("focus", () => {
+      navigation.setOptions({
+        gestureEnabled: false,
+      });
+    });
+
+    return unsubscribe;
+  }, [navigation]);
+
+  const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  useEffect(() => {
+    const loadState = async () => {
+      const savedState = await loadFormState();
+      if (savedState) {
+        const formFields: Array<keyof EventFormType> = [
+          "type",
+          "date",
+          "location",
+          "collectorId",
+          "incomingMaterials",
+          "outgoingMaterials",
+          "manufacturing",
+        ];
+        formFields.forEach((key) => {
+          if (key in savedState) {
+            form.setFieldValue(key, savedState[key]);
+          }
+        });
+      }
+    };
+    loadState();
+
+    const saveState = () => {
+      if (saveTimeoutRef.current) {
+        clearTimeout(saveTimeoutRef.current);
+      }
+
+      saveTimeoutRef.current = setTimeout(() => {
+        const formValues = form.store.state.values;
+        saveFormState(formValues);
+      }, 500);
+    };
+
+    const unsubscribe = form.store.subscribe(saveState);
+
+    const handleAppStateChange = (nextAppState: string) => {
+      if (nextAppState === "active") {
+        loadState();
+      }
+    };
+
+    const subscription = AppState.addEventListener(
+      "change",
+      handleAppStateChange
+    );
+
+    return () => {
+      if (saveTimeoutRef?.current) {
+        clearTimeout(saveTimeoutRef.current);
+      }
+      unsubscribe();
+      deleteFormState();
+      subscription.remove();
+    };
+  }, []);
 
   if (!actionsData?.length) return null;
   if (!currentAction) {
@@ -229,117 +441,6 @@ const NewActionScreen = () => {
     }
   };
 
-  const form = useForm({
-    defaultValues: {
-      type: currentAction?.name as ActionTitle,
-      date: new Date().toISOString(),
-      location: undefined,
-      collectorId: "",
-      incomingMaterials: [] as MaterialDetail[],
-      outgoingMaterials: [] as MaterialDetail[],
-      manufacturing: {
-        product: undefined,
-        quantity: undefined,
-        weightInKg: undefined,
-      },
-    },
-    onSubmit: async ({ value }) => {
-      setHasAttemptedSubmit(true);
-      setSubmitError(null);
-      setIsSubmitting(true);
-
-      try {
-        // Add runtime validation for collectorId
-        const runtimeSchema = eventFormSchema.refine(
-          (data) => {
-            if (currentAction?.category === "Collection" && !data.collectorId) {
-              return false; // Validation fails if collectorId is empty
-            }
-            return true; // Validation passes otherwise
-          },
-          {
-            message: "Collector ID is required for Collection actions",
-            path: ["collectorId"], // Specify the field to attach the error to
-          }
-        );
-
-        const { success: isValid, error: validationError } =
-          runtimeSchema.safeParse(value);
-        if (!isValid) {
-          // Set field-specific errors
-          validationError.errors.forEach((error) => {
-            const fieldPath = error.path.join('.') as keyof typeof value;
-            form.setFieldMeta(fieldPath, (old) => ({
-              ...old,
-              errors: [...(old?.errors || []), error.message],
-            }));
-          });
-          
-          // Set general submit error
-          setSubmitError("Please fill in all required fields");
-          console.error("Form validation errors:", validationError);
-
-          // Scroll to the first error if possible
-          if (scrollViewRef.current && validationError.errors[0]?.path[0]) {
-            scrollViewRef.current.scrollTo({ y: 0, animated: true });
-          }
-          return;
-        }
-
-        const actionId = currentAction?.id;
-
-        if (!actionId) {
-          throw new Error("Could not find matching action ID");
-        }
-
-        const queueItem: QueueItem = {
-          ...value,
-          actionId,
-          localId: uuid.v4() as string,
-          date: new Date().toISOString(),
-          status: QueueItemStatus.PENDING,
-          retryCount: 0,
-          incomingMaterials: value.incomingMaterials || [],
-          outgoingMaterials: value.outgoingMaterials || [],
-          location: value.location,
-          company:
-            typeof userData?.Company === "number"
-              ? undefined
-              : userData?.Company?.id,
-        };
-
-        await addItemToQueue(queueItem);
-        setSubmitError(null);
-        setIsSentToQueue(true);
-      } catch (error) {
-        setIsSentToQueue(false);
-        const errorMsg =
-          error instanceof Error && error.message.includes("Cache key")
-            ? "Unable to access queue storage. Please try again or contact support"
-            : "Failed to add action to queue. Please try again or contact support";
-        setSubmitError(errorMsg);
-        console.error("Error adding to queue:", error);
-      } finally {
-        setIsSubmitting(false);
-        await deleteFormState()
-      }
-    },
-    validatorAdapter: zodValidator(),
-    validators: {
-      onChange: eventFormSchema,
-    },
-  });
-
-  const [
-    isIncomingMaterialsPickerVisible,
-    setIsIncomingMaterialsPickerVisible,
-  ] = useState(false);
-
-  const [
-    isOutgoingMaterialsPickerVisible,
-    setIsOutgoingMaterialsPickerVisible,
-  ] = useState(false);
-
   const hasAnyMaterials = (values: any) => {
     if (typeof values !== "object" || values === null) return false;
 
@@ -350,111 +451,6 @@ const NewActionScreen = () => {
 
     return incomingMaterials.length > 0 || outgoingMaterials.length > 0;
   };
-
-  const { data: locationData, isLoading: locationLoading } =
-    useCurrentLocation();
-
-  useEffect(() => {
-    if (locationData) {
-      form.setFieldValue("location", locationData);
-    }
-  }, [locationData]);
-
-  // Add keyboard handling effect
-  useEffect(() => {
-    const keyboardDidShowListener = Keyboard.addListener(
-      "keyboardDidShow",
-      (e) => {
-        // Only needed for iOS
-        if (Platform.OS === "ios") {
-          // Add a small delay to ensure the input is focused
-          setTimeout(() => {
-            // Scroll down a bit to ensure the focused input is visible
-            scrollViewRef.current?.scrollTo({ y: 100, animated: true });
-          }, 100);
-        }
-      }
-    );
-
-    const keyboardDidHideListener = Keyboard.addListener(
-      "keyboardDidHide",
-      () => {
-        // Optional: Reset scroll position when keyboard hides
-        if (Platform.OS === "ios") {
-          scrollViewRef.current?.scrollTo({ y: 0, animated: true });
-        }
-      }
-    );
-
-    return () => {
-      keyboardDidShowListener.remove();
-      keyboardDidHideListener.remove();
-    };
-  }, []);
-
-
-  useEffect(() => {
-    // Disable swipe back gesture
-    const unsubscribe = navigation.addListener('focus', () => {
-      navigation.setOptions({
-        gestureEnabled: false,
-      });
-    });
-
-    return unsubscribe; // Clean up the listener on unmount
-  }, [navigation]);
-
-  /** for issue #32 **/
-  const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-  useEffect(() => {
-
-    const loadState = async () => {
-      const savedState = await loadFormState();
-      if (savedState) {
-          // Restore state on resume
-        form.update({ values: savedState });
-      }
-    };
-    loadState();
-    // Save state with debouncing
-    const saveState = () => {
-      if (saveTimeoutRef.current) {
-        clearTimeout(saveTimeoutRef.current); // Clear the previous timeout
-      }
-
-      // Set a new timeout to save the state after 500ms of inactivity
-      saveTimeoutRef.current = setTimeout(() => {
-        const formValues = form.store.state.values;
-        saveFormState(formValues);
-        console.log('Form state saved:', formValues);
-      }, 500); // Adjust the delay as needed
-    };
-
-    // Manually track changes to the form state
-    const unsubscribe = form.store.subscribe(saveState);
-
-    const handleAppStateChange = (nextAppState: string) => {
-      if (nextAppState === 'active') {
-        // Reload state when app comes back to foreground
-        loadState();
-      } else{
-      }
-    };
-
-    const subscription = AppState.addEventListener('change', handleAppStateChange);
-    return () => {
-      // Clean up timeout
-      if (saveTimeoutRef?.current) {
-        clearTimeout(saveTimeoutRef.current);
-      }
-      unsubscribe();
-      // Delete state when component unmounts (longer needed at the moment)
-      deleteFormState();
-      // Clean up the AppState subscription
-      subscription.remove();
-    };
-  }, []);
-
 
   return (
     <SafeAreaContent>
@@ -483,11 +479,7 @@ const NewActionScreen = () => {
               }}
               className="flex-row items-center space-x-1"
             >
-              <Ionicons
-                name="chevron-back"
-                size={24}
-                color="#0D0D0D"
-              />
+              <Ionicons name="chevron-back" size={24} color="#0D0D0D" />
               <Text className="text-base font-dm-regular text-enaleia-black tracking-tighter">
                 Back
               </Text>
@@ -519,10 +511,10 @@ const NewActionScreen = () => {
             flexGrow: 0,
             paddingBottom: 100,
           }}
-        >      
-      <Text className="text-3xl font-dm-bold text-enaleia-black tracking-[-1px] mb-2">
-        {currentAction?.name}
-      </Text>
+        >
+          <Text className="text-3xl font-dm-bold text-enaleia-black tracking-[-1px] mb-2">
+            {currentAction?.name}
+          </Text>
           <View className="flex-1">
             <form.Subscribe selector={(state) => state.values}>
               {(values) => (
@@ -566,7 +558,7 @@ const NewActionScreen = () => {
               {(field) => (
                 <View className="mb-8">
                   <MaterialSection
-                    materials={materialsData}
+                    materials={processedMaterials}
                     category="incoming"
                     isModalVisible={isIncomingMaterialsPickerVisible}
                     setModalVisible={setIsIncomingMaterialsPickerVisible}
@@ -584,7 +576,7 @@ const NewActionScreen = () => {
                 {(field) => (
                   <View className="mb-8">
                     <MaterialSection
-                      materials={materialsData}
+                      materials={processedMaterials}
                       category="outgoing"
                       isModalVisible={isOutgoingMaterialsPickerVisible}
                       setModalVisible={setIsOutgoingMaterialsPickerVisible}
@@ -617,14 +609,17 @@ const NewActionScreen = () => {
                         <SelectField
                           value={field.state.value}
                           onChange={(value) => field.handleChange(value)}
-                          options={productsData?.map((product) => ({
-                            label: `${product.product_name || "Unknown Product"}`,
-                            value: product.product_id,
-                          })) || []}
+                          options={
+                            productsData?.map((product) => ({
+                              label: `${
+                                product.product_name || "Unknown Product"
+                              }`,
+                              value: product.product_id,
+                            })) || []
+                          }
                           placeholder="Product"
-                          isLoading={productsLoading}
-                          error={productsError?.toString()}
-                          disabled={productsLoading || !!productsError}
+                          isLoading={!productsData}
+                          disabled={!productsData}
                         />
                       );
                       return <ProductField />;
@@ -632,38 +627,38 @@ const NewActionScreen = () => {
                   </form.Field>
 
                   <View className="flex-row gap-2">
-                  <View className="flex-1 ">
-                       <form.Field name="manufacturing.quantity">
-                         {(field) => {
-                           const QuantityField = () => (
-                             <DecimalInput
-                               field={field}
-                               label="Batch Quantity"
-                               placeholder="0"
-                               allowDecimals={false}
-                               suffix="Unit"
-                             />
-                           );
-                           return <QuantityField />;
-                         }}
-                       </form.Field>
-                     </View>
- 
-                     <View className="flex-1">
-                       <form.Field name="manufacturing.weightInKg">
-                         {(field) => {
-                           const WeightField = () => (
-                             <DecimalInput
-                               field={field}
-                               label="Weight per item"
-                               placeholder="0"
-                               suffix="kg"
-                             />
-                           );
-                           return <WeightField />;
-                         }}
-                       </form.Field>
-                     </View>
+                    <View className="flex-1 ">
+                      <form.Field name="manufacturing.quantity">
+                        {(field) => {
+                          const QuantityField = () => (
+                            <DecimalInput
+                              field={field}
+                              label="Batch Quantity"
+                              placeholder="0"
+                              allowDecimals={false}
+                              suffix="Unit"
+                            />
+                          );
+                          return <QuantityField />;
+                        }}
+                      </form.Field>
+                    </View>
+
+                    <View className="flex-1">
+                      <form.Field name="manufacturing.weightInKg">
+                        {(field) => {
+                          const WeightField = () => (
+                            <DecimalInput
+                              field={field}
+                              label="Weight per item"
+                              placeholder="0"
+                              suffix="kg"
+                            />
+                          );
+                          return <WeightField />;
+                        }}
+                      </form.Field>
+                    </View>
                   </View>
                 </View>
               </View>
@@ -672,89 +667,88 @@ const NewActionScreen = () => {
         </ScrollView>
 
         {/* Fixed Submit Button */}
-
       </View>
       <View className="absolute bottom-[0px] left-0 right-0 bg-white px-5 pt-2 pb-9">
-          <form.Subscribe
-            selector={(state) => [
-              state.canSubmit,
-              state.isSubmitting,
-              state.values,
-            ]}
-          >
-            {([canSubmit, isSubmitting, values]) => {
-              const handleSubmitClick = (e: GestureResponderEvent) => {
-                setSubmitError(null);
-                e.preventDefault();
-                e.stopPropagation();
+        <form.Subscribe
+          selector={(state) => [
+            state.canSubmit,
+            state.isSubmitting,
+            state.values,
+          ]}
+        >
+          {([canSubmit, isSubmitting, values]) => {
+            const handleSubmitClick = (e: GestureResponderEvent) => {
+              setSubmitError(null);
+              e.preventDefault();
+              e.stopPropagation();
 
-                const hasValidIncoming = validateMaterials(
-                  typeof values === "object" &&
-                    values !== null &&
-                    "incomingMaterials" in values
-                    ? values.incomingMaterials || []
-                    : []
-                );
-                const hasValidOutgoing = validateMaterials(
-                  typeof values === "object" &&
-                    values !== null &&
-                    "outgoingMaterials" in values
-                    ? values.outgoingMaterials || []
-                    : []
-                );
-
-                if (!hasValidIncoming && !hasValidOutgoing) {
-                  setShowIncompleteModal(true);
-                  setPendingSubmission(true);
-                  return;
-                }
-
-                form.handleSubmit();
-              };
-
-              return (
-                <>
-                  {/* Error message */}
-                  {submitError && (
-                    <View className="mb-2">
-                      <ErrorMessage message={submitError} />
-                    </View>
-                  )}
-
-                  <Pressable
-                    onPress={handleSubmitClick}
-                    className={`w-full flex-row items-center justify-center p-3 rounded-full ${
-                      !canSubmit || isSubmitting
-                        ? "bg-primary-dark-blue"
-                        : "bg-blue-ocean"
-                    }`}
-                  >
-                    {isSubmitting ? (
-                      <ActivityIndicator color="white" className="mr-2" />
-                    ) : null}
-                    <Text className="text-base font-dm-medium text-slate-50 tracking-tight">
-                      {isSubmitting ? "Preparing..." : "Submit Attestation"}
-                    </Text>
-                  </Pressable>
-
-                  <IncompleteAttestationModal
-                    isVisible={showIncompleteModal}
-                    onClose={() => {
-                      setShowIncompleteModal(false);
-                      setPendingSubmission(false);
-                    }}
-                    onSubmitAnyway={() => {
-                      setShowIncompleteModal(false);
-                      if (pendingSubmission) {
-                        form.handleSubmit();
-                      }
-                    }}
-                  />
-                </>
+              const hasValidIncoming = validateMaterials(
+                typeof values === "object" &&
+                  values !== null &&
+                  "incomingMaterials" in values
+                  ? values.incomingMaterials || []
+                  : []
               );
-            }}
-          </form.Subscribe>
-        </View>
+              const hasValidOutgoing = validateMaterials(
+                typeof values === "object" &&
+                  values !== null &&
+                  "outgoingMaterials" in values
+                  ? values.outgoingMaterials || []
+                  : []
+              );
+
+              if (!hasValidIncoming && !hasValidOutgoing) {
+                setShowIncompleteModal(true);
+                setPendingSubmission(true);
+                return;
+              }
+
+              form.handleSubmit();
+            };
+
+            return (
+              <>
+                {/* Error message */}
+                {submitError && (
+                  <View className="mb-2">
+                    <ErrorMessage message={submitError} />
+                  </View>
+                )}
+
+                <Pressable
+                  onPress={handleSubmitClick}
+                  className={`w-full flex-row items-center justify-center p-3 rounded-full ${
+                    !canSubmit || isSubmitting
+                      ? "bg-primary-dark-blue"
+                      : "bg-blue-ocean"
+                  }`}
+                >
+                  {isSubmitting ? (
+                    <ActivityIndicator color="white" className="mr-2" />
+                  ) : null}
+                  <Text className="text-base font-dm-medium text-slate-50 tracking-tight">
+                    {isSubmitting ? "Preparing..." : "Submit Attestation"}
+                  </Text>
+                </Pressable>
+
+                <IncompleteAttestationModal
+                  isVisible={showIncompleteModal}
+                  onClose={() => {
+                    setShowIncompleteModal(false);
+                    setPendingSubmission(false);
+                  }}
+                  onSubmitAnyway={() => {
+                    setShowIncompleteModal(false);
+                    if (pendingSubmission) {
+                      form.handleSubmit();
+                    }
+                  }}
+                />
+              </>
+            );
+          }}
+        </form.Subscribe>
+      </View>
       {isSentToQueue && (
         <SentToQueueModal isVisible={isSentToQueue} onClose={() => {}} />
       )}
