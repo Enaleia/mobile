@@ -5,6 +5,22 @@ import { DirectusProduct } from "@/types/product";
 import { QueueItem } from "@/types/queue";
 import { EnaleiaUser } from "@/types/user";
 
+// Convert coordinates to uint64 format by:
+// 1. Adding 180 to shift range from [-180,180] to [0,360] for longitude
+// 2. Adding 90 to shift range from [-90,90] to [0,180] for latitude
+// 3. Multiplying by 1e7 to preserve 7 decimal places
+const COORDINATE_PRECISION = 10000000; // 1e7
+
+export const convertCoordinatesToUint = (
+  coords: [number, number]
+): [number, number] => {
+  const [lng, lat] = coords;
+  return [
+    Math.round((lng + 180) * COORDINATE_PRECISION),
+    Math.round((lat + 90) * COORDINATE_PRECISION),
+  ];
+};
+
 /**
  * Maps form data to EAS schema format
  * @param form - The form data from the attestation form or queue item
@@ -30,16 +46,38 @@ export const mapToEASSchema = (
   const company =
     typeof userData?.Company === "number" ? undefined : userData?.Company;
 
+  // Convert location coordinates to uint64 format
+  const actionCoordinates = form.location?.coords
+    ? convertCoordinatesToUint([
+        form.location.coords.longitude,
+        form.location.coords.latitude,
+      ])
+    : [0, 0];
+
+  // Default company coordinates
+  const companyCoordinates: [number, number] = [0, 0];
+
+  // Convert weights to non-negative integers (multiply by 1000 to preserve 3 decimal places)
+  const incomingWeightsKg =
+    form.incomingMaterials?.map((m) => Math.round((m.weight || 0) * 1000)) ||
+    [];
+  const outgoingWeightsKg =
+    form.outgoingMaterials?.map((m) => Math.round((m.weight || 0) * 1000)) ||
+    [];
+  const weightPerItemKg = Math.round(
+    (form.manufacturing?.weightInKg || 0) * 1000
+  );
+
   return {
     // User & Company
     userID: userData?.id || "",
     portOrCompanyName: company?.name || "",
-    portOrCompanyCoordinates: [0, 0], // Company type doesn't have coordinates in EnaleiaUser
+    portOrCompanyCoordinates: companyCoordinates,
 
     // Action & Date
     actionType: formType,
     actionDate: formDate,
-    actionCoordinates: parseCoordinates(form.location?.coords) || [0, 0],
+    actionCoordinates: actionCoordinates,
 
     // Collector
     collectorName: form.collectorId || "",
@@ -51,7 +89,7 @@ export const mapToEASSchema = (
           materialsData.find((md) => md.material_id === m.id)?.material_name ||
           ""
       ) || [],
-    incomingWeightsKg: form.incomingMaterials?.map((m) => m.weight || 0) || [],
+    incomingWeightsKg,
     incomingCodes: form.incomingMaterials?.map((m) => m.code || "") || [],
 
     // Outgoing Materials
@@ -61,7 +99,7 @@ export const mapToEASSchema = (
           materialsData.find((md) => md.material_id === m.id)?.material_name ||
           ""
       ) || [],
-    outgoingWeightsKg: form.outgoingMaterials?.map((m) => m.weight || 0) || [],
+    outgoingWeightsKg,
     outgoingCodes: form.outgoingMaterials?.map((m) => m.code || "") || [],
 
     // Manufacturing
@@ -70,7 +108,7 @@ export const mapToEASSchema = (
           ?.product_name || ""
       : "",
     batchQuantity: form.manufacturing?.quantity || 0,
-    weightPerItemKg: form.manufacturing?.weightInKg || 0,
+    weightPerItemKg,
   };
 };
 
@@ -98,17 +136,23 @@ export const parseCoordinates = (
  * @returns true if valid, throws error if invalid
  */
 export const validateEASSchema = (data: EnaleiaEASSchema): boolean => {
-  // Required fields must not be empty strings
-  if (!data.userID) throw new Error("User ID is required");
-  if (!data.portOrCompanyName)
-    throw new Error("Port or company name is required");
-  if (!data.actionType) throw new Error("Action type is required");
-  if (!data.actionDate) throw new Error("Action date is required");
-
-  // Arrays must be of equal length
+  // Only validate that arrays exist and are arrays (can be empty)
   if (
-    data.incomingMaterials.length !== data.incomingWeightsKg.length ||
-    data.incomingMaterials.length !== data.incomingCodes.length
+    !Array.isArray(data.incomingMaterials) ||
+    !Array.isArray(data.incomingWeightsKg) ||
+    !Array.isArray(data.incomingCodes) ||
+    !Array.isArray(data.outgoingMaterials) ||
+    !Array.isArray(data.outgoingWeightsKg) ||
+    !Array.isArray(data.outgoingCodes)
+  ) {
+    throw new Error("Material arrays must be valid arrays (can be empty)");
+  }
+
+  // Arrays must still be of equal length if they have items
+  if (
+    data.incomingMaterials.length > 0 &&
+    (data.incomingMaterials.length !== data.incomingWeightsKg.length ||
+      data.incomingMaterials.length !== data.incomingCodes.length)
   ) {
     throw new Error(
       "Incoming materials, weights, and codes must have matching lengths"
@@ -116,33 +160,26 @@ export const validateEASSchema = (data: EnaleiaEASSchema): boolean => {
   }
 
   if (
-    data.outgoingMaterials.length !== data.outgoingWeightsKg.length ||
-    data.outgoingMaterials.length !== data.outgoingCodes.length
+    data.outgoingMaterials.length > 0 &&
+    (data.outgoingMaterials.length !== data.outgoingWeightsKg.length ||
+      data.outgoingMaterials.length !== data.outgoingCodes.length)
   ) {
     throw new Error(
       "Outgoing materials, weights, and codes must have matching lengths"
     );
   }
 
-  // Coordinates must be valid numbers
-  if (
-    data.portOrCompanyCoordinates.some(isNaN) ||
-    data.actionCoordinates.some(isNaN)
-  ) {
-    throw new Error("Invalid coordinates");
-  }
-
-  // All weights must be non-negative
+  // Only validate weights if they are present and not zero
   if (
     data.incomingWeightsKg.some((w) => w < 0) ||
     data.outgoingWeightsKg.some((w) => w < 0) ||
-    data.weightPerItemKg < 0
+    (data.weightPerItemKg !== 0 && data.weightPerItemKg < 0)
   ) {
     throw new Error("Weights cannot be negative");
   }
 
-  // Batch quantity must be non-negative
-  if (data.batchQuantity < 0) {
+  // Only validate batch quantity if it's present and not zero
+  if (data.batchQuantity !== 0 && data.batchQuantity < 0) {
     throw new Error("Batch quantity cannot be negative");
   }
 
