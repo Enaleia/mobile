@@ -202,7 +202,9 @@ async function processEASAttestations(
   items: QueueItem[],
   requiredData: RequiredData,
   wallet: WalletInfo
-): Promise<Map<string, string | Error>> {
+): Promise<
+  Map<string, { uid: string; network: "sepolia" | "optimism" } | Error>
+> {
   const { userData, materials, products } = requiredData;
 
   // Create EAS service once for all items
@@ -372,12 +374,30 @@ export async function processQueueItems(
     }
 
     // Get items to process
-    const items = itemsToProcess || (await getActiveQueue());
-    const pendingItems = items.filter(
-      (item) =>
-        item.status === QueueItemStatus.PENDING ||
-        item.status === QueueItemStatus.OFFLINE
+    const allItems = await getActiveQueue();
+    const itemsToFilter = itemsToProcess || allItems;
+
+    // Create a Set of localIds that are already completed to avoid duplicates
+    const completedIds = new Set(
+      allItems
+        .filter(
+          (item) =>
+            item.eas?.status === ServiceStatus.COMPLETED && item.eas.txHash
+        )
+        .map((item) => item.localId)
     );
+
+    const pendingItems = itemsToFilter.filter(
+      (item) =>
+        !completedIds.has(item.localId) &&
+        (item.status === QueueItemStatus.PENDING ||
+          item.status === QueueItemStatus.OFFLINE)
+    );
+
+    if (!pendingItems.length) {
+      console.log("No items to process");
+      return;
+    }
 
     // Notify if there are pending items and enough time has passed since last notification
     if (
@@ -396,12 +416,12 @@ export async function processQueueItems(
 
     // Process all EAS attestations in batch
     const easResults = await processEASAttestations(
-      items,
+      pendingItems,
       requiredData,
       wallet
     );
 
-    for (const item of itemsToProcess) {
+    for (const item of pendingItems) {
       console.log(`Starting to process item ${item.localId}`);
 
       try {
@@ -543,7 +563,13 @@ export async function processQueueItems(
                 ? easResult.reason?.message
                 : undefined,
             txHash:
-              easResult.status === "fulfilled" ? easResult.value : undefined,
+              easResult.status === "fulfilled"
+                ? easResult.value.uid
+                : undefined,
+            network:
+              easResult.status === "fulfilled"
+                ? easResult.value.network
+                : undefined,
           },
         };
 
