@@ -71,13 +71,13 @@
     - ✅ Better error handling and logging
     - ✅ Process items based on app state (foreground/background)
 
-### Queue Page Redesign 🟡
+### Queue Page Redesign ✅
 
 - ✅ Create queue utils for better status categorization
   - ✅ Move status checks to utils/queue.ts
   - ✅ Add helper functions for Processing/Pending/Failed states
   - ✅ Refactor existing queue logic to use new helpers
-- 🟡 Update UI Components
+- ✅ Update UI Components
   - ✅ Create ProcessingPill with Reanimated pulse animation
   - ✅ Add red badge component for pending items count
   - ✅ Update QueueSection to use new categorization
@@ -146,6 +146,9 @@
     - ✅ Keep data until explicit sign out
     - ✅ Clear only via SignOutModal
     - ✅ Support offline capabilities
+- ⏳ Allow user to store/download seed phrase
+- ⏳ Store encrypted private key and seedphrase but encrypted with their authenticate password
+- ⏳ Have a function to let user to recover the wallet
 
 ## Accessibility Improvements ⏳
 
@@ -185,3 +188,26 @@
 1. Queue System Testing
    - ⏳ Complete test scenarios for queue storage separation
    - ⏳ Implement toast notification system
+
+## Wallet Management 🟡
+### Implemented ✅
+- ✅ Basic secure storage setup
+  - Mnemonic (seed phrase)
+  - Private key
+  - Wallet address
+- ✅ Wallet creation with mnemonic generation
+- ✅ Private key derivation
+- ✅ Network handling (sepolia/optimism)
+
+### Pending ⏳
+- ⏳ User interface for seed phrase management
+  - Backup functionality
+  - Download/export options
+  - Recovery phrase verification
+- ⏳ Enhanced security layer
+  - Password-based encryption
+  - Biometric authentication option
+- ⏳ Wallet recovery flow
+  - Import from seed phrase
+  - Restore from backup
+  - Validation and verification steps
