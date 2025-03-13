@@ -1,11 +1,11 @@
-import { QueueItem, QueueItemStatus, ServiceStatus } from "@/types/queue";
-import { View, Text } from "react-native";
-import { isProcessingItem } from "@/utils/queue";
-import ProcessingPill from "./ProcessingPill";
-import { format } from "date-fns";
-import { Action } from "@/types/action";
-import { Ionicons } from "@expo/vector-icons";
 import { useBatchData } from "@/hooks/data/useBatchData";
+import { EAS_CONSTANTS } from "@/services/eas";
+import { Action } from "@/types/action";
+import { QueueItem, QueueItemStatus, ServiceStatus } from "@/types/queue";
+import { isProcessingItem } from "@/utils/queue";
+import { Ionicons } from "@expo/vector-icons";
+import { Linking, Pressable, Text, View } from "react-native";
+import ProcessingPill from "./ProcessingPill";
 
 interface QueuedActionProps {
   item: QueueItem;
@@ -121,9 +121,24 @@ const QueuedAction = ({ item }: QueuedActionProps) => {
 
       {/* EAS Transaction Hash */}
       {item.eas?.txHash && (
-        <Text className="text-xs text-gray-500 mt-1" numberOfLines={1}>
-          Tx: {item.eas.txHash.slice(0, 10)}...
-        </Text>
+        <Pressable
+          onPress={() =>
+            item.eas?.txHash &&
+            Linking.openURL(
+              EAS_CONSTANTS.getAttestationUrl(
+                item.eas.txHash,
+                item.eas.network || "sepolia"
+              )
+            )
+          }
+        >
+          <Text
+            className="text-xs text-blue-500 underline mt-1"
+            numberOfLines={1}
+          >
+            See on EAS ({item.eas.network || "sepolia"})
+          </Text>
+        </Pressable>
       )}
     </View>
   );

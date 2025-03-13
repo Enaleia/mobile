@@ -2,15 +2,29 @@ import { EnaleiaEASSchema } from "@/types/enaleia";
 import { EAS } from "eas-lib";
 
 export const EAS_CONSTANTS = {
-  SCHEMA: "uint256 eventId, string[] weights, string comment",
+  SCHEMA:
+    "string userID, string portOrCompanyName, uint64[] portOrCompanyCoordinates, string actionType, string actionDate, uint64[] actionCoordinates, string collectorName, string[] incomingMaterials, uint64[] incomingWeightsKg, string[] incomingCodes, string[] outgoingMaterials, uint64[] outgoingWeightsKg, string[] outgoingCodes, string productName, uint64 batchQuantity, uint64 weightPerItemKg",
   SCHEMA_UID:
-    "0x2562d7a15eee78cb9e1dc60ad1c7feaa300b59f58ed1ac37b5ebadd24d507fd7",
+    "0x51f1af26dfc8cad8ae9462117375bfc8428c79840ec2ac4453603e40c1ea9439",
   PROVIDER_URLS: {
-    sepolia:
-      "https://purple-frosty-orb.optimism-sepolia.quiknode.pro/aad424a10b06bf69795d7d8abd05b008f7d4c98c",
-    optimism:
-      "https://purple-frosty-orb.optimism-sepolia.quiknode.pro/aad424a10b06bf69795d7d8abd05b008f7d4c98c",
+    sepolia: process.env.EXPO_PUBLIC_EAS_SEPOLIA_PROVIDER_URL,
+    optimism: process.env.EXPO_PUBLIC_EAS_OPTIMISM_PROVIDER_URL,
   },
+  SCAN_URLS: {
+    sepolia: "https://optimism-sepolia.easscan.org",
+    optimism: "https://optimism.easscan.org",
+  },
+  getNetworkFromProviderUrl: (url: string): "sepolia" | "optimism" => {
+    return (
+      (Object.entries(EAS_CONSTANTS.PROVIDER_URLS).find(
+        ([_, providerUrl]) => providerUrl === url
+      )?.[0] as "sepolia" | "optimism") || "sepolia"
+    );
+  },
+  getAttestationUrl: (
+    uid: string,
+    network: "sepolia" | "optimism" = "sepolia"
+  ) => `${EAS_CONSTANTS.SCAN_URLS[network]}/attestation/view/${uid}`,
 };
 
 export class EASAttestationError extends Error {
@@ -22,11 +36,13 @@ export class EASAttestationError extends Error {
 
 export class EASService {
   private eas: EAS | null = null;
+  private network: "sepolia" | "optimism";
 
   constructor(providerUrl: string, privateKey: string) {
     if (!providerUrl || !privateKey) {
       throw new EASAttestationError("Missing wallet credentials");
     }
+    this.network = EAS_CONSTANTS.getNetworkFromProviderUrl(providerUrl);
     this.eas = new EAS(
       providerUrl,
       privateKey,
@@ -35,58 +51,26 @@ export class EASService {
     );
   }
 
-  private formatAttestationData(schema: EnaleiaEASSchema) {
-    return {
-      eventId: Date.now(),
-      weights: [
-        // User and company info
-        schema.userID,
-        schema.portOrCompanyName,
-        ...schema.portOrCompanyCoordinates.map(String),
-
-        // Action info
-        schema.actionType,
-        schema.actionDate,
-        ...schema.actionCoordinates.map(String),
-        schema.collectorName,
-
-        // Incoming materials
-        ...schema.incomingMaterials,
-        ...schema.incomingWeightsKg.map(String),
-        ...schema.incomingCodes,
-
-        // Outgoing materials
-        ...schema.outgoingMaterials,
-        ...schema.outgoingWeightsKg.map(String),
-        ...schema.outgoingCodes,
-
-        // Product info
-        schema.productName,
-        schema.batchQuantity.toString(),
-        schema.weightPerItemKg.toString(),
-      ].filter(Boolean),
-      comment: `${schema.actionType} at ${schema.portOrCompanyName} - ${schema.actionDate}`,
-    };
-  }
-
-  async attest(schema: EnaleiaEASSchema): Promise<string> {
+  async attest(
+    schema: EnaleiaEASSchema
+  ): Promise<{ uid: string; network: "sepolia" | "optimism" }> {
     if (!this.eas) {
       throw new EASAttestationError("EAS not initialized");
     }
 
     try {
-      const attestationData = this.formatAttestationData(schema);
-      const uid = await this.eas.attest(attestationData);
+      const uid = await this.eas.attest(schema);
 
       if (!uid) {
         throw new EASAttestationError("No transaction hash returned", schema);
       }
-
-      return uid;
+      console.log("Attestation successful", uid);
+      return { uid, network: this.network };
     } catch (error) {
       if (error instanceof EASAttestationError) {
         throw error;
       }
+      console.error("Attestation failed", error);
       throw new EASAttestationError(
         `Attestation failed: ${
           error instanceof Error ? error.message : "Unknown error"
@@ -96,9 +80,12 @@ export class EASService {
     }
   }
 
-  async batchAttest(
-    schemas: EnaleiaEASSchema[]
-  ): Promise<Array<{ schema: EnaleiaEASSchema; result: string | Error }>> {
+  async batchAttest(schemas: EnaleiaEASSchema[]): Promise<
+    Array<{
+      schema: EnaleiaEASSchema;
+      result: { uid: string; network: "sepolia" | "optimism" } | Error;
+    }>
+  > {
     return Promise.all(
       schemas.map(async (schema) => {
         try {
