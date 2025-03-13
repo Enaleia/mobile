@@ -85,7 +85,7 @@ const MaterialSection = ({
                   <View className="flex-1">
                     <TextInput
                       ref={(el) => (weightInputRefs.current[index] = el)}
-                      className="bg-white px-4 py-3 rounded-3xl border-[1.5px] border-grey-3 text-base font-dm-regular text-enaleia-black tracking-tighter"
+                      className="bg-white px-4 py-3 rounded-3xl border-[1.5px] border-grey-3 text-base font-dm-bold text-enaleia-black tracking-tighter"
                       placeholder="Weight (kg)"
                       keyboardType="numeric"
                       value={material.weight?.toString() ?? ""}

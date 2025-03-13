@@ -19,7 +19,7 @@ export const LeaveAttestationModal = ({
           className="text-3xl font-dm-bold text-enaleia-black tracking-[-0.5px] mb-3 text-center"
           accessibilityRole="header"
         >
-          Are you sure you want to go back to home?
+          Are you sure you want to go back?
         </Text>
         <Text
           className="text-base font-dm-regular text-enaleia-black mb-6 tracking-tight text-center"
@@ -30,21 +30,21 @@ export const LeaveAttestationModal = ({
         <View className="flex-row items-center gap-2">     
           <Pressable
             onPress={onConfirmLeave}
-            className="px-4 py-3 rounded-full border-grey-3 flex-1"
+            className="px-4 py-3 rounded-full border-[1.5px] border-grey-3 bg-white flex-1"
             accessibilityRole="button"
             accessibilityLabel="Leave without saving"
             accessibilityHint="Double tap to discard changes and leave"
           >
-            <Text className="text-base font-dm-medium text-white text-center">Leave</Text>
+            <Text className="text-base font-dm-medium text-enaleia-black text-center">Leave</Text>
           </Pressable>
           <Pressable
             onPress={onClose}
-            className="px-4 py-3 rounded-full border bg-blue-ocean flex-1"
+            className="px-4 py-3 rounded-full bg-blue-ocean flex-1"
             accessibilityRole="button"
             accessibilityLabel="Keep editing"
             accessibilityHint="Double tap to continue editing"
           >
-            <Text className="text-base font-dm-medium text-enaleia-black text-center">
+            <Text className="text-base font-dm-medium text-white text-center">
               Keep editing
             </Text>
           </Pressable>
