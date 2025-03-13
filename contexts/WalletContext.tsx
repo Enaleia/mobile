@@ -36,18 +36,21 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
           process.env.EXPO_PUBLIC_NETWORK === "production"
             ? "optimism"
             : "sepolia";
+        const providerUrl = EAS_CONSTANTS.PROVIDER_URLS[network];
+        if (!providerUrl) {
+          throw new Error(`No provider URL found for network: ${network}`);
+        }
         const walletInfo: WalletInfo = {
           address,
           network,
           schemaUID: EAS_CONSTANTS.SCHEMA_UID,
-          providerUrl: EAS_CONSTANTS.PROVIDER_URLS[network],
+          providerUrl,
           privateKey,
         };
         setWallet(walletInfo);
         setIsWalletCreated(true);
 
         // Initialize EAS helper
-        const providerUrl = EAS_CONSTANTS.PROVIDER_URLS[network];
         setEasHelper(
           new EAS(
             providerUrl,
@@ -92,11 +95,15 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
         process.env.EXPO_PUBLIC_NETWORK === "production"
           ? "optimism"
           : "sepolia";
+      const providerUrl = EAS_CONSTANTS.PROVIDER_URLS[network];
+      if (!providerUrl) {
+        throw new Error(`No provider URL found for network: ${network}`);
+      }
       const walletInfo: WalletInfo = {
         address,
         network,
         schemaUID: EAS_CONSTANTS.SCHEMA_UID,
-        providerUrl: EAS_CONSTANTS.PROVIDER_URLS[network],
+        providerUrl,
         privateKey,
       };
       console.log({ walletInfo });
@@ -104,7 +111,6 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
       setIsWalletCreated(true);
 
       // Initialize EAS helper
-      const providerUrl = EAS_CONSTANTS.PROVIDER_URLS[network];
       setEasHelper(
         new EAS(
           providerUrl,
