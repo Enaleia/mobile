@@ -1,11 +1,12 @@
-import AddMaterialModal from "@/components/features/attest/AddMaterialModal";
+import { useMemo, useRef } from "react";
+import { Alert, Linking, Pressable, Text, TextInput, View } from "react-native";
+import { Ionicons } from "@expo/vector-icons";
+import { Camera } from "expo-camera";
 import QRTextInput, {
   QRTextInputRef,
 } from "@/components/features/scanning/QRTextInput";
 import { MaterialDetail, MaterialsData } from "@/types/material";
-import { Ionicons } from "@expo/vector-icons";
-import { useMemo, useRef } from "react";
-import { Pressable, Text, TextInput, View } from "react-native";
+import AddMaterialModal from "@/components/features/attest/AddMaterialModal";
 
 interface MaterialSectionProps {
   materials: MaterialsData | undefined;
@@ -81,51 +82,110 @@ const MaterialSection = ({
                     <Ionicons name="trash-outline" size={24} color="#8E8E93" />
                   </Pressable>
                 </View>
-                <View className="flex-row items-center space-x-2">
-                  <View className="flex-1">
-                    <TextInput
-                      ref={(el) => (weightInputRefs.current[index] = el)}
-                      className="bg-white px-4 py-3 rounded-3xl border-[1.5px] border-grey-3 text-base font-dm-bold text-enaleia-black tracking-tighter"
-                      placeholder="Weight (kg)"
-                      keyboardType="numeric"
-                      value={material.weight?.toString() ?? ""}
-                      onChangeText={(text) => {
-                        const newMaterials = [...selectedMaterials];
-                        newMaterials[index] = {
-                          ...newMaterials[index],
-                          weight: text ? parseFloat(text) : null,
-                        };
-                        setSelectedMaterials(newMaterials);
-                      }}
-                      onSubmitEditing={() => {
-                        if (index < selectedMaterials.length - 1) {
-                          weightInputRefs.current[index + 1]?.focus();
-                        }
-                      }}
-                      returnKeyType={
-                        index === selectedMaterials.length - 1 ? "done" : "next"
-                      }
-                    />
-                  </View>
+                <View
+                  className={`flex-row items-center justify-between w-full rounded-lg ${
+                    hideCodeInput ? "flex-1" : ""
+                  }`}
+                >
                   {!hideCodeInput && (
-                    <View className="flex-1">
+                  <Pressable
+                    className="flex-1 border-[1.5px] border-grey-3 rounded-l-2xl rounded-r-[1.7px]  p-2 px-4 bg-white h-[65px]"
+                    onPress={async () => {
+                      try {
+                        const { status } = await Camera.requestCameraPermissionsAsync();
+                        if (status === 'granted') {
+                          setModalVisible(true); // Open scanner modal
+                        } else {
+                          console.warn("Camera permission denied.");
+                          Alert.alert(
+                            "Camera Permission Required",
+                            "This persmission is required to scan QR codes, Please enable it in settings.",
+                            [
+                              { text: "Cancel", style: "cancel" },
+                              { text: "Settings", onPress: () => Linking.openSettings() }
+                            ]
+                          );
+                        }
+                      } catch (error) {
+                        console.error("Error requesting camera permissions:", error);
+                      }
+                    }}
+                  >
+                      <Text className="text-sm font-dm-bold text-grey-6 tracking-tighter">
+                        Code
+                      </Text>
                       <QRTextInput
-                        ref={(el) => (codeInputRefs.current[index] = el)}
+                        ref={(ref) => {
+                          // Store ref in the array
+                          if (codeInputRefs.current.length <= index) {
+                            codeInputRefs.current = [
+                              ...codeInputRefs.current,
+                              ref,
+                            ];
+                          } else {
+                            codeInputRefs.current[index] = ref;
+                          }
+                        }}
+                        placeholder=""
                         value={material.code || ""}
                         onChangeText={(text) => {
                           const newMaterials = [...selectedMaterials];
-                          newMaterials[index] = {
-                            ...newMaterials[index],
-                            code: text,
-                          };
+                          newMaterials[index] = { ...material, code: text };
                           setSelectedMaterials(newMaterials);
-                          if (text && index < selectedMaterials.length - 1) {
-                            codeInputRefs.current[index + 1]?.focus();
-                          }
                         }}
                       />
-                    </View>
+                    </Pressable>
                   )}
+                  <Pressable
+                    className={`border-[1.5px] border-grey-3 h-[65px] ${
+                      !hideCodeInput
+                        ? "flex-[1] border-l-0 rounded-r-2xl"
+                        : "flex-1 rounded-2xl"
+                    } p-2 px-4 bg-white `}
+                    onPress={() => {
+                      // Focus the weight input when its container is tapped
+                      if (weightInputRefs.current[index]) {
+                        weightInputRefs.current[index]?.focus();
+                      }
+                    }}
+                  >
+                    <Text className="w-full text-sm font-dm-bold text-grey-6 tracking-tighter text-left">
+                      Weight
+                    </Text>
+                    <View className="flex-row items-center">
+                      <TextInput
+                        ref={(ref) => {
+                          // Store ref in the array
+                          if (weightInputRefs.current.length <= index) {
+                            weightInputRefs.current = [
+                              ...weightInputRefs.current,
+                              ref,
+                            ];
+                          } else {
+                            weightInputRefs.current[index] = ref;
+                          }
+                        }}
+                        value={material.weight?.toString() || ""}
+                        style={{
+                          textAlign: "left",
+                          direction: "ltr",
+                        }}
+                        className="flex-1 h-[28px] py-0 font-dm-bold tracking-tighter text-enaleia-black text-xl text-left"
+                        onChangeText={(text) => {
+                          const newMaterials = [...selectedMaterials];
+                          newMaterials[index] = {
+                            ...material,
+                            weight: text === "" ? null : Number(text),
+                          };
+                          setSelectedMaterials(newMaterials);
+                        }}
+                        keyboardType="numeric"
+                      />
+                      <Text className="text-sm font-dm-bold text-grey-6 tracking-tighter text-right self-end pl-1">
+                        kg
+                      </Text>
+                    </View>
+                  </Pressable>
                 </View>
               </View>
             ))}
@@ -138,15 +198,15 @@ const MaterialSection = ({
       >
         <Ionicons name="add-outline" size={24} color="#8E8E93" />
         <Text className="text-sm font-dm-bold text-slate-600 tracking-tight">
-          Add
+          Add 
         </Text>
       </Pressable>
       <AddMaterialModal
+        materials={materials?.options ?? []}
         isVisible={isModalVisible}
         onClose={() => setModalVisible(false)}
         selectedMaterials={selectedMaterials}
         setSelectedMaterials={setSelectedMaterials}
-        materials={materials?.options || []}
       />
     </View>
   );

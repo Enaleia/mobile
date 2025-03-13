@@ -727,7 +727,7 @@ const NewActionScreen = () => {
 
                     <Pressable
                       onPress={handleSubmitClick}
-                      className={`w-full flex-row items-center justify-center p-3 rounded-full ${
+                      className={`w-full flex-row items-center justify-center p-3 rounded-full mt-2 ${
                         !canSubmit || isSubmitting
                           ? "bg-primary-dark-blue"
                           : "bg-blue-ocean"

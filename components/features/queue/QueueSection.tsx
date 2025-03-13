@@ -118,11 +118,11 @@ const QueueSection = ({
 
   return (
     <View className="mb-4">
-      <Pressable
-        onPress={() => isCollapsible && setIsCollapsed(!isCollapsed)}
-        className="flex-row justify-between items-center mb-2"
-      >
-        <View className="flex-row items-center">
+      <View className="flex-row justify-between items-center mb-2">
+        <Pressable
+          onPress={() => isCollapsible && setIsCollapsed(!isCollapsed)}
+          className="flex-row items-center"
+        >
           <Text className="text-lg font-dm-bold">{title}</Text>
           {showBadge && (
             <View
@@ -143,20 +143,20 @@ const QueueSection = ({
               style={{ marginLeft: 4 }}
             />
           )}
-        </View>
-      </Pressable>
+        </Pressable>
 
-      {showRetry && !isCollapsed && (
-        <View className="flex-row gap-2 mb-2">
-          <RetryButton />
-          {title === "Failed" && (
-            <>
-              <RetryButton service="directus" count={retryCounts.directus} />
-              <RetryButton service="eas" count={retryCounts.eas} />
-            </>
-          )}
-        </View>
-      )}
+        {showRetry && !isCollapsed && (
+          <View className="flex-row gap-2 mt-1">
+            <RetryButton />
+            {title === "Failed" && (
+              <>
+                <RetryButton service="directus" count={retryCounts.directus} />
+                <RetryButton service="eas" count={retryCounts.eas} />
+              </>
+            )}
+          </View>
+        )}
+      </View>
 
       {!isCollapsed && (
         <View className="rounded-2xl overflow-hidden border border-gray-200 mt-1">
