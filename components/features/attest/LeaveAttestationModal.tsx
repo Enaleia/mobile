@@ -27,10 +27,19 @@ export const LeaveAttestationModal = ({
         >
           You have unsaved changes. Doing so means you will loose all your currently entered data.
         </Text>
-        <View className="flex-row items-center gap-2">
+        <View className="flex-row items-center gap-2">     
+          <Pressable
+            onPress={onConfirmLeave}
+            className="px-4 py-3 rounded-full border-grey-3 flex-1"
+            accessibilityRole="button"
+            accessibilityLabel="Leave without saving"
+            accessibilityHint="Double tap to discard changes and leave"
+          >
+            <Text className="text-base font-dm-medium text-white text-center">Leave</Text>
+          </Pressable>
           <Pressable
             onPress={onClose}
-            className="px-4 py-3 rounded-full border border-grey-3 flex-1"
+            className="px-4 py-3 rounded-full border bg-blue-ocean flex-1"
             accessibilityRole="button"
             accessibilityLabel="Keep editing"
             accessibilityHint="Double tap to continue editing"
@@ -38,15 +47,6 @@ export const LeaveAttestationModal = ({
             <Text className="text-base font-dm-medium text-enaleia-black text-center">
               Keep editing
             </Text>
-          </Pressable>
-          <Pressable
-            onPress={onConfirmLeave}
-            className="px-4 py-3 rounded-full bg-blue-ocean flex-1"
-            accessibilityRole="button"
-            accessibilityLabel="Leave without saving"
-            accessibilityHint="Double tap to discard changes and leave"
-          >
-            <Text className="text-base font-dm-medium text-white text-center">Go home</Text>
           </Pressable>
         </View>
       </View>
