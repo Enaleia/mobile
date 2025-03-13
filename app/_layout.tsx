@@ -6,6 +6,8 @@ import { Stack } from "expo-router";
 import { useFonts } from "expo-font";
 import * as SplashScreen from "expo-splash-screen";
 import React, { useEffect, useState } from "react";
+import { StatusBar } from "react-native";
+
 import * as Localization from "expo-localization";
 
 import { NetworkProvider } from "@/contexts/NetworkContext";
@@ -89,17 +91,33 @@ export default function RootLayout() {
         <AuthProvider>
           <QueueProvider>
             <QueueNetworkHandler />
-            <Stack screenOptions={{ headerShown: false }}>
-              <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+            <Stack
+              screenOptions={{
+                headerShown: false,
+                contentStyle: { backgroundColor: "white" },
+                navigationBarHidden: true,
+              }}
+            >
+              <Stack.Screen
+                name="(tabs)"
+                options={{
+                  headerShown: false,
+                }}
+              />
               <Stack.Screen
                 name="(auth)/login"
-                options={{ headerShown: false }}
+                options={{
+                  headerShown: false,
+                }}
               />
               <Stack.Screen
                 name="attest/new/[slug]"
-                options={{ headerShown: false }}
+                options={{
+                  headerShown: false,
+                }}
               />
             </Stack>
+            <StatusBar barStyle="dark-content" />
           </QueueProvider>
         </AuthProvider>
       </WalletProvider>

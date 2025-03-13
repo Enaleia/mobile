@@ -1,10 +1,15 @@
 import React from "react";
 import { SafeAreaView } from "react-native-safe-area-context";
 
-const SafeAreaContent = ({ children }: { children: any }) => {
+interface SafeAreaContentProps {
+  children: React.ReactNode;
+  className?: string;
+}
+
+const SafeAreaContent = ({ children, className = "" }: SafeAreaContentProps) => {
   return (
     <SafeAreaView 
-      className="flex-1 px-5 pt-5 bg-white-sand"
+      className={`flex-1 px-4 pt-2 bg-white-sand ${className}`}
       edges={['top', 'left', 'right']}
     >
       {children}

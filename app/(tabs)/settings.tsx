@@ -1,4 +1,4 @@
-import { View, Text, Image, Pressable, Linking } from "react-native";
+import { View, Text, Image, Pressable, Linking, Platform } from "react-native";
 import React, { useState } from "react";
 import SafeAreaContent from "@/components/shared/SafeAreaContent";
 import { Ionicons } from "@expo/vector-icons";
@@ -12,7 +12,7 @@ import Constants from "expo-constants";
 
 const SettingsScreen = () => {
   const [isSignOutModalVisible, setIsSignOutModalVisible] = useState(false);
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
 
   const openGuides = async () => {
     const url =
@@ -44,6 +44,13 @@ const SettingsScreen = () => {
 
     return null;
   };
+
+  const version = Constants.expoConfig?.version || "0.0.0";
+  const buildNumber = Platform.select({
+    ios: Constants.expoConfig?.ios?.buildNumber || "1",
+    android: Constants.expoConfig?.android?.versionCode || "1",
+    default: "1",
+  });
 
   return (
     <SafeAreaContent>
@@ -109,7 +116,7 @@ const SettingsScreen = () => {
           <View className="flex-row items-center gap-2">
             <Ionicons name="wallet-outline" size={24} color="#0D0D0D" />
             <Text className="text-base font-dm-bold text-slate-800 tracking-tighter">
-              Wallet
+              Wallet address
             </Text>
           </View>
           <Ionicons name="chevron-forward-outline" size={16} color="#0D0D0D" />
@@ -131,12 +138,16 @@ const SettingsScreen = () => {
           className="flex-row items-center justify-between px-4 py-4 border-b border-neutral-200 bg-white"
         >
           <View className="flex-row items-center gap-2">
-            <Ionicons name="help-buoy-outline" size={24} color="#0D0D0D" />
+            <Ionicons
+              name="chatbox-ellipses-outline"
+              size={24}
+              color="#0D0D0D"
+            />
             <Text className="text-base font-dm-bold text-slate-800 tracking-tighter">
               Contact support
             </Text>
           </View>
-          <Ionicons name="send-outline" size={16} color="#0D0D0D" />
+          <Ionicons name="mail-open-outline" size={16} color="#0D0D0D" />
         </Pressable>
         <Pressable
           onPress={() => setIsSignOutModalVisible(true)}
@@ -152,17 +163,14 @@ const SettingsScreen = () => {
 
         <View className="items-center mt-4">
           <Text className="text-sm font-dm-regular text-gray-500">
-            Version {Constants.expoConfig?.version} (
-            {Constants.expoConfig?.ios?.buildNumber ||
-              Constants.expoConfig?.android?.versionCode}
-            )
+            Version {version} ({buildNumber})
           </Text>
         </View>
 
-        <View className="mt-20 items-end opacity-60">
+        <View className="mt-10 items-end opacity-100 left-[10px]">
           <Image
-            source={require("@/assets/images/animals/Turtle.png")}
-            className="w-[280px] h-[280px]"
+            source={require("@/assets/images/animals/TurtleCollab.png")}
+            className="w-[390px] h-[198px]"
             accessibilityLabel="Decorative turtle illustration"
             accessibilityRole="image"
           />

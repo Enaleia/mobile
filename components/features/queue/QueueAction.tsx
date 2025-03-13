@@ -107,12 +107,12 @@ const QueuedAction = ({ item }: QueuedActionProps) => {
         item.status !== QueueItemStatus.COMPLETED && (
           <View className="mt-2">
             {item.directus?.error && (
-              <Text className="text-red-500 text-sm" numberOfLines={1}>
+              <Text className="text-red-500 text-sm" numberOfLines={2}>
                 API: {item.directus.error}
               </Text>
             )}
             {item.eas?.error && (
-              <Text className="text-red-500 text-sm" numberOfLines={1}>
+              <Text className="text-red-500 text-sm" numberOfLines={2}>
                 Chain: {item.eas.error}
               </Text>
             )}

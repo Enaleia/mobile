@@ -3,6 +3,7 @@ import { View, Text, Pressable, ActivityIndicator } from "react-native";
 import QueuedAction from "@/components/features/queue/QueueAction";
 import { useState } from "react";
 import { Ionicons } from "@expo/vector-icons";
+import { useNetwork } from "@/contexts/NetworkContext";
 
 interface QueueSectionProps {
   title: string;

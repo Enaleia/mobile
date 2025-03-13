@@ -1,5 +1,12 @@
 import { SvgProps } from 'react-native-svg';
-import { HomeActive as HomeActiveIcon, HomeInactive as HomeInactiveIcon, QueueActive as QueueActiveIcon, QueueInactive as QueueInactiveIcon, SettingsActive as SettingsActiveIcon, SettingsInactive as SettingsInactiveIcon } from '../../components/icons';
+import { 
+  HomeActive as HomeActiveIcon, 
+  HomeInactive as HomeInactiveIcon, 
+  QueueActive as QueueActiveIcon, 
+  QueueInactive as QueueInactiveIcon, 
+  SettingsActive as SettingsActiveIcon, 
+  SettingsInactive as SettingsInactiveIcon 
+} from '@/components/icons';
 
 // Define icon categories
 export type IconCategory = 'ui' | 'action';

@@ -145,7 +145,7 @@ function Home() {
         <View className="mt-4">
           <Text
             className="text-[33px] font-dm-bold tracking-[-1.5px] text-enaleia-black pt-1"
-            style={{ marginBottom: 0, lineHeight: 33 }}
+            style={{ marginBottom: 12, lineHeight: 33 }}
           >
             Hello, what action will you be doing today?
           </Text>

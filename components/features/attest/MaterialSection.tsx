@@ -130,23 +130,17 @@ const MaterialSection = ({
               </View>
             ))}
           </View>
-        ) : (
-          <View className="w-full">
-            <Text className="text-base font-dm-regular text-grey-6 tracking-tighter text-center mb-2">
-              No {title.toLowerCase()} materials added
-            </Text>
-          </View>
-        )}
-        <Pressable
-          onPress={() => setModalVisible(true)}
-          className="bg-white w-full px-4 py-3 rounded-3xl flex flex-row items-center justify-center border-[1.5px] border-grey-3 active:opacity-70"
-        >
-          <Ionicons name="add" size={24} color="#8E8E93" />
-          <Text className="text-base font-dm-bold text-enaleia-black tracking-tighter ml-1">
-            Add Material
-          </Text>
-        </Pressable>
+        ) : null}
       </View>
+      <Pressable
+        className="flex-row items-center justify-center mt-2 bg-white-sand px-3 py-2 rounded-full border-[1.5px] border-grey-6"
+        onPress={() => setModalVisible(true)}
+      >
+        <Ionicons name="add-outline" size={24} color="#8E8E93" />
+        <Text className="text-sm font-dm-bold text-slate-600 tracking-tight">
+          Add
+        </Text>
+      </Pressable>
       <AddMaterialModal
         isVisible={isModalVisible}
         onClose={() => setModalVisible(false)}

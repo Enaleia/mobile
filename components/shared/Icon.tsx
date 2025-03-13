@@ -1,7 +1,7 @@
 import React from 'react';
 import { SvgProps } from 'react-native-svg';
 import { ColorValue, StyleProp, ViewStyle } from 'react-native';
-import { Icons, IconName } from '../../src/assets/icons';
+import { Icons, IconName } from '@/lib/icons';
 
 interface IconProps extends Omit<SvgProps, 'color'> {
   name: IconName;

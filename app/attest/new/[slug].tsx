@@ -185,12 +185,11 @@ const NewActionScreen = () => {
 
       try {
         // Add runtime validation for collectorId
+        // NOTE: Comment out this section because we are not forcing the user to scan a collector ID card for collection actions
         const runtimeSchema = eventFormSchema.refine(
           (data) => {
-            if (currentAction?.category === "Collection" && !data.collectorId) {
-              return false; // Validation fails if collectorId is empty
-            }
-            return true; // Validation passes otherwise
+            // Remove collector ID validation
+            return true;
           },
           {
             message: "Collector ID is required for Collection actions",
@@ -454,7 +453,7 @@ const NewActionScreen = () => {
 
   return (
     <SafeAreaContent>
-      <View className="absolute top-20 right-[-30px] bg-white-sand opacity-20">
+      <View className="absolute top-20 right-[-30px] bg-white-sand opacity-60">
         <Image
           source={require("@/assets/images/animals/Turtle.png")}
           className="w-[223px] h-[228px]"
@@ -535,7 +534,7 @@ const NewActionScreen = () => {
             </form.Subscribe>
 
             {currentAction?.category === "Collection" && (
-              <View className="mb-8">
+              <View className="mb-12">
                 <Text className="text-[18px] font-dm-regular text-enaleia-black tracking-tighter mb-2">
                   Collector
                 </Text>
@@ -574,7 +573,7 @@ const NewActionScreen = () => {
             {currentAction?.name !== "Manufacturing" && (
               <form.Field name="outgoingMaterials">
                 {(field) => (
-                  <View className="mb-8">
+                  <View className="mb-8 mt-8">
                     <MaterialSection
                       materials={processedMaterials}
                       category="outgoing"
@@ -664,91 +663,92 @@ const NewActionScreen = () => {
               </View>
             )}
           </View>
+          <View className="pt-3">
+            <form.Subscribe
+              selector={(state) => [
+                state.canSubmit,
+                state.isSubmitting,
+                state.values,
+              ]}
+            >
+              {([canSubmit, isSubmitting, values]) => {
+                const handleSubmitClick = (e: GestureResponderEvent) => {
+                  setSubmitError(null);
+                  e.preventDefault();
+                  e.stopPropagation();
+
+                  const hasValidIncoming = validateMaterials(
+                    typeof values === "object" &&
+                      values !== null &&
+                      "incomingMaterials" in values
+                      ? values.incomingMaterials || []
+                      : []
+                  );
+                  const hasValidOutgoing = validateMaterials(
+                    typeof values === "object" &&
+                      values !== null &&
+                      "outgoingMaterials" in values
+                      ? values.outgoingMaterials || []
+                      : []
+                  );
+
+                  if (!hasValidIncoming && !hasValidOutgoing) {
+                    setShowIncompleteModal(true);
+                    setPendingSubmission(true);
+                    return;
+                  }
+
+                  form.handleSubmit();
+                };
+
+                return (
+                  <>
+                    {/* Error message */}
+                    {submitError && (
+                      <View className="mb-2">
+                        <ErrorMessage message={submitError} />
+                      </View>
+                    )}
+
+                    <Pressable
+                      onPress={handleSubmitClick}
+                      className={`w-full flex-row items-center justify-center p-3 rounded-full ${
+                        !canSubmit || isSubmitting
+                          ? "bg-primary-dark-blue"
+                          : "bg-blue-ocean"
+                      }`}
+                    >
+                      {isSubmitting ? (
+                        <ActivityIndicator color="white" className="mr-2" />
+                      ) : null}
+                      <Text className="text-base font-dm-medium text-slate-50 tracking-tight">
+                        {isSubmitting ? "Preparing..." : "Submit Attestation"}
+                      </Text>
+                    </Pressable>
+
+                    <IncompleteAttestationModal
+                      isVisible={showIncompleteModal}
+                      onClose={() => {
+                        setShowIncompleteModal(false);
+                        setPendingSubmission(false);
+                      }}
+                      onSubmitAnyway={() => {
+                        setShowIncompleteModal(false);
+                        if (pendingSubmission) {
+                          form.handleSubmit();
+                        }
+                      }}
+                    />
+                  </>
+                );
+              }}
+            </form.Subscribe>
+          </View>
         </ScrollView>
 
         {/* Fixed Submit Button */}
       </View>
-      <View className="absolute bottom-[0px] left-0 right-0 bg-white px-5 pt-2 pb-9">
-        <form.Subscribe
-          selector={(state) => [
-            state.canSubmit,
-            state.isSubmitting,
-            state.values,
-          ]}
-        >
-          {([canSubmit, isSubmitting, values]) => {
-            const handleSubmitClick = (e: GestureResponderEvent) => {
-              setSubmitError(null);
-              e.preventDefault();
-              e.stopPropagation();
 
-              const hasValidIncoming = validateMaterials(
-                typeof values === "object" &&
-                  values !== null &&
-                  "incomingMaterials" in values
-                  ? values.incomingMaterials || []
-                  : []
-              );
-              const hasValidOutgoing = validateMaterials(
-                typeof values === "object" &&
-                  values !== null &&
-                  "outgoingMaterials" in values
-                  ? values.outgoingMaterials || []
-                  : []
-              );
-
-              if (!hasValidIncoming && !hasValidOutgoing) {
-                setShowIncompleteModal(true);
-                setPendingSubmission(true);
-                return;
-              }
-
-              form.handleSubmit();
-            };
-
-            return (
-              <>
-                {/* Error message */}
-                {submitError && (
-                  <View className="mb-2">
-                    <ErrorMessage message={submitError} />
-                  </View>
-                )}
-
-                <Pressable
-                  onPress={handleSubmitClick}
-                  className={`w-full flex-row items-center justify-center p-3 rounded-full ${
-                    !canSubmit || isSubmitting
-                      ? "bg-primary-dark-blue"
-                      : "bg-blue-ocean"
-                  }`}
-                >
-                  {isSubmitting ? (
-                    <ActivityIndicator color="white" className="mr-2" />
-                  ) : null}
-                  <Text className="text-base font-dm-medium text-slate-50 tracking-tight">
-                    {isSubmitting ? "Preparing..." : "Submit Attestation"}
-                  </Text>
-                </Pressable>
-
-                <IncompleteAttestationModal
-                  isVisible={showIncompleteModal}
-                  onClose={() => {
-                    setShowIncompleteModal(false);
-                    setPendingSubmission(false);
-                  }}
-                  onSubmitAnyway={() => {
-                    setShowIncompleteModal(false);
-                    if (pendingSubmission) {
-                      form.handleSubmit();
-                    }
-                  }}
-                />
-              </>
-            );
-          }}
-        </form.Subscribe>
-      </View>
       {isSentToQueue && (
         <SentToQueueModal isVisible={isSentToQueue} onClose={() => {}} />
       )}

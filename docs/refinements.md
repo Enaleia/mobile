@@ -2,7 +2,7 @@
 
 ## Batch Fetcher Improvements ⏳
 
-- ⏳ Update batch fetch queries to retrieve only necessary fields
+- ✅ Update batch fetch queries to retrieve only necessary fields
   - ⏳ Determine necessary fields for the following collections: Collectors, Actions, User
 - ✅ [QUAN] Update collectors fetch to retrieve all entries, not just the first 100
 
@@ -12,10 +12,10 @@
 - ✅ [iOS] If the material weights are absent, set the input value to null
 - ✅ [iOS] Make the inputs visible even when they are further down on the page, so they are not hidden by the keyboard
 - ✅ [iOS] [@/components/features/attest/TypeInformationModal] Give space between the modal and the native status bar so the close button is accessible. Maybe set a resonable max height on the modal?
-- ⏳ [iOS] Remove bottom padding of action selection page [ActionSelection.tsx, (tabs)/index]
+- ✅ [iOS] Remove bottom padding of action selection page [ActionSelection.tsx, (tabs)/index]
 - ⏳ [iOS] Investigate why clicking the QR code button in a selected material might result in an app crash
-- ⏳ [iOS] Update QRCodeTextInput to have a consistent design on iOS
-- ⏳ Investigate why leaving the form idle for a while and then returning to the submit to the queue might result in an error
+- ✅ [iOS] Update QRCodeTextInput to have a consistent design on iOS
+- ✅ Investigate why leaving the form idle for a while and then returning to the submit to the queue might result in an error
 - ✅ Add an error message when not able to add to the queue (implemented as inline message with simplified UX)
 - ✅ Create a reusable ErrorMessage component for consistent error display across the app
 - ✅ Make it easier to focus inputs by tapping their parent containers
@@ -172,16 +172,16 @@
 ### Critical
 
 1. Batch Fetcher Improvements
-   - ⏳ Update batch fetch queries to retrieve only necessary fields
+   - ✅ Update batch fetch queries to retrieve only necessary fields
    - ✅ Update collectors fetch to retrieve all entries
 
 ### Important
 
 1. iOS Form Issues (High Impact)
    - ⏳ Fix QR code button crash
-   - ⏳ Update QRCodeTextInput design consistency
-   - ⏳ Address idle form error issue
-   - ⏳ Remove bottom padding of action selection page
+   - ✅ Update QRCodeTextInput design consistency
+   - ✅ Address idle form error issue
+   - ✅ Remove bottom padding of action selection page
 
 ### Nice to have
 

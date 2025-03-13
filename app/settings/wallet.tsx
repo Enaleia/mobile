@@ -17,11 +17,11 @@ const WalletScreen = () => {
 
   return (
     <SafeAreaContent>
-      <View className="absolute bottom-20 right-[-10px] bg-white-sand">
+      <View className="absolute bottom-20 right-[10px] bg-white-sand">
         <Image
-          source={require("@/assets/images/animals/Turtle.png")}
+          source={require("@/assets/images/animals/JellyFish.png")}
           className="w-[223px] h-[228px]"
-          accessibilityLabel="Decorative turtle illustration"
+          accessibilityLabel="Decorative jellyfish illustration"
           accessibilityRole="image"
         />
       </View>
@@ -30,18 +30,14 @@ const WalletScreen = () => {
           onPress={() => router.back()}
           className="flex-row items-center space-x-1"
         >
-          <Ionicons
-            name="chevron-back-circle-outline"
-            size={24}
-            color="#0D0D0D"
-          />
+          <Ionicons name="chevron-back" size={24} color="#0D0D0D" />
           <Text className="text-base font-dm-regular text-enaleia-black tracking-tighter">
             Settings
           </Text>
         </Pressable>
       </View>
       <Text className="text-3xl font-dm-bold text-enaleia-black tracking-[-1px] mb-2">
-        Wallet
+        Wallet address
       </Text>
       <View className="flex-1">
         <Text className="font-dm-medium text-base mb-2">
