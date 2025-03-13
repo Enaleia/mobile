@@ -93,7 +93,6 @@ const MaterialSection = ({
                     onPress={async () => {
                       try {
                         const { status } = await Camera.requestCameraPermissionsAsync();
- 
                         if (status === 'granted') {
                           setModalVisible(true); // Open scanner modal
                         } else {
@@ -150,7 +149,7 @@ const MaterialSection = ({
                       }
                     }}
                   >
-                    <Text className="w-full text-sm font-dm-bold text-grey-6 tracking-tighter text-right">
+                    <Text className="w-full text-sm font-dm-bold text-grey-6 tracking-tighter text-left">
                       Weight
                     </Text>
                     <View className="flex-row items-center">
@@ -168,10 +167,10 @@ const MaterialSection = ({
                         }}
                         value={material.weight?.toString() || ""}
                         style={{
-                          textAlign: "right",
+                          textAlign: "left",
                           direction: "ltr",
                         }}
-                        className="flex-1 h-[28px] py-0 font-dm-bold tracking-tighter text-enaleia-black text-xl text-right"
+                        className="flex-1 h-[28px] py-0 font-dm-bold tracking-tighter text-enaleia-black text-xl text-left"
                         onChangeText={(text) => {
                           const newMaterials = [...selectedMaterials];
                           newMaterials[index] = {
@@ -194,12 +193,12 @@ const MaterialSection = ({
         ) : null}
       </View>
       <Pressable
-        className="flex-row items-center justify-center mt-2 bg-white px-3 py-2 rounded-full border-[1.5px] border-grey-3"
+        className="flex-row items-center justify-center mt-2 bg-white-sand px-3 py-2 rounded-full border-[1.5px] border-grey-6"
         onPress={() => setModalVisible(true)}
       >
         <Ionicons name="add-outline" size={24} color="#8E8E93" />
         <Text className="text-sm font-dm-bold text-slate-600 tracking-tight">
-          Add {category}
+          Add 
         </Text>
       </Pressable>
       <AddMaterialModal

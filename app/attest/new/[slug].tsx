@@ -250,12 +250,11 @@ const NewActionScreen = () => {
 
       try {
         // Add runtime validation for collectorId
+        // NOTE: Comment out this section because we are not forcing the user to scan a collector ID card for collection actions
         const runtimeSchema = eventFormSchema.refine(
           (data) => {
-            if (currentAction?.category === "Collection" && !data.collectorId) {
-              return false; // Validation fails if collectorId is empty
-            }
-            return true; // Validation passes otherwise
+            // Remove collector ID validation
+            return true;
           },
           {
             message: "Collector ID is required for Collection actions",
@@ -458,7 +457,7 @@ const NewActionScreen = () => {
 
   return (
     <SafeAreaContent>
-      <View className="absolute top-20 right-[-30px] bg-white-sand opacity-20">
+      <View className="absolute top-20 right-[-30px] bg-white-sand opacity-60">
         <Image
           source={require("@/assets/images/animals/Turtle.png")}
           className="w-[223px] h-[228px]"
@@ -543,7 +542,7 @@ const NewActionScreen = () => {
             </form.Subscribe>
 
             {currentAction?.category === "Collection" && (
-              <View className="mb-8">
+              <View className="mb-12">
                 <Text className="text-[18px] font-dm-regular text-enaleia-black tracking-tighter mb-2">
                   Collector
                 </Text>
@@ -582,7 +581,7 @@ const NewActionScreen = () => {
             {currentAction?.name !== "Manufacturing" && (
               <form.Field name="outgoingMaterials">
                 {(field) => (
-                  <View className="mb-8">
+                  <View className="mb-8 mt-8">
                     <MaterialSection
                       materials={materialsData}
                       category="outgoing"
@@ -669,12 +668,7 @@ const NewActionScreen = () => {
               </View>
             )}
           </View>
-        </ScrollView>
-
-        {/* Fixed Submit Button */}
-
-      </View>
-      <View className="absolute bottom-[0px] left-0 right-0 bg-white px-5 pt-2 pb-9">
+          <View className="pt-3">
           <form.Subscribe
             selector={(state) => [
               state.canSubmit,
@@ -754,7 +748,13 @@ const NewActionScreen = () => {
               );
             }}
           </form.Subscribe>
-        </View>
+      </View>
+        </ScrollView>
+
+        {/* Fixed Submit Button */}
+
+      </View>
+
       {isSentToQueue && (
         <SentToQueueModal isVisible={isSentToQueue} onClose={() => {}} />
       )}

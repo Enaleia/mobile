@@ -4,13 +4,14 @@ import SafeAreaContent from "@/components/shared/SafeAreaContent";
 import { useQueue } from "@/contexts/QueueContext";
 import { QueueEvents, queueEventEmitter } from "@/services/events";
 import { filterQueueItems, getAttentionCount } from "@/utils/queue";
-import { clearOldCache } from "@/utils/queueStorage";
+import { clearOldCache, cleanupExpiredItems } from "@/utils/queueStorage";
 import { Ionicons } from "@expo/vector-icons";
 import { useEventListener } from "expo";
 import { useNavigation } from "expo-router";
 import { useEffect } from "react";
-import { Text, View, ScrollView, Pressable } from "react-native";
+import { Text, View, ScrollView, Pressable, Image } from "react-native";
 import { useAuth } from "@/contexts/AuthContext";
+
 
 const QueueScreen = () => {
   const { queueItems, loadQueueItems, retryItems } = useQueue();
@@ -36,8 +37,15 @@ const QueueScreen = () => {
   useEventListener(queueEventEmitter, QueueEvents.UPDATED, loadQueueItems);
 
   const handleClearOldCache = async () => {
-    await clearOldCache();
-    await loadQueueItems();
+    try {
+      await Promise.all([
+        clearOldCache(),
+        cleanupExpiredItems()
+      ]);
+      await loadQueueItems();
+    } catch (error) {
+      console.error('Error clearing cache:', error);
+    }
   };
 
   const hasNoItems = items.length === 0;
@@ -64,29 +72,19 @@ const QueueScreen = () => {
           </Text>
         </View>
 
-        <View className="">
+        <View>
           {hasNoItems ? (
-            <View className="flex-1 items-center justify-center py-8">
-              <Ionicons
-                name="checkmark-circle-outline"
-                size={64}
-                color="#4CAF50"
+            <View className="flex-1 items-center justify-center mt-4">
+            
+              <Image
+                source={require("@/assets/images/animals/CrabBubble.png")}
+                className="w-[294px] h-[250px] mt-4"
+                accessibilityLabel="Decorative crab illustration"
+                accessibilityRole="image"
               />
-              <Text className="text-lg text-center mt-4 font-medium">
-                Queue is Empty
+              <Text className="text-base text-center mt-1 font-regular">
+                There is no items here...
               </Text>
-              <Text className="text-sm text-center text-gray-600 mt-2">
-                All actions have been processed successfully. Create a new
-                action to see it here.
-              </Text>
-              <Pressable
-                onPress={handleClearOldCache}
-                className="mt-8 border border-gray-200 px-4 py-2 rounded-xl"
-              >
-                <Text className="text-sm text-gray-600">
-                  Clear old cache data
-                </Text>
-              </Pressable>
             </View>
           ) : (
             <View className="flex-1 py-4">
@@ -100,13 +98,20 @@ const QueueScreen = () => {
               )}
 
               {pendingItems.length > 0 && (
-                <QueueSection
-                  title="Pending"
-                  items={pendingItems}
-                  onRetry={retryItems}
-                  showRetry={true}
-                />
+                <View className="mb-4 p-3 bg-red-50 rounded-xl border border-red-300">
+                  <Text className="text-left text-sm text-enaleia-black">
+                    You have items awaiting to submit on blockchain. Get connected whenever possible and retry submitting these attestations.
+                  </Text>
+                </View>
               )}
+
+              <QueueSection
+                title="Pending"
+                items={pendingItems}
+                onRetry={retryItems}
+                showRetry={true}
+                alwaysShow={true}
+              />
 
               {failedItems.length > 0 && (
                 <QueueSection
@@ -116,8 +121,7 @@ const QueueScreen = () => {
                   showRetry={true}
                 />
               )}
-
-              {completedItems.length > 0 && (
+              
                 <QueueSection
                   title="Completed"
                   items={completedItems}
@@ -125,7 +129,7 @@ const QueueScreen = () => {
                   showRetry={false}
                   isCollapsible={true}
                 />
-              )}
+              
 
               <Pressable
                 onPress={handleClearOldCache}
