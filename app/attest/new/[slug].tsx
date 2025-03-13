@@ -423,11 +423,11 @@ const NewActionScreen = () => {
         );
         throw new Error("Failed to verify queue item was saved");
       }
-
-      console.log("Verified saved data:", {
-        active: savedActiveItems,
-        completed: savedCompletedItems,
-      });
+      console.log("save data verified");
+      // console.log("Verified saved data:", {
+      //   active: savedActiveItems,
+      //   completed: savedCompletedItems,
+      // });
     } catch (error) {
       console.error("Error in addItemToQueue:", error);
 
