@@ -1,4 +1,4 @@
-import { EnaleiaSchema } from "@/types/enaliea";
+import { EnaleiaDirectusSchema } from "@/types/enaleia";
 import {
   authentication,
   createDirectus,
@@ -97,7 +97,7 @@ export const createDirectusClient = () => {
 
   try {
     const storage = new SecureStorage();
-    const client = createDirectus<EnaleiaSchema>(apiUrl)
+    const client = createDirectus<EnaleiaDirectusSchema>(apiUrl)
       .with(
         authentication("json", {
           storage,

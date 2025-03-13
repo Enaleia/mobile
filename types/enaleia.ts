@@ -9,7 +9,8 @@ import { DirectusMaterial } from "@/types/material";
 import { DirectusProduct } from "@/types/product";
 import { Company } from "./company";
 import { EnaleiaUser } from "./user";
-export interface EnaleiaSchema {
+
+export interface EnaleiaDirectusSchema {
   Events: MaterialTrackingEvent[];
   Events_Input: MaterialTrackingEventInput[];
   Events_Output: MaterialTrackingEventOutput[];
@@ -19,4 +20,23 @@ export interface EnaleiaSchema {
   Actions: DirectusAction[];
   Companies: Company[];
   directus_users: EnaleiaUser[];
+}
+
+export interface EnaleiaEASSchema {
+  userID: string;
+  portOrCompanyName: string;
+  portOrCompanyCoordinates: number[];
+  actionType: string;
+  actionDate: string;
+  actionCoordinates: number[];
+  collectorName: string;
+  incomingMaterials: string[];
+  incomingWeightsKg: number[];
+  incomingCodes: string[];
+  outgoingMaterials: string[];
+  outgoingWeightsKg: number[];
+  outgoingCodes: string[];
+  productName: string;
+  batchQuantity: number;
+  weightPerItemKg: number;
 }

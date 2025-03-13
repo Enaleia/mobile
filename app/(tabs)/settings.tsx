@@ -15,9 +15,10 @@ const SettingsScreen = () => {
   const { user, logout } = useAuth();
 
   const openGuides = async () => {
-    const url = "https://sites.google.com/pollenlabs.org/enaleiahub-guides/mobile-app/mobile-app-overview";
+    const url =
+      "https://sites.google.com/pollenlabs.org/enaleiahub-guides/mobile-app/mobile-app-overview";
     const canOpen = await Linking.canOpenURL(url);
-    
+
     if (canOpen) {
       await Linking.openURL(url);
     }
@@ -26,7 +27,7 @@ const SettingsScreen = () => {
   const contactSupport = async () => {
     const url = "mailto:app-support@enaleia.com, enaleia@pollenlabs.org";
     const canOpen = await Linking.canOpenURL(url);
-    
+
     if (canOpen) {
       await Linking.openURL(url);
     }
@@ -42,11 +43,6 @@ const SettingsScreen = () => {
     }
 
     return null;
-  };
-
-  const handleSignOut = async () => {
-    await logout();
-    router.replace("/");
   };
 
   const version = Constants.expoConfig?.version || "0.0.0";
@@ -81,7 +77,7 @@ const SettingsScreen = () => {
 
         <View className="mb-6 rounded-2xl border border-gray-400 ">
           <View className="p-4">
-          <View className="pb-4">
+            <View className="pb-4">
               <Text className="text-base font-dm-bold text-gray-900">
                 Account information
               </Text>
@@ -123,11 +119,7 @@ const SettingsScreen = () => {
               Wallet address
             </Text>
           </View>
-          <Ionicons
-            name="chevron-forward-outline"
-            size={16}
-            color="#0D0D0D"
-          />
+          <Ionicons name="chevron-forward-outline" size={16} color="#0D0D0D" />
         </Pressable>
         <Pressable
           onPress={openGuides}
@@ -139,27 +131,23 @@ const SettingsScreen = () => {
               Guides
             </Text>
           </View>
-          <Ionicons
-            name="open-outline"
-            size={16}
-            color="#0D0D0D"
-          />
+          <Ionicons name="open-outline" size={16} color="#0D0D0D" />
         </Pressable>
         <Pressable
           onPress={contactSupport}
           className="flex-row items-center justify-between px-4 py-4 border-b border-neutral-200 bg-white"
         >
           <View className="flex-row items-center gap-2">
-            <Ionicons name="chatbox-ellipses-outline" size={24} color="#0D0D0D" />
+            <Ionicons
+              name="chatbox-ellipses-outline"
+              size={24}
+              color="#0D0D0D"
+            />
             <Text className="text-base font-dm-bold text-slate-800 tracking-tighter">
               Contact support
             </Text>
           </View>
-          <Ionicons
-            name="mail-open-outline"
-            size={16}
-            color="#0D0D0D"
-          />
+          <Ionicons name="mail-open-outline" size={16} color="#0D0D0D" />
         </Pressable>
         <Pressable
           onPress={() => setIsSignOutModalVisible(true)}
@@ -172,7 +160,7 @@ const SettingsScreen = () => {
             </Text>
           </View>
         </Pressable>
-        
+
         <View className="items-center mt-4">
           <Text className="text-sm font-dm-regular text-gray-500">
             Version {version} ({buildNumber})
@@ -187,8 +175,6 @@ const SettingsScreen = () => {
             accessibilityRole="image"
           />
         </View>
-
-        
       </ScrollView>
       <SignOutModal
         isVisible={isSignOutModalVisible}
