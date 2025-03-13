@@ -1,5 +1,6 @@
 import { IncompleteAttestationModal } from "@/components/features/attest/IncompleteAttestationModal";
 import { LeaveAttestationModal } from "@/components/features/attest/LeaveAttestationModal";
+import { RequireProductSelectModal } from "@/components/features/attest/RequireProductSelectModal";
 import MaterialSection from "@/components/features/attest/MaterialSection";
 import { SentToQueueModal } from "@/components/features/attest/SentToQueueModal";
 import TypeInformationModal from "@/components/features/attest/TypeInformationModal";
@@ -130,6 +131,7 @@ const NewActionScreen = () => {
   const [isTypeInformationModalVisible, setIsTypeInformationModalVisible] =
     useState(false);
   const [showIncompleteModal, setShowIncompleteModal] = useState(false);
+  const [showRequireSelectModal, setShowRequireSelectModal] = useState(false);
   const [pendingSubmission, setPendingSubmission] = useState(false);
   const [showLeaveModal, setShowLeaveModal] = useState(false);
   const [
@@ -691,6 +693,19 @@ const NewActionScreen = () => {
                       ? values.outgoingMaterials || []
                       : []
                   );
+                  // Check if manufacturing.product is missing
+                  const isManufacturingProductMissing =
+                    currentAction?.name === "Manufacturing" &&
+                    typeof values === "object" &&
+                    values !== null &&
+                    (!("manufacturing" in values) ||
+                      !values.manufacturing?.product);
+
+                  if (isManufacturingProductMissing) {
+                    setShowRequireSelectModal(true);
+                    setPendingSubmission(true);
+                    return;
+                  }
 
                   if (!hasValidIncoming && !hasValidOutgoing) {
                     setShowIncompleteModal(true);
@@ -727,7 +742,7 @@ const NewActionScreen = () => {
                     </Pressable>
 
                     <IncompleteAttestationModal
-                      isVisible={showIncompleteModal}
+                      isVisible={showIncompleteModal && !showRequireSelectModal}
                       onClose={() => {
                         setShowIncompleteModal(false);
                         setPendingSubmission(false);
@@ -737,6 +752,13 @@ const NewActionScreen = () => {
                         if (pendingSubmission) {
                           form.handleSubmit();
                         }
+                      }}
+                    />
+                    <RequireProductSelectModal
+                      isVisible={showRequireSelectModal}
+                      onClose={() => {
+                        setShowRequireSelectModal(false);
+                        setPendingSubmission(false);
                       }}
                     />
                   </>
