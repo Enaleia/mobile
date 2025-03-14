@@ -759,45 +759,46 @@ const NewActionScreen = () => {
                     return;
                   }
 
+                  form.handleSubmit();
+                };
 
-                  <Pressable
-                    onPress={handleSubmitClick}
-                    className={`w-full flex-row items-center justify-center p-3 h-[60px] rounded-full ${
-                      !canSubmit || isSubmitting
-                        ? "bg-primary-dark-blue"
-                        : "bg-blue-ocean"
-                    }`}
-                  >
-                    {isSubmitting ? (
-                      <ActivityIndicator color="white" className="mr-2" />
-                    ) : null}
-                    <Text className="text-lg font-dm-medium text-slate-50 tracking-tight">
-                      {isSubmitting ? "Preparing..." : "Submit Attestation"}
-                    </Text>
-                  </Pressable>
+                return (
+                  <>
+                    <Pressable
+                      onPress={handleSubmitClick}
+                      className={`w-full flex-row items-center justify-center p-3 h-[60px] rounded-full ${
+                        !canSubmit || isSubmitting
+                          ? "bg-primary-dark-blue"
+                          : "bg-blue-ocean"
+                      }`}
+                    >
+                      {isSubmitting ? (
+                        <ActivityIndicator color="white" className="mr-2" />
+                      ) : null}
+                      <Text className="text-lg font-dm-medium text-slate-50 tracking-tight">
+                        {isSubmitting ? "Preparing..." : "Submit Attestation"}
+                      </Text>
+                    </Pressable>
 
-                  <IncompleteAttestationModal
-                    isVisible={showIncompleteModal}
-                    onClose={() => {
-                      setShowIncompleteModal(false);
-                      setPendingSubmission(false);
-                    }}
-                    onSubmitAnyway={() => {
-                      setShowIncompleteModal(false);
-                      if (pendingSubmission) {
-                        form.handleSubmit();
-                      }
-                    }}
-                  />
-                </>
-              );
-            }}
-          </form.Subscribe>
-      </View>
-
+                    <IncompleteAttestationModal
+                      isVisible={showIncompleteModal}
+                      onClose={() => {
+                        setShowIncompleteModal(false);
+                        setPendingSubmission(false);
+                      }}
+                      onSubmitAnyway={() => {
+                        setShowIncompleteModal(false);
+                        if (pendingSubmission) {
+                          form.handleSubmit();
+                        }
+                      }}
+                    />
+                  </>
+                );
+              }}
+            </form.Subscribe>
+          </View>
         </ScrollView>
-
-        {/* Fixed Submit Button */}
       </View>
 
       {isSentToQueue && (
