@@ -1,8 +1,8 @@
 import ErrorMessage from "@/components/shared/ErrorMessage";
 import { useAuth } from "@/contexts/AuthContext";
 import { useNetwork } from "@/contexts/NetworkContext";
+import Ionicons from "@expo/vector-icons/Ionicons";
 import { useForm } from "@tanstack/react-form";
-import { useQueryClient } from "@tanstack/react-query";
 import { router } from "expo-router";
 import * as SecureStore from "expo-secure-store";
 import { useEffect, useRef, useState } from "react";
@@ -14,7 +14,6 @@ import {
   View,
 } from "react-native";
 import { z } from "zod";
-import Ionicons from "@expo/vector-icons/Ionicons";
 
 const LoginData = z.object({
   email: z.string().email("Please enter a valid email"),
@@ -32,7 +31,6 @@ export default function LoginForm() {
     useAuth();
   const { isConnected, isInternetReachable } = useNetwork();
   const isOnline = isConnected && isInternetReachable;
-  const queryClient = useQueryClient();
 
   useEffect(() => {
     // If already authenticated, redirect to tabs
@@ -85,8 +83,13 @@ export default function LoginForm() {
       }
     } catch (error) {
       console.error(JSON.stringify(error, null, 2));
-      if (error instanceof TypeError && error.message === "Network request failed") {
-        setFormError("Unable to connect to the server. Please check your internet connection and try again.");
+      if (
+        error instanceof TypeError &&
+        error.message === "Network request failed"
+      ) {
+        setFormError(
+          "Unable to connect to the server. Please check your internet connection and try again."
+        );
       } else {
         setFormError("Invalid login credentials, please try again");
       }
@@ -257,10 +260,7 @@ export default function LoginForm() {
 
       <View className="min-h-[32px]">
         {formError && (
-          <ErrorMessage 
-            message={formError} 
-            hideSecondaryMessage={true}
-          />
+          <ErrorMessage message={formError} hideSecondaryMessage={true} />
         )}
       </View>
 

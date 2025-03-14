@@ -1,80 +1,90 @@
 import ActionSelection from "@/components/features/home/ActionSelect";
 import { InitializationModal } from "@/components/features/initialization/InitializationModal";
 import SafeAreaContent from "@/components/shared/SafeAreaContent";
-import { groupActionsByCategory, processActions } from "@/types/action";
+import { groupActionsByCategory } from "@/types/action";
 import { BatchData } from "@/types/batch";
-import { processCollectors } from "@/types/collector";
-import { processMaterials } from "@/types/material";
-import { processProducts } from "@/types/product";
-import { batchFetchData } from "@/utils/batchFetcher";
 import { Ionicons } from "@expo/vector-icons";
-import { onlineManager, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Text, View, Pressable, ScrollView, Image } from "react-native";
 import React, { useEffect, useState } from "react";
-import { DirectusCollector } from "@/types/collector";
-import { DirectusProduct } from "@/types/product";
 import { useNetwork } from "@/contexts/NetworkContext";
-// import NetworkStatus from "@/components/shared/NetworkStatus";
 import { useAuth } from "@/contexts/AuthContext";
-import { router } from 'expo-router';
 import { CollectionHelpModal } from '@/components/features/help/CollectionHelpModal';
 import { UserProfile } from "@/components/shared/UserProfile";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { router } from "expo-router";
+import {
+  initializeBatchData,
+  subscribeToBatchData,
+  clearBatchData,
+  fetchAndProcessBatchData,
+} from "@/utils/batchStorage";
+
 
 function Home() {
   const { user } = useAuth();
-  const queryClient = useQueryClient();
   const { isConnected, isInternetReachable } = useNetwork();
-  const isOnline = isConnected && isInternetReachable;
-
-  const {
-    data: batchData,
-    isLoading,
-    error,
-    refetch,
-  } = useQuery({
-    queryKey: ["batchData"],
-    queryFn: async () => {
-      if (!isOnline) {
-        console.log("Offline, using cached data");
-        const cachedData = queryClient.getQueryData<BatchData>(["batchData"]);
-        if (!cachedData) {
-          console.log("No cached data available");
-        }
-        return cachedData;
-      }
-
-      if (!user) {
-        throw new Error("User not authenticated");
-      }
-
-      try {
-        const data = await batchFetchData();
-        if (!data) {
-          throw new Error("Failed to fetch batch data");
-        }
-
-        // Process the data
-        const processedData: BatchData = {
-          collectors: processCollectors(data.collectors as DirectusCollector[]),
-          materials: processMaterials(data.materials),
-          products: processProducts(data.products as DirectusProduct[]),
-          actions: processActions(data.actions),
-        };
-
-        return processedData;
-      } catch (error) {
-        console.error("Error fetching batch data:", error);
-        throw error;
-      }
-    },
-    enabled: !!user,
-    staleTime: 1000 * 60 * 60, // 1 hour
-    retry: 2,
+  const isOnline = !!(isConnected && isInternetReachable);
+  const [batchData, setBatchData] = useState<BatchData | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<Error | null>(null);
+  const [progress, setProgress] = useState({
+    user: false,
+    actions: false,
+    materials: false,
+    collectors: false,
+    products: false,
   });
 
   useEffect(() => {
+    let mounted = true;
+
+    const initialize = async () => {
+      try {
+        setIsLoading(true);
+        const result = await initializeBatchData(isOnline, user);
+        if (!mounted) return;
+
+        setBatchData(result.data);
+        setProgress(result.progress);
+        setError(result.error);
+      } catch (e) {
+        if (!mounted) return;
+        setError(e as Error);
+      } finally {
+        if (mounted) {
+          setIsLoading(false);
+        }
+      }
+    };
+
+    initialize();
+
+    // Subscribe to batch data updates
+    const unsubscribe = subscribeToBatchData((data) => {
+      if (mounted) {
+        setBatchData(data);
+        if (data) {
+          setProgress({
+            user: !!user,
+            actions: !!data.actions?.length,
+            materials: !!data.materials?.length,
+            collectors: !!data.collectors?.length,
+            products: !!data.products?.length,
+          });
+        }
+      }
+    });
+
+    return () => {
+      mounted = false;
+      unsubscribe();
+    };
+  }, [isOnline, user]);
+
+  // Refetch when coming back online
+  useEffect(() => {
     if (isOnline && user) {
-      refetch();
+      fetchAndProcessBatchData().catch(console.error);
     }
   }, [isOnline, user]);
 
@@ -84,18 +94,22 @@ function Home() {
     ? groupActionsByCategory(batchData.actions)
     : undefined;
 
-  // Track initialization progress
-  const progress = {
-    user: !!user,
-    actions: !!batchData?.actions,
-    materials: !!batchData?.materials,
-    collectors: !!batchData?.collectors,
-    products: !!batchData?.products,
-  };
-
   // Show initialization modal if loading or error
   const showInitModal =
     isLoading || (!isComplete && !isAuthError) || (!!error && !isAuthError);
+
+  const handleClearCache = async () => {
+    try {
+      // Clear all storage
+      await clearBatchData();
+      await AsyncStorage.clear();
+
+      // Force reload the app by navigating to login
+      router.replace("/(auth)/login");
+    } catch (error) {
+      console.error("Failed to clear cache:", error);
+    }
+  };
 
   return (
     <SafeAreaContent>
@@ -107,10 +121,28 @@ function Home() {
       />
 
       {/* Header - Fixed at top */}
-      <UserProfile />
+
+      <View className="flex-row items-start justify-between pb-4">
+        <View className="flex-row items-center justify-center gap-0.5">
+          <Ionicons name="person-circle-outline" size={24} color="#0D0D0D" />
+          <Text className="text-sm font-bold text-enaleia-black">
+            {user?.first_name || "User"}
+          </Text>
+        </View>
+        <Pressable
+          onPress={handleClearCache}
+          className="flex-row items-center space-x-1"
+        >
+          <Ionicons name="refresh-circle-outline" size={24} color="#0D0D0D" />
+          <Text className="text-sm font-dm-regular text-enaleia-black">
+            Clear Cache
+          </Text>
+        </Pressable>
+      </View>
+
 
       {/* Scrollable Content */}
-      <ScrollView 
+      <ScrollView
         className="flex-1"
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{ flexGrow: 1 }}

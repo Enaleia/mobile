@@ -1,4 +1,3 @@
-import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { locationService, LocationData } from "@/services/locationService";
 import * as Location from "expo-location";
 import { useCallback, useEffect, useState } from "react";
@@ -11,13 +10,16 @@ interface LocationState {
 }
 
 export function useCurrentLocation(options?: { enableHighAccuracy?: boolean }) {
-  const queryClient = useQueryClient();
-  const [permissionStatus, setPermissionStatus] =
-    useState<Location.PermissionStatus | null>(null);
+  const [state, setState] = useState<LocationState>({
+    data: null,
+    permissionStatus: null,
+    isLoading: true,
+    error: null,
+  });
 
   const checkPermission = useCallback(async () => {
     const status = await locationService.getPermissionStatus();
-    setPermissionStatus(status);
+    setState((prev) => ({ ...prev, permissionStatus: status }));
     return status;
   }, []);
 
@@ -25,40 +27,52 @@ export function useCurrentLocation(options?: { enableHighAccuracy?: boolean }) {
     checkPermission();
   }, [checkPermission]);
 
-  const locationQuery = useQuery({
-    queryKey: ["currentLocation"],
-    queryFn: async () => {
+  const fetchLocation = useCallback(async () => {
+    setState((prev) => ({ ...prev, isLoading: true, error: null }));
+    try {
       const status = await checkPermission();
 
       if (status !== "granted") {
         throw new Error("Location permission not granted");
       }
 
-      return locationService.getCurrentLocation({
+      const location = await locationService.getCurrentLocation({
         accuracy: options?.enableHighAccuracy
           ? Location.Accuracy.High
           : Location.Accuracy.Balanced,
       });
-    },
-    staleTime: 1000 * 60, // 1 minute
-    refetchInterval: 1000 * 60 * 5, // 5 minutes
-    retry: false,
-  });
+
+      setState((prev) => ({ ...prev, data: location, isLoading: false }));
+    } catch (err) {
+      const error = err instanceof Error ? err : new Error("Failed to get location");
+      setState((prev) => ({
+        ...prev,
+        error,
+        isLoading: false,
+      }));
+    }
+  }, [checkPermission, options?.enableHighAccuracy]);
+
+  // Initial fetch
+  useEffect(() => {
+    fetchLocation();
+    // Set up periodic refresh
+    const interval = setInterval(fetchLocation, 1000 * 60 * 5); // 5 minutes
+    return () => clearInterval(interval);
+  }, [fetchLocation]);
 
   const requestPermission = useCallback(async () => {
     const { status, isNew } = await locationService.requestPermission();
-    setPermissionStatus(status);
-
+    setState((prev) => ({ ...prev, permissionStatus: status }));
     if (status === "granted") {
-      queryClient.invalidateQueries({ queryKey: ["currentLocation"] });
+      fetchLocation();
     }
-
     return { status, isNew };
-  }, [queryClient]);
+  }, [fetchLocation]);
 
   return {
-    ...locationQuery,
-    permissionStatus,
+    ...state,
+    refetch: fetchLocation,
     requestPermission,
   };
 }

@@ -2,11 +2,8 @@ import "@expo/metro-runtime";
 
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import NetInfo from "@react-native-community/netinfo";
-import { createAsyncStoragePersister } from "@tanstack/query-async-storage-persister";
-import { QueryClient, onlineManager } from "@tanstack/react-query";
-import { PersistQueryClientProvider } from "@tanstack/react-query-persist-client";
-import { useFonts } from "expo-font";
 import { Stack } from "expo-router";
+import { useFonts } from "expo-font";
 import * as SplashScreen from "expo-splash-screen";
 import React, { useEffect, useState } from "react";
 import { StatusBar } from "react-native";
@@ -17,11 +14,10 @@ import { NetworkProvider } from "@/contexts/NetworkContext";
 import { QueueProvider, useQueue } from "@/contexts/QueueContext";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { defaultLocale, dynamicActivate } from "@/lib/i18n";
-import { getBatchCacheKey } from "@/utils/storage";
 import { BackgroundTaskManager } from "@/services/backgroundTaskManager";
 import { Asset } from "expo-asset";
 import { ACTION_ICONS } from "@/constants/action";
-import { getQueryClientConfig } from "@/utils/directus";
+import { WalletProvider, useWallet } from "@/contexts/WalletContext";
 
 SplashScreen.preventAutoHideAsync();
 
@@ -36,39 +32,30 @@ const preloadedActionIcons = Object.values(ACTION_ICONS).map(
   (icon) => icon as number
 );
 
-const queryClient = new QueryClient(getQueryClientConfig());
-
-const asyncStoragePersister = createAsyncStoragePersister({
-  storage: AsyncStorage,
-  key: getBatchCacheKey(),
-  throttleTime: 2000,
-});
-
 const QueueNetworkHandler = () => {
   const backgroundManager = BackgroundTaskManager.getInstance();
+  const { wallet } = useWallet();
+  const { loadQueueItems } = useQueue();
 
   useEffect(() => {
     return NetInfo.addEventListener((state) => {
-      const status = !!state.isConnected;
-      onlineManager.setOnline(status);
+      const isOnline = !!state.isConnected;
 
-      if (status) {
-        backgroundManager.processQueueItems().catch((error) => {
-          console.error(
-            "Failed to process queue items on connection restore:",
-            error
-          );
+      if (isOnline) {
+        // Just load queue items, let QueueContext handle processing
+        loadQueueItems().catch((error) => {
+          console.error("Failed to load queue items:", error);
         });
       }
     });
-  }, []);
+  }, [wallet]);
 
   return null;
 };
 
 export default function RootLayout() {
   const [appIsReady, setAppIsReady] = useState(false);
-  const [loaded, error] = useFonts(preloadedFonts);
+  const [fontsLoaded] = useFonts(preloadedFonts);
   const locale = Localization.getLocales()[0]?.languageCode || defaultLocale;
 
   useEffect(() => {
@@ -88,11 +75,11 @@ export default function RootLayout() {
   }, []);
 
   useEffect(() => {
-    if (loaded || error) {
+    if (fontsLoaded) {
       setAppIsReady(true);
       SplashScreen.hideAsync();
     }
-  }, [loaded, error]);
+  }, [fontsLoaded]);
 
   if (!appIsReady) {
     return null;
@@ -100,50 +87,40 @@ export default function RootLayout() {
 
   return (
     <NetworkProvider>
-      <AuthProvider>
-        <QueueProvider>
-          <PersistQueryClientProvider
-            client={queryClient}
-            persistOptions={{
-              persister: asyncStoragePersister,
-              dehydrateOptions: {
-                shouldDehydrateQuery: ({ queryKey }) => {
-                  return queryKey.includes("batchData");
-                },
-              },
-            }}
-          >
-            <StatusBar barStyle="dark-content" />
+      <WalletProvider>
+        <AuthProvider>
+          <QueueProvider>
             <QueueNetworkHandler />
-            <Stack 
+            <Stack
               screenOptions={{
                 headerShown: false,
-                contentStyle: { backgroundColor: 'white' },
+                contentStyle: { backgroundColor: "white" },
                 navigationBarHidden: true,
               }}
             >
-              <Stack.Screen 
-                name="(tabs)" 
-                options={{ 
+              <Stack.Screen
+                name="(tabs)"
+                options={{
                   headerShown: false,
-                }} 
+                }}
               />
               <Stack.Screen
                 name="(auth)/login"
-                options={{ 
+                options={{
                   headerShown: false,
                 }}
               />
               <Stack.Screen
                 name="attest/new/[slug]"
-                options={{ 
+                options={{
                   headerShown: false,
                 }}
               />
             </Stack>
-          </PersistQueryClientProvider>
-        </QueueProvider>
-      </AuthProvider>
+            <StatusBar barStyle="dark-content" />
+          </QueueProvider>
+        </AuthProvider>
+      </WalletProvider>
     </NetworkProvider>
   );
 }

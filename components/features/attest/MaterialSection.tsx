@@ -202,7 +202,7 @@ const MaterialSection = ({
         </Text>
       </Pressable>
       <AddMaterialModal
-        materials={materials?.options}
+        materials={materials?.options ?? []}
         isVisible={isModalVisible}
         onClose={() => setModalVisible(false)}
         selectedMaterials={selectedMaterials}

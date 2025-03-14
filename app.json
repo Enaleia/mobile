@@ -22,12 +22,10 @@
         "NSCameraUsageDescription": "The app need access to your camera to scan QR codes.",
         "ITSAppUsesNonExemptEncryption": false
       },
-      "icon": {
-        "dark": "./assets/images/ios-dark.png",
-        "light": "./assets/images/ios-light.png",
-        "tinted": "./assets/images/ios-tinted.png"
-      },
+
       "userInterfaceStyle": "light"
+      "icon": "./assets/images/ios-light.png"
+
     },
     "android": {
       "adaptiveIcon": {

@@ -1,17 +1,15 @@
 import ModalBase from "@/components/shared/ModalBase";
 import { Pressable, Text, View } from "react-native";
 
-interface LeaveAttestationModalProps {
+interface RequireProductSelectModalProps {
   isVisible: boolean;
   onClose: () => void;
-  onConfirmLeave: () => void;
 }
 
-export const LeaveAttestationModal = ({
-  isVisible,
-  onClose,
-  onConfirmLeave,
-}: LeaveAttestationModalProps) => {
+export const RequireProductSelectModal = ({
+                                        isVisible,
+                                        onClose,
+                                      }: RequireProductSelectModalProps) => {
   return (
     <ModalBase isVisible={isVisible} onClose={onClose} canClose={false}>
       <View className="px-4 pt-3 pb-4">
@@ -19,24 +17,15 @@ export const LeaveAttestationModal = ({
           className="text-3xl font-dm-bold text-enaleia-black tracking-[-0.5px] mb-3 text-center"
           accessibilityRole="header"
         >
-          Are you sure you want to go back?
+          Product selection is required
         </Text>
         <Text
           className="text-base font-dm-regular text-enaleia-black mb-6 tracking-tight text-center"
           accessibilityRole="text"
         >
-          You have unsaved changes. Doing so means you will loose all your currently entered data.
+          Please select the product you are producing. If your product is not listed, please contact Enaleia.
         </Text>
-        <View className="flex-row items-center gap-2">     
-          <Pressable
-            onPress={onConfirmLeave}
-            className="px-4 py-3 rounded-full border-[1.5px] border-grey-3 bg-white flex-1"
-            accessibilityRole="button"
-            accessibilityLabel="Leave without saving"
-            accessibilityHint="Double tap to discard changes and leave"
-          >
-            <Text className="text-base font-dm-medium text-enaleia-black text-center">Leave</Text>
-          </Pressable>
+        <View className="flex-row items-center">
           <Pressable
             onPress={onClose}
             className="px-4 py-3 rounded-full bg-blue-ocean flex-1"
@@ -45,7 +34,7 @@ export const LeaveAttestationModal = ({
             accessibilityHint="Double tap to continue editing"
           >
             <Text className="text-base font-dm-medium text-white text-center">
-              Keep editing
+              OK
             </Text>
           </Pressable>
         </View>

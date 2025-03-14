@@ -63,11 +63,13 @@ export function LocationEducationalModal({
           <View className="bg-blue-ocean rounded-full p-4 mb-4">
             <Ionicons name="location" size={36} color="#F6F4F2" />
           </View>
-          <Text className="text-4xl font-dm-bold text-enaleia-black tracking-tighter text-center mb-4 mt-4">
-          Add location to your attestations
+          <Text className="text-3xl font-dm-bold text-enaleia-black tracking-[-1.5px] text-center mb-4 mt-4">
+            Add location to your attestations
           </Text>
           <Text className="text-base font-dm-regular text-gray-600 text-center">
-          When adding location to your attestations, you help the community understand where the actions took place for a greater environmental transparency and trust.
+            When adding location to your attestations, you help the community
+            understand where the actions took place for a greater environmental
+            transparency and trust.
           </Text>
         </View>
 
@@ -110,7 +112,8 @@ export function LocationEducationalModal({
         </View>
 
         <Text className="text-sm font-dm-regular text-gray-500 text-center">
-        You can always change your location sharing preferences later in the OS settings
+          You can always change your location sharing preferences later in the
+          OS settings
         </Text>
       </View>
     </ModalBase>
