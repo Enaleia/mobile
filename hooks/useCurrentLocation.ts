@@ -43,11 +43,11 @@ export function useCurrentLocation(options?: { enableHighAccuracy?: boolean }) {
       });
 
       setState((prev) => ({ ...prev, data: location, isLoading: false }));
-    } catch (error) {
+    } catch (err) {
+      const error = err instanceof Error ? err : new Error("Failed to get location");
       setState((prev) => ({
         ...prev,
-        error:
-          error instanceof Error ? error : new Error("Failed to get location"),
+        error,
         isLoading: false,
       }));
     }

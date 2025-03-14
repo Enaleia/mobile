@@ -5,29 +5,20 @@ import { DirectusProduct } from "@/types/product";
 import { QueueItem } from "@/types/queue";
 import { EnaleiaUser } from "@/types/user";
 
-// Convert coordinates to uint64 format by:
-// 1. Adding 180 to shift range from [-180,180] to [0,360] for longitude
-// 2. Adding 90 to shift range from [-90,90] to [0,180] for latitude
-// 3. Multiplying by 1e7 to preserve 7 decimal places
-const COORDINATE_PRECISION = 10000000; // 1e7
+// New coordinate precision: Store as `string[]`
+const COORDINATE_PRECISION = 100000; // 1e5 (1-meter accuracy)
 
-export const convertCoordinatesToUint = (
+export const convertCoordinatesToString = (
   coords: [number, number]
-): [number, number] => {
-  const [lng, lat] = coords;
+): string[] => {
   return [
-    Math.round((lng + 180) * COORDINATE_PRECISION),
-    Math.round((lat + 90) * COORDINATE_PRECISION),
+    (Math.round(coords[0] * COORDINATE_PRECISION) / COORDINATE_PRECISION).toFixed(5), // Latitude
+    (Math.round(coords[1] * COORDINATE_PRECISION) / COORDINATE_PRECISION).toFixed(5), // Longitude
   ];
 };
 
 /**
  * Maps form data to EAS schema format
- * @param form - The form data from the attestation form or queue item
- * @param userData - The current user's data including company info
- * @param materialsData - List of all materials for name lookup
- * @param productsData - List of all products for name lookup
- * @returns EnaleiaEASSchema formatted data ready for attestation
  */
 export const mapToEASSchema = (
   form: EventFormType | QueueItem,
@@ -38,51 +29,48 @@ export const mapToEASSchema = (
     "product_id" | "product_name" | "product_type"
   >[]
 ): EnaleiaEASSchema => {
-  // If form is a QueueItem, we need to handle it differently
   const formType = "actionName" in form ? form.actionName : form.type;
   const formDate = form.date;
 
-  // Handle Company data which could be a number or an object
   const company =
     typeof userData?.Company === "number" ? undefined : userData?.Company;
 
-  // Convert location coordinates to uint64 format
-  const actionCoordinates = form.location?.coords
-    ? convertCoordinatesToUint([
-        form.location.coords.longitude,
+  //  Convert coordinates to `string[]`
+  const actionCoordinates: string[] = form.location?.coords
+    ? convertCoordinatesToString([
         form.location.coords.latitude,
+        form.location.coords.longitude,
       ])
-    : [0, 0];
+    : ["0.00000", "0.00000"];
 
-  // Default company coordinates
-  const companyCoordinates: [number, number] = [0, 0];
+  const companyCoordinates: string[] = userData?.Company?.location
+    ? convertCoordinatesToString([
+        userData.Company.location.latitude,
+        userData.Company.location.longitude,
+      ])
+    : ["0.00000", "0.00000"];
 
-  // Convert weights to non-negative integers (multiply by 1000 to preserve 3 decimal places)
-  const incomingWeightsKg =
-    form.incomingMaterials?.map((m) => Math.round((m.weight || 0) * 1000)) ||
+  //  Convert weights to `uint16[]` (max value 65535)
+  const incomingWeightsKg: number[] =
+    form.incomingMaterials?.map((m) => Math.min(Math.round((m.weight || 0) * 1000), 65535)) ||
     [];
-  const outgoingWeightsKg =
-    form.outgoingMaterials?.map((m) => Math.round((m.weight || 0) * 1000)) ||
+  const outgoingWeightsKg: number[] =
+    form.outgoingMaterials?.map((m) => Math.min(Math.round((m.weight || 0) * 1000), 65535)) ||
     [];
-  const weightPerItemKg = Math.round(
-    (form.manufacturing?.weightInKg || 0) * 1000
-  );
+  const weightPerItemKg = Math.min(Math.round((form.manufacturing?.weightInKg || 0) * 1000), 65535);
+  const batchQuantity = Math.min(form.manufacturing?.quantity || 0, 65535);
 
   return {
-    // User & Company
     userID: userData?.id || "",
     portOrCompanyName: company?.name || "",
-    portOrCompanyCoordinates: companyCoordinates,
+    portOrCompanyCoordinates: companyCoordinates, //  Now `string[]`
 
-    // Action & Date
     actionType: formType,
     actionDate: formDate,
-    actionCoordinates: actionCoordinates,
+    actionCoordinates: actionCoordinates, // Now `string[]`
 
-    // Collector
     collectorName: form.collectorId || "",
 
-    // Incoming Materials
     incomingMaterials:
       form.incomingMaterials?.map(
         (m) =>
@@ -92,7 +80,6 @@ export const mapToEASSchema = (
     incomingWeightsKg,
     incomingCodes: form.incomingMaterials?.map((m) => m.code || "") || [],
 
-    // Outgoing Materials
     outgoingMaterials:
       form.outgoingMaterials?.map(
         (m) =>
@@ -102,20 +89,17 @@ export const mapToEASSchema = (
     outgoingWeightsKg,
     outgoingCodes: form.outgoingMaterials?.map((m) => m.code || "") || [],
 
-    // Manufacturing
     productName: form.manufacturing?.product
       ? productsData.find((p) => p.product_id === form.manufacturing?.product)
           ?.product_name || ""
       : "",
-    batchQuantity: form.manufacturing?.quantity || 0,
+    batchQuantity,
     weightPerItemKg,
   };
 };
 
 /**
  * Parses coordinates from various formats into a number array
- * @param coords - Coordinates in string format "lat,lng" or object format {latitude, longitude}
- * @returns Array of [latitude, longitude] as numbers
  */
 export const parseCoordinates = (
   coords: string | { latitude: number; longitude: number } | undefined
@@ -132,11 +116,8 @@ export const parseCoordinates = (
 
 /**
  * Validates the EAS schema data before attestation
- * @param data - The formatted EAS schema data
- * @returns true if valid, throws error if invalid
  */
 export const validateEASSchema = (data: EnaleiaEASSchema): boolean => {
-  // Only validate that arrays exist and are arrays (can be empty)
   if (
     !Array.isArray(data.incomingMaterials) ||
     !Array.isArray(data.incomingWeightsKg) ||
@@ -148,7 +129,6 @@ export const validateEASSchema = (data: EnaleiaEASSchema): boolean => {
     throw new Error("Material arrays must be valid arrays (can be empty)");
   }
 
-  // Arrays must still be of equal length if they have items
   if (
     data.incomingMaterials.length > 0 &&
     (data.incomingMaterials.length !== data.incomingWeightsKg.length ||
@@ -169,18 +149,16 @@ export const validateEASSchema = (data: EnaleiaEASSchema): boolean => {
     );
   }
 
-  // Only validate weights if they are present and not zero
   if (
-    data.incomingWeightsKg.some((w) => w < 0) ||
-    data.outgoingWeightsKg.some((w) => w < 0) ||
-    (data.weightPerItemKg !== 0 && data.weightPerItemKg < 0)
+    data.incomingWeightsKg.some((w) => w < 0 || w > 65535) ||
+    data.outgoingWeightsKg.some((w) => w < 0 || w > 65535) ||
+    (data.weightPerItemKg !== 0 && (data.weightPerItemKg < 0 || data.weightPerItemKg > 65535))
   ) {
-    throw new Error("Weights cannot be negative");
+    throw new Error("Weights must be within uint16 range (0-65535)");
   }
 
-  // Only validate batch quantity if it's present and not zero
-  if (data.batchQuantity !== 0 && data.batchQuantity < 0) {
-    throw new Error("Batch quantity cannot be negative");
+  if (data.batchQuantity !== 0 && (data.batchQuantity < 0 || data.batchQuantity > 65535)) {
+    throw new Error("Batch quantity must be within uint16 range (0-65535)");
   }
 
   return true;

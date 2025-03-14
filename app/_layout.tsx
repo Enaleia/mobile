@@ -55,7 +55,7 @@ const QueueNetworkHandler = () => {
 
 export default function RootLayout() {
   const [appIsReady, setAppIsReady] = useState(false);
-  const [loaded, error] = useFonts(preloadedFonts);
+  const [fontsLoaded] = useFonts(preloadedFonts);
   const locale = Localization.getLocales()[0]?.languageCode || defaultLocale;
 
   useEffect(() => {
@@ -75,11 +75,11 @@ export default function RootLayout() {
   }, []);
 
   useEffect(() => {
-    if (loaded || error) {
+    if (fontsLoaded) {
       setAppIsReady(true);
       SplashScreen.hideAsync();
     }
-  }, [loaded, error]);
+  }, [fontsLoaded]);
 
   if (!appIsReady) {
     return null;

@@ -193,11 +193,11 @@ const MaterialSection = ({
         ) : null}
       </View>
       <Pressable
-        className="flex-row items-center justify-center mt-2 bg-white-sand px-3 py-2 rounded-full border-[1.5px] border-grey-6"
+        className="flex-row items-center justify-center mt-2 bg-white-sand px-3 py-1 rounded-full border-[1.5px] border-grey-3"
         onPress={() => setModalVisible(true)}
       >
-        <Ionicons name="add-outline" size={24} color="#8E8E93" />
-        <Text className="text-sm font-dm-bold text-slate-600 tracking-tight">
+        <Ionicons name="add-outline" size={24} color="grey-8" />
+        <Text className="text-sm font-dm-bold text-slate-600 tracking-tight color-grey-8">
           Add 
         </Text>
       </Pressable>

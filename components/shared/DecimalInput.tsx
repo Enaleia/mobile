@@ -1,5 +1,5 @@
 import React from "react";
-import { TextInput, Text, View, Pressable } from "react-native";
+import { TextInput, Text, View, Pressable, Platform } from "react-native";
 import { FieldApi } from "@tanstack/react-form";
 
 interface DecimalInputProps {
@@ -24,6 +24,13 @@ export default function DecimalInput({
   const [localValue, setLocalValue] = React.useState(
     field.state.value?.toString() || ""
   );
+
+  // Use numeric for Android regardless of allowDecimals, but respect the setting for iOS
+  const inputMode = Platform.select<"numeric" | "decimal">({
+    android: "numeric",
+    ios: allowDecimals ? "decimal" : "numeric",
+    default: allowDecimals ? "decimal" : "numeric", // fallback for web or other platforms
+  });
 
   return (
     <View className={fullWidth ? 'w-full' : 'flex-1'}>
@@ -58,7 +65,7 @@ export default function DecimalInput({
             }}
             className="flex-1 h-[32px] py-0 font-dm-bold tracking-tighter text-enaleia-black text-xl"
             placeholder={placeholder}
-            inputMode={allowDecimals ? "decimal" : "numeric"}
+            inputMode={inputMode}
           />
           {suffix && (
             <Text className="text-sm font-dm-bold text-grey-6 ml-2 mt-1">
