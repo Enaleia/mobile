@@ -4,10 +4,12 @@ import SafeAreaContent from "@/components/shared/SafeAreaContent";
 import { groupActionsByCategory } from "@/types/action";
 import { BatchData } from "@/types/batch";
 import { Ionicons } from "@expo/vector-icons";
-import { Text, View, Pressable, ScrollView } from "react-native";
+import { Text, View, Pressable, ScrollView, Image } from "react-native";
 import React, { useEffect, useState } from "react";
 import { useNetwork } from "@/contexts/NetworkContext";
 import { useAuth } from "@/contexts/AuthContext";
+import { CollectionHelpModal } from '@/components/features/help/CollectionHelpModal';
+import { UserProfile } from "@/components/shared/UserProfile";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { router } from "expo-router";
 import {
@@ -16,6 +18,7 @@ import {
   clearBatchData,
   fetchAndProcessBatchData,
 } from "@/utils/batchStorage";
+
 
 function Home() {
   const { user } = useAuth();
@@ -118,6 +121,7 @@ function Home() {
       />
 
       {/* Header - Fixed at top */}
+
       <View className="flex-row items-start justify-between pb-4">
         <View className="flex-row items-center justify-center gap-0.5">
           <Ionicons name="person-circle-outline" size={24} color="#0D0D0D" />
@@ -135,6 +139,7 @@ function Home() {
           </Text>
         </Pressable>
       </View>
+
 
       {/* Scrollable Content */}
       <ScrollView

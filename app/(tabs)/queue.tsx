@@ -11,6 +11,7 @@ import { useNavigation } from "expo-router";
 import { useEffect } from "react";
 import { Text, View, ScrollView, Pressable, Image } from "react-native";
 import { useAuth } from "@/contexts/AuthContext";
+import { UserProfile } from "@/components/shared/UserProfile";
 
 
 const QueueScreen = () => {
@@ -52,15 +53,7 @@ const QueueScreen = () => {
 
   return (
     <SafeAreaContent>
-        <View className="flex-row items-start justify-between pb-2 font-dm-regular">
-          <View className="flex-row items-center justify-center gap-0.5">
-            <Ionicons name="person-circle-outline" size={24} color="#0D0D0D" />
-            <Text className="text-sm font-bold text-enaleia-black">
-              {user?.first_name || "User"}
-            </Text>
-          </View>
-          {/* <NetworkStatus /> */}
-        </View>
+      <UserProfile />
       <ScrollView
         className="flex-1"
         contentContainerStyle={{ paddingBottom: 20 }}

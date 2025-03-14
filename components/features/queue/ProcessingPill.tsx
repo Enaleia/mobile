@@ -6,6 +6,7 @@ import Animated, {
   withTiming,
   useSharedValue,
   withDelay,
+  cancelAnimation,
 } from "react-native-reanimated";
 import { useEffect } from "react";
 import { Ionicons } from "@expo/vector-icons";
@@ -14,6 +15,7 @@ const ProcessingPill = () => {
   const opacity = useSharedValue(1);
 
   useEffect(() => {
+    // Start the animation
     opacity.value = withRepeat(
       withSequence(
         withDelay(500, withTiming(0.5, { duration: 1000 })),
@@ -22,6 +24,11 @@ const ProcessingPill = () => {
       -1,
       true
     );
+
+    // Cleanup function to cancel the animation when component unmounts
+    return () => {
+      cancelAnimation(opacity);
+    };
   }, []);
 
   const animatedStyle = useAnimatedStyle(() => ({
