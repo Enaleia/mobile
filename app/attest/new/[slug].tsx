@@ -2,7 +2,13 @@ import { IncompleteAttestationModal } from "@/components/features/attest/Incompl
 import { LeaveAttestationModal } from "@/components/features/attest/LeaveAttestationModal";
 import MaterialSection from "@/components/features/attest/MaterialSection";
 import { SentToQueueModal } from "@/components/features/attest/SentToQueueModal";
-import TypeInformationModal from "@/components/features/attest/TypeInformationModal";
+import { CollectionHelpModal } from "@/components/features/help/CollectionHelpModal";
+import { BatchHelpModal } from "@/components/features/help/BatchHelpModal";
+import { ManufacturingHelpModal } from "@/components/features/help/ManufacturingHelpModal";
+import { PelletizingHelpModal } from "@/components/features/help/PelletizingHelpModal";
+import { ShreddingHelpModal } from "@/components/features/help/ShreddingHelpModal";
+import { SortingHelpModal } from "@/components/features/help/SortingHelpModal";
+import { WashingHelpModal } from "@/components/features/help/WashingHelpModal";
 import ErrorMessage from "@/components/shared/ErrorMessage";
 import FormSection from "@/components/shared/FormSection";
 import SafeAreaContent from "@/components/shared/SafeAreaContent";
@@ -11,7 +17,7 @@ import { useQueue } from "@/contexts/QueueContext";
 import { useActions } from "@/hooks/data/useActions";
 import { useMaterials } from "@/hooks/data/useMaterials";
 import { useCurrentLocation } from "@/hooks/useCurrentLocation";
-import { ActionTitle, typeModalMap } from "@/types/action";
+import { ActionTitle, groupActionsByCategory } from "@/types/action";
 import { MaterialDetail } from "@/types/material";
 import { QueueItem, QueueItemStatus } from "@/types/queue";
 import {
@@ -502,11 +508,45 @@ const NewActionScreen = () => {
           />
         </Pressable>
       </View>
-      <TypeInformationModal
-        {...typeModalMap[currentAction.name]}
-        isVisible={isTypeInformationModalVisible}
-        onClose={() => setIsTypeInformationModalVisible(false)}
-      />
+      {currentAction?.name === "Batch" ? (
+        <BatchHelpModal
+          isVisible={isTypeInformationModalVisible}
+          onClose={() => setIsTypeInformationModalVisible(false)}
+        />
+      ) : currentAction?.name === "Fishing for litter" || 
+           currentAction?.name === "Prevention" || 
+           currentAction?.name === "Beach cleanup" || 
+           currentAction?.name === "Ad-hoc" ? (
+        <CollectionHelpModal
+          isVisible={isTypeInformationModalVisible}
+          onClose={() => setIsTypeInformationModalVisible(false)}
+        />
+      ) : currentAction?.name === "Manufacturing" ? (
+        <ManufacturingHelpModal
+          isVisible={isTypeInformationModalVisible}
+          onClose={() => setIsTypeInformationModalVisible(false)}
+        />
+      ) : currentAction?.name === "Pelletizing" ? (
+        <PelletizingHelpModal
+          isVisible={isTypeInformationModalVisible}
+          onClose={() => setIsTypeInformationModalVisible(false)}
+        />
+      ) : currentAction?.name === "Shredding" ? (
+        <ShreddingHelpModal
+          isVisible={isTypeInformationModalVisible}
+          onClose={() => setIsTypeInformationModalVisible(false)}
+        />
+      ) : currentAction?.name === "Sorting" ? (
+        <SortingHelpModal
+          isVisible={isTypeInformationModalVisible}
+          onClose={() => setIsTypeInformationModalVisible(false)}
+        />
+      ) : currentAction?.name === "Washing" ? (
+        <WashingHelpModal
+          isVisible={isTypeInformationModalVisible}
+          onClose={() => setIsTypeInformationModalVisible(false)}
+        />
+      ) : null}
 
       <View className="flex-1">
         <ScrollView
@@ -717,7 +757,7 @@ const NewActionScreen = () => {
 
                   <Pressable
                     onPress={handleSubmitClick}
-                    className={`w-full flex-row items-center justify-center p-3 rounded-full ${
+                    className={`w-full flex-row items-center justify-center p-3 h-[60px] rounded-full ${
                       !canSubmit || isSubmitting
                         ? "bg-primary-dark-blue"
                         : "bg-blue-ocean"
@@ -726,7 +766,7 @@ const NewActionScreen = () => {
                     {isSubmitting ? (
                       <ActivityIndicator color="white" className="mr-2" />
                     ) : null}
-                    <Text className="text-base font-dm-medium text-slate-50 tracking-tight">
+                    <Text className="text-lg font-dm-medium text-slate-50 tracking-tight">
                       {isSubmitting ? "Preparing..." : "Submit Attestation"}
                     </Text>
                   </Pressable>

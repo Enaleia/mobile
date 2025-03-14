@@ -9,6 +9,7 @@ import { useAuth } from "@/contexts/AuthContext";
 // import NetworkStatus from "@/components/shared/NetworkStatus";
 import { Company } from "@/types/company";
 import Constants from "expo-constants";
+import { UserProfile } from "@/components/shared/UserProfile";
 
 const SettingsScreen = () => {
   const [isSignOutModalVisible, setIsSignOutModalVisible] = useState(false);
@@ -63,16 +64,7 @@ const SettingsScreen = () => {
         contentContainerStyle={{ paddingBottom: 20 }}
         showsVerticalScrollIndicator={false}
       >
-        <View className="flex-row items-start justify-between pb-2 font-dm-regular">
-          <View className="flex-row items-center justify-center gap-0.5">
-            <Ionicons name="person-circle-outline" size={24} color="#0D0D0D" />
-            <Text className="text-sm font-bold text-enaleia-black">
-              {user?.first_name || "User"}
-            </Text>
-          </View>
-          {/* <NetworkStatus /> */}
-        </View>
-
+        <UserProfile />
         <View className="mt-4">
           <Text className="text-3xl font-dm-bold text-enaleia-black tracking-[-1px] mb-2">
             Settings

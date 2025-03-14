@@ -2,19 +2,19 @@ import React from 'react';
 import { Text, View, Image } from 'react-native';
 import { HelpModal } from './HelpModal';
 
-interface CollectionHelpModalProps {
+interface BatchHelpModalProps {
   isVisible: boolean;
   onClose: () => void;
 }
 
-export const CollectionHelpModal: React.FC<CollectionHelpModalProps> = ({
+export const BatchHelpModal: React.FC<BatchHelpModalProps> = ({
   isVisible,
   onClose,
 }) => {
   const content = (
     <>
       <Text className="text-base font-dm-light text-enaleia-black mb-2">
-      This attestation is used when receiving a waste collection.
+      This attestation is used when shipping a container of waste collections.
       </Text>
 
       {/* Section with subtitle and bullet points */}
@@ -26,19 +26,19 @@ export const CollectionHelpModal: React.FC<CollectionHelpModalProps> = ({
           <View className="flex-row">
             <Text className="text-base font-dm-light text-enaleia-black w-4">1.</Text>
             <Text className="text-base font-dm-light text-enaleia-black flex-1">
-            Scan the <Text className="font-dm-bold">collector's ID card</Text> or enter it manually
+            Tap <Text className="font-dm-bold">+Add</Text>
             </Text>
           </View>
           <View className="flex-row">
             <Text className="text-base font-dm-light text-enaleia-black w-4">2.</Text>
             <Text className="text-base font-dm-light text-enaleia-black flex-1">
-            Tap <Text className="font-dm-bold">+Add</Text>
+            Select a <Text className="font-dm-bold">material</Text>
             </Text>
           </View>
           <View className="flex-row">
             <Text className="text-base font-dm-light text-enaleia-black w-4">3.</Text>
             <Text className="text-base font-dm-light text-enaleia-black flex-1">
-            Select a <Text className="font-dm-bold">material</Text>
+            <Text className="font-dm-bold">Put a new QR</Text>code sticker on the container
             </Text>
           </View>
           <View className="flex-row">
@@ -56,6 +56,7 @@ export const CollectionHelpModal: React.FC<CollectionHelpModalProps> = ({
         </View>
       </View>
 
+      {/* Section with mixed formatting */}
       <View>
         <Text className="text-lg font-dm-bold text-enaleia-black mb-1">
           Outgoing
@@ -71,39 +72,15 @@ export const CollectionHelpModal: React.FC<CollectionHelpModalProps> = ({
     <HelpModal
       isVisible={isVisible}
       onClose={onClose}
-      title="Collection"
+      title="Batch"
       content={content}
       importantNote="If a collector has multiple distinct materials, make sure that each materials have it's own incoming entry."
-      importantNoteBgColor="#FABAA4"
+      importantNoteBgColor="#9FD08B"
       categories={[
         {
-          name: "Fishing for Litter",
+          name: "Batch",
           icon: <Image 
-            source={require('../../../assets/images/action-icons/Fishing for Litter.webp')}
-            className="w-14 h-14 mb-1"
-            resizeMode="contain"
-          />
-        },
-        {
-          name: "Prevention",
-          icon: <Image 
-            source={require('../../../assets/images/action-icons/Prevention.webp')}
-            className="w-14 h-14 mb-1"
-            resizeMode="contain"
-          />
-        },
-        {
-          name: "Ad-hoc",
-          icon: <Image 
-            source={require('../../../assets/images/action-icons/Ad-hoc.webp')}
-            className="w-14 h-14 mb-1"
-            resizeMode="contain"
-          />
-        },
-        {
-          name: "Beach Cleanup",
-          icon: <Image 
-            source={require('../../../assets/images/action-icons/Beach Cleanup.webp')}
+            source={require('../../../assets/images/action-icons/Batch.webp')}
             className="w-14 h-14 mb-1"
             resizeMode="contain"
           />
