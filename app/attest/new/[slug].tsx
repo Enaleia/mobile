@@ -98,7 +98,11 @@ const eventFormSchema = z.object({
       z
         .object({
           id: z.number(),
-          weight: z.number().min(0).optional(),
+          weight: z.number().nullable()
+            .refine(
+              (value) => value === null || value >= 0,
+              { message: 'Weight must be greater than or equal to 0' }
+            ),
           code: z.string().min(0).optional(),
         })
         .optional()
@@ -109,7 +113,11 @@ const eventFormSchema = z.object({
       z
         .object({
           id: z.number(),
-          weight: z.number().min(0).optional(),
+          weight: z.number().nullable()
+            .refine(
+              (value) => value === null || value >= 0,
+              { message: 'Weight must be greater than or equal to 0' }
+            ),
           code: z.string().min(0).optional(),
         })
         .optional()
