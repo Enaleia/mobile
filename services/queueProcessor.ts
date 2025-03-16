@@ -1,5 +1,6 @@
 import {
   createEvent,
+  updateEvent,
   createMaterialInput,
   createMaterialOutput,
 } from "@/services/directus";
@@ -338,7 +339,7 @@ export async function processQueueItems(
             query?.queryKey.length === 1 &&
             query?.queryKey[0] === getBatchCacheKey()
         ) as { state: { data: BatchData } } | undefined;
-
+        directusCollectors = cache?.collectors || [];
         if (batchDataQuery) {
           directusCollectors = batchDataQuery.state?.data?.collectors || [];
         }
@@ -438,21 +439,21 @@ export async function processQueueItems(
           : undefined;
 
         // Find db collector_id if this is a collection action and we have a collector QR ID
-        let collectorDbId: number | undefined;
+        let collectorName: string | undefined;
         if (item.collectorId && directusCollectors) {
           console.log({ collectors: directusCollectors.length });
           const collector = directusCollectors.find(
             (c) => c.collector_identity === item.collectorId
           );
           if (collector) {
-            collectorDbId = collector.collector_id;
+            collectorName = collector.collector_name;
             console.log({ collector });
           } else {
             console.warn(`No collector found for ID: ${item.collectorId}`);
           }
         }
 
-        console.log({ collectorDbId });
+        console.log({ collectorName });
 
         // Process Directus and EAS in parallel
         const [directusResult, easResult] = await Promise.allSettled([
@@ -463,7 +464,7 @@ export async function processQueueItems(
                 action: item.actionId,
                 event_timestamp: new Date(item.date).toISOString(),
                 event_location: locationString,
-                collector_name: collectorDbId,
+                collector_name: collectorName,
                 company: item.company,
                 manufactured_products: item.manufacturing?.product ?? undefined,
                 Batch_quantity: item.manufacturing?.quantity ?? undefined,
@@ -588,6 +589,15 @@ export async function processQueueItems(
           easResult.status === "fulfilled"
         ) {
           updates.status = QueueItemStatus.COMPLETED;
+          // update directus uid
+          const directusUpdatedEvent = await updateEvent(
+            directusResult.event_id,
+            {EAS_UID: updates.eas.txHash} as Partial<MaterialTrackingEvent>
+          );
+
+          if (!directusUpdatedEvent || !directusUpdatedEvent.event_id) {
+            throw new Error("Update EAS_UID failed!");
+          }
         } else {
           updates.status = QueueItemStatus.FAILED;
         }
