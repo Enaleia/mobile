@@ -2,7 +2,7 @@ import { createContext, useContext, useState, useEffect } from "react";
 import * as SecureStore from "expo-secure-store";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { EnaleiaUser } from "@/types/user";
-import { directus } from "@/utils/directus";
+import { directus, updateUserWalletAddress } from "@/utils/directus";
 import { readItem, readMe, refresh } from "@directus/sdk";
 import { useNetwork } from "./NetworkContext";
 import { router } from "expo-router";
@@ -44,7 +44,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [lastLoggedInUser, setLastLoggedInUser] = useState<string | null>(null);
   const { isConnected, isInternetReachable } = useNetwork();
   const isOnline = isConnected && isInternetReachable;
-  const { createWallet, isWalletCreated } = useWallet();
+  const { createWallet, isWalletCreated, verifyWalletOwnership } = useWallet();
 
   // Initialize auth state
   useEffect(() => {
@@ -72,10 +72,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const login = async (email: string, password: string) => {
     setIsLoading(true);
     try {
-      console.log("[Auth] Attempting login with email:", email);
       // Attempt to login with Directus
       const loginResult = await directus.login(email, password);
-      console.log("[Auth] Login result received:", loginResult);
       const token = loginResult.access_token;
 
       if (!token) {
@@ -121,6 +119,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         first_name: basicUserData.first_name,
         last_name: basicUserData.last_name,
         email: basicUserData.email,
+        wallet_address: basicUserData.wallet_address,
         token,
       };
 
@@ -136,8 +135,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             coordinates: companyData.coordinates,
           };
           userInfo.Company = company;
-
-          console.log("user company", company);
         } catch (error) {
           console.warn("Failed to fetch company data:", error);
         }
@@ -149,30 +146,38 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         JSON.stringify(userInfo)
       );
 
-      // Create wallet if it doesn't exist
-      if (!isWalletCreated) {
-        try {
-          await createWallet();
-        } catch (error) {
-          console.error("Failed to create wallet:", error);
-          // Continue with login even if wallet creation fails
+      // Handle wallet creation/verification
+      if (userInfo.wallet_address) {
+        const isOwner = await verifyWalletOwnership(userInfo.wallet_address);
+        if (!isOwner) {
+          console.log("[Auth] Creating new wallet after verification failed");
+          const walletInfo = await createWallet();
+          await updateUserWalletAddress(walletInfo.address);
+          userInfo.wallet_address = walletInfo.address;
         }
+      } else if (!isWalletCreated) {
+        console.log("[Auth] Creating new wallet for user");
+        const walletInfo = await createWallet();
+        await updateUserWalletAddress(walletInfo.address);
+        userInfo.wallet_address = walletInfo.address;
+      }
+
+      // Update stored user info if wallet was created or verified
+      if (userInfo.wallet_address) {
+        await AsyncStorage.setItem(
+          USER_STORAGE_KEYS.USER_INFO,
+          JSON.stringify(userInfo)
+        );
       }
 
       // Update state
       setUser(userInfo);
       setLastLoggedInUser(email);
+      console.log("[Auth] Login successful");
 
       return userInfo;
     } catch (error) {
-      console.error("[Auth] Login failed with error:", error);
-      if (error instanceof Error) {
-        console.error("[Auth] Error details:", {
-          message: error.message,
-          stack: error.stack,
-          name: error.name,
-        });
-      }
+      console.error("[Auth] Login failed:", error);
       throw error;
     } finally {
       setIsLoading(false);
@@ -252,6 +257,45 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       if (userInfoString) {
         const userInfo = JSON.parse(userInfoString) as EnaleiaUser;
+
+        // Verify wallet ownership if address exists
+        if (userInfo.wallet_address) {
+          const isOwner = await verifyWalletOwnership(userInfo.wallet_address);
+          if (!isOwner) {
+            console.warn("Stored wallet address verification failed");
+            // Clear the wallet address from user info
+            userInfo.wallet_address = undefined;
+            await AsyncStorage.setItem(
+              USER_STORAGE_KEYS.USER_INFO,
+              JSON.stringify(userInfo)
+            );
+            // Update Directus to clear the invalid wallet address
+            await updateUserWalletAddress("");
+
+            // Create new wallet if needed
+            if (!isWalletCreated) {
+              console.log("Creating new wallet after verification failure");
+              const walletInfo = await createWallet();
+              await updateUserWalletAddress(walletInfo.address);
+              userInfo.wallet_address = walletInfo.address;
+              await AsyncStorage.setItem(
+                USER_STORAGE_KEYS.USER_INFO,
+                JSON.stringify(userInfo)
+              );
+            }
+          }
+        } else if (!isWalletCreated) {
+          // No wallet address and no local wallet
+          console.log("Creating new wallet during auto-login");
+          const walletInfo = await createWallet();
+          await updateUserWalletAddress(walletInfo.address);
+          userInfo.wallet_address = walletInfo.address;
+          await AsyncStorage.setItem(
+            USER_STORAGE_KEYS.USER_INFO,
+            JSON.stringify(userInfo)
+          );
+        }
+
         setUser(userInfo);
         setIsLoading(false);
         return true;
@@ -269,6 +313,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               first_name: basicUserData.first_name,
               last_name: basicUserData.last_name,
               email: basicUserData.email,
+              wallet_address: basicUserData.wallet_address,
               token,
             };
 
@@ -294,6 +339,28 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               USER_STORAGE_KEYS.USER_INFO,
               JSON.stringify(userInfo)
             );
+
+            // Handle wallet creation/verification
+            if (userInfo.wallet_address) {
+              // If user has a wallet address in Directus, verify ownership
+              const isOwner = await verifyWalletOwnership(
+                userInfo.wallet_address
+              );
+              if (!isOwner) {
+                console.log(
+                  "User has wallet address but verification failed, creating new wallet"
+                );
+                const walletInfo = await createWallet();
+                await updateUserWalletAddress(walletInfo.address);
+                userInfo.wallet_address = walletInfo.address;
+              }
+            } else if (!isWalletCreated) {
+              // No wallet address in Directus and no local wallet
+              console.log("Creating new wallet for user");
+              const walletInfo = await createWallet();
+              await updateUserWalletAddress(walletInfo.address);
+              userInfo.wallet_address = walletInfo.address;
+            }
 
             // Update state
             setUser(userInfo);

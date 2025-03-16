@@ -26,7 +26,6 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
       const address = await SecureStore.getItemAsync(
         SECURE_STORE_KEYS.WALLET_ADDRESS
       );
-      // TODO: Save private key to secure store
       const privateKey = await SecureStore.getItemAsync(
         SECURE_STORE_KEYS.WALLET_PRIVATE_KEY
       );
@@ -69,14 +68,11 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
     try {
       // Generate mnemonic
       const mnemonic = EAS.generateMnemonic();
-
-      // Derive private key
       const privateKey = EAS.getPrivateKeyFromMnemonic(mnemonic);
       if (!privateKey) throw new Error("Failed to derive private key");
-
-      // Get address
       const address = EAS.getAddressFromPrivateKey(privateKey);
       if (!address) throw new Error("Failed to derive address");
+      console.log("[Wallet] Created new wallet:", address);
 
       // Store securely
       await Promise.all([
@@ -106,9 +102,10 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
         providerUrl,
         privateKey,
       };
-      console.log({ walletInfo });
+
       setWallet(walletInfo);
       setIsWalletCreated(true);
+      console.log("[Wallet] Wallet creation complete");
 
       // Initialize EAS helper
       setEasHelper(
@@ -119,17 +116,48 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
           EAS_CONSTANTS.SCHEMA_UID
         )
       );
+      console.log("[Wallet] EAS helper initialized");
 
       return walletInfo;
     } catch (error) {
-      console.error("Error creating wallet:", error);
+      console.error("[Wallet] Error creating wallet:", error);
       throw error;
+    }
+  };
+
+  // Add function to verify wallet ownership
+  const verifyWalletOwnership = async (address: string): Promise<boolean> => {
+    try {
+      const storedPrivateKey = await SecureStore.getItemAsync(
+        SECURE_STORE_KEYS.WALLET_PRIVATE_KEY
+      );
+      if (!storedPrivateKey) {
+        console.log("[Wallet] No private key found in secure storage");
+        return false;
+      }
+
+      const derivedAddress = EAS.getAddressFromPrivateKey(storedPrivateKey);
+      const isOwner = derivedAddress === address;
+      console.log(
+        "[Wallet] Ownership verification:",
+        isOwner ? "success" : "failed"
+      );
+      return isOwner;
+    } catch (error) {
+      console.error("[Wallet] Error verifying wallet ownership:", error);
+      return false;
     }
   };
 
   return (
     <WalletContext.Provider
-      value={{ wallet, createWallet, isWalletCreated, easHelper }}
+      value={{
+        wallet,
+        createWallet,
+        isWalletCreated,
+        easHelper,
+        verifyWalletOwnership,
+      }}
     >
       {children}
     </WalletContext.Provider>

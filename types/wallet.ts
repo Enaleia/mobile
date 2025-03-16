@@ -13,4 +13,5 @@ export interface WalletContextType {
   createWallet: () => Promise<WalletInfo>;
   isWalletCreated: boolean;
   easHelper: EAS | null;
+  verifyWalletOwnership: (address: string) => Promise<boolean>;
 }

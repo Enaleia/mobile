@@ -6,6 +6,7 @@ import {
   AuthenticationData,
   readMe,
   refresh,
+  updateMe,
 } from "@directus/sdk";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as SecureStore from "expo-secure-store";
@@ -271,3 +272,17 @@ export const getQueryClientConfig = () => ({
     },
   },
 });
+
+export async function updateUserWalletAddress(walletAddress: string) {
+  try {
+    await directus.request(
+      updateMe({
+        wallet_address: walletAddress,
+      })
+    );
+    return true;
+  } catch (error) {
+    console.error("[Directus] Failed to update wallet address:", error);
+    return false;
+  }
+}

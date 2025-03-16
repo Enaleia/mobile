@@ -10,6 +10,7 @@ interface DirectusUser {
 
 type EnaleiaUser = DirectusUser & {
   Company?: number | Pick<Company, "id" | "name" | "coordinates">;
+  wallet_address?: string;
 };
 
 export { EnaleiaUser, DirectusUser };
