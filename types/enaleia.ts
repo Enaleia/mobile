@@ -25,10 +25,10 @@ export interface EnaleiaDirectusSchema {
 export interface EnaleiaEASSchema {
   userID: string;
   portOrCompanyName: string;
-  portOrCompanyCoordinates: number[];
+  portOrCompanyCoordinates: string[];
   actionType: string;
   actionDate: string;
-  actionCoordinates: number[];
+  actionCoordinates: string[];
   collectorName: string;
   incomingMaterials: string[];
   incomingWeightsKg: number[];
