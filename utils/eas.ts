@@ -6,19 +6,12 @@ import { DirectusProduct } from "@/types/product";
 import { QueueItem } from "@/types/queue";
 import { EnaleiaUser } from "@/types/user";
 
-// New coordinate precision: Store as `string[]`
-const COORDINATE_PRECISION = 100000; // 1e5 (1-meter accuracy)
-
 export const convertCoordinatesToString = (
   coords: [number, number]
 ): string[] => {
   return [
-    (
-      Math.round(coords[0] * COORDINATE_PRECISION) / COORDINATE_PRECISION
-    ).toFixed(5), // Latitude
-    (
-      Math.round(coords[1] * COORDINATE_PRECISION) / COORDINATE_PRECISION
-    ).toFixed(5), // Longitude
+    coords[0].toFixed(5), // Latitude
+    coords[1].toFixed(5), // Longitude
   ];
 };
 
@@ -59,15 +52,6 @@ export const mapToEASSchema = (
     form.outgoingMaterials?.map((m) => m.weight || 0) || [];
   const weightPerItemKg = form.manufacturing?.weightInKg || 0;
   const batchQuantity = form.manufacturing?.quantity || 0;
-
-  console.table({
-    companyCoordinates,
-    actionCoordinates,
-    incomingWeightsKg,
-    outgoingWeightsKg,
-    weightPerItemKg,
-    batchQuantity,
-  });
 
   return {
     userID: userData?.id || "",
