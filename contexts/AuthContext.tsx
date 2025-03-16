@@ -19,7 +19,7 @@ const SECURE_STORE_KEYS = {
 };
 
 // AsyncStorage keys
-const STORAGE_KEYS = {
+const USER_STORAGE_KEYS = {
   USER_INFO: "user_info",
   LAST_LOGIN_DATE: "last_login_date",
 };
@@ -105,7 +105,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       // Store last login date
       await AsyncStorage.setItem(
-        STORAGE_KEYS.LAST_LOGIN_DATE,
+        USER_STORAGE_KEYS.LAST_LOGIN_DATE,
         new Date().toISOString()
       );
 
@@ -130,11 +130,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           const companyData = await directus.request(
             readItem("Companies", basicUserData.Company as number)
           );
-          const company: Pick<Company, "id" | "name"> = {
+          const company: Pick<Company, "id" | "name" | "coordinates"> = {
             id: companyData.id,
             name: companyData.name,
+            coordinates: companyData.coordinates,
           };
           userInfo.Company = company;
+
+          console.log("user company", company);
         } catch (error) {
           console.warn("Failed to fetch company data:", error);
         }
@@ -142,7 +145,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       // Store user info in AsyncStorage for performance
       await AsyncStorage.setItem(
-        STORAGE_KEYS.USER_INFO,
+        USER_STORAGE_KEYS.USER_INFO,
         JSON.stringify(userInfo)
       );
 
@@ -167,7 +170,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         console.error("[Auth] Error details:", {
           message: error.message,
           stack: error.stack,
-          name: error.name
+          name: error.name,
         });
       }
       throw error;
@@ -192,7 +195,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       ]);
 
       // Clear user info from AsyncStorage
-      await AsyncStorage.removeItem(STORAGE_KEYS.USER_INFO);
+      await AsyncStorage.removeItem(USER_STORAGE_KEYS.USER_INFO);
 
       // Update state
       setUser(null);
@@ -243,7 +246,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       directus.setToken(token);
 
       // Try to get user info from AsyncStorage first (faster)
-      const userInfoString = await AsyncStorage.getItem(STORAGE_KEYS.USER_INFO);
+      const userInfoString = await AsyncStorage.getItem(
+        USER_STORAGE_KEYS.USER_INFO
+      );
 
       if (userInfoString) {
         const userInfo = JSON.parse(userInfoString) as EnaleiaUser;
@@ -273,9 +278,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                 const companyData = await directus.request(
                   readItem("Companies", basicUserData.Company as number)
                 );
-                const company: Pick<Company, "id" | "name"> = {
+                const company: Pick<Company, "id" | "name" | "coordinates"> = {
                   id: companyData.id,
                   name: companyData.name,
+                  coordinates: companyData.coordinates,
                 };
                 userInfo.Company = company;
               } catch (error) {
@@ -285,7 +291,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
             // Store user info in AsyncStorage for next time
             await AsyncStorage.setItem(
-              STORAGE_KEYS.USER_INFO,
+              USER_STORAGE_KEYS.USER_INFO,
               JSON.stringify(userInfo)
             );
 
@@ -349,7 +355,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   ): Promise<boolean> => {
     try {
       // Check if we have stored user info
-      const userInfoString = await AsyncStorage.getItem(STORAGE_KEYS.USER_INFO);
+      const userInfoString = await AsyncStorage.getItem(
+        USER_STORAGE_KEYS.USER_INFO
+      );
 
       if (userInfoString) {
         const storedEmail = await SecureStore.getItemAsync(

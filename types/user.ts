@@ -9,7 +9,7 @@ interface DirectusUser {
 }
 
 type EnaleiaUser = DirectusUser & {
-  Company?: number | Pick<Company, "id" | "name">;
+  Company?: number | Pick<Company, "id" | "name" | "coordinates">;
 };
 
 export { EnaleiaUser, DirectusUser };
