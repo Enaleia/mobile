@@ -14,6 +14,7 @@ import {
   View,
 } from "react-native";
 import { z } from "zod";
+import { resetAllStorage } from "@/utils/storage";
 
 const LoginData = z.object({
   email: z.string().email("Please enter a valid email"),
@@ -265,6 +266,24 @@ export default function LoginForm() {
       </View>
 
       <View className="p-4" />
+
+      {__DEV__ && (
+        <Pressable
+          onPress={async () => {
+            try {
+              await resetAllStorage();
+              router.replace("/login");
+            } catch (error) {
+              console.error("Failed to reset storage:", error);
+            }
+          }}
+          className="flex flex-row items-center justify-center p-3 bg-red-500 rounded-full tracking-tight mt-4"
+        >
+          <Text className="text-white font-dm-medium text-base">
+            Reset Storage (Dev Only)
+          </Text>
+        </Pressable>
+      )}
     </View>
   );
 }
