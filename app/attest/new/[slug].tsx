@@ -1,23 +1,20 @@
 import { IncompleteAttestationModal } from "@/components/features/attest/IncompleteAttestationModal";
 import { LeaveAttestationModal } from "@/components/features/attest/LeaveAttestationModal";
-import { RequireProductSelectModal } from "@/components/features/attest/RequireProductSelectModal";
 import MaterialSection from "@/components/features/attest/MaterialSection";
 import { SentToQueueModal } from "@/components/features/attest/SentToQueueModal";
 
-import { CollectionHelpModal } from "@/components/features/help/CollectionHelpModal";
 import { BatchHelpModal } from "@/components/features/help/BatchHelpModal";
+import { CollectionHelpModal } from "@/components/features/help/CollectionHelpModal";
 import { ManufacturingHelpModal } from "@/components/features/help/ManufacturingHelpModal";
 import { PelletizingHelpModal } from "@/components/features/help/PelletizingHelpModal";
 import { ShreddingHelpModal } from "@/components/features/help/ShreddingHelpModal";
 import { SortingHelpModal } from "@/components/features/help/SortingHelpModal";
 import { WashingHelpModal } from "@/components/features/help/WashingHelpModal";
 
-import TypeInformationModal from "@/components/features/attest/TypeInformationModal";
 import { LocationPermissionHandler } from "@/components/features/location/LocationPermissionHandler";
 import QRTextInput from "@/components/features/scanning/QRTextInput";
 import DecimalInput from "@/components/shared/DecimalInput";
 
-import ErrorMessage from "@/components/shared/ErrorMessage";
 import SafeAreaContent from "@/components/shared/SafeAreaContent";
 import SelectField from "@/components/shared/SelectField";
 import { ACTION_SLUGS } from "@/constants/action";
@@ -27,7 +24,7 @@ import { useUserInfo } from "@/hooks/data/useUserInfo";
 import { useCurrentLocation } from "@/hooks/useCurrentLocation";
 
 import { LocationSchema } from "@/services/locationService";
-import { ActionTitle, typeModalMap } from "@/types/action";
+import { ActionTitle } from "@/types/action";
 import { MaterialDetail, processMaterials } from "@/types/material";
 import { QueueItem, QueueItemStatus, ServiceStatus } from "@/types/queue";
 import { getActiveQueue, getCompletedQueue } from "@/utils/queueStorage";
@@ -98,11 +95,12 @@ const eventFormSchema = z.object({
       z
         .object({
           id: z.number(),
-          weight: z.number().nullable()
-            .refine(
-              (value) => value === null || value >= 0,
-              { message: 'Weight must be greater than or equal to 0' }
-            ),
+          weight: z
+            .number()
+            .nullable()
+            .refine((value) => value === null || value >= 0, {
+              message: "Weight must be greater than or equal to 0",
+            }),
           code: z.string().min(0).optional(),
         })
         .optional()
@@ -113,11 +111,12 @@ const eventFormSchema = z.object({
       z
         .object({
           id: z.number(),
-          weight: z.number().nullable()
-            .refine(
-              (value) => value === null || value >= 0,
-              { message: 'Weight must be greater than or equal to 0' }
-            ),
+          weight: z
+            .number()
+            .nullable()
+            .refine((value) => value === null || value >= 0, {
+              message: "Weight must be greater than or equal to 0",
+            }),
           code: z.string().min(0).optional(),
         })
         .optional()
@@ -521,10 +520,10 @@ const NewActionScreen = () => {
           isVisible={isTypeInformationModalVisible}
           onClose={() => setIsTypeInformationModalVisible(false)}
         />
-      ) : currentAction?.name === "Fishing for litter" || 
-           currentAction?.name === "Prevention" || 
-           currentAction?.name === "Beach cleanup" || 
-           currentAction?.name === "Ad-hoc" ? (
+      ) : currentAction?.name === "Fishing for litter" ||
+        currentAction?.name === "Prevention" ||
+        currentAction?.name === "Beach cleanup" ||
+        currentAction?.name === "Ad-hoc" ? (
         <CollectionHelpModal
           isVisible={isTypeInformationModalVisible}
           onClose={() => setIsTypeInformationModalVisible(false)}

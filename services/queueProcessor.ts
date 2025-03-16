@@ -186,6 +186,8 @@ async function fetchRequiredData(
       throw new Error("No valid products found");
     }
 
+    console.log({ requiredData: userData });
+
     return {
       userData,
       materials,
