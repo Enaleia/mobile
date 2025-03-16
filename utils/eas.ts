@@ -1,19 +1,17 @@
 import { EventFormType } from "@/app/attest/new/[slug]";
+import { Company } from "@/types/company";
 import { EnaleiaEASSchema } from "@/types/enaleia";
 import { DirectusMaterial } from "@/types/material";
 import { DirectusProduct } from "@/types/product";
 import { QueueItem } from "@/types/queue";
 import { EnaleiaUser } from "@/types/user";
 
-// New coordinate precision: Store as `string[]`
-const COORDINATE_PRECISION = 100000; // 1e5 (1-meter accuracy)
-
 export const convertCoordinatesToString = (
   coords: [number, number]
 ): string[] => {
   return [
-    (Math.round(coords[0] * COORDINATE_PRECISION) / COORDINATE_PRECISION).toFixed(5), // Latitude
-    (Math.round(coords[1] * COORDINATE_PRECISION) / COORDINATE_PRECISION).toFixed(5), // Longitude
+    coords[0].toFixed(5), // Latitude
+    coords[1].toFixed(5), // Longitude
   ];
 };
 
@@ -33,9 +31,10 @@ export const mapToEASSchema = (
   const formDate = form.date;
 
   const company =
-    typeof userData?.Company === "number" ? undefined : userData?.Company;
+    typeof userData?.Company === "number"
+      ? undefined
+      : (userData?.Company as Pick<Company, "id" | "name" | "coordinates">);
 
-  //  Convert coordinates to `string[]`
   const actionCoordinates: string[] = form.location?.coords
     ? convertCoordinatesToString([
         form.location.coords.latitude,
@@ -43,31 +42,25 @@ export const mapToEASSchema = (
       ])
     : ["0.00000", "0.00000"];
 
-  const companyCoordinates: string[] = userData?.Company?.location
-    ? convertCoordinatesToString([
-        userData.Company.location.latitude,
-        userData.Company.location.longitude,
-      ])
+  const companyCoordinates: string[] = company?.coordinates
+    ? company.coordinates.split(",").map((coord: string) => coord.trim())
     : ["0.00000", "0.00000"];
 
-  //  Convert weights to `uint16[]` (max value 65535)
   const incomingWeightsKg: number[] =
-    form.incomingMaterials?.map((m) => Math.min(Math.round((m.weight || 0) * 1000), 65535)) ||
-    [];
+    form.incomingMaterials?.map((m) => m.weight || 0) || [];
   const outgoingWeightsKg: number[] =
-    form.outgoingMaterials?.map((m) => Math.min(Math.round((m.weight || 0) * 1000), 65535)) ||
-    [];
-  const weightPerItemKg = Math.min(Math.round((form.manufacturing?.weightInKg || 0) * 1000), 65535);
-  const batchQuantity = Math.min(form.manufacturing?.quantity || 0, 65535);
+    form.outgoingMaterials?.map((m) => m.weight || 0) || [];
+  const weightPerItemKg = form.manufacturing?.weightInKg || 0;
+  const batchQuantity = form.manufacturing?.quantity || 0;
 
   return {
     userID: userData?.id || "",
     portOrCompanyName: company?.name || "",
-    portOrCompanyCoordinates: companyCoordinates, //  Now `string[]`
+    portOrCompanyCoordinates: companyCoordinates,
 
     actionType: formType,
     actionDate: formDate,
-    actionCoordinates: actionCoordinates, // Now `string[]`
+    actionCoordinates: actionCoordinates,
 
     collectorName: form.collectorId || "",
 
@@ -96,22 +89,6 @@ export const mapToEASSchema = (
     batchQuantity,
     weightPerItemKg,
   };
-};
-
-/**
- * Parses coordinates from various formats into a number array
- */
-export const parseCoordinates = (
-  coords: string | { latitude: number; longitude: number } | undefined
-): number[] => {
-  if (!coords) return [0, 0];
-
-  if (typeof coords === "string") {
-    const [lat, lng] = coords.split(",").map(Number);
-    return [lat, lng];
-  }
-
-  return [coords.latitude, coords.longitude];
 };
 
 /**
@@ -150,15 +127,15 @@ export const validateEASSchema = (data: EnaleiaEASSchema): boolean => {
   }
 
   if (
-    data.incomingWeightsKg.some((w) => w < 0 || w > 65535) ||
-    data.outgoingWeightsKg.some((w) => w < 0 || w > 65535) ||
-    (data.weightPerItemKg !== 0 && (data.weightPerItemKg < 0 || data.weightPerItemKg > 65535))
+    data.incomingWeightsKg.some((w) => w < 0) ||
+    data.outgoingWeightsKg.some((w) => w < 0) ||
+    (data.weightPerItemKg !== 0 && data.weightPerItemKg < 0)
   ) {
-    throw new Error("Weights must be within uint16 range (0-65535)");
+    throw new Error("Weights must be non-negative");
   }
 
-  if (data.batchQuantity !== 0 && (data.batchQuantity < 0 || data.batchQuantity > 65535)) {
-    throw new Error("Batch quantity must be within uint16 range (0-65535)");
+  if (data.batchQuantity !== 0 && data.batchQuantity < 0) {
+    throw new Error("Batch quantity must be non-negative");
   }
 
   return true;
