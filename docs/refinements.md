@@ -211,3 +211,15 @@
   - Import from seed phrase
   - Restore from backup
   - Validation and verification steps
+
+## Attestation Weight Issues ✅
+- ✅ Fix automatic "000" addition to weight during uint conversion
+- ✅ Investigate and fix incorrect weight data transmission
+- ✅ Fix missing company coordinates in EAS submission
+
+## Wallet Integration Improvements ⏳
+- ⏳ Implement wallet address sync with Directus user profile on login/creation
+- ⏳ Add integration with Funding API (@unidwell/eas-lib)
+  - Auto-request funds for new EOA wallets
+  - Handle fund transfer from dedicated wallet
+  - Add proper error handling and retries
