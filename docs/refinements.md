@@ -114,7 +114,7 @@
   - ✅ Improved error messages to be more user-friendly
   - ✅ Added visual feedback with red borders on empty required fields
   - ✅ Clear error message when user starts typing
-- 🟡 Token Refresh Improvements
+- ✅ Token Refresh Improvements
   - ✅ Disable auto-refresh by default for better offline support
   - ✅ Add network-aware token refresh
   - ✅ Refresh tokens when coming back online
@@ -146,9 +146,53 @@
     - ✅ Keep data until explicit sign out
     - ✅ Clear only via SignOutModal
     - ✅ Support offline capabilities
-- ⏳ Allow user to store/download seed phrase
-- ⏳ Store encrypted private key and seedphrase but encrypted with their authenticate password
-- ⏳ Have a function to let user to recover the wallet
+
+## Wallet Management ✅
+### Implemented ✅
+- ✅ Basic secure storage setup
+  - Mnemonic (seed phrase)
+  - Private key
+  - Wallet address
+- ✅ Wallet creation with mnemonic generation
+- ✅ Private key derivation
+- ✅ Network handling (sepolia/optimism)
+- ✅ Wallet address sync with Directus user profile
+  - Auto-sync on login/creation
+  - Ownership verification
+  - Automatic new wallet creation if verification fails
+- ✅ Secure storage integration
+  - Encrypted storage of keys
+  - Proper state management
+  - Error handling
+
+### Pending ⏳
+- ⏳ User interface for seed phrase management
+  - Backup functionality
+  - Download/export options
+  - Recovery phrase verification
+- ⏳ Enhanced security layer
+  - Password-based encryption
+  - Biometric authentication option
+- ⏳ Wallet recovery flow
+  - Import from seed phrase
+  - Restore from backup
+  - Validation and verification steps
+- ⏳ Integration with Funding API (@unidwell/eas-lib)
+  - Auto-request funds for new EOA wallets
+  - Handle fund transfer from dedicated wallet
+  - Add proper error handling and retries
+
+## Attestation Weight Issues ✅
+- ✅ Fix automatic "000" addition to weight during uint conversion
+- ✅ Investigate and fix incorrect weight data transmission
+- ✅ Fix missing company coordinates in EAS submission
+
+## Wallet Integration Improvements ⏳
+- ⏳ Implement wallet address sync with Directus user profile on login/creation
+- ⏳ Add integration with Funding API (@unidwell/eas-lib)
+  - Auto-request funds for new EOA wallets
+  - Handle fund transfer from dedicated wallet
+  - Add proper error handling and retries
 
 ## Accessibility Improvements ⏳
 
@@ -188,38 +232,3 @@
 1. Queue System Testing
    - ⏳ Complete test scenarios for queue storage separation
    - ⏳ Implement toast notification system
-
-## Wallet Management 🟡
-### Implemented ✅
-- ✅ Basic secure storage setup
-  - Mnemonic (seed phrase)
-  - Private key
-  - Wallet address
-- ✅ Wallet creation with mnemonic generation
-- ✅ Private key derivation
-- ✅ Network handling (sepolia/optimism)
-
-### Pending ⏳
-- ⏳ User interface for seed phrase management
-  - Backup functionality
-  - Download/export options
-  - Recovery phrase verification
-- ⏳ Enhanced security layer
-  - Password-based encryption
-  - Biometric authentication option
-- ⏳ Wallet recovery flow
-  - Import from seed phrase
-  - Restore from backup
-  - Validation and verification steps
-
-## Attestation Weight Issues ✅
-- ✅ Fix automatic "000" addition to weight during uint conversion
-- ✅ Investigate and fix incorrect weight data transmission
-- ✅ Fix missing company coordinates in EAS submission
-
-## Wallet Integration Improvements ⏳
-- ⏳ Implement wallet address sync with Directus user profile on login/creation
-- ⏳ Add integration with Funding API (@unidwell/eas-lib)
-  - Auto-request funds for new EOA wallets
-  - Handle fund transfer from dedicated wallet
-  - Add proper error handling and retries
