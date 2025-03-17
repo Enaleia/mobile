@@ -25,7 +25,7 @@ export const mapToEASSchema = (
   productsData: Pick<
     DirectusProduct,
     "product_id" | "product_name" | "product_type"
-  >[]
+  >[], collectors
 ): EnaleiaEASSchema => {
   const formType = "actionName" in form ? form.actionName : form.type;
   const formDate = form.date;
@@ -62,7 +62,9 @@ export const mapToEASSchema = (
     actionDate: formDate,
     actionCoordinates: actionCoordinates,
 
-    collectorName: form.collectorId || "",
+    collectorName: collectors.find(
+      (c) => c.collector_identity === form.collectorId
+    )?.collector_name || "",
 
     incomingMaterials:
       form.incomingMaterials?.map(
@@ -71,7 +73,7 @@ export const mapToEASSchema = (
           ""
       ) || [],
     incomingWeightsKg,
-    incomingCodes: form.incomingMaterials?.map((m) => m.code || "") || [],
+    incomingCodes: (form.incomingMaterials?.map((m) => m.code || "") || []).concat([form.collectorId].filter(Array.isArray)),
 
     outgoingMaterials:
       form.outgoingMaterials?.map(
