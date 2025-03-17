@@ -81,7 +81,7 @@ export const mapToEASSchema = (
     incomingCodes: [
       ...(form.incomingMaterials?.map((m) => m.code || "") || []),
       form.collectorId || "",
-    ],
+    ].filter(Boolean),
 
     outgoingMaterials:
       form.outgoingMaterials?.map(
