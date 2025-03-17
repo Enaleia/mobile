@@ -1,24 +1,18 @@
 import ActionSelection from "@/components/features/home/ActionSelect";
 import { InitializationModal } from "@/components/features/initialization/InitializationModal";
 import SafeAreaContent from "@/components/shared/SafeAreaContent";
+import { useAuth } from "@/contexts/AuthContext";
+import { useNetwork } from "@/contexts/NetworkContext";
 import { groupActionsByCategory } from "@/types/action";
 import { BatchData } from "@/types/batch";
-import { Ionicons } from "@expo/vector-icons";
-import { Text, View, Pressable, ScrollView, Image } from "react-native";
-import React, { useEffect, useState } from "react";
-import { useNetwork } from "@/contexts/NetworkContext";
-import { useAuth } from "@/contexts/AuthContext";
-import { CollectionHelpModal } from '@/components/features/help/CollectionHelpModal';
-import { UserProfile } from "@/components/shared/UserProfile";
-import AsyncStorage from "@react-native-async-storage/async-storage";
-import { router } from "expo-router";
 import {
+  fetchAndProcessBatchData,
   initializeBatchData,
   subscribeToBatchData,
-  clearBatchData,
-  fetchAndProcessBatchData,
 } from "@/utils/batchStorage";
-
+import { Ionicons } from "@expo/vector-icons";
+import React, { useEffect, useState } from "react";
+import { ScrollView, Text, View } from "react-native";
 
 function Home() {
   const { user } = useAuth();
@@ -98,19 +92,6 @@ function Home() {
   const showInitModal =
     isLoading || (!isComplete && !isAuthError) || (!!error && !isAuthError);
 
-  const handleClearCache = async () => {
-    try {
-      // Clear all storage
-      await clearBatchData();
-      await AsyncStorage.clear();
-
-      // Force reload the app by navigating to login
-      router.replace("/(auth)/login");
-    } catch (error) {
-      console.error("Failed to clear cache:", error);
-    }
-  };
-
   return (
     <SafeAreaContent>
       <InitializationModal
@@ -121,7 +102,6 @@ function Home() {
       />
 
       {/* Header - Fixed at top */}
-
       <View className="flex-row items-start justify-between pb-4">
         <View className="flex-row items-center justify-center gap-0.5">
           <Ionicons name="person-circle-outline" size={24} color="#0D0D0D" />
@@ -129,17 +109,7 @@ function Home() {
             {user?.first_name || "User"}
           </Text>
         </View>
-        <Pressable
-          onPress={handleClearCache}
-          className="flex-row items-center space-x-1"
-        >
-          <Ionicons name="refresh-circle-outline" size={24} color="#0D0D0D" />
-          <Text className="text-sm font-dm-regular text-enaleia-black">
-            Clear Cache
-          </Text>
-        </Pressable>
       </View>
-
 
       {/* Scrollable Content */}
       <ScrollView

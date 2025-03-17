@@ -1,18 +1,15 @@
 import QueueSection from "@/components/features/queue/QueueSection";
 // import NetworkStatus from "@/components/shared/NetworkStatus";
 import SafeAreaContent from "@/components/shared/SafeAreaContent";
+import { UserProfile } from "@/components/shared/UserProfile";
+import { useAuth } from "@/contexts/AuthContext";
 import { useQueue } from "@/contexts/QueueContext";
 import { QueueEvents, queueEventEmitter } from "@/services/events";
 import { filterQueueItems, getAttentionCount } from "@/utils/queue";
-import { clearOldCache, cleanupExpiredItems } from "@/utils/queueStorage";
-import { Ionicons } from "@expo/vector-icons";
 import { useEventListener } from "expo";
 import { useNavigation } from "expo-router";
 import { useEffect } from "react";
-import { Text, View, ScrollView, Pressable, Image } from "react-native";
-import { useAuth } from "@/contexts/AuthContext";
-import { UserProfile } from "@/components/shared/UserProfile";
-
+import { Image, ScrollView, Text, View } from "react-native";
 
 const QueueScreen = () => {
   const { queueItems, loadQueueItems, retryItems } = useQueue();
@@ -37,18 +34,6 @@ const QueueScreen = () => {
 
   useEventListener(queueEventEmitter, QueueEvents.UPDATED, loadQueueItems);
 
-  const handleClearOldCache = async () => {
-    try {
-      await Promise.all([
-        clearOldCache(),
-        cleanupExpiredItems()
-      ]);
-      await loadQueueItems();
-    } catch (error) {
-      console.error('Error clearing cache:', error);
-    }
-  };
-
   const hasNoItems = items.length === 0;
 
   return (
@@ -68,7 +53,6 @@ const QueueScreen = () => {
         <View>
           {hasNoItems ? (
             <View className="flex-1 items-center justify-center mt-4">
-            
               <Image
                 source={require("@/assets/images/animals/CrabBubble.png")}
                 className="w-[294px] h-[250px] mt-4"
@@ -93,7 +77,9 @@ const QueueScreen = () => {
               {pendingItems.length > 0 && (
                 <View className="mb-4 p-3 bg-red-50 rounded-xl border border-red-300">
                   <Text className="text-left text-sm text-enaleia-black">
-                    You have items awaiting to submit on blockchain. Get connected whenever possible and retry submitting these attestations.
+                    You have items awaiting to submit on blockchain. Get
+                    connected whenever possible and retry submitting these
+                    attestations.
                   </Text>
                 </View>
               )}
@@ -114,24 +100,14 @@ const QueueScreen = () => {
                   showRetry={true}
                 />
               )}
-              
-                <QueueSection
-                  title="Completed"
-                  items={completedItems}
-                  onRetry={retryItems}
-                  showRetry={false}
-                  isCollapsible={true}
-                />
-              
 
-              <Pressable
-                onPress={handleClearOldCache}
-                className="mt-8 border border-gray-200 px-4 py-2 rounded-xl self-center"
-              >
-                <Text className="text-sm text-gray-600">
-                  Clear old cache data
-                </Text>
-              </Pressable>
+              <QueueSection
+                title="Completed"
+                items={completedItems}
+                onRetry={retryItems}
+                showRetry={false}
+                isCollapsible={true}
+              />
             </View>
           )}
         </View>
