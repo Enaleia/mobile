@@ -103,41 +103,16 @@ export const createDirectusClient = () => {
         authentication("json", {
           storage,
           autoRefresh: true,
-          msRefreshBeforeExpires: 60 * 60 * 1000, // Refresh 1 hour before expiry
+          msRefreshBeforeExpires: 24 * 60 * 60 * 1000, // Refresh 24 hours before expiry
         })
       )
       .with(rest({ credentials: "include" }));
 
-    // Set up network-aware token refresh
+    // Only check network state for logging purposes
     NetInfo.addEventListener((state) => {
       const isOnline = state.isConnected && state.isInternetReachable;
       if (isOnline) {
-        // When we come online, check if we need to refresh
-        storage.get().then(async (authData) => {
-          if (!authData?.refresh_token) return;
-
-          try {
-            // Check token expiry
-            const expiryStr = await SecureStore.getItemAsync(
-              SECURE_STORE_KEYS.TOKEN_EXPIRY
-            );
-            const now = new Date();
-
-            // Only refresh if token expires in less than 24 hours
-            if (
-              !expiryStr ||
-              new Date(expiryStr).getTime() - now.getTime() <
-                24 * 60 * 60 * 1000
-            ) {
-              console.log("Token expired or near expiry, attempting refresh");
-              await client.request(refresh("json", authData.refresh_token));
-            } else {
-              console.log("Token still valid, no refresh needed");
-            }
-          } catch (error) {
-            console.error("Failed to refresh token on network restore:", error);
-          }
-        });
+        console.log("[Directus] Network connection restored");
       }
     });
 
@@ -179,8 +154,8 @@ export async function isTokenExpiringSoon(): Promise<boolean> {
     const expiry = new Date(expiryStr);
     const now = new Date();
 
-    // Consider token expiring soon if it expires in less than 24 hours
-    return expiry.getTime() - now.getTime() < 24 * 60 * 60 * 1000;
+    // Consider token expiring soon if it expires in less than 1 hour
+    return expiry.getTime() - now.getTime() < 60 * 60 * 1000;
   } catch (error) {
     console.error("Error checking token expiry:", error);
     return true;
@@ -189,6 +164,11 @@ export async function isTokenExpiringSoon(): Promise<boolean> {
 
 export async function refreshAuthToken(): Promise<boolean> {
   try {
+    // Check if token is actually expiring soon before attempting refresh
+    if (!(await isTokenExpiringSoon())) {
+      return true; // Token is still valid, no need to refresh
+    }
+
     // First try using refresh token
     const refreshToken = await getStoredRefreshToken();
     if (refreshToken) {
@@ -198,7 +178,9 @@ export async function refreshAuthToken(): Promise<boolean> {
           return true;
         }
       } catch (error) {
-        console.log("Refresh token failed, trying stored credentials");
+        console.warn(
+          "[Directus] Refresh token failed, trying stored credentials"
+        );
       }
     }
 
