@@ -1,8 +1,8 @@
 import {
   createEvent,
-  updateEvent,
   createMaterialInput,
   createMaterialOutput,
+  updateEvent,
 } from "@/services/directus";
 import { EASService } from "@/services/eas";
 import { QueueEvents, queueEventEmitter } from "@/services/events";
@@ -13,11 +13,7 @@ import {
   MaterialTrackingEventInput,
   MaterialTrackingEventOutput,
 } from "@/types/event";
-import {
-  DirectusMaterial,
-  MaterialsData,
-  processMaterials,
-} from "@/types/material";
+import { DirectusMaterial, MaterialsData } from "@/types/material";
 import { DirectusProduct } from "@/types/product";
 import {
   MAX_RETRIES,
@@ -27,6 +23,7 @@ import {
 } from "@/types/queue";
 import { EnaleiaUser } from "@/types/user";
 import { WalletInfo } from "@/types/wallet";
+import { getBatchData } from "@/utils/batchStorage";
 import { ensureValidToken } from "@/utils/directus";
 import { mapToEASSchema, validateEASSchema } from "@/utils/eas";
 import {
@@ -39,7 +36,6 @@ import { getBatchCacheKey } from "@/utils/storage";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import NetInfo from "@react-native-community/netinfo";
 import * as Notifications from "expo-notifications";
-import { getBatchData } from "@/utils/batchStorage";
 
 async function updateItemInCache(itemId: string, updates: Partial<QueueItem>) {
   try {
@@ -122,6 +118,40 @@ interface RequiredData {
   materialOptions: MaterialsData["options"];
   products: DirectusProduct[];
 }
+
+const directusCollectors = async () => {
+  const cacheKey = "ENALEIA_BATCH";
+
+  const storedData = await AsyncStorage.getItem(cacheKey);
+
+  let directusCollectors: Pick<
+    DirectusCollector,
+    "collector_id" | "collector_name" | "collector_identity"
+  >[] = [];
+  if (storedData) {
+    try {
+      const cache = JSON.parse(storedData);
+      const batchDataQuery = Object.values(
+        cache.clientState?.queries || {}
+      ).find(
+        (query: any) =>
+          Array.isArray(query?.queryKey) &&
+          query?.queryKey.length === 1 &&
+          query?.queryKey[0] === getBatchCacheKey()
+      ) as { state: { data: BatchData } } | undefined;
+      directusCollectors = cache?.collectors || [];
+      if (batchDataQuery) {
+        directusCollectors = batchDataQuery.state?.data?.collectors || [];
+      }
+      return directusCollectors;
+    } catch (error) {
+      console.error("Error accessing batch data cache:", error);
+      throw new Error("Failed to access batch data - please refresh the app");
+    }
+  } else {
+    return [];
+  }
+};
 
 async function fetchRequiredData(
   retryCount = 0,
@@ -212,8 +242,9 @@ async function processEASAttestations(
   const easService = new EASService(wallet.providerUrl, wallet.privateKey);
 
   // Map all items to EAS schemas
+  const collectors = await directusCollectors();
   const schemas = items.map((item) =>
-    mapToEASSchema(item, userData, materials, products)
+    mapToEASSchema(item, userData, materials, products, collectors)
   );
 
   // Validate all schemas first
@@ -320,35 +351,6 @@ export async function processQueueItems(
       return;
     }
 
-    const cacheKey = "ENALEIA_BATCH";
-
-    const storedData = await AsyncStorage.getItem(cacheKey);
-
-    let directusCollectors: Pick<
-      DirectusCollector,
-      "collector_id" | "collector_name" | "collector_identity"
-    >[] = [];
-    if (storedData) {
-      try {
-        const cache = JSON.parse(storedData);
-        const batchDataQuery = Object.values(
-          cache.clientState?.queries || {}
-        ).find(
-          (query: any) =>
-            Array.isArray(query?.queryKey) &&
-            query?.queryKey.length === 1 &&
-            query?.queryKey[0] === getBatchCacheKey()
-        ) as { state: { data: BatchData } } | undefined;
-        directusCollectors = cache?.collectors || [];
-        if (batchDataQuery) {
-          directusCollectors = batchDataQuery.state?.data?.collectors || [];
-        }
-      } catch (error) {
-        console.error("Error accessing batch data cache:", error);
-        throw new Error("Failed to access batch data - please refresh the app");
-      }
-    }
-
     if (!itemsToProcess) {
       const allItems = await getActiveQueue();
       itemsToProcess = allItems.filter(
@@ -440,9 +442,10 @@ export async function processQueueItems(
 
         // Find db collector_id if this is a collection action and we have a collector QR ID
         let collectorName: string | undefined;
-        if (item.collectorId && directusCollectors) {
-          console.log({ collectors: directusCollectors.length });
-          const collector = directusCollectors.find(
+        const collectors = await directusCollectors();
+        if (item.collectorId && collectors) {
+          console.log({ collectors: collectors.length });
+          const collector = collectors.find(
             (c) => c.collector_identity === item.collectorId
           );
           if (collector) {
