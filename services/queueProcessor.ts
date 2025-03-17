@@ -591,8 +591,8 @@ export async function processQueueItems(
           updates.status = QueueItemStatus.COMPLETED;
           // update directus uid
           const directusUpdatedEvent = await updateEvent(
-            directusResult.event_id,
-            {EAS_UID: updates.eas.txHash} as Partial<MaterialTrackingEvent>
+            directusResult.value.event_id,
+            { EAS_UID: updates.eas?.txHash } as Partial<MaterialTrackingEvent>
           );
 
           if (!directusUpdatedEvent || !directusUpdatedEvent.event_id) {
