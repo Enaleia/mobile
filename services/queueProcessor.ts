@@ -1,8 +1,8 @@
 import {
   createEvent,
-  updateEvent,
   createMaterialInput,
   createMaterialOutput,
+  updateEvent,
 } from "@/services/directus";
 import { EASService } from "@/services/eas";
 import { QueueEvents, queueEventEmitter } from "@/services/events";
@@ -13,11 +13,7 @@ import {
   MaterialTrackingEventInput,
   MaterialTrackingEventOutput,
 } from "@/types/event";
-import {
-  DirectusMaterial,
-  MaterialsData,
-  processMaterials,
-} from "@/types/material";
+import { DirectusMaterial, MaterialsData } from "@/types/material";
 import { DirectusProduct } from "@/types/product";
 import {
   MAX_RETRIES,
@@ -27,6 +23,7 @@ import {
 } from "@/types/queue";
 import { EnaleiaUser } from "@/types/user";
 import { WalletInfo } from "@/types/wallet";
+import { getBatchData } from "@/utils/batchStorage";
 import { ensureValidToken } from "@/utils/directus";
 import { mapToEASSchema, validateEASSchema } from "@/utils/eas";
 import {
@@ -39,7 +36,6 @@ import { getBatchCacheKey } from "@/utils/storage";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import NetInfo from "@react-native-community/netinfo";
 import * as Notifications from "expo-notifications";
-import { getBatchData } from "@/utils/batchStorage";
 
 async function updateItemInCache(itemId: string, updates: Partial<QueueItem>) {
   try {
@@ -128,8 +124,10 @@ const directusCollectors = async () => {
 
   const storedData = await AsyncStorage.getItem(cacheKey);
 
-  let directusCollectors: Pick<DirectusCollector,
-    "collector_id" | "collector_name" | "collector_identity">[] = [];
+  let directusCollectors: Pick<
+    DirectusCollector,
+    "collector_id" | "collector_name" | "collector_identity"
+  >[] = [];
   if (storedData) {
     try {
       const cache = JSON.parse(storedData);
@@ -145,13 +143,15 @@ const directusCollectors = async () => {
       if (batchDataQuery) {
         directusCollectors = batchDataQuery.state?.data?.collectors || [];
       }
-      return directusCollectors
+      return directusCollectors;
     } catch (error) {
       console.error("Error accessing batch data cache:", error);
       throw new Error("Failed to access batch data - please refresh the app");
     }
-  } else {return []}
-}
+  } else {
+    return [];
+  }
+};
 
 async function fetchRequiredData(
   retryCount = 0,
@@ -350,7 +350,6 @@ export async function processQueueItems(
       }
       return;
     }
-
 
     if (!itemsToProcess) {
       const allItems = await getActiveQueue();
