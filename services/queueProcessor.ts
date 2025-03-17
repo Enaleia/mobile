@@ -449,7 +449,7 @@ export async function processQueueItems(
             (c) => c.collector_identity === item.collectorId
           );
           if (collector) {
-            collectorName = collector.collector_name;
+            collectorName = collector.collector_id;
             console.log({ collector });
           } else {
             console.warn(`No collector found for ID: ${item.collectorId}`);

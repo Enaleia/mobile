@@ -118,8 +118,7 @@ export const validateEASSchema = (data: EnaleiaEASSchema): boolean => {
 
   if (
     data.incomingMaterials.length > 0 &&
-    (data.incomingMaterials.length !== data.incomingWeightsKg.length ||
-      data.incomingMaterials.length !== data.incomingCodes.length)
+    (data.incomingMaterials.length !== data.incomingWeightsKg.length)
   ) {
     throw new Error(
       "Incoming materials, weights, and codes must have matching lengths"
