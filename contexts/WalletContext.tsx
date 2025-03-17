@@ -66,7 +66,54 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
 
   const createWallet = async (): Promise<WalletInfo> => {
     try {
-      // Generate mnemonic
+      // Check if user already has a wallet in Directus
+      const storedAddress = await SecureStore.getItemAsync(
+        SECURE_STORE_KEYS.WALLET_ADDRESS
+      );
+      const storedPrivateKey = await SecureStore.getItemAsync(
+        SECURE_STORE_KEYS.WALLET_PRIVATE_KEY
+      );
+
+      if (storedAddress && storedPrivateKey) {
+        // Verify ownership of stored wallet
+        const derivedAddress = EAS.getAddressFromPrivateKey(storedPrivateKey);
+        if (derivedAddress === storedAddress) {
+          console.log("[Wallet] Using existing wallet:", storedAddress);
+          const network =
+            process.env.EXPO_PUBLIC_NETWORK === "production"
+              ? "optimism"
+              : "sepolia";
+          const providerUrl = EAS_CONSTANTS.PROVIDER_URLS[network];
+          if (!providerUrl) {
+            throw new Error(`No provider URL found for network: ${network}`);
+          }
+
+          const walletInfo: WalletInfo = {
+            address: storedAddress,
+            network,
+            schemaUID: EAS_CONSTANTS.SCHEMA_UID,
+            providerUrl,
+            privateKey: storedPrivateKey,
+          };
+
+          setWallet(walletInfo);
+          setIsWalletCreated(true);
+
+          // Initialize EAS helper
+          setEasHelper(
+            new EAS(
+              providerUrl,
+              storedPrivateKey,
+              EAS_CONSTANTS.SCHEMA,
+              EAS_CONSTANTS.SCHEMA_UID
+            )
+          );
+
+          return walletInfo;
+        }
+      }
+
+      // Generate new wallet if no valid existing wallet found
       const mnemonic = EAS.generateMnemonic();
       const privateKey = EAS.getPrivateKeyFromMnemonic(mnemonic);
       if (!privateKey) throw new Error("Failed to derive private key");
