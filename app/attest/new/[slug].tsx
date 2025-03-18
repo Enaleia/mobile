@@ -638,7 +638,7 @@ const NewActionScreen = () => {
                       setSelectedMaterials={(materials: MaterialDetail[]) =>
                         field.handleChange(materials)
                       }
-                      hideCodeInput={currentAction?.category === "Collection"}
+                      hideCodeInput={false}
                     />
                   </View>
                 )}

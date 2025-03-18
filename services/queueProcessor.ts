@@ -513,7 +513,7 @@ export async function processQueueItems(
                     .map(async (material) => {
                       const result = await createMaterialOutput({
                         output_material: material.id,
-                        output_code: item.collectorId || material.code || "",
+                        output_code: material.code || "",
                         output_weight: material.weight || 0,
                         event_id: directusEvent.event_id,
                       } as MaterialTrackingEventOutput);
