@@ -79,8 +79,7 @@ export const mapToEASSchema = (
       ) || [],
     incomingWeightsKg,
     incomingCodes: [
-      ...(form.incomingMaterials?.map((m) => m.code || "") || []),
-      form.collectorId || "",
+      ...(form.incomingMaterials?.map((m) => m.code ||form.collectorId || "") || [])
     ].filter(Boolean),
 
     outgoingMaterials:
@@ -118,7 +117,8 @@ export const validateEASSchema = (data: EnaleiaEASSchema): boolean => {
 
   if (
     data.incomingMaterials.length > 0 &&
-    (data.incomingMaterials.length !== data.incomingWeightsKg.length)
+    (data.incomingMaterials.length !== data.incomingWeightsKg.length||
+      data.incomingMaterials.length !== data.incomingCodes.length)
   ) {
     throw new Error(
       "Incoming materials, weights, and codes must have matching lengths"
