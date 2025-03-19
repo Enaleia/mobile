@@ -159,9 +159,9 @@ export async function fundWallet(address: string) {
     const response = await fetch(
       `${process.env.EXPO_PUBLIC_FUNDING_URL}/fund-address?address=${address}`
     );
-    const data = await response.json();
+    const data: { info: string } = await response.json();
     console.log("Funding successful", data);
-    return data.result;
+    return data.info;
   } catch (error) {
     console.error("Funding failed", error);
     throw new Error(
@@ -181,9 +181,9 @@ export async function getWalletBalance(address: string) {
     const response = await fetch(
       `${process.env.EXPO_PUBLIC_FUNDING_URL}/get-balance?address=${address}`
     );
-    const data = await response.json();
+    const data: { balance: string } = await response.json();
     console.log("Balance successful", data);
-    return data.result;
+    return data.balance;
   } catch (error) {
     console.error("Balance failed", error);
   }

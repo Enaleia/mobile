@@ -8,6 +8,7 @@ import { EASService, EAS_CONSTANTS } from "@/services/eas";
 import { QueueEvents, queueEventEmitter } from "@/services/events";
 import { BatchData } from "@/types/batch";
 import { DirectusCollector } from "@/types/collector";
+import { EnaleiaEASSchema } from "@/types/enaleia";
 import {
   MaterialTrackingEvent,
   MaterialTrackingEventInput,
@@ -240,24 +241,25 @@ async function processEASAttestation(
   wallet: WalletInfo
 ): Promise<{ uid: string; network: "sepolia" | "optimism" }> {
   const { userData, materials, products } = requiredData;
+  const easService = new EASService(wallet.providerUrl, wallet.privateKey);
 
   try {
-    const easService = new EASService(wallet.providerUrl, wallet.privateKey);
+    // Ensure wallet has sufficient balance
+    let balance = await getWalletBalance(wallet.address);
+    if (!balance) throw new Error("Could not retrieve wallet balance");
 
-    // Check if wallet has enough balance and fund if needed
-    const balance = await getWalletBalance(wallet.address);
-    if (Number(balance) < EAS_CONSTANTS.MINIMUM_BALANCE) {
-      console.log("Insufficient balance, funding wallet");
-      try {
-        await fundWallet(wallet.address);
-      } catch (error) {
-        console.error("Error funding wallet:", error);
-        throw error;
+    if (parseFloat(balance) < EAS_CONSTANTS.MINIMUM_BALANCE) {
+      await fundWallet(wallet.address);
+      balance = await getWalletBalance(wallet.address);
+
+      if (!balance || parseFloat(balance) < EAS_CONSTANTS.MINIMUM_BALANCE) {
+        throw new Error(`Insufficient funds after funding attempt: ${balance}`);
       }
     }
 
+    // Prepare and validate schema
     const collectors = await directusCollectors();
-    const schema = mapToEASSchema(
+    const schema: EnaleiaEASSchema = mapToEASSchema(
       item,
       userData,
       materials,
@@ -265,9 +267,7 @@ async function processEASAttestation(
       collectors
     );
 
-    // Validate schema
     if (!validateEASSchema(schema)) {
-      console.warn(`Invalid schema for item ${item.localId}`);
       throw new Error("Invalid schema");
     }
 
@@ -279,7 +279,6 @@ async function processEASAttestation(
 
     return result;
   } catch (error) {
-    console.error(`EAS attestation failed for item ${item.localId}:`, error);
     throw error instanceof Error ? error : new Error(String(error));
   }
 }
