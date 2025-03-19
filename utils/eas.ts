@@ -151,6 +151,10 @@ export const validateEASSchema = (data: EnaleiaEASSchema): boolean => {
 };
 
 export async function fundWallet(address: string) {
+  if (!process.env.EXPO_PUBLIC_FUNDING_URL) {
+    throw new Error("FUNDING_URL is not set");
+  }
+
   try {
     const response = await fetch(
       `${process.env.EXPO_PUBLIC_FUNDING_URL}/fund-address?address=${address}`
@@ -169,6 +173,10 @@ export async function fundWallet(address: string) {
 }
 
 export async function getWalletBalance(address: string) {
+  if (!process.env.EXPO_PUBLIC_FUNDING_URL) {
+    throw new Error("FUNDING_URL is not set");
+  }
+
   try {
     const response = await fetch(
       `${process.env.EXPO_PUBLIC_FUNDING_URL}/get-balance?address=${address}`
