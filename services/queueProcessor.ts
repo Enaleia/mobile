@@ -42,6 +42,7 @@ import { getBatchCacheKey } from "@/utils/storage";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import NetInfo from "@react-native-community/netinfo";
 import * as Notifications from "expo-notifications";
+import { Company } from "@/types/company";
 
 async function updateItemInCache(itemId: string, updates: Partial<QueueItem>) {
   try {
@@ -462,21 +463,24 @@ export async function processQueueItems(
         }
 
         if (item.outgoingMaterials?.length) {
-          for (const material of item.outgoingMaterials) {
-            if (!material) continue;
-            const result = await createMaterialOutput({
-              output_material: material.id,
-              output_code: item.collectorId || material.code || "",
-              output_weight: material.weight || 0,
-              event_id: directusEvent.event_id,
-            } as MaterialTrackingEventOutput);
+          await Promise.all(
+            item.outgoingMaterials
+              .filter((m) => m)
+              .map(async (material) => {
+                const result = await createMaterialOutput({
+                  output_material: material.id,
+                  output_code: material.code || "",
+                  output_weight: material.weight || 0,
+                  event_id: directusEvent.event_id,
+                } as MaterialTrackingEventOutput);
 
-            if (!result) {
-              throw new Error(
-                `Failed to create output material for ${material.id}`
-              );
-            }
-          }
+                if (!result) {
+                  throw new Error(
+                    `Failed to create output material for ${material.id}`
+                  );
+                }
+              })
+          );
         }
 
         // Process EAS attestation
