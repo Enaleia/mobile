@@ -477,7 +477,7 @@ const NewActionScreen = () => {
     <SafeAreaContent>
       <View className="absolute top-20 right-[-30px] bg-white-sand opacity-60">
         <Image
-          source={require("@/assets/images/animals/Turtle.png")}
+          source={require("@assets/images/animals/Turtle.png")}
           className="w-[223px] h-[228px]"
           accessibilityLabel="Decorative turtle illustration"
           accessibilityRole="image"

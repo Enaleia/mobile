@@ -15,16 +15,16 @@ export const IncompleteAttestationModal = ({
   return (
     <ModalBase isVisible={isVisible} onClose={onClose} canClose={false}>
       <View className="px-4 pt-4 pb-4">
-        <View className="items-center mb-4">
-          <Image
-            source={require("@/assets/images/empty_fields.webp")}
-            className="w-[88px] h-[88px]"
-            accessibilityLabel="Empty fields illustration"
-            accessibilityRole="image"
-          />
+        <View className="flex-row justify-center items-center py-1">
+        <Image
+          source={require("@/assets/images/animals/Snail.png")}
+          className="w-40 h-40"
+          accessibilityRole="image"
+          accessibilityLabel="Success illustration"
+        />
         </View>
         <Text className="text-3xl font-dm-bold text-enaleia-black tracking-tighter mb-3 text-center">
-          Are you sure you want to submit with empty fields?
+           Missing details?
         </Text>
         <Text className="text-base font-dm-regular text-enaleia-black mb-6 tracking-tight text-center">
           Some fields are empty & might be required. If needed, fill them before proceeding.

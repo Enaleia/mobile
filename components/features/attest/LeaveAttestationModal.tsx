@@ -1,5 +1,5 @@
 import ModalBase from "@/components/shared/ModalBase";
-import { Pressable, Text, View } from "react-native";
+import { Pressable, Text, View, Image } from "react-native";
 
 interface LeaveAttestationModalProps {
   isVisible: boolean;
@@ -15,11 +15,19 @@ export const LeaveAttestationModal = ({
   return (
     <ModalBase isVisible={isVisible} onClose={onClose} canClose={false}>
       <View className="px-4 pt-3 pb-4">
+      <View className="flex-row justify-center items-center py-1">
+        <Image
+          source={require("@/assets/images/animals/FishFin.png")}
+          className="w-40 h-40"
+          accessibilityRole="image"
+          accessibilityLabel="Success illustration"
+        />
+        </View>
         <Text
           className="text-3xl font-dm-bold text-enaleia-black tracking-[-0.5px] mb-3 text-center"
           accessibilityRole="header"
         >
-          Are you sure you want to go back?
+          Going back to home page?
         </Text>
         <Text
           className="text-base font-dm-regular text-enaleia-black mb-6 tracking-tight text-center"
