@@ -14,6 +14,7 @@ export const EAS_CONSTANTS = {
     sepolia: "https://optimism-sepolia.easscan.org",
     optimism: "https://optimism.easscan.org",
   },
+  MINIMUM_BALANCE: 0.0005,
   getNetworkFromProviderUrl: (url: string): "sepolia" | "optimism" => {
     return (
       (Object.entries(EAS_CONSTANTS.PROVIDER_URLS).find(

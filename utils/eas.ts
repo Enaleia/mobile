@@ -118,7 +118,7 @@ export const validateEASSchema = (data: EnaleiaEASSchema): boolean => {
 
   if (
     data.incomingMaterials.length > 0 &&
-    (data.incomingMaterials.length !== data.incomingWeightsKg.length)
+    data.incomingMaterials.length !== data.incomingWeightsKg.length
   ) {
     throw new Error(
       "Incoming materials, weights, and codes must have matching lengths"
@@ -149,3 +149,34 @@ export const validateEASSchema = (data: EnaleiaEASSchema): boolean => {
 
   return true;
 };
+
+export async function fundWallet(address: string) {
+  try {
+    const response = await fetch(
+      `${process.env.EXPO_PUBLIC_FUNDING_URL}/fund-address?address=${address}`
+    );
+    const data = await response.json();
+    console.log("Funding successful", data);
+    return data.result;
+  } catch (error) {
+    console.error("Funding failed", error);
+    throw new Error(
+      `Funding failed: ${
+        error instanceof Error ? error.message : "Unknown error"
+      }`
+    );
+  }
+}
+
+export async function getWalletBalance(address: string) {
+  try {
+    const response = await fetch(
+      `${process.env.EXPO_PUBLIC_FUNDING_URL}/get-balance?address=${address}`
+    );
+    const data = await response.json();
+    console.log("Balance successful", data);
+    return data.result;
+  } catch (error) {
+    console.error("Balance failed", error);
+  }
+}
