@@ -43,8 +43,8 @@ const WalletScreen = () => {
         Wallet address
       </Text>
       <View className="flex-1">
-        <Text className="font-dm-medium text-base mb-2">
-          This is the blockchain wallet address this account will use to submit data to the Ethereum Attestation Services.
+        <Text className="font-dm-regular text-base mb-4 leading-5">
+         This blockchain wallet address will be used by this account to submit data to the Ethereum Attestation Service.
         </Text>
         <View className="bg-white rounded-2xl p-4 mb-2">
           <Pressable
