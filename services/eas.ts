@@ -3,9 +3,9 @@ import { EAS } from "eas-lib";
 
 export const EAS_CONSTANTS = {
   SCHEMA:
-    "string userID, string portOrCompanyName, string[] portOrCompanyCoordinates, string actionType, string actionDate, string[] actionCoordinates, string collectorName, string[] incomingMaterials, uint16[] incomingWeightsKg, string[] incomingCodes, string[] outgoingMaterials, uint16[] outgoingWeightsKg, string[] outgoingCodes, string productName, uint16 batchQuantity, uint16 weightPerItemKg",
+    "string userID, string portOrCompanyName, string[] portOrCompanyCoordinates, string actionType, string actionDate, string[] actionCoordinates, string collectorName, string[] incomingMaterials, uint16[] incomingWeightsKg, string[] incomingCodes, string[] outgoingMaterials, uint16[] outgoingWeightsKg, string[] outgoingCodes, string productName, uint16 batchQuantity, string weightPerItemKg",
   SCHEMA_UID:
-    "0x873948d91f5e74ada15f2f3c039e86fb08ff9051571e8eaf1baf081182ac8ccf",
+    "0xe087bb7707db4d063a9704af8e00f91715d1abd73d5ae3d63ee5ac1063604421",
   PROVIDER_URLS: {
     sepolia: process.env.EXPO_PUBLIC_EAS_SEPOLIA_PROVIDER_URL,
     optimism: process.env.EXPO_PUBLIC_EAS_OPTIMISM_PROVIDER_URL,

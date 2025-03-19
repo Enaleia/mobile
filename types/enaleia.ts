@@ -38,5 +38,5 @@ export interface EnaleiaEASSchema {
   outgoingCodes: string[];
   productName: string;
   batchQuantity: number;
-  weightPerItemKg: number;
+  weightPerItemKg: string;
 }
