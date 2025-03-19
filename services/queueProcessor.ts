@@ -4,7 +4,7 @@ import {
   createMaterialOutput,
   updateEvent,
 } from "@/services/directus";
-import { EASService } from "@/services/eas";
+import { EASService, EAS_CONSTANTS } from "@/services/eas";
 import { QueueEvents, queueEventEmitter } from "@/services/events";
 import { BatchData } from "@/types/batch";
 import { DirectusCollector } from "@/types/collector";
@@ -25,7 +25,12 @@ import { EnaleiaUser } from "@/types/user";
 import { WalletInfo } from "@/types/wallet";
 import { getBatchData } from "@/utils/batchStorage";
 import { ensureValidToken } from "@/utils/directus";
-import { mapToEASSchema, validateEASSchema } from "@/utils/eas";
+import {
+  fundWallet,
+  getWalletBalance,
+  mapToEASSchema,
+  validateEASSchema,
+} from "@/utils/eas";
 import {
   addToCompletedQueue,
   getActiveQueue,
@@ -229,58 +234,54 @@ async function fetchRequiredData(
   }
 }
 
-async function processEASAttestations(
-  items: QueueItem[],
+async function processEASAttestation(
+  item: QueueItem,
   requiredData: RequiredData,
   wallet: WalletInfo
-): Promise<
-  Map<string, { uid: string; network: "sepolia" | "optimism" } | Error>
-> {
+): Promise<{ uid: string; network: "sepolia" | "optimism" }> {
   const { userData, materials, products } = requiredData;
-  const results = new Map<
-    string,
-    { uid: string; network: "sepolia" | "optimism" } | Error
-  >();
 
-  // Create EAS service once for all items
-  const easService = new EASService(wallet.providerUrl, wallet.privateKey);
+  try {
+    const easService = new EASService(wallet.providerUrl, wallet.privateKey);
 
-  // Process items sequentially
-  for (const item of items) {
-    try {
-      // Map to EAS schema
-      const collectors = await directusCollectors();
-      const schema = mapToEASSchema(
-        item,
-        userData,
-        materials,
-        products,
-        collectors
-      );
-
-      // Validate schema
-      if (!validateEASSchema(schema)) {
-        console.warn(`Invalid schema for item ${item.localId}`);
-        results.set(item.localId, new Error("Invalid schema"));
-        continue;
+    // Check if wallet has enough balance and fund if needed
+    const balance = await getWalletBalance(wallet.address);
+    if (Number(balance) < EAS_CONSTANTS.MINIMUM_BALANCE) {
+      console.log("Insufficient balance, funding wallet");
+      try {
+        await fundWallet(wallet.address);
+      } catch (error) {
+        console.error("Error funding wallet:", error);
+        throw error;
       }
-
-      // Process single attestation
-      const result = await easService.attest(schema);
-      results.set(item.localId, result); // result already has { uid, network } shape
-
-      // Add delay between items to ensure proper nonce sequencing
-      await new Promise((resolve) => setTimeout(resolve, 1000));
-    } catch (error) {
-      console.error(`Error processing item ${item.localId}:`, error);
-      results.set(
-        item.localId,
-        error instanceof Error ? error : new Error(String(error))
-      );
     }
-  }
 
-  return results;
+    const collectors = await directusCollectors();
+    const schema = mapToEASSchema(
+      item,
+      userData,
+      materials,
+      products,
+      collectors
+    );
+
+    // Validate schema
+    if (!validateEASSchema(schema)) {
+      console.warn(`Invalid schema for item ${item.localId}`);
+      throw new Error("Invalid schema");
+    }
+
+    // Process attestation
+    const result = await easService.attest(schema);
+    if (!result?.uid || !result?.network) {
+      throw new Error("Invalid attestation result");
+    }
+
+    return result;
+  } catch (error) {
+    console.error(`EAS attestation failed for item ${item.localId}:`, error);
+    throw error instanceof Error ? error : new Error(String(error));
+  }
 }
 
 export async function processQueueItems(
@@ -481,16 +482,11 @@ export async function processQueueItems(
 
         // Process EAS attestation
         const requiredData = await fetchRequiredData();
-        const easResults = await processEASAttestations(
-          [item],
+        const easResult = await processEASAttestation(
+          item,
           requiredData,
           wallet!
         );
-        const easResult = easResults.get(item.localId);
-
-        if (!easResult || easResult instanceof Error) {
-          throw easResult || new Error("EAS attestation failed");
-        }
 
         // Update Directus with EAS UID
         const directusUpdatedEvent = await updateEvent(directusEvent.event_id, {
