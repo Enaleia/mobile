@@ -16,24 +16,22 @@ const SettingsScreen = () => {
   const { user, logout } = useAuth();
 
   const openGuides = async () => {
-    const url = "https://sites.google.com/pollenlabs.org/enaleiahub-guides/mobile-app/mobile-app-overview";
+    const url =
+      "https://sites.google.com/pollenlabs.org/enaleiahub-guides/mobile-app/mobile-app-overview";
     const canOpen = await Linking.canOpenURL(url);
 
     if (canOpen) {
       await Linking.openURL(url);
-    } else {
-      Alert.alert("Error", "Unable to open guides at the moment.");
     }
   };
 
   const contactSupport = async () => {
-    const email = "app-support@enaleia.com, enaleia@pollenlabs.org";
-    const subject = encodeURIComponent("Support Request");
-    const body = encodeURIComponent("Describe your issue here...");
-    const url = `mailto:${email}?subject=${subject}&body=${body}`;
-
+    const url = "mailto:app-support@enaleia.com, enaleia@pollenlabs.org";
     const canOpen = await Linking.canOpenURL(url);
-    if (canOpen) await Linking.openURL(url);
+
+    if (canOpen) {
+      await Linking.openURL(url);
+    }
   };
 
   // Helper function to safely get company name
@@ -48,10 +46,10 @@ const SettingsScreen = () => {
     return null;
   };
 
-  const version = Constants.expoConfig?.version ?? "0.0.0";
+  const version = Constants.expoConfig?.version || "0.0.0";
   const buildNumber = Platform.select({
-    ios: Constants.expoConfig?.extra?.eas?.buildNumber ?? "1",
-    android: Constants.expoConfig?.extra?.eas?.buildNumber ?? "1",
+    ios: Constants.expoConfig?.ios?.buildNumber || "1",
+    android: Constants.expoConfig?.android?.versionCode || "1",
     default: "1",
   });
 
