@@ -36,6 +36,7 @@ import { getBatchCacheKey } from "@/utils/storage";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import NetInfo from "@react-native-community/netinfo";
 import * as Notifications from "expo-notifications";
+import { Company } from "@/types/company";
 
 async function updateItemInCache(itemId: string, updates: Partial<QueueItem>) {
   try {
@@ -416,6 +417,11 @@ export async function processQueueItems(
 
     // Fetch all required data once
     const requiredData = await fetchRequiredData();
+    const { userData, materials, products } = requiredData;
+    const company =
+      typeof userData?.Company === "number"
+        ? undefined
+        : (userData?.Company as Pick<Company, "id" | "name" | "coordinates">);
 
     // Process all EAS attestations in batch
     const easResults = await processEASAttestations(
@@ -468,7 +474,7 @@ export async function processQueueItems(
                 event_timestamp: new Date(item.date).toISOString(),
                 event_location: locationString,
                 collector_name: collectorName,
-                company: item.company,
+                company: company?.id,
                 manufactured_products: item.manufacturing?.product ?? undefined,
                 Batch_quantity: item.manufacturing?.quantity ?? undefined,
                 weight_per_item:
@@ -507,7 +513,7 @@ export async function processQueueItems(
                     .map(async (material) => {
                       const result = await createMaterialOutput({
                         output_material: material.id,
-                        output_code: item.collectorId || material.code || "",
+                        output_code: material.code || "",
                         output_weight: material.weight || 0,
                         event_id: directusEvent.event_id,
                       } as MaterialTrackingEventOutput);
