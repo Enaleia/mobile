@@ -55,7 +55,7 @@ export const mapToEASSchema = (
     form.incomingMaterials?.map((m) => m.weight || 0) || [];
   const outgoingWeightsKg: number[] =
     form.outgoingMaterials?.map((m) => m.weight || 0) || [];
-  const weightPerItemKg = form.manufacturing?.weightInKg || 0;
+  const weightPerItemKg = form.manufacturing?.weightInKg?.toString() || "";
   const batchQuantity = form.manufacturing?.quantity || 0;
 
   return {
@@ -138,7 +138,7 @@ export const validateEASSchema = (data: EnaleiaEASSchema): boolean => {
   if (
     data.incomingWeightsKg.some((w) => w < 0) ||
     data.outgoingWeightsKg.some((w) => w < 0) ||
-    (data.weightPerItemKg !== 0 && data.weightPerItemKg < 0)
+    (data.weightPerItemKg !== "0" && parseFloat(data.weightPerItemKg) < 0)
   ) {
     throw new Error("Weights must be non-negative");
   }
