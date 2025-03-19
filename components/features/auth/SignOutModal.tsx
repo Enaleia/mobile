@@ -38,15 +38,15 @@ export default function SignOutModal({
           <Text className="text-base font-dm-light mb-6 text-center">
             An internet connection will be required when you sign back in.
           </Text>
-          <View className="flex-row gap-3 w-full justify-center">
+          <View className="flex-row gap-2 w-full justify-center">
             <Pressable onPress={onClose} className="py-4 px-7 rounded-full bg-white border border-grey-3">
               <Text className="text-enaleia-black font-dm-medium">Never mind</Text>
             </Pressable>
             <Pressable
               onPress={handleSignOut}
-              className="bg-blue-ocean py-4 px-6 rounded-full"
+              className="bg-blue-ocean py-4 px-9 rounded-full"
             >
-              <Text className="text-white font-dm-medium">Sign me out</Text>
+              <Text className="text-white font-dm-medium">Sign out</Text>
             </Pressable>
           </View>
         </View>

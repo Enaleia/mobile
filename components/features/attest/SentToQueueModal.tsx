@@ -44,24 +44,24 @@ export const SentToQueueModal = ({
       <View className="flex-row justify-center items-center py-4 gap-2">
         <Pressable
           onPress={() => router.replace("/queue")}
-          className="border border-blue-ocean rounded-full bg-slate-50 p-3 flex-1"
+          className="px-2 py-4 rounded-full border border-grey-3 flex-1"
           accessibilityRole="button"
           accessibilityLabel="View queue"
           accessibilityHint="Double tap to go to queue page"
         >
-          <Text className="text-blue-ocean font-dm-regular text-base text-center">
+          <Text className="text-base font-dm-medium text-enaleia-black text-center">
             See queue
           </Text>
         </Pressable>
         <Pressable
           onPress={() => router.replace("/(tabs)")}
-          className="bg-blue-ocean rounded-full p-3 flex-1"
+          className="bg-blue-ocean rounded-full p-4 flex-1"
           accessibilityRole="button"
           accessibilityLabel="Go to home"
           accessibilityHint="Double tap to return to home page"
         >
           <Text className="text-white font-dm-regular text-base text-center">
-            Go home
+            OK, Done
           </Text>
         </Pressable>
       </View>

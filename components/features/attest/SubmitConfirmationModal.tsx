@@ -15,14 +15,14 @@ export const SubmitConfirmationModal = ({
   return (
     <ModalBase isVisible={isVisible} onClose={onClose} canClose={false}>
       <View className="px-4 pt-4 pb-4">
-        <View className="items-center mb-4">
+        <View className="flex-row justify-center items-center py-1">
           <Image
-            source={require("@/assets/images/doc_checkmark.webp")}
-            className="w-[88px] h-[88px]"
-            accessibilityLabel="Document checkmark illustration"
+            source={require("@/assets/images/animals/SeaHorse.png")}
+            className="w-40 h-40"
             accessibilityRole="image"
+            accessibilityLabel="ready to attest illustration"
           />
-        </View>
+          </View>
         <Text className="text-3xl font-dm-bold text-enaleia-black tracking-tighter mb-3 text-center">
           Ready to attest?
         </Text>
