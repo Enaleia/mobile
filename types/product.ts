@@ -3,11 +3,12 @@ import { DirectusItemStatus } from "./directus";
 
 export const processProducts = (
   products: DirectusProduct[]
-): Pick<DirectusProduct, "product_id" | "product_name" | "product_type">[] => {
-  return products.map(({ product_id, product_name, product_type }) => ({
+): Pick<DirectusProduct, "product_id" | "product_name" | "product_type" | "manufactured_by">[] => {
+  return products.map(({ product_id, product_name, product_type, manufactured_by }) => ({
     product_id,
     product_name,
     product_type,
+    manufactured_by,
   }));
 };
 
@@ -21,7 +22,10 @@ export interface DirectusProduct {
   date_updated?: string;
   product_name?: string;
   product_type?: "Kayak" | "Fisher box";
-  manufactured_by?: number; // Foreign key to Companies
+  manufactured_by?: {
+    id: number;
+    name: string;
+  }; // Company information
   product_description?: string;
   percentage_of_ocean_waste?: number;
   product_images?: JsonValue; // Using JsonValue for json fields

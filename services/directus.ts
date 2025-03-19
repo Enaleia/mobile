@@ -43,7 +43,10 @@ export async function fetchCollectors() {
 
 export async function fetchProducts() {
   try {
-    return await directus.request(readItems("Products", {limit:-1}));
+    return await directus.request(readItems("Products", {
+      limit: -1,
+      fields: ['*', 'manufactured_by.name']
+    }));
   } catch (error: any) {
     throw formatDirectusError("Products", error);
   }

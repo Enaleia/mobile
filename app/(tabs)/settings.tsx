@@ -57,19 +57,22 @@ const SettingsScreen = () => {
 
   return (
     <SafeAreaContent>
+      <View>
+        <UserProfile />
+      </View>
+
       <ScrollView
         className="flex-1"
         contentContainerStyle={{ paddingBottom: 20 }}
         showsVerticalScrollIndicator={false}
       >
-        <UserProfile />
         <View className="mt-4">
           <Text className="text-3xl font-dm-bold text-enaleia-black tracking-[-1px] mb-2">
             Settings
           </Text>
         </View>
 
-        <View className="mb-6 rounded-2xl border border-gray-400 ">
+        <View className="mb-4 rounded-2xl bg-white">
           <View className="p-4">
             <View className="pb-4">
               <Text className="text-base font-dm-bold text-gray-900">

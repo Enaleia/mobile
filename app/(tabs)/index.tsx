@@ -1,6 +1,7 @@
 import ActionSelection from "@/components/features/home/ActionSelect";
 import { InitializationModal } from "@/components/features/initialization/InitializationModal";
 import SafeAreaContent from "@/components/shared/SafeAreaContent";
+import { UserProfile } from "@/components/shared/UserProfile";
 import { useAuth } from "@/contexts/AuthContext";
 import { useNetwork } from "@/contexts/NetworkContext";
 import { groupActionsByCategory } from "@/types/action";
@@ -102,13 +103,8 @@ function Home() {
       />
 
       {/* Header - Fixed at top */}
-      <View className="flex-row items-start justify-between pb-4">
-        <View className="flex-row items-center justify-center gap-0.5">
-          <Ionicons name="person-circle-outline" size={24} color="#0D0D0D" />
-          <Text className="text-sm font-bold text-enaleia-black">
-            {user?.first_name || "User"}
-          </Text>
-        </View>
+      <View>
+        <UserProfile />
       </View>
 
       {/* Scrollable Content */}

@@ -13,7 +13,7 @@ export interface BatchData {
   >[];
   products: Pick<
     DirectusProduct,
-    "product_id" | "product_name" | "product_type"
+    "product_id" | "product_name" | "product_type" | "manufactured_by"
   >[];
   lastUpdated?: number;
 }

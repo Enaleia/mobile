@@ -25,7 +25,7 @@ export const SentToQueueModal = ({
           className="text-3xl font-dm-bold text-enaleia-black tracking-tighter text-center"
           accessibilityRole="header"
         >
-          Attestation queued successfully
+          Attestation queued
         </Text>
         <Text
           className="text-base font-dm-regular text-enaleia-black tracking-tighter text-center"
@@ -37,7 +37,7 @@ export const SentToQueueModal = ({
           className="text-sm font-dm-regular text-enaleia-black tracking-tighter text-center"
           accessibilityRole="text"
         >
-          Important: If working offline, please make sure to get online
+          <Text className="font-dm-bold">Important:</Text> If working offline, please make sure to get online
           periodically to complete the submission(s).
         </Text>
       </View>

@@ -9,7 +9,7 @@ import { filterQueueItems, getAttentionCount } from "@/utils/queue";
 import { useEventListener } from "expo";
 import { useNavigation } from "expo-router";
 import { useEffect } from "react";
-import { Image, ScrollView, Text, View } from "react-native";
+import { Image, ScrollView, Text, View, Pressable, Linking } from "react-native";
 
 const QueueScreen = () => {
   const { queueItems, loadQueueItems, retryItems } = useQueue();
@@ -20,6 +20,14 @@ const QueueScreen = () => {
   const { processingItems, pendingItems, failedItems, completedItems } =
     filterQueueItems(items);
   const attentionCount = getAttentionCount(items);
+
+  const contactSupport = async () => {
+    const url = "mailto:app-support@enaleia.com,enaleia@pollenlabs.org";
+    const canOpen = await Linking.canOpenURL(url);
+    if (canOpen) {
+      await Linking.openURL(url);
+    }
+  };
 
   useEffect(() => {
     navigation.setOptions({
@@ -74,12 +82,13 @@ const QueueScreen = () => {
                 />
               )}
 
-              {pendingItems.length > 0 && (
-                <View className="mb-4 p-3 bg-red-50 rounded-xl border border-red-300">
+              {(pendingItems.length > 0 || failedItems.length > 0) && (
+                <View className="mb-4 p-3 bg-[#FF453A1A] rounded-xl border border-[#FFAEA9]">
                   <Text className="text-left text-sm text-enaleia-black">
-                    You have items awaiting to submit on blockchain. Get
-                    connected whenever possible and retry submitting these
-                    attestations.
+                    <Text className="font-dm-bold">You have {pendingItems.length > 0 ? `${pendingItems.length} pending` : ""}{pendingItems.length > 0 && failedItems.length > 0 ? " and " : ""}{failedItems.length > 0 ? `${failedItems.length} failed` : ""} {(pendingItems.length + failedItems.length) === 1 ? "item" : "items"}.</Text> Make sure you are connected to the internet and retry submitting these attestations. If the issue persists, please{" "}
+                    <Text className="text-blue-ocean underline" onPress={contactSupport}>
+                      contact support
+                    </Text>.
                   </Text>
                 </View>
               )}

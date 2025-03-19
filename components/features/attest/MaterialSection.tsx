@@ -179,7 +179,7 @@ const MaterialSection = ({
                           };
                           setSelectedMaterials(newMaterials);
                         }}
-                        keyboardType="numeric"
+                        keyboardType="number-pad"
                       />
                       <Text className="text-sm font-dm-bold text-grey-6 tracking-tighter text-right self-end pl-1">
                         kg
