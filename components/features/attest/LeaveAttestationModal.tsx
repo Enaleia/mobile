@@ -20,7 +20,7 @@ export const LeaveAttestationModal = ({
           source={require("@/assets/images/animals/FishFin.png")}
           className="w-40 h-40"
           accessibilityRole="image"
-          accessibilityLabel="Success illustration"
+          accessibilityLabel="leave form illustration"
         />
         </View>
         <Text

@@ -20,7 +20,7 @@ export const IncompleteAttestationModal = ({
           source={require("@/assets/images/animals/Snail.png")}
           className="w-40 h-40"
           accessibilityRole="image"
-          accessibilityLabel="Success illustration"
+          accessibilityLabel="Empty fields illustration"
         />
         </View>
         <Text className="text-3xl font-dm-bold text-enaleia-black tracking-tighter mb-3 text-center">
