@@ -54,7 +54,7 @@ const ServiceStatusIndicator = ({
     <View className={`flex-row items-center gap-1 ${extraClasses}`}>
       <Ionicons name={getStatusIcon()} size={16} className={getStatusColor()} />
       <Text className={`text-xs ${getStatusColor()}`}>
-        {type === "directus" ? "API" : "Chain"}
+        {type === "directus" ? "Database" : "Blockchain"}
       </Text>
     </View>
   );
@@ -108,12 +108,12 @@ const QueuedAction = ({ item }: QueuedActionProps) => {
           <View className="mt-2">
             {item.directus?.error && (
               <Text className="text-red-500 text-sm" numberOfLines={2}>
-                API: {item.directus.error}
+                Database: {item.directus.error}
               </Text>
             )}
             {item.eas?.error && (
               <Text className="text-red-500 text-sm" numberOfLines={2}>
-                Chain: {item.eas.error}
+                Blockchain: {item.eas.error}
               </Text>
             )}
           </View>

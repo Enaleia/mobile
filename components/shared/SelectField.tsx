@@ -12,6 +12,11 @@ import ModalBase from "@/components/shared/ModalBase";
 interface SelectOption {
   label: string;
   value: number;
+  type?: string;
+}
+
+interface GroupedOptions {
+  [key: string]: SelectOption[];
 }
 
 interface SelectFieldProps {
@@ -36,6 +41,24 @@ export default function SelectField({
   const [isOpen, setIsOpen] = useState(false);
 
   const selectedOption = options.find((opt) => opt.value === value);
+
+  // Group options by type
+  const groupedOptions = options.reduce<GroupedOptions>((acc, option) => {
+    const type = option.type || "Other";
+    if (!acc[type]) {
+      acc[type] = [];
+    }
+    acc[type].push(option);
+    return acc;
+  }, {});
+
+  // Sort groups alphabetically
+  const sortedGroups = Object.entries(groupedOptions)
+    .sort(([a], [b]) => a.localeCompare(b))
+    .reduce((acc, [key, value]) => {
+      acc[key] = value;
+      return acc;
+    }, {} as GroupedOptions);
 
   return (
     <>
@@ -78,31 +101,38 @@ export default function SelectField({
             {placeholder}
           </Text>
           <ScrollView className="max-h-96">
-            {options.map((option) => (
-              <Pressable
-                key={option.value}
-                onPress={() => {
-                  onChange(option.value);
-                  setIsOpen(false);
-                }}
-                className="bg-white w-full px-4 py-3 rounded-2xl flex flex-row items-center justify-between border-[1.5px] border-grey-3 mb-2"
-                accessibilityRole="menuitem"
-                accessibilityLabel={option.label}
-                accessibilityState={{ selected: option.value === value }}
-              >
-                <Text
-                  className="text-base font-dm-bold text-enaleia-black tracking-tighter"
-                >
-                  {option.label}
+            {Object.entries(sortedGroups).map(([type, typeOptions]) => (
+              <View key={type} className="mb-4">
+                <Text className="text-[18px] font-dm-regular text-enaleia-black tracking-tighter mb-2">
+                  {type}
                 </Text>
-                {option.value === value && (
-                  <Ionicons
-                    name="checkmark-circle"
-                    size={20}
-                    color="#0D0D0D"
-                  />
-                )}
-              </Pressable>
+                {typeOptions.map((option) => (
+                  <Pressable
+                    key={option.value}
+                    onPress={() => {
+                      onChange(option.value);
+                      setIsOpen(false);
+                    }}
+                    className="bg-white w-full px-4 py-3 rounded-2xl flex flex-row items-center justify-between border-[1.5px] border-grey-3 mb-2"
+                    accessibilityRole="menuitem"
+                    accessibilityLabel={option.label}
+                    accessibilityState={{ selected: option.value === value }}
+                  >
+                    <Text
+                      className="text-base font-dm-bold text-enaleia-black tracking-tighter"
+                    >
+                      {option.label}
+                    </Text>
+                    {option.value === value && (
+                      <Ionicons
+                        name="checkmark-circle"
+                        size={20}
+                        color="#0D0D0D"
+                      />
+                    )}
+                  </Pressable>
+                ))}
+              </View>
             ))}
           </ScrollView>
         </View>

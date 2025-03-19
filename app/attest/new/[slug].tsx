@@ -2,6 +2,7 @@ import { IncompleteAttestationModal } from "@/components/features/attest/Incompl
 import { LeaveAttestationModal } from "@/components/features/attest/LeaveAttestationModal";
 import MaterialSection from "@/components/features/attest/MaterialSection";
 import { SentToQueueModal } from "@/components/features/attest/SentToQueueModal";
+import { SubmitConfirmationModal } from "@/components/features/attest/SubmitConfirmationModal";
 
 import { BatchHelpModal } from "@/components/features/help/BatchHelpModal";
 import { CollectionHelpModal } from "@/components/features/help/CollectionHelpModal";
@@ -161,6 +162,8 @@ const NewActionScreen = () => {
     isOutgoingMaterialsPickerVisible,
     setIsOutgoingMaterialsPickerVisible,
   ] = useState(false);
+  const [showSubmitConfirmation, setShowSubmitConfirmation] = useState(false);
+  const [pendingValidation, setPendingValidation] = useState(false);
 
   const {
     materials: materialsData,
@@ -461,13 +464,11 @@ const NewActionScreen = () => {
     }
   };
 
-  const hasAnyMaterials = (values: any) => {
-    if (typeof values !== "object" || values === null) return false;
+  const hasAnyMaterials = (values: EventFormType | boolean | null | undefined) => {
+    if (!values || typeof values === 'boolean') return false;
 
-    const incomingMaterials =
-      "incomingMaterials" in values ? values.incomingMaterials || [] : [];
-    const outgoingMaterials =
-      "outgoingMaterials" in values ? values.outgoingMaterials || [] : [];
+    const incomingMaterials = values.incomingMaterials || [];
+    const outgoingMaterials = values.outgoingMaterials || [];
 
     return incomingMaterials.length > 0 || outgoingMaterials.length > 0;
   };
@@ -665,13 +666,12 @@ const NewActionScreen = () => {
                           onChange={(value) => field.handleChange(value)}
                           options={
                             productsData?.map((product) => ({
-                              label: `${
-                                product.product_name || "Unknown Product"
-                              }`,
+                              label: product.product_name || "Unknown Product",
                               value: product.product_id,
+                              type: product.manufactured_by?.name || "Other"
                             })) || []
                           }
-                          placeholder="Product"
+                          placeholder="Products"
                           isLoading={!productsData}
                           disabled={!productsData}
                         />
@@ -680,7 +680,7 @@ const NewActionScreen = () => {
                     }}
                   </form.Field>
 
-                  <View className="flex-row gap-2">
+                  <View className="flex-row gap-2 mb-4">
                     <View className="flex-1 ">
                       <form.Field name="manufacturing.quantity">
                         {(field) => {
@@ -723,7 +723,7 @@ const NewActionScreen = () => {
               selector={(state) => [
                 state.canSubmit,
                 state.isSubmitting,
-                state.values,
+                state.values as EventFormType,
               ]}
             >
               {([canSubmit, isSubmitting, values]) => {
@@ -731,41 +731,34 @@ const NewActionScreen = () => {
                   setSubmitError(null);
                   e.preventDefault();
                   e.stopPropagation();
-
+                  
+                  // First validate the form
                   const hasValidIncoming = validateMaterials(
-                    typeof values === "object" &&
-                      values !== null &&
-                      "incomingMaterials" in values
-                      ? values.incomingMaterials || []
-                      : []
+                    values.incomingMaterials || []
                   );
                   const hasValidOutgoing = validateMaterials(
-                    typeof values === "object" &&
-                      values !== null &&
-                      "outgoingMaterials" in values
-                      ? values.outgoingMaterials || []
-                      : []
+                    values.outgoingMaterials || []
                   );
-                  // Check if manufacturing.product is missing
                   const isManufacturingProductMissing =
                     currentAction?.name === "Manufacturing" &&
-                    typeof values === "object" &&
-                    values !== null &&
-                    (!("manufacturing" in values) ||
-                      !values.manufacturing?.product);
+                    (!values.manufacturing || !values.manufacturing.product);
 
                   if (isManufacturingProductMissing) {
                     setShowRequireSelectModal(true);
-                    setPendingSubmission(true);
                     return;
                   }
 
                   if (!hasValidIncoming && !hasValidOutgoing) {
                     setShowIncompleteModal(true);
-                    setPendingSubmission(true);
                     return;
                   }
 
+                  // If validation passes, show the confirmation modal
+                  setShowSubmitConfirmation(true);
+                };
+
+                const handleProceedWithSubmission = () => {
+                  setShowSubmitConfirmation(false);
                   form.handleSubmit();
                 };
 
@@ -773,9 +766,10 @@ const NewActionScreen = () => {
                   <>
                     <Pressable
                       onPress={handleSubmitClick}
+                      disabled={!canSubmit || isSubmitting || !hasAnyMaterials(values)}
                       className={`w-full flex-row items-center justify-center p-3 h-[60px] rounded-full ${
-                        !canSubmit || isSubmitting
-                          ? "bg-primary-dark-blue"
+                        !canSubmit || isSubmitting || !hasAnyMaterials(values)
+                          ? "bg-primary-dark-blue opacity-50"
                           : "bg-blue-ocean"
                       }`}
                     >
@@ -787,17 +781,18 @@ const NewActionScreen = () => {
                       </Text>
                     </Pressable>
 
+                    <SubmitConfirmationModal
+                      isVisible={showSubmitConfirmation}
+                      onClose={() => setShowSubmitConfirmation(false)}
+                      onProceed={handleProceedWithSubmission}
+                    />
+
                     <IncompleteAttestationModal
                       isVisible={showIncompleteModal}
-                      onClose={() => {
-                        setShowIncompleteModal(false);
-                        setPendingSubmission(false);
-                      }}
+                      onClose={() => setShowIncompleteModal(false)}
                       onSubmitAnyway={() => {
                         setShowIncompleteModal(false);
-                        if (pendingSubmission) {
-                          form.handleSubmit();
-                        }
+                        form.handleSubmit();
                       }}
                     />
                   </>
