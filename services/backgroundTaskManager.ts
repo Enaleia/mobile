@@ -256,28 +256,22 @@ export class BackgroundTaskManager {
         return BackgroundFetch.BackgroundFetchResult.NoData;
       }
 
-      const batchSize = this.getBatchSize(power, network);
       console.log(
-        `Processing queue with batch size ${batchSize}`,
+        `Processing queue items sequentially`,
         `Power: ${JSON.stringify(power)}`,
         `Network: ${JSON.stringify(network)}`
       );
 
-      // Group items by type for batch processing
-      const groupedItems = itemsToProcess.reduce((acc, item) => {
-        const key = `${item.actionId}-${item.company || "no-company"}`;
-        if (!acc[key]) acc[key] = [];
-        acc[key].push(item);
-        return acc;
-      }, {} as Record<string, QueueItem[]>);
-
-      // Process each group in batches
-      for (const group of Object.values(groupedItems)) {
-        // Process items in batches of batchSize
-        for (let i = 0; i < group.length; i += batchSize) {
-          const batch = group.slice(i, i + batchSize);
-          console.log(`Processing batch of ${batch.length} items`);
-          await processQueueItems(batch, wallet);
+      // Process each item sequentially
+      for (const item of itemsToProcess) {
+        try {
+          await processQueueItems([item], wallet);
+          // Add delay between items
+          await new Promise((resolve) => setTimeout(resolve, 2000));
+        } catch (error) {
+          console.error(`Failed to process item ${item.localId}:`, error);
+          // Continue with next item even if one fails
+          continue;
         }
       }
 

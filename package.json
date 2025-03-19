@@ -38,7 +38,7 @@
     "@tanstack/react-form": "^0.40.4",
     "@tanstack/zod-form-adapter": "^0.33.0",
     "buffer": "^6.0.3",
-    "eas-lib": "^0.1.10",
+    "eas-lib": "^0.1.13",
     "expo": "~52.0.37",
     "expo-background-fetch": "~13.0.5",
     "expo-battery": "~9.0.2",

@@ -14,6 +14,7 @@ export const EAS_CONSTANTS = {
     sepolia: "https://optimism-sepolia.easscan.org",
     optimism: "https://optimism.easscan.org",
   },
+  MINIMUM_BALANCE: 0.0005,
   getNetworkFromProviderUrl: (url: string): "sepolia" | "optimism" => {
     return (
       (Object.entries(EAS_CONSTANTS.PROVIDER_URLS).find(
@@ -25,6 +26,11 @@ export const EAS_CONSTANTS = {
     uid: string,
     network: "sepolia" | "optimism" = "sepolia"
   ) => `${EAS_CONSTANTS.SCAN_URLS[network]}/attestation/view/${uid}`,
+};
+
+export type EASAttestationResult = {
+  uid: string;
+  network: "sepolia" | "optimism";
 };
 
 export class EASAttestationError extends Error {
@@ -51,9 +57,7 @@ export class EASService {
     );
   }
 
-  async attest(
-    schema: EnaleiaEASSchema
-  ): Promise<{ uid: string; network: "sepolia" | "optimism" }> {
+  async attest(schema: EnaleiaEASSchema): Promise<EASAttestationResult> {
     if (!this.eas) {
       throw new EASAttestationError("EAS not initialized");
     }
@@ -78,32 +82,5 @@ export class EASService {
         schema
       );
     }
-  }
-
-  async batchAttest(schemas: EnaleiaEASSchema[]): Promise<
-    Array<{
-      schema: EnaleiaEASSchema;
-      result: { uid: string; network: "sepolia" | "optimism" } | Error;
-    }>
-  > {
-    return Promise.all(
-      schemas.map(async (schema) => {
-        try {
-          const result = await this.attest(schema);
-          return { schema, result };
-        } catch (error) {
-          return {
-            schema,
-            result: error instanceof Error ? error : new Error("Unknown error"),
-          };
-        }
-      })
-    );
-  }
-
-  // Add verification method for future use
-  async verify(uid: string): Promise<boolean> {
-    // TODO: Implement verification logic
-    return true;
   }
 }

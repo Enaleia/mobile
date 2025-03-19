@@ -79,7 +79,9 @@ export const mapToEASSchema = (
       ) || [],
     incomingWeightsKg,
     incomingCodes: [
-      ...(form.incomingMaterials?.map((m) => m.code ||form.collectorId || "") || [])
+      ...(form.incomingMaterials?.map(
+        (m) => m.code || form.collectorId || ""
+      ) || []),
     ].filter(Boolean),
 
     outgoingMaterials:
@@ -117,7 +119,7 @@ export const validateEASSchema = (data: EnaleiaEASSchema): boolean => {
 
   if (
     data.incomingMaterials.length > 0 &&
-    (data.incomingMaterials.length !== data.incomingWeightsKg.length||
+    (data.incomingMaterials.length !== data.incomingWeightsKg.length ||
       data.incomingMaterials.length !== data.incomingCodes.length)
   ) {
     throw new Error(
@@ -149,3 +151,42 @@ export const validateEASSchema = (data: EnaleiaEASSchema): boolean => {
 
   return true;
 };
+
+export async function fundWallet(address: string) {
+  if (!process.env.EXPO_PUBLIC_FUNDING_URL) {
+    throw new Error("FUNDING_URL is not set");
+  }
+
+  try {
+    const response = await fetch(
+      `${process.env.EXPO_PUBLIC_FUNDING_URL}/fund-address?address=${address}`
+    );
+    const data: { info: string } = await response.json();
+    console.log("Funding successful", data);
+    return data.info;
+  } catch (error) {
+    console.error("Funding failed", error);
+    throw new Error(
+      `Funding failed: ${
+        error instanceof Error ? error.message : "Unknown error"
+      }`
+    );
+  }
+}
+
+export async function getWalletBalance(address: string) {
+  if (!process.env.EXPO_PUBLIC_FUNDING_URL) {
+    throw new Error("FUNDING_URL is not set");
+  }
+
+  try {
+    const response = await fetch(
+      `${process.env.EXPO_PUBLIC_FUNDING_URL}/get-balance?address=${address}`
+    );
+    const data: { balance: string } = await response.json();
+    console.log("Balance successful", data);
+    return data.balance;
+  } catch (error) {
+    console.error("Balance failed", error);
+  }
+}

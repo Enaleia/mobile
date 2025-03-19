@@ -179,11 +179,11 @@ export function QueueProvider({ children }: { children: React.ReactNode }) {
       }
 
       // Move newly completed items to completed queue
-      await Promise.all(
-        completedItems
-          .filter((item) => !item.hasOwnProperty("completedAt"))
-          .map((item) => addToCompletedQueue(item))
-      );
+      for (const item of completedItems) {
+        if (!item.hasOwnProperty("completedAt")) {
+          await addToCompletedQueue(item);
+        }
+      }
 
       // Update state with combined items
       setQueueItems(items);
@@ -208,10 +208,21 @@ export function QueueProvider({ children }: { children: React.ReactNode }) {
           return;
         }
 
-        if (appState === "active") {
-          await processItems(pendingItems);
-        } else {
-          await processAllItems();
+        // Process items sequentially
+        for (const item of pendingItems) {
+          try {
+            if (appState === "active") {
+              await processItem(item);
+            } else {
+              await processAllItems();
+              break; // Only trigger background processing once
+            }
+            // Add delay between items
+            await new Promise((resolve) => setTimeout(resolve, 1000));
+          } catch (error) {
+            console.error(`Failed to process item ${item.localId}:`, error);
+            continue;
+          }
         }
       }
     } catch (error) {
@@ -227,38 +238,30 @@ export function QueueProvider({ children }: { children: React.ReactNode }) {
     });
 
     try {
-      // Reset all items to pending state first
-      const updatedItems = queueItems.map((item) => {
-        if (items.some((i) => i.localId === item.localId)) {
-          return {
+      // Process items sequentially
+      for (const item of items) {
+        try {
+          // Reset item to pending state
+          const resetItem = {
             ...item,
             status: QueueItemStatus.PENDING,
             retryCount: 0,
             lastError: undefined,
             lastAttempt: undefined,
           };
-        }
-        return item;
-      });
 
-      // Update queue with reset items
-      await updateQueueItems(updatedItems);
+          // Update queue with reset item
+          const updatedItems = queueItems.map((qi) =>
+            qi.localId === item.localId ? resetItem : qi
+          );
+          await updateActiveQueue(updatedItems);
+          setQueueItems(updatedItems);
 
-      // Process items in batch but track individual results
-      const results: RetryResult[] = [];
+          // Process the item
+          await processItem(resetItem);
 
-      for (const item of items) {
-        try {
-          await processItems([
-            {
-              ...item,
-              status: QueueItemStatus.PENDING,
-              retryCount: 0,
-              lastError: undefined,
-              lastAttempt: undefined,
-            },
-          ]);
-          results.push({ success: true, localId: item.localId });
+          // Add delay between items
+          await new Promise((resolve) => setTimeout(resolve, 1000));
         } catch (error) {
           console.error(`Failed to process item ${item.localId}:`, error);
           const errorMessage =
@@ -271,55 +274,25 @@ export function QueueProvider({ children }: { children: React.ReactNode }) {
             errorMessage.toLowerCase().includes("unauthorized");
 
           if (isAuthError) {
-            console.log("Auth error detected, keeping items in original state");
-            // Don't mark as failed, keep original state
-            results.push({
-              success: false,
-              localId: item.localId,
-              error:
-                "Authentication error - please try again after restarting the app",
-            });
-            // Exit the retry loop on auth errors
+            console.log("Auth error detected, stopping retry process");
             break;
-          } else {
-            results.push({
-              success: false,
-              localId: item.localId,
-              error: errorMessage,
-            });
           }
+
+          // Update item state to failed
+          const updatedItems = queueItems.map((qi) =>
+            qi.localId === item.localId
+              ? {
+                  ...qi,
+                  status: QueueItemStatus.FAILED,
+                  lastError: errorMessage,
+                  lastAttempt: new Date(),
+                }
+              : qi
+          );
+          await updateActiveQueue(updatedItems);
+          setQueueItems(updatedItems);
         }
       }
-
-      // Update final states based on results
-      const finalItems = queueItems.map((item) => {
-        const result = results.find((r) => r.localId === item.localId);
-        if (result) {
-          if (!result.success) {
-            // For auth errors, keep the original state
-            const isAuthError = result.error
-              ?.toLowerCase()
-              .includes("authentication");
-            if (isAuthError) {
-              return {
-                ...item,
-                lastError: result.error,
-                lastAttempt: new Date(),
-              };
-            }
-            // For other errors, mark as failed
-            return {
-              ...item,
-              status: QueueItemStatus.FAILED,
-              lastError: result.error,
-              lastAttempt: new Date(),
-            };
-          }
-        }
-        return item;
-      });
-
-      await updateQueueItems(finalItems);
     } catch (error) {
       console.error("Error in retryItems:", error);
       throw error;
