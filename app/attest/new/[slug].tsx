@@ -151,8 +151,6 @@ const NewActionScreen = () => {
   const [isTypeInformationModalVisible, setIsTypeInformationModalVisible] =
     useState(false);
   const [showIncompleteModal, setShowIncompleteModal] = useState(false);
-  const [showRequireSelectModal, setShowRequireSelectModal] = useState(false);
-  const [pendingSubmission, setPendingSubmission] = useState(false);
   const [showLeaveModal, setShowLeaveModal] = useState(false);
   const [
     isIncomingMaterialsPickerVisible,
@@ -470,6 +468,13 @@ const NewActionScreen = () => {
     const incomingMaterials = values.incomingMaterials || [];
     const outgoingMaterials = values.outgoingMaterials || [];
 
+    // For manufacturing, we need both materials and a product selected
+    if (currentAction?.name === "Manufacturing") {
+      const hasValidMaterials = incomingMaterials.length > 0 || outgoingMaterials.length > 0;
+      const hasProductSelected = values.manufacturing?.product !== undefined;
+      return hasValidMaterials && hasProductSelected;
+    }
+
     return incomingMaterials.length > 0 || outgoingMaterials.length > 0;
   };
 
@@ -653,7 +658,7 @@ const NewActionScreen = () => {
                     Manufacturing information
                   </Text>
                   <View className="ml-2">
-                    <Ionicons name="gift-outline" size={24} color="#0D0D0D" />
+                    <Ionicons name="cube-outline" size={24} color="#0D0D0D" />
                   </View>
                 </View>
 
@@ -671,7 +676,7 @@ const NewActionScreen = () => {
                               type: product.manufactured_by?.name || "Other"
                             })) || []
                           }
-                          placeholder="Products"
+                          placeholder="Product"
                           isLoading={!productsData}
                           disabled={!productsData}
                         />
@@ -688,7 +693,7 @@ const NewActionScreen = () => {
                             <DecimalInput
                               field={field}
                               label="Batch Quantity"
-                              placeholder="0"
+                              placeholder=""
                               allowDecimals={false}
                               suffix="Unit"
                             />
@@ -705,7 +710,7 @@ const NewActionScreen = () => {
                             <DecimalInput
                               field={field}
                               label="Weight per item"
-                              placeholder="0"
+                              placeholder=""
                               suffix="kg"
                             />
                           );
@@ -739,14 +744,6 @@ const NewActionScreen = () => {
                   const hasValidOutgoing = validateMaterials(
                     values.outgoingMaterials || []
                   );
-                  const isManufacturingProductMissing =
-                    currentAction?.name === "Manufacturing" &&
-                    (!values.manufacturing || !values.manufacturing.product);
-
-                  if (isManufacturingProductMissing) {
-                    setShowRequireSelectModal(true);
-                    return;
-                  }
 
                   if (!hasValidIncoming && !hasValidOutgoing) {
                     setShowIncompleteModal(true);
