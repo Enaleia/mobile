@@ -34,20 +34,13 @@ const QueueSection = ({
     }
   };
 
-  // Count items that need retry for each service
-  const getFailedServices = () => {
-    return items.reduce(
-      (acc, item) => {
-        if (item?.directus?.status === ServiceStatus.FAILED) acc.directus++;
-        if (item?.eas?.status === ServiceStatus.FAILED) acc.eas++;
-        return acc;
-      },
-      { directus: 0, eas: 0 }
+  // Check if any items need retry for each service
+  const needsRetry = () => {
+    return items.some(item => 
+      item?.directus?.status === ServiceStatus.FAILED || 
+      item?.eas?.status === ServiceStatus.FAILED
     );
   };
-
-  const failedServices = getFailedServices();
-  const totalFailures = failedServices.directus + failedServices.eas;
 
   const itemsSortedByMostRecent = [...items].sort(
     (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
@@ -79,9 +72,9 @@ const QueueSection = ({
   const RetryButton = () => (
     <Pressable
       onPress={handleRetry}
-      disabled={isRetrying || totalFailures === 0}
+      disabled={isRetrying || !needsRetry()}
       className={`h-10 px-4 rounded-full flex-row items-center justify-center border min-w-[100px] ${
-        isRetrying || totalFailures === 0
+        isRetrying || !needsRetry()
           ? "bg-white-sand border-grey-6"
           : "bg-white border-grey-6"
       }`}
@@ -96,10 +89,10 @@ const QueueSection = ({
       ) : (
         <Text
           className={`font-dm-medium ${
-            totalFailures === 0 ? "text-gray-400" : "text-enaleia-black"
+            !needsRetry() ? "text-gray-400" : "text-enaleia-black"
           }`}
         >
-          Retry All {totalFailures > 0 ? `(${totalFailures})` : ""}
+          Retry
         </Text>
       )}
     </Pressable>

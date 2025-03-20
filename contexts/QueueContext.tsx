@@ -7,7 +7,7 @@ import {
   useCallback,
 } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { MAX_RETRIES, QueueItem, QueueItemStatus } from "@/types/queue";
+import { MAX_RETRIES, QueueItem, QueueItemStatus, ServiceStatus } from "@/types/queue";
 import { processQueueItems } from "@/services/queueProcessor";
 import { QueueEvents, queueEventEmitter } from "@/services/events";
 import { useNetwork } from "./NetworkContext";
@@ -31,7 +31,7 @@ interface QueueContextType {
   queueItems: QueueItem[];
   loadQueueItems: () => Promise<void>;
   updateQueueItems: (items: QueueItem[]) => Promise<void>;
-  retryItems: (items: QueueItem[]) => Promise<void>;
+  retryItems: (items: QueueItem[], service?: "directus" | "eas") => Promise<void>;
   completedCount: number;
 }
 
@@ -231,23 +231,26 @@ export function QueueProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  const retryItems = async (items: QueueItem[]): Promise<void> => {
+  const retryItems = async (items: QueueItem[], service?: "directus" | "eas"): Promise<void> => {
     console.log("Retrying items:", {
       itemsToRetry: items.length,
       itemIds: items.map((i) => i.localId),
+      service,
     });
 
     try {
       // Process items sequentially
       for (const item of items) {
         try {
-          // Reset item to pending state
+          // Reset only the specified service or both if none specified
           const resetItem = {
             ...item,
             status: QueueItemStatus.PENDING,
             retryCount: 0,
             lastError: undefined,
             lastAttempt: undefined,
+            directus: service === "eas" ? item.directus : { status: ServiceStatus.PENDING },
+            eas: service === "directus" ? item.eas : { status: ServiceStatus.PENDING },
           };
 
           // Update queue with reset item
@@ -278,7 +281,7 @@ export function QueueProvider({ children }: { children: React.ReactNode }) {
             break;
           }
 
-          // Update item state to failed
+          // Update item state to failed for the specified service
           const updatedItems = queueItems.map((qi) =>
             qi.localId === item.localId
               ? {
@@ -286,6 +289,8 @@ export function QueueProvider({ children }: { children: React.ReactNode }) {
                   status: QueueItemStatus.FAILED,
                   lastError: errorMessage,
                   lastAttempt: new Date(),
+                  directus: service === "eas" ? qi.directus : { status: ServiceStatus.FAILED, error: errorMessage },
+                  eas: service === "directus" ? qi.eas : { status: ServiceStatus.FAILED, error: errorMessage },
                 }
               : qi
           );

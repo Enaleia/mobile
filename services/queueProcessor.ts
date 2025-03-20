@@ -324,11 +324,6 @@ export async function processQueueItems(
       throw new Error("API URL not configured");
     }
 
-    // Check wallet
-    if (!wallet) {
-      throw new Error("Wallet not initialized");
-    }
-
     // Validate items before processing
     if (itemsToProcess) {
       for (const item of itemsToProcess) {
@@ -410,13 +405,9 @@ export async function processQueueItems(
       return;
     }
 
-    // Process EAS attestation
+    // Get required data including userData
     const requiredData = await fetchRequiredData();
     const { userData, materials, products } = requiredData;
-    const company =
-      typeof userData?.Company === "number"
-        ? undefined
-        : (userData?.Company as Pick<Company, "id" | "name" | "coordinates">);
 
     // Process items one at a time
     for (const item of itemsToProcess || []) {
@@ -444,126 +435,144 @@ export async function processQueueItems(
         });
 
         let directusEvent: MaterialTrackingEvent | undefined;
-        // Get required data including userData
-        const requiredData = await fetchRequiredData();
-        const { userData } = requiredData;
+        // Get company data from userData
+        const company =
+          typeof userData?.Company === "number"
+            ? undefined
+            : (userData?.Company as Pick<Company, "id" | "name" | "coordinates">);
 
-        // Only process Directus if needed
+        // Process Directus if needed
         if (needsDirectus) {
-          // Format location
-          const locationString = item.location?.coords
-            ? `${item.location.coords.latitude},${item.location.coords.longitude}`
-            : undefined;
+          try {
+            // Format location
+            const locationString = item.location?.coords
+              ? `${item.location.coords.latitude},${item.location.coords.longitude}`
+              : undefined;
 
-          // Find collector
-          const collectors = await directusCollectors();
-          let collectorName: string | undefined;
-          if (item.collectorId && collectors) {
-            const collector = collectors.find(
-              (c) => c.collector_identity === item.collectorId
-            );
-            collectorName = collector?.collector_id?.toString();
-          }
+            // Find collector
+            const collectors = await directusCollectors();
+            let collectorName: string | undefined;
+            if (item.collectorId && collectors) {
+              const collector = collectors.find(
+                (c) => c.collector_identity === item.collectorId
+              );
+              collectorName = collector?.collector_id?.toString();
+            }
 
+            // Process Directus
+            const eventData: MaterialTrackingEvent = {
+              action: item.actionId,
+              event_timestamp: new Date(item.date).toISOString(),
+              event_location: locationString,
+              collector_name: collectorName ? parseInt(collectorName, 10) : undefined,
+              company: company?.id,
+              manufactured_products: item.manufacturing?.product ? [item.manufacturing.product] : undefined,
+              Batch_quantity: item.manufacturing?.quantity ?? undefined,
+              weight_per_item: item.manufacturing?.weightInKg?.toString() ?? undefined,
+              event_input_id: [],
+              event_output_id: undefined,
+            };
 
-          // Get company data from userData
-          const company =
-            typeof userData?.Company === "number"
-              ? undefined
-              : (userData?.Company as Pick<Company, "id" | "name" | "coordinates">);
+            directusEvent = await createEvent(eventData);
 
-          // Process Directus
-          directusEvent = await createEvent({
-            action: item.actionId,
-            event_timestamp: new Date(item.date).toISOString(),
-            event_location: locationString,
-            collector_name: collectorName,
-            company: company?.id,
-            manufactured_products: item.manufacturing?.product ?? undefined,
-            Batch_quantity: item.manufacturing?.quantity ?? undefined,
-            weight_per_item:
-              item.manufacturing?.weightInKg?.toString() ?? undefined,
-          } as MaterialTrackingEvent);
+            if (!directusEvent || !directusEvent.event_id) {
+              throw new Error("No event ID returned from API");
+            }
 
-          if (!directusEvent || !directusEvent.event_id) {
-            throw new Error("No event ID returned from API");
-          }
+            // Process materials sequentially
+            if (item.incomingMaterials?.length) {
+              for (const material of item.incomingMaterials) {
+                if (!material) continue;
+                const result = await createMaterialInput({
+                  input_Material: material.id,
+                  input_code: item.collectorId || material.code || "",
+                  input_weight: material.weight || 0,
+                  event_id: directusEvent.event_id,
+                } as MaterialTrackingEventInput);
 
-
-          // Process materials sequentially
-          if (item.incomingMaterials?.length) {
-            for (const material of item.incomingMaterials) {
-              if (!material) continue;
-              const result = await createMaterialInput({
-                input_Material: material.id,
-                input_code: item.collectorId || material.code || "",
-                input_weight: material.weight || 0,
-                event_id: directusEvent.event_id,
-              } as MaterialTrackingEventInput);
-
-              if (!result) {
-                throw new Error(
-                  `Failed to create input material for ${material.id}`
-                );
+                if (!result) {
+                  throw new Error(
+                    `Failed to create input material for ${material.id}`
+                  );
+                }
               }
             }
+
+            // Process outgoing materials sequentially
+            if (item.outgoingMaterials?.length && directusEvent?.event_id) {
+              for (const material of item.outgoingMaterials) {
+                if (!material) continue;
+                const result = await createMaterialOutput({
+                  output_material: material.id,
+                  output_code: material.code || "",
+                  output_weight: material.weight || 0,
+                  event_id: directusEvent.event_id,
+                } as MaterialTrackingEventOutput);
+
+                if (!result) {
+                  throw new Error(
+                    `Failed to create output material for ${material.id}`
+                  );
+                }
+              }
+            }
+
+            // Update item cache with Directus success
+            await updateItemInCache(item.localId, {
+              directus: { status: ServiceStatus.COMPLETED },
+            });
+          } catch (error) {
+            console.error(`Error processing Directus for item ${item.localId}:`, error);
+            const errorMessage = error instanceof Error ? error.message : "Unknown error";
+            await updateItemInCache(item.localId, {
+              directus: { status: ServiceStatus.FAILED, error: errorMessage },
+            });
+            continue;
           }
-
-          if (item.outgoingMaterials?.length) {
-            await Promise.all(
-              item.outgoingMaterials
-                .filter((m) => m)
-                .map(async (material) => {
-                  const result = await createMaterialOutput({
-                    output_material: material.id,
-                    output_code: material.code || "",
-                    output_weight: material.weight || 0,
-                    event_id: directusEvent.event_id,
-                  } as MaterialTrackingEventOutput);
-
-                  if (!result) {
-                    throw new Error(
-                      `Failed to create output material for ${material.id}`
-                    );
-                  }
-                })
-            );
-          }
-
-          // Update item cache with Directus success
-          await updateItemInCache(item.localId, {
-            directus: { status: ServiceStatus.COMPLETED },
-          });
         }
 
-        // Only process EAS if needed
-        if (needsEAS) {
-          // Process EAS attestation
-          const easResult = await processEASAttestation(
-            item,
-            requiredData,
-            wallet!
-          );
+        // Process EAS if needed and wallet is available
+        if (needsEAS && wallet) {
+          try {
+            // Process EAS attestation
+            const easResult = await processEASAttestation(
+              item,
+              requiredData,
+              wallet
+            );
 
+            // If we have a new Directus event, update it with EAS UID
+            if (directusEvent?.event_id) {
+              const directusUpdatedEvent = await updateEvent(directusEvent.event_id, {
+                EAS_UID: easResult.uid,
+              } as Partial<MaterialTrackingEvent>);
 
-          // If we have a new Directus event, update it with EAS UID
-          if (directusEvent?.event_id) {
-            const directusUpdatedEvent = await updateEvent(directusEvent.event_id, {
-              EAS_UID: easResult.uid,
-            } as Partial<MaterialTrackingEvent>);
-
-
-            if (!directusUpdatedEvent || !directusUpdatedEvent.event_id) {
-              throw new Error("Update EAS_UID failed!");
+              if (!directusUpdatedEvent || !directusUpdatedEvent.event_id) {
+                throw new Error("Update EAS_UID failed!");
+              }
             }
-          }
 
-          // Update item cache with EAS success
+            // Update item cache with EAS success
+            await updateItemInCache(item.localId, {
+              eas: {
+                status: ServiceStatus.COMPLETED,
+                txHash: easResult.uid,
+                network: easResult.network,
+              },
+            });
+          } catch (error) {
+            console.error(`Error processing EAS for item ${item.localId}:`, error);
+            const errorMessage = error instanceof Error ? error.message : "Unknown error";
+            await updateItemInCache(item.localId, {
+              eas: { status: ServiceStatus.FAILED, error: errorMessage },
+            });
+          }
+        } else if (needsEAS && !wallet) {
+          // If EAS is needed but no wallet is available
           await updateItemInCache(item.localId, {
-            eas: {
-              status: ServiceStatus.COMPLETED,
-              txHash: easResult.uid,
-              network: easResult.network,
+            eas: { 
+              status: ServiceStatus.FAILED, 
+              error: "Wallet not initialized" 
             },
           });
         }
@@ -583,6 +592,9 @@ export async function processQueueItems(
             eas: { status: ServiceStatus.PENDING },
           });
         }
+
+        // Add delay between items
+        await new Promise((resolve) => setTimeout(resolve, 1000));
       } catch (error) {
         console.error(`Error processing item ${item.localId}:`, error);
         const errorMessage =
@@ -597,9 +609,6 @@ export async function processQueueItems(
           eas: { status: ServiceStatus.FAILED, error: errorMessage },
         });
       }
-
-      // Add delay between items
-      await new Promise((resolve) => setTimeout(resolve, 1000));
     }
   } catch (error) {
     console.error("Error in processQueueItems:", error);
