@@ -106,6 +106,35 @@ export const mapToEASSchema = (
  * Validates the EAS schema data before attestation
  */
 export const validateEASSchema = (data: EnaleiaEASSchema): boolean => {
+  // Filter out invalid entries from arrays
+  const validIncomingMaterials = data.incomingMaterials.filter((_, i) => 
+    data.incomingWeightsKg[i] > 0 && data.incomingCodes[i]
+  );
+  const validIncomingWeights = data.incomingWeightsKg.filter((w, i) => 
+    w > 0 && data.incomingCodes[i]
+  );
+  const validIncomingCodes = data.incomingCodes.filter((c, i) => 
+    c && data.incomingWeightsKg[i] > 0
+  );
+
+  const validOutgoingMaterials = data.outgoingMaterials.filter((_, i) => 
+    data.outgoingWeightsKg[i] > 0 && data.outgoingCodes[i]
+  );
+  const validOutgoingWeights = data.outgoingWeightsKg.filter((w, i) => 
+    w > 0 && data.outgoingCodes[i]
+  );
+  const validOutgoingCodes = data.outgoingCodes.filter((c, i) => 
+    c && data.outgoingWeightsKg[i] > 0
+  );
+
+  // Update the arrays in the data object
+  data.incomingMaterials = validIncomingMaterials;
+  data.incomingWeightsKg = validIncomingWeights;
+  data.incomingCodes = validIncomingCodes;
+  data.outgoingMaterials = validOutgoingMaterials;
+  data.outgoingWeightsKg = validOutgoingWeights;
+  data.outgoingCodes = validOutgoingCodes;
+
   if (
     !Array.isArray(data.incomingMaterials) ||
     !Array.isArray(data.incomingWeightsKg) ||
@@ -118,9 +147,8 @@ export const validateEASSchema = (data: EnaleiaEASSchema): boolean => {
   }
 
   if (
-    data.incomingMaterials.length > 0 &&
-    (data.incomingMaterials.length !== data.incomingWeightsKg.length ||
-      data.incomingMaterials.length !== data.incomingCodes.length)
+    data.incomingMaterials.length !== data.incomingWeightsKg.length ||
+    data.incomingMaterials.length !== data.incomingCodes.length
   ) {
     throw new Error(
       "Incoming materials, weights, and codes must have matching lengths"
@@ -128,9 +156,8 @@ export const validateEASSchema = (data: EnaleiaEASSchema): boolean => {
   }
 
   if (
-    data.outgoingMaterials.length > 0 &&
-    (data.outgoingMaterials.length !== data.outgoingWeightsKg.length ||
-      data.outgoingMaterials.length !== data.outgoingCodes.length)
+    data.outgoingMaterials.length !== data.outgoingWeightsKg.length ||
+    data.outgoingMaterials.length !== data.outgoingCodes.length
   ) {
     throw new Error(
       "Outgoing materials, weights, and codes must have matching lengths"
