@@ -395,6 +395,14 @@ export async function processQueueItems(
       return;
     }
 
+    // Process EAS attestation
+    const requiredData = await fetchRequiredData();
+    const { userData, materials, products } = requiredData;
+    const company =
+      typeof userData?.Company === "number"
+        ? undefined
+        : (userData?.Company as Pick<Company, "id" | "name" | "coordinates">);
+
     // Process items one at a time
     for (const item of itemsToProcess || []) {
       try {
@@ -432,7 +440,7 @@ export async function processQueueItems(
           event_timestamp: new Date(item.date).toISOString(),
           event_location: locationString,
           collector_name: collectorName,
-          company: item.company,
+          company: company?.id,
           manufactured_products: item.manufacturing?.product ?? undefined,
           Batch_quantity: item.manufacturing?.quantity ?? undefined,
           weight_per_item:
@@ -483,8 +491,6 @@ export async function processQueueItems(
           );
         }
 
-        // Process EAS attestation
-        const requiredData = await fetchRequiredData();
         const easResult = await processEASAttestation(
           item,
           requiredData,
