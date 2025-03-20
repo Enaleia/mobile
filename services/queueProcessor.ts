@@ -410,6 +410,14 @@ export async function processQueueItems(
       return;
     }
 
+    // Process EAS attestation
+    const requiredData = await fetchRequiredData();
+    const { userData, materials, products } = requiredData;
+    const company =
+      typeof userData?.Company === "number"
+        ? undefined
+        : (userData?.Company as Pick<Company, "id" | "name" | "coordinates">);
+
     // Process items one at a time
     for (const item of itemsToProcess || []) {
       try {
@@ -457,6 +465,7 @@ export async function processQueueItems(
             collectorName = collector?.collector_id?.toString();
           }
 
+
           // Get company data from userData
           const company =
             typeof userData?.Company === "number"
@@ -479,6 +488,7 @@ export async function processQueueItems(
           if (!directusEvent || !directusEvent.event_id) {
             throw new Error("No event ID returned from API");
           }
+
 
           // Process materials sequentially
           if (item.incomingMaterials?.length) {
@@ -535,11 +545,13 @@ export async function processQueueItems(
             wallet!
           );
 
+
           // If we have a new Directus event, update it with EAS UID
           if (directusEvent?.event_id) {
             const directusUpdatedEvent = await updateEvent(directusEvent.event_id, {
               EAS_UID: easResult.uid,
             } as Partial<MaterialTrackingEvent>);
+
 
             if (!directusUpdatedEvent || !directusUpdatedEvent.event_id) {
               throw new Error("Update EAS_UID failed!");
