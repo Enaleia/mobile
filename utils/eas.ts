@@ -78,11 +78,9 @@ export const mapToEASSchema = (
           ""
       ) || [],
     incomingWeightsKg,
-    incomingCodes: [
-      ...(form.incomingMaterials?.map(
-        (m) => m.code || form.collectorId || ""
-      ) || []),
-    ].filter(Boolean),
+    incomingCodes: form.incomingMaterials?.map(
+      (m) => m.code || form.collectorId || ""
+    ) || [],
 
     outgoingMaterials:
       form.outgoingMaterials?.map(
@@ -91,7 +89,9 @@ export const mapToEASSchema = (
           ""
       ) || [],
     outgoingWeightsKg,
-    outgoingCodes: form.outgoingMaterials?.map((m) => m.code || "") || [],
+    outgoingCodes: form.outgoingMaterials?.map(
+      (m) => m.code || ""
+    ) || [],
 
     productName: form.manufacturing?.product
       ? productsData.find((p) => p.product_id === form.manufacturing?.product)
@@ -106,26 +106,14 @@ export const mapToEASSchema = (
  * Validates the EAS schema data before attestation
  */
 export const validateEASSchema = (data: EnaleiaEASSchema): boolean => {
-  // Filter out invalid entries from arrays
-  const validIncomingMaterials = data.incomingMaterials.filter((_, i) => 
-    data.incomingWeightsKg[i] > 0 && data.incomingCodes[i]
-  );
-  const validIncomingWeights = data.incomingWeightsKg.filter((w, i) => 
-    w > 0 && data.incomingCodes[i]
-  );
-  const validIncomingCodes = data.incomingCodes.filter((c, i) => 
-    c && data.incomingWeightsKg[i] > 0
-  );
+  // Keep all materials, even those with zero weights or empty codes
+  const validIncomingMaterials = data.incomingMaterials;
+  const validIncomingWeights = data.incomingWeightsKg;
+  const validIncomingCodes = data.incomingCodes;
 
-  const validOutgoingMaterials = data.outgoingMaterials.filter((_, i) => 
-    data.outgoingWeightsKg[i] > 0 && data.outgoingCodes[i]
-  );
-  const validOutgoingWeights = data.outgoingWeightsKg.filter((w, i) => 
-    w > 0 && data.outgoingCodes[i]
-  );
-  const validOutgoingCodes = data.outgoingCodes.filter((c, i) => 
-    c && data.outgoingWeightsKg[i] > 0
-  );
+  const validOutgoingMaterials = data.outgoingMaterials;
+  const validOutgoingWeights = data.outgoingWeightsKg;
+  const validOutgoingCodes = data.outgoingCodes;
 
   // Update the arrays in the data object
   data.incomingMaterials = validIncomingMaterials;
