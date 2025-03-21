@@ -3,6 +3,7 @@ import {
   createMaterialInput,
   createMaterialOutput,
   updateEvent,
+  getEvent,
 } from "@/services/directus";
 import { EASService, EAS_CONSTANTS } from "@/services/eas";
 import { QueueEvents, queueEventEmitter } from "@/services/events";
@@ -303,344 +304,204 @@ export async function processQueueItems(
   itemsToProcess?: QueueItem[],
   wallet?: WalletInfo | null
 ) {
-  console.log("processQueueItems called:", {
-    itemCount: itemsToProcess?.length,
-    isProcessing,
-  });
-
-  // Use a local processing flag instead of global
-  const processingKey = `processing_${Date.now()}`;
-  if (await AsyncStorage.getItem(processingKey)) {
-    console.log("Queue processing already in progress, skipping");
+  if (!itemsToProcess?.length) {
+    console.log("No items to process");
     return;
   }
 
-  try {
-    await AsyncStorage.setItem(processingKey, "true");
-
-    // Check if we can reach the API
-    const apiUrl = process.env.EXPO_PUBLIC_API_URL;
-    if (!apiUrl) {
-      throw new Error("API URL not configured");
+  // Check network connectivity
+  const isConnected = (await NetInfo.fetch()).isConnected;
+  if (!isConnected) {
+    console.log("No network connection, marking items as offline");
+    for (const item of itemsToProcess) {
+      await updateItemInCache(item.localId, {
+        status: QueueItemStatus.OFFLINE,
+        lastError: "No network connection",
+      });
     }
+    return;
+  }
 
-    // Validate items before processing
-    if (itemsToProcess) {
-      for (const item of itemsToProcess) {
-        // Validate weights
-        const weights = [
-          ...(item.incomingMaterials?.map((m) => m.weight) || []),
-          ...(item.outgoingMaterials?.map((m) => m.weight) || []),
-        ];
-        if (weights.some((w) => w != null && (w < 0 || !isFinite(w)))) {
-          throw new Error(`Invalid weight value in item ${item.localId}`);
-        }
+  // Get required data
+  const requiredData = await fetchRequiredData();
+  const { userData } = requiredData;
 
-        // Validate dates
-        if (new Date(item.date) > new Date()) {
-          throw new Error(`Future date not allowed in item ${item.localId}`);
-        }
+  // Process items sequentially
+  for (const item of itemsToProcess) {
+    console.log(`Processing item ${item.localId}:`, {
+      directusStatus: item.directus?.status,
+      easStatus: item.eas?.status,
+    });
 
-        // Validate coordinates if present
-        if (item.location?.coords) {
-          const { latitude, longitude } = item.location.coords;
-          if (
-            latitude < -90 ||
-            latitude > 90 ||
-            longitude < -180 ||
-            longitude > 180
-          ) {
-            throw new Error(`Invalid coordinates in item ${item.localId}`);
-          }
-        }
-      }
-    }
+    let eventId: number | undefined;
 
-    // Test API connection
-    try {
-      await fetch(apiUrl);
-    } catch (error) {
-      throw new Error(
-        "Unable to reach server. Please check your internet connection."
-      );
-    }
-
-    // Ensure we have a valid token before proceeding
-    const validToken = await ensureValidToken();
-    if (!validToken) {
-      console.log("No valid token available, marking items as offline");
-      if (itemsToProcess) {
-        for (const item of itemsToProcess) {
-          await updateItemInCache(item.localId, {
-            status: QueueItemStatus.OFFLINE,
-            lastError: "Authentication required - please log in again",
-          });
-        }
-      }
-      return;
-    }
-
-    if (!itemsToProcess) {
-      const allItems = await getActiveQueue();
-      itemsToProcess = allItems.filter(
-        (item) =>
-          item.status === QueueItemStatus.PENDING ||
-          item.status === QueueItemStatus.OFFLINE
-      );
-    }
-
-    if (!itemsToProcess?.length) {
-      console.log("No items to process");
-      return;
-    }
-
-    const isConnected = (await NetInfo.fetch()).isConnected;
-    if (!isConnected) {
-      console.log("No connection, marking items as offline");
-      for (const item of itemsToProcess) {
-        await updateItemInCache(item.localId, {
-          status: QueueItemStatus.OFFLINE,
-        });
-      }
-      return;
-    }
-
-    // Get required data including userData
-    const requiredData = await fetchRequiredData();
-    const { userData, materials, products } = requiredData;
-
-    // Process items one at a time
-    for (const item of itemsToProcess || []) {
+    // Process Directus if needed
+    if (item.directus?.status !== ServiceStatus.COMPLETED) {
       try {
-        // Skip if item is already completed
-        if (item.status === QueueItemStatus.COMPLETED) {
-          continue;
+        console.log(`Processing Directus for item ${item.localId}`);
+        
+        // Prepare event data
+        const locationString = item.location?.coords
+          ? `${item.location.coords.latitude},${item.location.coords.longitude}`
+          : undefined;
+
+        const collectors = await directusCollectors();
+        let collectorName: string | undefined;
+        if (item.collectorId && collectors) {
+          const collector = collectors.find(
+            (c) => c.collector_identity === item.collectorId
+          );
+          collectorName = collector?.collector_id?.toString();
         }
 
-        // Check if Directus was already successful
-        const needsDirectus = item.directus?.status !== ServiceStatus.COMPLETED;
-        const needsEAS = item.eas?.status !== ServiceStatus.COMPLETED;
+        const eventData: MaterialTrackingEvent = {
+          action: item.actionId,
+          event_timestamp: new Date(item.date).toISOString(),
+          event_location: locationString,
+          collector_name: collectorName ? parseInt(collectorName, 10) : undefined,
+          company: typeof userData?.Company === 'number' ? userData.Company : userData?.Company?.id,
+          manufactured_products: item.manufacturing?.product ? [item.manufacturing.product] : undefined,
+          Batch_quantity: item.manufacturing?.quantity ?? undefined,
+          weight_per_item: item.manufacturing?.weightInKg?.toString() ?? undefined,
+          event_input_id: [],
+          event_output_id: [],
+        };
 
-        if (!needsDirectus && !needsEAS) {
-          console.log(`Item ${item.localId} already processed by both services, skipping`);
-          continue;
+        // Create event
+        const createdEvent = await createEvent(eventData);
+        if (!createdEvent?.event_id) {
+          throw new Error("Failed to create Directus event");
         }
+        eventId = createdEvent.event_id;
 
-        // Update item to processing state
-        await updateItemInCache(item.localId, {
-          status: QueueItemStatus.PROCESSING,
-          directus: needsDirectus ? { status: ServiceStatus.PROCESSING } : item.directus,
-          eas: needsEAS ? { status: ServiceStatus.PROCESSING } : item.eas,
-          lastAttempt: new Date(),
-        });
-
-        let directusEvent: MaterialTrackingEvent | undefined;
-        // Get company data from userData
-        const company =
-          typeof userData?.Company === "number"
-            ? undefined
-            : (userData?.Company as Pick<Company, "id" | "name" | "coordinates">);
-
-        // Process Directus if needed
-        if (needsDirectus) {
-          try {
-            // Format location
-            const locationString = item.location?.coords
-              ? `${item.location.coords.latitude},${item.location.coords.longitude}`
-              : undefined;
-
-            // Find collector
-            const collectors = await directusCollectors();
-            let collectorName: string | undefined;
-            if (item.collectorId && collectors) {
-              const collector = collectors.find(
-                (c) => c.collector_identity === item.collectorId
-              );
-              collectorName = collector?.collector_id?.toString();
-            }
-
-            // Process Directus
-            const eventData: MaterialTrackingEvent = {
-              action: item.actionId,
-              event_timestamp: new Date(item.date).toISOString(),
-              event_location: locationString,
-              collector_name: collectorName ? parseInt(collectorName, 10) : undefined,
-              company: company?.id,
-              manufactured_products: item.manufacturing?.product ?? undefined,
-              Batch_quantity: item.manufacturing?.quantity ?? undefined,
-              weight_per_item: item.manufacturing?.weightInKg?.toString() ?? undefined,
-              event_input_id: [],
-              event_output_id: undefined,
-            };
-
-            directusEvent = await createEvent(eventData);
-
-            if (!directusEvent || !directusEvent.event_id) {
-              throw new Error("No event ID returned from API");
-            }
-
-            // Process materials sequentially
-            if (item.incomingMaterials?.length) {
-              for (const material of item.incomingMaterials) {
-                if (!material) continue;
-                const result = await createMaterialInput({
-                  input_Material: material.id,
-                  input_code: item.collectorId || material.code || "",
-                  input_weight: material.weight || 0,
-                  event_id: directusEvent.event_id,
-                } as MaterialTrackingEventInput);
-
-                if (!result) {
-                  throw new Error(
-                    `Failed to create input material for ${material.id}`
-                  );
-                }
-                // Add delay between material operations
-                await new Promise((resolve) => setTimeout(resolve, 1000));
-              }
-            }
-
-            // Process outgoing materials sequentially
-            if (item.outgoingMaterials?.length && directusEvent?.event_id) {
-              for (const material of item.outgoingMaterials) {
-                if (!material) continue;
-                const result = await createMaterialOutput({
-                  output_material: material.id,
-                  output_code: material.code || "",
-                  output_weight: material.weight || 0,
-                  event_id: directusEvent.event_id,
-                } as MaterialTrackingEventOutput);
-
-                if (!result) {
-                  throw new Error(
-                    `Failed to create output material for ${material.id}`
-                  );
-                }
-                // Add delay between material operations
-                await new Promise((resolve) => setTimeout(resolve, 1000));
-              }
-            }
-
-            // Update item cache with Directus success
-            await updateItemInCache(item.localId, {
-              directus: { status: ServiceStatus.COMPLETED },
+        // Process materials
+        if (item.incomingMaterials?.length) {
+          for (const material of item.incomingMaterials) {
+            if (!material) continue;
+            await createMaterialInput({
+              input_Material: material.id,
+              input_code: item.collectorId || material.code || "",
+              input_weight: material.weight || 0,
+              event_id: eventId,
             });
-
-            // Add delay before processing EAS
-            await new Promise((resolve) => setTimeout(resolve, 2000));
-
-            // Process EAS if needed and wallet is available
-            if (needsEAS && wallet) {
-              try {
-                // Process EAS attestation
-                const easResult = await processEASAttestation(
-                  item,
-                  requiredData,
-                  wallet
-                );
-
-                // If we have a new Directus event, update it with EAS UID
-                if (directusEvent?.event_id) {
-                  const directusUpdatedEvent = await updateEvent(directusEvent.event_id, {
-                    EAS_UID: easResult.uid,
-                  } as Partial<MaterialTrackingEvent>);
-
-                  if (!directusUpdatedEvent || !directusUpdatedEvent.event_id) {
-                    throw new Error("Update EAS_UID failed!");
-                  }
-                }
-
-                // Update item cache with EAS success
-                await updateItemInCache(item.localId, {
-                  eas: {
-                    status: ServiceStatus.COMPLETED,
-                    txHash: easResult.uid,
-                    network: easResult.network,
-                  },
-                });
-              } catch (error) {
-                console.error(`Error processing EAS for item ${item.localId}:`, error);
-                const errorMessage = error instanceof Error ? error.message : "Unknown error";
-                await updateItemInCache(item.localId, {
-                  eas: { status: ServiceStatus.FAILED, error: errorMessage },
-                });
-              }
-            } else if (needsEAS && !wallet) {
-              // If EAS is needed but no wallet is available
-              await updateItemInCache(item.localId, {
-                eas: { 
-                  status: ServiceStatus.FAILED, 
-                  error: "Wallet not initialized" 
-                },
-              });
-            }
-
-            // Check if both services are now complete
-            const updatedItem = (await getActiveQueue()).find(i => i.localId === item.localId);
-            if (updatedItem?.directus?.status === ServiceStatus.COMPLETED && 
-                updatedItem?.eas?.status === ServiceStatus.COMPLETED) {
-              await updateItemInCache(item.localId, {
-                status: QueueItemStatus.COMPLETED,
-              });
-            } else if (updatedItem?.directus?.status === ServiceStatus.COMPLETED) {
-              // If only Directus is complete, update the overall status to reflect this
-              await updateItemInCache(item.localId, {
-                status: QueueItemStatus.PENDING,
-                directus: { status: ServiceStatus.COMPLETED },
-                eas: { status: ServiceStatus.PENDING },
-              });
-            }
-
-            // Add delay between items
-            await new Promise((resolve) => setTimeout(resolve, 2000));
-          } catch (error) {
-            console.error(`Error processing Directus for item ${item.localId}:`, error);
-            const errorMessage = error instanceof Error ? error.message : "Unknown error";
-            await updateItemInCache(item.localId, {
-              directus: { status: ServiceStatus.FAILED, error: errorMessage },
-            });
-            continue;
           }
         }
 
-        // Check if both services are now complete
-        const updatedItem = (await getActiveQueue()).find(i => i.localId === item.localId);
-        if (updatedItem?.directus?.status === ServiceStatus.COMPLETED && 
-            updatedItem?.eas?.status === ServiceStatus.COMPLETED) {
-          await updateItemInCache(item.localId, {
-            status: QueueItemStatus.COMPLETED,
-          });
-        } else if (updatedItem?.directus?.status === ServiceStatus.COMPLETED) {
-          // If only Directus is complete, update the overall status to reflect this
-          await updateItemInCache(item.localId, {
-            status: QueueItemStatus.PENDING,
-            directus: { status: ServiceStatus.COMPLETED },
-            eas: { status: ServiceStatus.PENDING },
-          });
+        if (item.outgoingMaterials?.length) {
+          for (const material of item.outgoingMaterials) {
+            if (!material) continue;
+            await createMaterialOutput({
+              output_material: material.id,
+              output_code: material.code || "",
+              output_weight: material.weight || 0,
+              event_id: eventId,
+            });
+          }
         }
 
-        // Add delay between items
-        await new Promise((resolve) => setTimeout(resolve, 2000));
-      } catch (error) {
-        console.error(`Error processing item ${item.localId}:`, error);
-        const errorMessage =
-          error instanceof Error ? error.message : "Unknown error";
-
         await updateItemInCache(item.localId, {
-          status:
-            item.retryCount >= MAX_RETRIES
-              ? QueueItemStatus.FAILED
-              : QueueItemStatus.PENDING,
-          directus: { status: ServiceStatus.FAILED, error: errorMessage },
-          eas: { status: ServiceStatus.FAILED, error: errorMessage },
+          directus: { 
+            status: ServiceStatus.COMPLETED,
+            error: undefined
+          },
+        });
+        console.log(`Directus processing completed for item ${item.localId}`);
+      } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : "Unknown error";
+        console.error(`Directus processing failed for item ${item.localId}:`, errorMessage);
+        await updateItemInCache(item.localId, {
+          directus: { 
+            status: ServiceStatus.FAILED, 
+            error: errorMessage
+          },
         });
       }
     }
-  } catch (error) {
-    console.error("Error in processQueueItems:", error);
-    throw error;
-  } finally {
-    await AsyncStorage.removeItem(processingKey);
-    queueEventEmitter.emit(QueueEvents.UPDATED);
+
+    // Process EAS independently if needed
+    if (item.eas?.status !== ServiceStatus.COMPLETED) {
+      if (!wallet) {
+        const errorMessage = "Wallet not initialized";
+        console.log(`EAS processing skipped for item ${item.localId}: ${errorMessage}`);
+        await updateItemInCache(item.localId, {
+          eas: { 
+            status: ServiceStatus.FAILED, 
+            error: errorMessage
+          },
+        });
+        continue;
+      }
+
+      try {
+        console.log(`Processing EAS for item ${item.localId}`);
+        
+        // Check and fund wallet if needed
+        let balance = await getWalletBalance(wallet.address);
+        if (!balance) {
+          throw new Error("Could not retrieve wallet balance");
+        }
+
+        if (parseFloat(balance) < EAS_CONSTANTS.MINIMUM_BALANCE) {
+          console.log(`Funding wallet for item ${item.localId}`);
+          await fundWallet(wallet.address);
+          balance = await getWalletBalance(wallet.address);
+          if (!balance || parseFloat(balance) < EAS_CONSTANTS.MINIMUM_BALANCE) {
+            throw new Error(`Insufficient funds after funding attempt: ${balance}`);
+          }
+        }
+
+        // Process EAS attestation
+        const easResult = await processEASAttestation(item, requiredData, wallet);
+        console.log(`EAS processing completed for item ${item.localId}:`, easResult);
+
+        // Update Directus with EAS UID if we have a successful event
+        if (eventId) {
+          try {
+            await updateEvent(eventId, {
+              EAS_UID: easResult.uid,
+            });
+            console.log(`Updated Directus event ${eventId} with EAS UID: ${easResult.uid}`);
+          } catch (error) {
+            console.error(`Failed to update Directus with EAS UID for item ${item.localId}:`, error);
+          }
+        }
+
+        await updateItemInCache(item.localId, {
+          eas: {
+            status: ServiceStatus.COMPLETED,
+            error: undefined,
+            txHash: easResult.uid,
+            network: easResult.network,
+          },
+        });
+      } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : "Unknown error";
+        console.error(`EAS processing failed for item ${item.localId}:`, errorMessage);
+        await updateItemInCache(item.localId, {
+          eas: { 
+            status: ServiceStatus.FAILED, 
+            error: errorMessage
+          },
+        });
+      }
+    }
+
+    // Update final item status
+    const updatedItem = (await getActiveQueue()).find(i => i.localId === item.localId);
+    if (updatedItem?.directus?.status === ServiceStatus.COMPLETED && 
+        updatedItem?.eas?.status === ServiceStatus.COMPLETED) {
+      console.log(`Item ${item.localId} completed successfully`);
+      await updateItemInCache(item.localId, {
+        status: QueueItemStatus.COMPLETED,
+      });
+    } else {
+      console.log(`Item ${item.localId} still pending:`, {
+        directus: updatedItem?.directus?.status,
+        eas: updatedItem?.eas?.status,
+      });
+      await updateItemInCache(item.localId, {
+        status: QueueItemStatus.PENDING,
+      });
+    }
   }
 }

@@ -88,3 +88,11 @@ export async function updateEvent(
     throw formatDirectusError("Events", error);
   }
 }
+
+export async function getEvent(eventId: number) {
+  try {
+    return await directus.request(readItems("Events", { filter: { event_id: { _eq: eventId } } }));
+  } catch (error: any) {
+    throw formatDirectusError("Events", error);
+  }
+}
