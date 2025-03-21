@@ -246,7 +246,7 @@ export function QueueProvider({ children }: { children: React.ReactNode }) {
           const resetItem = {
             ...item,
             status: QueueItemStatus.PENDING,
-            retryCount: 0,
+            retryCount: (item.retryCount || 0) + 1,
             lastError: undefined,
             lastAttempt: undefined,
             directus: service === "eas" ? item.directus : { status: ServiceStatus.PENDING },
