@@ -466,7 +466,7 @@ export async function processQueueItems(
               event_location: locationString,
               collector_name: collectorName ? parseInt(collectorName, 10) : undefined,
               company: company?.id,
-              manufactured_products: item.manufacturing?.product ? [item.manufacturing.product] : undefined,
+              manufactured_products: item.manufacturing?.product ?? undefined,
               Batch_quantity: item.manufacturing?.quantity ?? undefined,
               weight_per_item: item.manufacturing?.weightInKg?.toString() ?? undefined,
               event_input_id: [],
@@ -495,6 +495,8 @@ export async function processQueueItems(
                     `Failed to create input material for ${material.id}`
                   );
                 }
+                // Add delay between material operations
+                await new Promise((resolve) => setTimeout(resolve, 1000));
               }
             }
 
@@ -514,6 +516,8 @@ export async function processQueueItems(
                     `Failed to create output material for ${material.id}`
                   );
                 }
+                // Add delay between material operations
+                await new Promise((resolve) => setTimeout(resolve, 1000));
               }
             }
 
@@ -521,6 +525,74 @@ export async function processQueueItems(
             await updateItemInCache(item.localId, {
               directus: { status: ServiceStatus.COMPLETED },
             });
+
+            // Add delay before processing EAS
+            await new Promise((resolve) => setTimeout(resolve, 2000));
+
+            // Process EAS if needed and wallet is available
+            if (needsEAS && wallet) {
+              try {
+                // Process EAS attestation
+                const easResult = await processEASAttestation(
+                  item,
+                  requiredData,
+                  wallet
+                );
+
+                // If we have a new Directus event, update it with EAS UID
+                if (directusEvent?.event_id) {
+                  const directusUpdatedEvent = await updateEvent(directusEvent.event_id, {
+                    EAS_UID: easResult.uid,
+                  } as Partial<MaterialTrackingEvent>);
+
+                  if (!directusUpdatedEvent || !directusUpdatedEvent.event_id) {
+                    throw new Error("Update EAS_UID failed!");
+                  }
+                }
+
+                // Update item cache with EAS success
+                await updateItemInCache(item.localId, {
+                  eas: {
+                    status: ServiceStatus.COMPLETED,
+                    txHash: easResult.uid,
+                    network: easResult.network,
+                  },
+                });
+              } catch (error) {
+                console.error(`Error processing EAS for item ${item.localId}:`, error);
+                const errorMessage = error instanceof Error ? error.message : "Unknown error";
+                await updateItemInCache(item.localId, {
+                  eas: { status: ServiceStatus.FAILED, error: errorMessage },
+                });
+              }
+            } else if (needsEAS && !wallet) {
+              // If EAS is needed but no wallet is available
+              await updateItemInCache(item.localId, {
+                eas: { 
+                  status: ServiceStatus.FAILED, 
+                  error: "Wallet not initialized" 
+                },
+              });
+            }
+
+            // Check if both services are now complete
+            const updatedItem = (await getActiveQueue()).find(i => i.localId === item.localId);
+            if (updatedItem?.directus?.status === ServiceStatus.COMPLETED && 
+                updatedItem?.eas?.status === ServiceStatus.COMPLETED) {
+              await updateItemInCache(item.localId, {
+                status: QueueItemStatus.COMPLETED,
+              });
+            } else if (updatedItem?.directus?.status === ServiceStatus.COMPLETED) {
+              // If only Directus is complete, update the overall status to reflect this
+              await updateItemInCache(item.localId, {
+                status: QueueItemStatus.PENDING,
+                directus: { status: ServiceStatus.COMPLETED },
+                eas: { status: ServiceStatus.PENDING },
+              });
+            }
+
+            // Add delay between items
+            await new Promise((resolve) => setTimeout(resolve, 2000));
           } catch (error) {
             console.error(`Error processing Directus for item ${item.localId}:`, error);
             const errorMessage = error instanceof Error ? error.message : "Unknown error";
@@ -529,52 +601,6 @@ export async function processQueueItems(
             });
             continue;
           }
-        }
-
-        // Process EAS if needed and wallet is available
-        if (needsEAS && wallet) {
-          try {
-            // Process EAS attestation
-            const easResult = await processEASAttestation(
-              item,
-              requiredData,
-              wallet
-            );
-
-            // If we have a new Directus event, update it with EAS UID
-            if (directusEvent?.event_id) {
-              const directusUpdatedEvent = await updateEvent(directusEvent.event_id, {
-                EAS_UID: easResult.uid,
-              } as Partial<MaterialTrackingEvent>);
-
-              if (!directusUpdatedEvent || !directusUpdatedEvent.event_id) {
-                throw new Error("Update EAS_UID failed!");
-              }
-            }
-
-            // Update item cache with EAS success
-            await updateItemInCache(item.localId, {
-              eas: {
-                status: ServiceStatus.COMPLETED,
-                txHash: easResult.uid,
-                network: easResult.network,
-              },
-            });
-          } catch (error) {
-            console.error(`Error processing EAS for item ${item.localId}:`, error);
-            const errorMessage = error instanceof Error ? error.message : "Unknown error";
-            await updateItemInCache(item.localId, {
-              eas: { status: ServiceStatus.FAILED, error: errorMessage },
-            });
-          }
-        } else if (needsEAS && !wallet) {
-          // If EAS is needed but no wallet is available
-          await updateItemInCache(item.localId, {
-            eas: { 
-              status: ServiceStatus.FAILED, 
-              error: "Wallet not initialized" 
-            },
-          });
         }
 
         // Check if both services are now complete
@@ -594,7 +620,7 @@ export async function processQueueItems(
         }
 
         // Add delay between items
-        await new Promise((resolve) => setTimeout(resolve, 1000));
+        await new Promise((resolve) => setTimeout(resolve, 2000));
       } catch (error) {
         console.error(`Error processing item ${item.localId}:`, error);
         const errorMessage =

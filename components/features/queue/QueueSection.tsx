@@ -36,10 +36,28 @@ const QueueSection = ({
 
   // Check if any items need retry for each service
   const needsRetry = () => {
-    return items.some(item => 
-      item?.directus?.status === ServiceStatus.FAILED || 
-      item?.eas?.status === ServiceStatus.FAILED
-    );
+    return items.some(item => {
+      const directusStatus = item?.directus?.status;
+      const easStatus = item?.eas?.status;
+      
+      // Allow retry if either service failed
+      if (directusStatus === ServiceStatus.FAILED || easStatus === ServiceStatus.FAILED) {
+        return true;
+      }
+      
+      // Allow retry if one service is completed and the other is pending/offline
+      if (directusStatus === ServiceStatus.COMPLETED && 
+          (easStatus === ServiceStatus.PENDING || easStatus === ServiceStatus.OFFLINE)) {
+        return true;
+      }
+      
+      if (easStatus === ServiceStatus.COMPLETED && 
+          (directusStatus === ServiceStatus.PENDING || directusStatus === ServiceStatus.OFFLINE)) {
+        return true;
+      }
+      
+      return false;
+    });
   };
 
   const itemsSortedByMostRecent = [...items].sort(
@@ -51,15 +69,29 @@ const QueueSection = ({
     try {
       // For each item, determine which services need to be retried
       for (const item of items) {
-        const needsDirectus = item?.directus?.status === ServiceStatus.FAILED;
-        const needsEAS = item?.eas?.status === ServiceStatus.FAILED;
+        const directusStatus = item?.directus?.status;
+        const easStatus = item?.eas?.status;
         
-        if (needsDirectus && !needsEAS) {
+        // If database failed but blockchain succeeded, retry database
+        if (directusStatus === ServiceStatus.FAILED && easStatus === ServiceStatus.COMPLETED) {
           await onRetry([item], "directus");
-        } else if (!needsDirectus && needsEAS) {
+        }
+        // If blockchain failed but database succeeded, retry blockchain
+        else if (easStatus === ServiceStatus.FAILED && directusStatus === ServiceStatus.COMPLETED) {
           await onRetry([item], "eas");
-        } else if (needsDirectus && needsEAS) {
-          await onRetry([item]); // Retry both if both failed
+        }
+        // If both failed, retry both
+        else if (directusStatus === ServiceStatus.FAILED && easStatus === ServiceStatus.FAILED) {
+          await onRetry([item]);
+        }
+        // If one is completed and the other is pending/offline, retry the pending one
+        else if (directusStatus === ServiceStatus.COMPLETED && 
+                (easStatus === ServiceStatus.PENDING || easStatus === ServiceStatus.OFFLINE)) {
+          await onRetry([item], "eas");
+        }
+        else if (easStatus === ServiceStatus.COMPLETED && 
+                (directusStatus === ServiceStatus.PENDING || directusStatus === ServiceStatus.OFFLINE)) {
+          await onRetry([item], "directus");
         }
       }
     } finally {

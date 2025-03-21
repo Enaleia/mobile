@@ -23,15 +23,15 @@ const ServiceStatusIndicator = ({
   const getStatusColor = () => {
     switch (status) {
       case ServiceStatus.COMPLETED:
-        return "text-green-500";
+        return "#22C55E"; // green-500
       case ServiceStatus.FAILED:
-        return "text-red-500";
+        return "#EF4444"; // red-500
       case ServiceStatus.PROCESSING:
-        return "text-blue-500";
+        return "#EAB308"; // yellow-500
       case ServiceStatus.OFFLINE:
-        return "text-gray-500";
-      default:
-        return "text-gray-400";
+        return "#6B7280"; // gray-500
+      case ServiceStatus.PENDING:
+        return "#9CA3AF"; // gray-400
     }
   };
 
@@ -45,15 +45,15 @@ const ServiceStatusIndicator = ({
         return "sync";
       case ServiceStatus.OFFLINE:
         return "cloud-offline";
-      default:
+      case ServiceStatus.PENDING:
         return "time";
     }
   };
 
   return (
     <View className={`flex-row items-center gap-1 ${extraClasses}`}>
-      <Ionicons name={getStatusIcon()} size={16} className={getStatusColor()} />
-      <Text className={`text-xs ${getStatusColor()}`}>
+      <Ionicons name={getStatusIcon()} size={16} color={getStatusColor()} />
+      <Text className="text-xs text-grey-6">
         {type === "directus" ? "Database" : "Blockchain"}
       </Text>
     </View>
@@ -107,12 +107,12 @@ const QueuedAction = ({ item }: QueuedActionProps) => {
         item.status !== QueueItemStatus.COMPLETED && (
           <View className="mt-2">
             {item.directus?.error && (
-              <Text className="text-red-500 text-sm" numberOfLines={2}>
+              <Text className="text-grey-6 text-sm" numberOfLines={2}>
                 Database: {item.directus.error}
               </Text>
             )}
             {item.eas?.error && (
-              <Text className="text-red-500 text-sm" numberOfLines={2}>
+              <Text className="text-grey-6 text-sm" numberOfLines={2}>
                 Blockchain: {item.eas.error}
               </Text>
             )}
@@ -136,7 +136,7 @@ const QueuedAction = ({ item }: QueuedActionProps) => {
             className="text-xs text-blue-500 underline mt-1"
             numberOfLines={1}
           >
-            See on EAS ({item.eas.network || "sepolia"})
+            See the attestation on ({item.eas.network || "sepolia"})
           </Text>
         </Pressable>
       )}
