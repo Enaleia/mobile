@@ -6,6 +6,7 @@ import { isProcessingItem } from "@/utils/queue";
 import { Ionicons } from "@expo/vector-icons";
 import { Linking, Pressable, Text, View } from "react-native";
 import ProcessingPill from "./ProcessingPill";
+import { router } from "expo-router";
 
 interface QueuedActionProps {
   item: QueueItem;
@@ -31,7 +32,7 @@ const ServiceStatusIndicator = ({
       case ServiceStatus.OFFLINE:
         return "#6B7280"; // gray-500
       case ServiceStatus.PENDING:
-        return "#9CA3AF"; // gray-400
+        return type === "eas" ? "#EF4444" : "#9CA3AF"; // red-500 for blockchain pending, gray-400 for others
     }
   };
 
@@ -46,7 +47,7 @@ const ServiceStatusIndicator = ({
       case ServiceStatus.OFFLINE:
         return "cloud-offline";
       case ServiceStatus.PENDING:
-        return "time";
+        return type === "eas" ? "close-circle" : "time"; // close-circle for blockchain pending, time for others
     }
   };
 
@@ -75,7 +76,10 @@ const QueuedAction = ({ item }: QueuedActionProps) => {
   const isProcessing = isProcessingItem(item);
 
   return (
-    <View className="bg-white px-4 py-3 border-b border-gray-200">
+    <Pressable
+      onPress={() => router.push(`/queue/${item.localId}`)}
+      className="bg-white px-4 py-3 border-b border-gray-200 active:opacity-70"
+    >
       <View className="flex-row justify-between items-start">
         <View className="flex-1 flex-col gap-1">
           <Text
@@ -122,15 +126,16 @@ const QueuedAction = ({ item }: QueuedActionProps) => {
       {/* EAS Transaction Hash */}
       {item.eas?.txHash && (
         <Pressable
-          onPress={() =>
+          onPress={(e) => {
+            e.stopPropagation();
             item.eas?.txHash &&
-            Linking.openURL(
-              EAS_CONSTANTS.getAttestationUrl(
-                item.eas.txHash,
-                item.eas.network || "sepolia"
-              )
-            )
-          }
+              Linking.openURL(
+                EAS_CONSTANTS.getAttestationUrl(
+                  item.eas.txHash,
+                  item.eas.network || "sepolia"
+                )
+              );
+          }}
         >
           <Text
             className="text-xs text-blue-500 underline mt-1"
@@ -140,7 +145,7 @@ const QueuedAction = ({ item }: QueuedActionProps) => {
           </Text>
         </Pressable>
       )}
-    </View>
+    </Pressable>
   );
 };
 

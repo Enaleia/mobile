@@ -7,6 +7,7 @@ import QRTextInput, {
 } from "@/components/features/scanning/QRTextInput";
 import { MaterialDetail, MaterialsData } from "@/types/material";
 import AddMaterialModal from "@/components/features/attest/AddMaterialModal";
+import MaterialPickerModal from "@/components/features/attest/MaterialPickerModal";
 
 interface MaterialSectionProps {
   materials: MaterialsData | undefined;
@@ -16,6 +17,7 @@ interface MaterialSectionProps {
   selectedMaterials: MaterialDetail[];
   setSelectedMaterials: (materials: MaterialDetail[]) => void;
   hideCodeInput?: boolean;
+  disabled?: boolean;
 }
 
 const MaterialSection = ({
@@ -25,7 +27,8 @@ const MaterialSection = ({
   setModalVisible,
   selectedMaterials,
   setSelectedMaterials,
-  hideCodeInput,
+  hideCodeInput = false,
+  disabled = false,
 }: MaterialSectionProps) => {
   const title = category === "incoming" ? "Incoming" : "Outgoing";
   const icon = category === "incoming" ? "arrow-down" : "arrow-up";
@@ -71,16 +74,18 @@ const MaterialSection = ({
                       {getMaterialCount(material.id, index)}
                     </Text>
                   </Text>
-                  <Pressable
-                    onPress={() => {
-                      const newMaterials = [...selectedMaterials];
-                      newMaterials.splice(index, 1);
-                      setSelectedMaterials(newMaterials);
-                    }}
-                    className="active:opacity-70"
-                  >
-                    <Ionicons name="trash-outline" size={24} color="#8E8E93" />
-                  </Pressable>
+                  {!disabled && (
+                    <Pressable
+                      onPress={() => {
+                        const newMaterials = [...selectedMaterials];
+                        newMaterials.splice(index, 1);
+                        setSelectedMaterials(newMaterials);
+                      }}
+                      className="active:opacity-70"
+                    >
+                      <Ionicons name="trash-outline" size={24} color="#8E8E93" />
+                    </Pressable>
+                  )}
                 </View>
                 <View
                   className={`flex-row items-center justify-between w-full rounded-lg ${
@@ -88,29 +93,30 @@ const MaterialSection = ({
                   }`}
                 >
                   {!hideCodeInput && (
-                  <Pressable
-                    className="flex-1 border-[1.5px] border-grey-3 rounded-l-2xl rounded-r-[1.7px]  p-2 px-4 bg-white h-[65px]"
-                    onPress={async () => {
-                      try {
-                        const { status } = await Camera.requestCameraPermissionsAsync();
-                        if (status === 'granted') {
-                          setModalVisible(true); // Open scanner modal
-                        } else {
-                          console.warn("Camera permission denied.");
-                          Alert.alert(
-                            "Camera Permission Required",
-                            "This persmission is required to scan QR codes, Please enable it in settings.",
-                            [
-                              { text: "Cancel", style: "cancel" },
-                              { text: "Settings", onPress: () => Linking.openSettings() }
-                            ]
-                          );
+                    <Pressable
+                      className={`flex-1 border-[1.5px] border-grey-3 rounded-l-2xl rounded-r-[1.7px] p-2 px-4 bg-white h-[65px] ${disabled ? 'opacity-50' : ''}`}
+                      onPress={async () => {
+                        if (disabled) return;
+                        try {
+                          const { status } = await Camera.requestCameraPermissionsAsync();
+                          if (status === 'granted') {
+                            setModalVisible(true); // Open scanner modal
+                          } else {
+                            console.warn("Camera permission denied.");
+                            Alert.alert(
+                              "Camera Permission Required",
+                              "This permission is required to scan QR codes, Please enable it in settings.",
+                              [
+                                { text: "Cancel", style: "cancel" },
+                                { text: "Settings", onPress: () => Linking.openSettings() }
+                              ]
+                            );
+                          }
+                        } catch (error) {
+                          console.error("Error requesting camera permissions:", error);
                         }
-                      } catch (error) {
-                        console.error("Error requesting camera permissions:", error);
-                      }
-                    }}
-                  >
+                      }}
+                    >
                       <Text className="text-sm font-dm-bold text-grey-6 tracking-tighter">
                         Code
                       </Text>
@@ -129,10 +135,12 @@ const MaterialSection = ({
                         placeholder=""
                         value={material.code || ""}
                         onChangeText={(text) => {
+                          if (disabled) return;
                           const newMaterials = [...selectedMaterials];
                           newMaterials[index] = { ...material, code: text };
                           setSelectedMaterials(newMaterials);
                         }}
+                        editable={!disabled}
                       />
                     </Pressable>
                   )}
@@ -141,8 +149,9 @@ const MaterialSection = ({
                       !hideCodeInput
                         ? "flex-[1] border-l-0 rounded-r-2xl"
                         : "flex-1 rounded-2xl"
-                    } p-2 px-4 bg-white `}
+                    } p-2 px-4 bg-white ${disabled ? 'opacity-50' : ''}`}
                     onPress={() => {
+                      if (disabled) return;
                       // Focus the weight input when its container is tapped
                       if (weightInputRefs.current[index]) {
                         weightInputRefs.current[index]?.focus();
@@ -172,6 +181,7 @@ const MaterialSection = ({
                         }}
                         className="flex-1 h-[28px] py-0 font-dm-bold tracking-tighter text-enaleia-black text-xl text-left"
                         onChangeText={(text) => {
+                          if (disabled) return;
                           const newMaterials = [...selectedMaterials];
                           newMaterials[index] = {
                             ...material,
@@ -180,6 +190,7 @@ const MaterialSection = ({
                           setSelectedMaterials(newMaterials);
                         }}
                         keyboardType="number-pad"
+                        editable={!disabled}
                       />
                       <Text className="text-sm font-dm-bold text-grey-6 tracking-tighter text-right self-end pl-1">
                         kg
@@ -192,15 +203,20 @@ const MaterialSection = ({
           </View>
         ) : null}
       </View>
-      <Pressable
-        className="flex-row items-center justify-center mt-2 bg-white-sand px-3 py-1 rounded-full border-[1.5px] border-grey-3"
-        onPress={() => setModalVisible(true)}
-      >
-        <Ionicons name="add-outline" size={24} color="grey-8" />
-        <Text className="text-sm font-dm-bold text-slate-600 tracking-tight color-grey-8">
-          Add 
-        </Text>
-      </Pressable>
+      {!disabled && (
+        <Pressable
+          className={`flex-row items-center justify-center mt-2 bg-white-sand px-3 py-1 rounded-full border-[1.5px] border-grey-3 ${disabled ? 'opacity-50' : ''}`}
+          onPress={() => {
+            if (disabled) return;
+            setModalVisible(true);
+          }}
+        >
+          <Ionicons name="add-outline" size={24} color="grey-8" />
+          <Text className="text-sm font-dm-bold text-slate-600 tracking-tight color-grey-8">
+            Add 
+          </Text>
+        </Pressable>
+      )}
       <AddMaterialModal
         materials={materials?.options ?? []}
         isVisible={isModalVisible}

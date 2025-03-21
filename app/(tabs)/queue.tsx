@@ -84,8 +84,11 @@ const QueueScreen = () => {
 
               {(pendingItems.length > 0 || failedItems.length > 0) && (
                 <View className="mb-4 p-3 bg-[#FF453A1A] rounded-xl border border-[#FFAEA9]">
+                  <Text className="text-left text-lg font-dm-bold text-enaleia-black mb-1">
+                    You have {pendingItems.length > 0 ? `${pendingItems.length} pending` : ""}{pendingItems.length > 0 && failedItems.length > 0 ? " and " : ""}{failedItems.length > 0 ? `${failedItems.length} failed` : ""} {(pendingItems.length + failedItems.length) === 1 ? "item" : "items"}.
+                  </Text>
                   <Text className="text-left text-sm text-enaleia-black">
-                    <Text className="font-dm-bold">You have {pendingItems.length > 0 ? `${pendingItems.length} pending` : ""}{pendingItems.length > 0 && failedItems.length > 0 ? " and " : ""}{failedItems.length > 0 ? `${failedItems.length} failed` : ""} {(pendingItems.length + failedItems.length) === 1 ? "item" : "items"}.</Text> Make sure you are connected to the internet and retry submitting these attestations. If the issue persists, please{" "}
+                    Make sure you are connected to the internet and retry submitting these attestations. If the issue persists, please{" "}
                     <Text className="text-blue-ocean underline" onPress={contactSupport}>
                       contact support
                     </Text>.
