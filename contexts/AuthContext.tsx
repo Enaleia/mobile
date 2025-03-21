@@ -2,12 +2,13 @@ import { createContext, useContext, useState, useEffect } from "react";
 import * as SecureStore from "expo-secure-store";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { EnaleiaUser } from "@/types/user";
-import { directus, updateUserWalletAddress } from "@/utils/directus";
-import { readItem, readMe, refresh } from "@directus/sdk";
+import { directus } from "@/utils/directus";
+import { readItem, readMe, updateMe, readItems } from "@directus/sdk";
 import { useNetwork } from "./NetworkContext";
 import { router } from "expo-router";
 import { Company } from "@/types/company";
 import { useWallet } from "./WalletContext";
+import { EnaleiaDirectusSchema } from "@/types/enaleia";
 
 // Secure storage keys
 const SECURE_STORE_KEYS = {
@@ -23,6 +24,15 @@ const USER_STORAGE_KEYS = {
   USER_INFO: "user_info",
   LAST_LOGIN_DATE: "last_login_date",
 };
+
+// Add required collections that need to be checked for permissions
+const REQUIRED_COLLECTIONS: (keyof EnaleiaDirectusSchema)[] = [
+  "Companies",
+  "Events",
+  "Materials",
+  "Products",
+  "Collectors"
+];
 
 interface AuthContextType {
   user: EnaleiaUser | null;
@@ -49,10 +59,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     const initAuth = async () => {
       try {
-        // Check for last logged in user
-        const email = await SecureStore.getItemAsync(
-          SECURE_STORE_KEYS.USER_EMAIL
-        );
+        // Load last logged in user
+        const email = await SecureStore.getItemAsync(SECURE_STORE_KEYS.USER_EMAIL);
         setLastLoggedInUser(email);
 
         // Try auto login
@@ -67,20 +75,85 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     initAuth();
   }, []);
 
-  // Login function
-  const login = async (email: string, password: string) => {
+  // Enhanced permission verification
+  const verifyDirectusPermissions = async (token: string): Promise<boolean> => {
+    try {
+      directus.setToken(token);
+      
+      // First verify we can read user data
+      const userData = await directus.request(readMe());
+      if (!userData) {
+        console.log("[Auth] No user data found");
+        return false;
+      }
+
+      // Verify access to required collections
+      for (const collection of REQUIRED_COLLECTIONS) {
+        try {
+          // Try to read one item from each collection
+          await directus.request(readItems(collection, { 
+            limit: 1 
+          }));
+          console.log(`[Auth] Permission check passed for ${collection}`);
+        } catch (error: any) {
+          console.log(`[Auth] Permission check failed for ${collection}:`, error?.message);
+          if (error?.message?.includes("FORBIDDEN") || 
+              error?.message?.includes("don't have permission")) {
+            return false;
+          }
+          // If error is not permission related (e.g. network error), throw it
+          throw error;
+        }
+      }
+
+      console.log("[Auth] All permission checks passed");
+      return true;
+    } catch (error: any) {
+      console.error("[Auth] Permission verification failed:", error?.message);
+      if (error?.message?.includes("FORBIDDEN") || 
+          error?.message?.includes("don't have permission")) {
+        return false;
+      }
+      throw error;
+    }
+  };
+
+  // Login function following the flowchart
+  const login = async (email: string, password: string): Promise<EnaleiaUser> => {
     setIsLoading(true);
     try {
-      // Attempt to login with Directus
+      // Check internet status first
+      if (!isOnline) {
+        const success = await offlineLogin(email, password);
+        if (!success) {
+          throw new Error("Offline login failed");
+        }
+        // Return the user info from state since offlineLogin sets it
+        return user!;
+      }
+
+      // Online login flow
       const loginResult = await directus.login(email, password);
       const token = loginResult.access_token;
 
       if (!token) {
-        console.error("[Auth] No token found in login result");
-        throw new Error("No token found");
+        throw new Error("Invalid credentials");
       }
 
-      // Store credentials securely
+      // Verify credentials
+      const isValid = await verifyDirectusPermissions(token);
+      
+      if (!isValid) {
+        throw new Error("You don't have permission to access this account");
+      }
+
+      // Get user data
+      const basicUserData = await directus.request(readMe());
+      if (!basicUserData) {
+        throw new Error("No user data found");
+      }
+
+      // All permissions OK - now store credentials
       await SecureStore.setItemAsync(SECURE_STORE_KEYS.AUTH_TOKEN, token);
       if (loginResult.expires_at) {
         await SecureStore.setItemAsync(
@@ -89,7 +162,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         );
       }
 
-      // Store refresh token if available
       if (loginResult.refresh_token) {
         await SecureStore.setItemAsync(
           SECURE_STORE_KEYS.REFRESH_TOKEN,
@@ -97,21 +169,141 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         );
       }
 
+      // Store credentials for offline login
       await SecureStore.setItemAsync(SECURE_STORE_KEYS.USER_EMAIL, email);
       await SecureStore.setItemAsync(SECURE_STORE_KEYS.USER_PASSWORD, password);
 
-      // Store last login date
+      // Create user info
+      let userInfo: EnaleiaUser = {
+        id: basicUserData.id,
+        first_name: basicUserData.first_name,
+        last_name: basicUserData.last_name,
+        email: basicUserData.email,
+        wallet_address: basicUserData.wallet_address,
+        token,
+      };
+
+      // Fetch company details if available
+      if (basicUserData.Company) {
+        try {
+          const companyData = await directus.request(
+            readItem("Companies", basicUserData.Company as number)
+          );
+          userInfo.Company = {
+            id: companyData.id,
+            name: companyData.name,
+            coordinates: companyData.coordinates,
+          };
+        } catch (error) {
+          console.warn("Failed to fetch company data:", error);
+        }
+      }
+
+      // Store user info for offline access
       await AsyncStorage.setItem(
-        USER_STORAGE_KEYS.LAST_LOGIN_DATE,
-        new Date().toISOString()
+        USER_STORAGE_KEYS.USER_INFO,
+        JSON.stringify(userInfo)
       );
 
-      // Set token in directus client
-      directus.setToken(token);
+      // Handle wallet
+      if (userInfo.wallet_address) {
+        const isOwner = await verifyWalletOwnership(userInfo.wallet_address);
+        if (!isOwner) {
+          const walletInfo = await createWallet();
+          await directus.request(updateMe({ wallet_address: walletInfo.address }));
+          userInfo.wallet_address = walletInfo.address;
+        }
+      } else if (!isWalletCreated) {
+        const walletInfo = await createWallet();
+        await directus.request(updateMe({ wallet_address: walletInfo.address }));
+        userInfo.wallet_address = walletInfo.address;
+      }
 
-      // Get user info
+      // Update state
+      setUser(userInfo);
+      setLastLoggedInUser(email);
+      setIsLoading(false);
+      return userInfo;
+
+    } catch (error) {
+      console.error("[Auth] Login failed:", error);
+      // Clear any partially stored data
+      await Promise.all([
+        SecureStore.deleteItemAsync(SECURE_STORE_KEYS.AUTH_TOKEN),
+        SecureStore.deleteItemAsync(SECURE_STORE_KEYS.REFRESH_TOKEN),
+        SecureStore.deleteItemAsync(SECURE_STORE_KEYS.TOKEN_EXPIRY),
+      ]);
+      throw error;
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Offline login function
+  const offlineLogin = async (email: string, password: string): Promise<boolean> => {
+    try {
+      // Check for cached credentials
+      const storedEmail = await SecureStore.getItemAsync(SECURE_STORE_KEYS.USER_EMAIL);
+      const storedPassword = await SecureStore.getItemAsync(SECURE_STORE_KEYS.USER_PASSWORD);
+      
+      if (!storedEmail || !storedPassword) {
+        return false;
+      }
+
+      // Verify credentials match
+      if (email !== storedEmail || password !== storedPassword) {
+        return false;
+      }
+
+      // Get cached user info
+      const userInfoString = await AsyncStorage.getItem(USER_STORAGE_KEYS.USER_INFO);
+      if (!userInfoString) {
+        return false;
+      }
+
+      // Set user state from cache
+      const userInfo = JSON.parse(userInfoString) as EnaleiaUser;
+      setUser(userInfo);
+      return true;
+
+    } catch (error) {
+      console.error("Offline login failed:", error);
+      return false;
+    }
+  };
+
+  // Auto login function
+  const autoLogin = async (): Promise<boolean> => {
+    try {
+      // Check internet status
+      if (!isOnline) {
+        // Try offline login with stored credentials
+        const email = await SecureStore.getItemAsync(SECURE_STORE_KEYS.USER_EMAIL);
+        const password = await SecureStore.getItemAsync(SECURE_STORE_KEYS.USER_PASSWORD);
+        if (email && password) {
+          return await offlineLogin(email, password);
+        }
+        return false;
+      }
+
+      // Online auto-login
+      const token = await SecureStore.getItemAsync(SECURE_STORE_KEYS.AUTH_TOKEN);
+      if (!token) {
+        return false;
+      }
+
+      // Verify permissions
+      const isValid = await verifyDirectusPermissions(token);
+      if (!isValid) {
+        await logout();
+        return false;
+      }
+
+      // Get fresh user data
       const basicUserData = await directus.request(readMe());
-      if (!basicUserData) throw new Error("No user data found");
+      if (!basicUserData) {
+        throw new Error("No user data found");
+      }
 
       let userInfo: EnaleiaUser = {
         id: basicUserData.id,
@@ -122,339 +314,38 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         token,
       };
 
-      // If user has a company, fetch company details
-      if (basicUserData.Company) {
-        try {
-          const companyData = await directus.request(
-            readItem("Companies", basicUserData.Company as number)
-          );
-          const company: Pick<Company, "id" | "name" | "coordinates"> = {
-            id: companyData.id,
-            name: companyData.name,
-            coordinates: companyData.coordinates,
-          };
-          userInfo.Company = company;
-        } catch (error) {
-          console.warn("Failed to fetch company data:", error);
-        }
-      }
-
-      // Store user info in AsyncStorage for performance
+      // Update cached user info
       await AsyncStorage.setItem(
         USER_STORAGE_KEYS.USER_INFO,
         JSON.stringify(userInfo)
       );
 
-      // Handle wallet creation/verification
-      if (userInfo.wallet_address) {
-        const isOwner = await verifyWalletOwnership(userInfo.wallet_address);
-        if (!isOwner) {
-          console.log("[Auth] Creating new wallet after verification failed");
-          const walletInfo = await createWallet();
-          await updateUserWalletAddress(walletInfo.address);
-          userInfo.wallet_address = walletInfo.address;
-        }
-      } else if (!isWalletCreated) {
-        console.log("[Auth] Creating new wallet for user");
-        const walletInfo = await createWallet();
-        await updateUserWalletAddress(walletInfo.address);
-        userInfo.wallet_address = walletInfo.address;
-      }
-
-      // Update stored user info if wallet was created or verified
-      if (userInfo.wallet_address) {
-        await AsyncStorage.setItem(
-          USER_STORAGE_KEYS.USER_INFO,
-          JSON.stringify(userInfo)
-        );
-      }
-
-      // Update state
       setUser(userInfo);
-      setLastLoggedInUser(email);
-      console.log("[Auth] Login successful");
+      return true;
 
-      return userInfo;
     } catch (error) {
-      console.error("[Auth] Login failed:", error);
-      throw error;
-    } finally {
-      setIsLoading(false);
+      console.error("Auto login failed:", error);
+      await logout();
+      return false;
     }
   };
 
   // Logout function
   const logout = async () => {
-    setIsLoading(true);
     try {
-      // Clear tokens from directus client
       directus.setToken(null);
-
-      // Clear all secure storage
       await Promise.all([
         SecureStore.deleteItemAsync(SECURE_STORE_KEYS.AUTH_TOKEN),
         SecureStore.deleteItemAsync(SECURE_STORE_KEYS.REFRESH_TOKEN),
         SecureStore.deleteItemAsync(SECURE_STORE_KEYS.TOKEN_EXPIRY),
-        // Note: We keep USER_EMAIL and USER_PASSWORD for offline login capability
+        SecureStore.deleteItemAsync(SECURE_STORE_KEYS.USER_EMAIL),
+        SecureStore.deleteItemAsync(SECURE_STORE_KEYS.USER_PASSWORD),
+        AsyncStorage.removeItem(USER_STORAGE_KEYS.USER_INFO),
       ]);
-
-      // Clear user info from AsyncStorage
-      await AsyncStorage.removeItem(USER_STORAGE_KEYS.USER_INFO);
-
-      // Update state
       setUser(null);
-
-      // Navigate to login screen
       router.replace("/login");
     } catch (error) {
       console.error("Logout failed:", error);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  // Add new function to check token validity
-  const isTokenValid = async (): Promise<boolean> => {
-    try {
-      const expiryStr = await SecureStore.getItemAsync(
-        SECURE_STORE_KEYS.TOKEN_EXPIRY
-      );
-      if (!expiryStr) return false;
-
-      const expiry = new Date(expiryStr);
-      const now = new Date();
-
-      // Token is valid if it's not expired
-      return expiry.getTime() > now.getTime();
-    } catch (error) {
-      console.error("Error checking token validity:", error);
-      return false;
-    }
-  };
-
-  // Auto login function
-  const autoLogin = async (): Promise<boolean> => {
-    setIsLoading(true);
-    try {
-      // Try to get token from secure storage
-      const token = await SecureStore.getItemAsync(
-        SECURE_STORE_KEYS.AUTH_TOKEN
-      );
-      if (!token) {
-        setIsLoading(false);
-        return false;
-      }
-
-      // Check if token is valid
-      const valid = await isTokenValid();
-      if (!valid) {
-        await logout();
-        return false;
-      }
-
-      // Set token in directus client
-      directus.setToken(token);
-
-      // Try to get user info from AsyncStorage first (faster)
-      const userInfoString = await AsyncStorage.getItem(
-        USER_STORAGE_KEYS.USER_INFO
-      );
-
-      if (userInfoString) {
-        const userInfo = JSON.parse(userInfoString) as EnaleiaUser;
-
-        // Verify wallet ownership if address exists
-        if (userInfo.wallet_address) {
-          const isOwner = await verifyWalletOwnership(userInfo.wallet_address);
-          if (!isOwner) {
-            console.warn("Stored wallet address verification failed");
-            // Clear the wallet address from user info
-            userInfo.wallet_address = undefined;
-            await AsyncStorage.setItem(
-              USER_STORAGE_KEYS.USER_INFO,
-              JSON.stringify(userInfo)
-            );
-            // Update Directus to clear the invalid wallet address
-            await updateUserWalletAddress("");
-
-            // Create new wallet if needed
-            if (!isWalletCreated) {
-              console.log("Creating new wallet after verification failure");
-              const walletInfo = await createWallet();
-              await updateUserWalletAddress(walletInfo.address);
-              userInfo.wallet_address = walletInfo.address;
-              await AsyncStorage.setItem(
-                USER_STORAGE_KEYS.USER_INFO,
-                JSON.stringify(userInfo)
-              );
-            }
-          }
-        } else if (!isWalletCreated) {
-          // No wallet address and no local wallet
-          console.log("Creating new wallet during auto-login");
-          const walletInfo = await createWallet();
-          await updateUserWalletAddress(walletInfo.address);
-          userInfo.wallet_address = walletInfo.address;
-          await AsyncStorage.setItem(
-            USER_STORAGE_KEYS.USER_INFO,
-            JSON.stringify(userInfo)
-          );
-        }
-
-        setUser(userInfo);
-        setIsLoading(false);
-        return true;
-      }
-
-      // If online, verify token and get fresh user data
-      if (isOnline) {
-        try {
-          // Verify token by fetching user data
-          const basicUserData = await directus.request(readMe());
-
-          if (basicUserData) {
-            let userInfo: EnaleiaUser = {
-              id: basicUserData.id,
-              first_name: basicUserData.first_name,
-              last_name: basicUserData.last_name,
-              email: basicUserData.email,
-              wallet_address: basicUserData.wallet_address,
-              token,
-            };
-
-            // If user has a company, fetch company details
-            if (basicUserData.Company) {
-              try {
-                const companyData = await directus.request(
-                  readItem("Companies", basicUserData.Company as number)
-                );
-                const company: Pick<Company, "id" | "name" | "coordinates"> = {
-                  id: companyData.id,
-                  name: companyData.name,
-                  coordinates: companyData.coordinates,
-                };
-                userInfo.Company = company;
-              } catch (error) {
-                console.warn("Failed to fetch company data:", error);
-              }
-            }
-
-            // Store user info in AsyncStorage for next time
-            await AsyncStorage.setItem(
-              USER_STORAGE_KEYS.USER_INFO,
-              JSON.stringify(userInfo)
-            );
-
-            // Handle wallet creation/verification
-            if (userInfo.wallet_address) {
-              // If user has a wallet address in Directus, verify ownership
-              const isOwner = await verifyWalletOwnership(
-                userInfo.wallet_address
-              );
-              if (!isOwner) {
-                console.log(
-                  "User has wallet address but verification failed, creating new wallet"
-                );
-                const walletInfo = await createWallet();
-                await updateUserWalletAddress(walletInfo.address);
-                userInfo.wallet_address = walletInfo.address;
-              }
-            } else if (!isWalletCreated) {
-              // No wallet address in Directus and no local wallet
-              console.log("Creating new wallet for user");
-              const walletInfo = await createWallet();
-              await updateUserWalletAddress(walletInfo.address);
-              userInfo.wallet_address = walletInfo.address;
-            }
-
-            // Update state
-            setUser(userInfo);
-            setIsLoading(false);
-            return true;
-          }
-        } catch (error) {
-          console.warn("Token validation failed:", error);
-          // Token might be invalid, try offline login if we have credentials
-          const email = await SecureStore.getItemAsync(
-            SECURE_STORE_KEYS.USER_EMAIL
-          );
-          const password = await SecureStore.getItemAsync(
-            SECURE_STORE_KEYS.USER_PASSWORD
-          );
-
-          if (email && password) {
-            return await offlineLogin(email, password);
-          }
-        }
-      } else {
-        // If offline, try to use stored user info
-        if (userInfoString) {
-          const userInfo = JSON.parse(userInfoString) as EnaleiaUser;
-          setUser(userInfo);
-          setIsLoading(false);
-          return true;
-        }
-
-        // If no stored user info, try offline login with stored credentials
-        const email = await SecureStore.getItemAsync(
-          SECURE_STORE_KEYS.USER_EMAIL
-        );
-        const password = await SecureStore.getItemAsync(
-          SECURE_STORE_KEYS.USER_PASSWORD
-        );
-
-        if (email && password) {
-          return await offlineLogin(email, password);
-        }
-      }
-
-      // If we get here, we couldn't validate the token or login offline
-      await logout();
-      return false;
-    } catch (error) {
-      console.error("Auto login failed:", error);
-      await logout();
-      return false;
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  // Offline login function
-  const offlineLogin = async (
-    email: string,
-    password: string
-  ): Promise<boolean> => {
-    try {
-      // Check if we have stored user info
-      const userInfoString = await AsyncStorage.getItem(
-        USER_STORAGE_KEYS.USER_INFO
-      );
-
-      if (userInfoString) {
-        const storedEmail = await SecureStore.getItemAsync(
-          SECURE_STORE_KEYS.USER_EMAIL
-        );
-
-        // Verify email matches
-        if (storedEmail === email) {
-          const storedPassword = await SecureStore.getItemAsync(
-            SECURE_STORE_KEYS.USER_PASSWORD
-          );
-
-          // Verify password matches
-          if (storedPassword === password) {
-            const userInfo = JSON.parse(userInfoString) as EnaleiaUser;
-            setUser(userInfo);
-            return true;
-          }
-        }
-      }
-
-      return false;
-    } catch (error) {
-      console.error("Offline login failed:", error);
-      return false;
     }
   };
 

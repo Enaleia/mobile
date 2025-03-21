@@ -12,9 +12,12 @@ import {
   Text,
   TextInput,
   View,
+  StyleSheet,
+  Linking,
 } from "react-native";
 import { z } from "zod";
 import { resetAllStorage } from "@/utils/storage";
+import { Link } from "expo-router";
 
 const LoginData = z.object({
   email: z.string().email("Please enter a valid email"),
@@ -23,10 +26,26 @@ const LoginData = z.object({
 
 type LoginData = z.infer<typeof LoginData>;
 
+interface FormError {
+  message: string;
+  secondaryMessage?: string;
+}
+
+const FormErrorMessage = ({ message }: { message: React.ReactNode }) => {
+  if (typeof message === 'string') {
+    return (
+      <Text style={styles.errorText}>
+        {message}
+      </Text>
+    );
+  }
+  return <View style={styles.errorContainer}>{message}</View>;
+};
+
 export default function LoginForm() {
   const emailInputRef = useRef<TextInput>(null);
   const passwordInputRef = useRef<TextInput>(null);
-  const [formError, setFormError] = useState<string | null>(null);
+  const [formError, setFormError] = useState<string | FormError | null>(null);
   const [showPassword, setShowPassword] = useState(false);
   const { login, isLoading, isAuthenticated, lastLoggedInUser, offlineLogin } =
     useAuth();
@@ -82,17 +101,26 @@ export default function LoginForm() {
           setFormError("Unable to log in while offline");
         }
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error(JSON.stringify(error, null, 2));
       if (
         error instanceof TypeError &&
         error.message === "Network request failed"
       ) {
-        setFormError(
-          "Unable to connect to the server. Please check your internet connection and try again."
-        );
+        setFormError({
+          message: "Unable to connect to the server",
+          secondaryMessage: "Please check your internet connection and try again",
+        });
+      } else if (error?.errors?.[0]?.message?.includes("permission")) {
+        setFormError({
+          message: "Valid credentials but insufficient role and permissions",
+          secondaryMessage: "Please contact support at support@enaleia.com",
+        });
       } else {
-        setFormError("Invalid login credentials, please try again");
+        setFormError({
+          message: "Invalid login credentials",
+          secondaryMessage: "Please try again",
+        });
       }
       throw error;
     }
@@ -259,9 +287,21 @@ export default function LoginForm() {
 
       <View className="p-1" />
 
-      <View className="min-h-[32px]">
+      <View className="mt-0">
         {formError && (
-          <ErrorMessage message={formError} hideSecondaryMessage={true} />
+          <View className="mt-4 p-3 bg-[#FF453A1A] rounded-xl border border-[#FFAEA9]">
+            <Text className="text-left text-sm text-enaleia-black">
+              {typeof formError === 'string' ? formError : (
+                <>
+                  {formError.message}{" "}
+                  Please{" "}
+                  <Text className="text-blue-ocean underline" onPress={() => Linking.openURL('mailto:app-support@enaleia.com,enaleia@pollenlabs.org')}>
+                    contact support
+                  </Text>
+                </>
+              )}
+            </Text>
+          </View>
         )}
       </View>
 
@@ -287,3 +327,17 @@ export default function LoginForm() {
     </View>
   );
 }
+
+const styles = StyleSheet.create({
+  errorContainer: {
+    padding: 8,
+    backgroundColor: '#FEE2E2',
+    borderRadius: 8,
+    marginTop: 8,
+  },
+  errorText: {
+    color: '#DC2626',
+    fontSize: 14,
+    textAlign: 'center',
+  },
+});
