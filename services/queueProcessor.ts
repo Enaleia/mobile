@@ -334,6 +334,7 @@ export async function processQueueItems(
     });
 
     let eventId: number | undefined;
+    let easUid: string | undefined;
 
     // Check if Directus was already successful
     const needsDirectus = item.directus?.status !== ServiceStatus.COMPLETED;
@@ -387,6 +388,8 @@ export async function processQueueItems(
           weight_per_item: item.manufacturing?.weightInKg?.toString() ?? undefined,
           event_input_id: [],
           event_output_id: [],
+          // If we already have an EAS UID from previous attempts, include it
+          EAS_UID: item.eas?.txHash,
         };
 
         // Log what we're sending
@@ -400,12 +403,13 @@ export async function processQueueItems(
         if (!createdEvent?.event_id) {
           throw new Error("No event ID returned from API");
         }
-        directusEvent = createdEvent;
+        directusEvent = createdEvent as MaterialTrackingEvent;
+        eventId = createdEvent.event_id;
 
         // Process materials sequentially
         if (item.incomingMaterials?.length) {
           for (const material of item.incomingMaterials) {
-            if (!material) continue;
+            if (!material || !directusEvent?.event_id) continue;
             const result = await createMaterialInput({
               input_Material: material.id,
               input_code: item.collectorId || material.code || "",
@@ -422,29 +426,35 @@ export async function processQueueItems(
         }
 
         if (item.outgoingMaterials?.length) {
-          await Promise.all(
-            item.outgoingMaterials
-              .filter((m) => m)
-              .map(async (material) => {
-                const result = await createMaterialOutput({
-                  output_material: material.id,
-                  output_code: material.code || "",
-                  output_weight: material.weight || 0,
-                  event_id: directusEvent.event_id,
-                } as MaterialTrackingEventOutput);
+          const eventId = directusEvent?.event_id;
+          if (eventId) {
+            await Promise.all(
+              item.outgoingMaterials
+                .filter((m) => m)
+                .map(async (material) => {
+                  const result = await createMaterialOutput({
+                    output_material: material.id,
+                    output_code: material.code || "",
+                    output_weight: material.weight || 0,
+                    event_id: eventId,
+                  } as MaterialTrackingEventOutput);
 
-                if (!result) {
-                  throw new Error(
-                    `Failed to create output material for ${material.id}`
-                  );
-                }
-              })
-          );
+                  if (!result) {
+                    throw new Error(
+                      `Failed to create output material for ${material.id}`
+                    );
+                  }
+                })
+            );
+          }
         }
 
-        // Update item cache with Directus success
+        // Update item cache with Directus success and event ID
         await updateItemInCache(item.localId, {
-          directus: { status: ServiceStatus.COMPLETED },
+          directus: { 
+            status: ServiceStatus.COMPLETED,
+            eventId: eventId,
+          },
         });
       } catch (error) {
         const errorMessage = error instanceof Error ? error.message : "Unknown error";
@@ -475,15 +485,23 @@ export async function processQueueItems(
       try {
         // Process EAS attestation
         const easResult = await processEASAttestation(item, requiredData, wallet);
+        easUid = easResult.uid;
 
-        // If we have a Directus event, update it with EAS UID
-        if (directusEvent?.event_id) {
-          const directusUpdatedEvent = await updateEvent(directusEvent.event_id, {
-            EAS_UID: easResult.uid,
-          });
+        // If we have both the event ID and EAS UID, update Directus
+        if (eventId || item.directus?.eventId) {
+          const targetEventId = eventId || item.directus?.eventId;
+          if (targetEventId) {
+            try {
+              const directusUpdatedEvent = await updateEvent(targetEventId, {
+                EAS_UID: easResult.uid,
+              });
 
-          if (!directusUpdatedEvent || !directusUpdatedEvent.event_id) {
-            throw new Error("Update EAS_UID failed!");
+              if (!directusUpdatedEvent || !directusUpdatedEvent.event_id) {
+                console.warn(`Failed to update EAS_UID in Directus for event ${targetEventId}`);
+              }
+            } catch (error) {
+              console.error(`Failed to update EAS_UID in Directus for event ${targetEventId}:`, error);
+            }
           }
         }
 

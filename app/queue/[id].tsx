@@ -432,16 +432,14 @@ Error Information:
             </Text>
           </Pressable>
           
-          {canClear && (
-            <Pressable
-              onPress={handleClear}
-              className="border border-grey-3 py-4 rounded-full"
-            >
-              <Text className="text-enaleia-black text-center font-dm-bold">
-                Clear it from device
-              </Text>
-            </Pressable>
-          )}
+          <Pressable
+            onPress={handleClear}
+            className="border border-grey-3 py-4 rounded-full"
+          >
+            <Text className="text-enaleia-black text-center font-dm-bold">
+              Clear it from device
+            </Text>
+          </Pressable>
         </View>
       </ScrollView>
 
