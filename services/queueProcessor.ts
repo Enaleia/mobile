@@ -354,13 +354,22 @@ export async function processQueueItems(
           collectorName = collector?.collector_id?.toString();
         }
 
-        const eventData: MaterialTrackingEvent = {
+        const eventData: Omit<MaterialTrackingEvent, 'event_id'> = {
+          status: "draft",
           action: item.actionId,
           event_timestamp: new Date(item.date).toISOString(),
           event_location: locationString,
           collector_name: collectorName ? parseInt(collectorName, 10) : undefined,
           company: typeof userData?.Company === 'number' ? userData.Company : userData?.Company?.id,
-          manufactured_products: item.manufacturing?.product ? [item.manufacturing.product] : undefined,
+          manufactured_products: (() => {
+            console.log('Product validation:', {
+              selectedProductId: item.manufacturing?.product,
+              availableProducts: requiredData.products.map(p => p.product_id),
+              isValid: item.manufacturing?.product && requiredData.products.some(p => p.product_id === item.manufacturing?.product)
+            });
+            const selectedProduct = requiredData.products.find(p => p.product_id === item.manufacturing?.product);
+            return selectedProduct ? [selectedProduct.product_id] : undefined;
+          })(),
           Batch_quantity: item.manufacturing?.quantity ?? undefined,
           weight_per_item: item.manufacturing?.weightInKg?.toString() ?? undefined,
           event_input_id: [],
@@ -379,6 +388,7 @@ export async function processQueueItems(
           for (const material of item.incomingMaterials) {
             if (!material) continue;
             await createMaterialInput({
+              status: "draft",
               input_Material: material.id,
               input_code: item.collectorId || material.code || "",
               input_weight: material.weight || 0,
@@ -391,6 +401,7 @@ export async function processQueueItems(
           for (const material of item.outgoingMaterials) {
             if (!material) continue;
             await createMaterialOutput({
+              status: "draft",
               output_material: material.id,
               output_code: material.code || "",
               output_weight: material.weight || 0,
