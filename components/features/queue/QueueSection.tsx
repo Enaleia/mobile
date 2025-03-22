@@ -1,7 +1,7 @@
 import { QueueItem, ServiceStatus } from "@/types/queue";
 import { View, Text, Pressable, ActivityIndicator } from "react-native";
 import QueuedAction from "@/components/features/queue/QueueAction";
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { Ionicons } from "@expo/vector-icons";
 import { useNetwork } from "@/contexts/NetworkContext";
 
@@ -22,8 +22,20 @@ const QueueSection = ({
 }: QueueSectionProps) => {
   const [isRetrying, setIsRetrying] = useState(false);
 
-  const showBadge = items.length > 0;
-  const hasItems = items.length > 0;
+  // Deduplicate items based on localId
+  const uniqueItems = useMemo(() => {
+    const seen = new Set<string>();
+    return items.filter(item => {
+      if (seen.has(item.localId)) {
+        return false;
+      }
+      seen.add(item.localId);
+      return true;
+    });
+  }, [items]);
+
+  const showBadge = uniqueItems.length > 0;
+  const hasItems = uniqueItems.length > 0;
 
   const getBadgeColor = (title: string) => {
     switch (title) {
@@ -34,39 +46,60 @@ const QueueSection = ({
     }
   };
 
-  // Count items that need retry for each service
-  const getFailedServices = () => {
-    return items.reduce(
-      (acc, item) => {
-        if (item?.directus?.status === ServiceStatus.FAILED) acc.directus++;
-        if (item?.eas?.status === ServiceStatus.FAILED) acc.eas++;
-        return acc;
-      },
-      { directus: 0, eas: 0 }
-    );
+  // Check if any items need retry for each service
+  const needsRetry = () => {
+    return uniqueItems.some(item => {
+      const directusStatus = item?.directus?.status;
+      const easStatus = item?.eas?.status;
+      
+      // Failed states
+      if (directusStatus === ServiceStatus.FAILED || easStatus === ServiceStatus.FAILED) {
+        return true;
+      }
+      
+      // Pending/Offline states
+      const isPendingOrOffline = (status?: ServiceStatus) => 
+        status === ServiceStatus.PENDING || status === ServiceStatus.OFFLINE;
+
+      if (isPendingOrOffline(directusStatus) || isPendingOrOffline(easStatus)) {
+        return true;
+      }
+      
+      return false;
+    });
   };
-
-  const failedServices = getFailedServices();
-  const totalFailures = failedServices.directus + failedServices.eas;
-
-  const itemsSortedByMostRecent = [...items].sort(
-    (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
-  );
 
   const handleRetry = async () => {
     setIsRetrying(true);
     try {
-      // For each item, determine which services need to be retried
-      for (const item of items) {
-        const needsDirectus = item?.directus?.status === ServiceStatus.FAILED;
-        const needsEAS = item?.eas?.status === ServiceStatus.FAILED;
+      for (const item of uniqueItems) {
+        const directusStatus = item?.directus?.status;
+        const easStatus = item?.eas?.status;
         
-        if (needsDirectus && !needsEAS) {
+        const isDirectusFailed = directusStatus === ServiceStatus.FAILED;
+        const isEasFailed = easStatus === ServiceStatus.FAILED;
+        const isDirectusPendingOrOffline = directusStatus === ServiceStatus.PENDING || directusStatus === ServiceStatus.OFFLINE;
+        const isEasPendingOrOffline = easStatus === ServiceStatus.PENDING || easStatus === ServiceStatus.OFFLINE;
+        
+        // Determine which service(s) to retry
+        if (isDirectusFailed && !isEasFailed) {
+          // Only Directus failed
           await onRetry([item], "directus");
-        } else if (!needsDirectus && needsEAS) {
+        } else if (isEasFailed && !isDirectusFailed) {
+          // Only EAS failed
           await onRetry([item], "eas");
-        } else if (needsDirectus && needsEAS) {
-          await onRetry([item]); // Retry both if both failed
+        } else if (isDirectusFailed && isEasFailed) {
+          // Both failed
+          await onRetry([item]);
+        } else if (isDirectusPendingOrOffline && !isEasPendingOrOffline) {
+          // Only Directus pending/offline
+          await onRetry([item], "directus");
+        } else if (isEasPendingOrOffline && !isDirectusPendingOrOffline) {
+          // Only EAS pending/offline
+          await onRetry([item], "eas");
+        } else if (isDirectusPendingOrOffline && isEasPendingOrOffline) {
+          // Both pending/offline
+          await onRetry([item]);
         }
       }
     } finally {
@@ -74,14 +107,18 @@ const QueueSection = ({
     }
   };
 
+  const itemsSortedByMostRecent = useMemo(() => 
+    [...uniqueItems].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+  , [uniqueItems]);
+
   if (!hasItems && !alwaysShow) return null;
 
   const RetryButton = () => (
     <Pressable
       onPress={handleRetry}
-      disabled={isRetrying || totalFailures === 0}
+      disabled={isRetrying || !needsRetry()}
       className={`h-10 px-4 rounded-full flex-row items-center justify-center border min-w-[100px] ${
-        isRetrying || totalFailures === 0
+        isRetrying || !needsRetry()
           ? "bg-white-sand border-grey-6"
           : "bg-white border-grey-6"
       }`}
@@ -96,10 +133,10 @@ const QueueSection = ({
       ) : (
         <Text
           className={`font-dm-medium ${
-            totalFailures === 0 ? "text-gray-400" : "text-enaleia-black"
+            !needsRetry() ? "text-gray-400" : "text-enaleia-black"
           }`}
         >
-          Retry All {totalFailures > 0 ? `(${totalFailures})` : ""}
+          Retry
         </Text>
       )}
     </Pressable>
@@ -117,13 +154,13 @@ const QueueSection = ({
               )} rounded-full w-6 h-6 ml-2 flex items-center justify-center`}
             >
               <Text className="text-white text-xs font-dm-medium">
-                {items.length}
+                {uniqueItems.length}
               </Text>
             </View>
           )}
         </View>
 
-        {showRetry && items.length > 0 && (
+        {showRetry && uniqueItems.length > 0 && (
           <View className="flex-row gap-2 mt-1">
             <RetryButton />
           </View>

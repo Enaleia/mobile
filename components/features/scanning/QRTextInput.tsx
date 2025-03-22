@@ -18,6 +18,7 @@ interface QRTextInputProps {
   variant?: "standalone" | "embedded";
   label?: string;
   error?: string;
+  editable?: boolean;
 }
 
 export interface QRTextInputRef {
@@ -59,6 +60,7 @@ const QRTextInput = forwardRef<QRTextInputRef, QRTextInputProps>(
       variant = "embedded",
       label,
       error,
+      editable = true,
     },
     ref
   ) => {
@@ -168,7 +170,7 @@ const QRTextInput = forwardRef<QRTextInputRef, QRTextInputProps>(
               accessibilityRole="text"
               accessibilityState={{
                 selected: !!value,
-                disabled: false,
+                disabled: !editable,
               }}
               accessibilityHint="Enter text or tap QR code button to scan"
               className={`${inputClass} ${className} ${error ? 'border-red-500' : 'border-gray-300'}`}
@@ -177,32 +179,34 @@ const QRTextInput = forwardRef<QRTextInputRef, QRTextInputProps>(
                 paddingVertical: 0, // Removes default iOS padding
                 lineHeight: 26, // Ensures proper line height consistency
               }}
+              editable={editable}
             />
           </View>
           <View className="w-6 h-6 justify-center items-center">
             <Pressable
               hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-            onPress={async () => {
-              try {
-                const { status } = await Camera.requestCameraPermissionsAsync();
+              onPress={async () => {
+                if (!editable) return;
+                try {
+                  const { status } = await Camera.requestCameraPermissionsAsync();
  
-                if (status === 'granted') {
-                  setScanner(true); // Open QR scanner
-                } else {
-                  console.warn("Camera permission denied.");
-                  Alert.alert(
-                    "QR Code scanning",
-                    "Access to the camera is required to scan QR codes, Please toggle on the camera access it in settings.",
-                    [
-                      { text: "Cancel", style: "cancel" },
-                      { text: "Settings", style: "bold", onPress: () => Linking.openSettings() }
-                    ]
-                  );
+                  if (status === 'granted') {
+                    setScanner(true); // Open QR scanner
+                  } else {
+                    console.warn("Camera permission denied.");
+                    Alert.alert(
+                      "QR Code scanning",
+                      "Access to the camera is required to scan QR codes, Please toggle on the camera access it in settings.",
+                      [
+                        { text: "Cancel", style: "cancel" },
+                        { text: "Settings", style: "default", onPress: () => Linking.openSettings() }
+                      ]
+                    );
+                  }
+                } catch (error) {
+                  console.error("Error requesting camera permissions:", error);
                 }
-              } catch (error) {
-                console.error("Error requesting camera permissions:", error);
-              }
-            }}
+              }}
               className="active:scale-75 transition-transform"
               accessibilityRole="button"
               accessibilityLabel="Open QR scanner"

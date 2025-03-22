@@ -65,4 +65,16 @@ export async function removeFromActiveQueue(localId: string): Promise<void> {
   await updateActiveQueue(filtered);
 }
 
+export async function removeFromAllQueues(localId: string): Promise<void> {
+  // Remove from active queue
+  const active = await getActiveQueue();
+  const filteredActive = active.filter((item) => item.localId !== localId);
+  await updateActiveQueue(filteredActive);
+
+  // Remove from completed queue
+  const completed = await getCompletedQueue();
+  const filteredCompleted = completed.filter((item) => item.localId !== localId);
+  await AsyncStorage.setItem(getCompletedQueueCacheKey(), JSON.stringify(filteredCompleted));
+}
+
 export type { CompletedQueueItem };

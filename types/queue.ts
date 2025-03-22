@@ -20,6 +20,7 @@ export interface ServiceState {
   status: ServiceStatus;
   error?: string;
   lastAttempt?: Date;
+  eventId?: number;
 }
 
 export interface QueueItem extends Omit<EventFormType, "type"> {

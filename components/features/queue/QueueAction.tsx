@@ -6,6 +6,7 @@ import { isProcessingItem } from "@/utils/queue";
 import { Ionicons } from "@expo/vector-icons";
 import { Linking, Pressable, Text, View } from "react-native";
 import ProcessingPill from "./ProcessingPill";
+import { router } from "expo-router";
 
 interface QueuedActionProps {
   item: QueueItem;
@@ -23,15 +24,15 @@ const ServiceStatusIndicator = ({
   const getStatusColor = () => {
     switch (status) {
       case ServiceStatus.COMPLETED:
-        return "text-green-500";
+        return "#10b981"; // green-500
       case ServiceStatus.FAILED:
-        return "text-red-500";
+        return "#f43f5e"; // red-500
       case ServiceStatus.PROCESSING:
-        return "text-blue-500";
+        return "#f59e0b"; // yellow-500
       case ServiceStatus.OFFLINE:
-        return "text-gray-500";
-      default:
-        return "text-gray-400";
+        return "#a3a3a3"; // gray-500
+      case ServiceStatus.PENDING:
+        return type === "eas" ? "#f43f5e" : "#a3a3a3"; // red-500 for blockchain pending, gray-400 for others
     }
   };
 
@@ -45,15 +46,15 @@ const ServiceStatusIndicator = ({
         return "sync";
       case ServiceStatus.OFFLINE:
         return "cloud-offline";
-      default:
-        return "time";
+      case ServiceStatus.PENDING:
+        return type === "eas" ? "close-circle" : "time"; // close-circle for blockchain pending, time for others
     }
   };
 
   return (
     <View className={`flex-row items-center gap-1 ${extraClasses}`}>
-      <Ionicons name={getStatusIcon()} size={16} className={getStatusColor()} />
-      <Text className={`text-xs ${getStatusColor()}`}>
+      <Ionicons name={getStatusIcon()} size={16} color={getStatusColor()} />
+      <Text className="text-xs text-grey-6">
         {type === "directus" ? "Database" : "Blockchain"}
       </Text>
     </View>
@@ -75,7 +76,13 @@ const QueuedAction = ({ item }: QueuedActionProps) => {
   const isProcessing = isProcessingItem(item);
 
   return (
-    <View className="bg-white px-4 py-3 border-b border-gray-200">
+    <Pressable
+      onPress={() => {
+        console.log("Navigating to queue detail with id:", item.localId);
+        router.push(`/queue/${item.localId}`);
+      }}
+      className="bg-white px-6 py-4 border-b border-gray-200 active:opacity-70"
+    >
       <View className="flex-row justify-between items-start">
         <View className="flex-1 flex-col gap-1">
           <Text
@@ -107,12 +114,12 @@ const QueuedAction = ({ item }: QueuedActionProps) => {
         item.status !== QueueItemStatus.COMPLETED && (
           <View className="mt-2">
             {item.directus?.error && (
-              <Text className="text-red-500 text-sm" numberOfLines={2}>
+              <Text className="text-grey-6 text-sm" numberOfLines={2}>
                 Database: {item.directus.error}
               </Text>
             )}
             {item.eas?.error && (
-              <Text className="text-red-500 text-sm" numberOfLines={2}>
+              <Text className="text-grey-6 text-sm" numberOfLines={2}>
                 Blockchain: {item.eas.error}
               </Text>
             )}
@@ -122,25 +129,26 @@ const QueuedAction = ({ item }: QueuedActionProps) => {
       {/* EAS Transaction Hash */}
       {item.eas?.txHash && (
         <Pressable
-          onPress={() =>
+          onPress={(e) => {
+            e.stopPropagation();
             item.eas?.txHash &&
-            Linking.openURL(
-              EAS_CONSTANTS.getAttestationUrl(
-                item.eas.txHash,
-                item.eas.network || "sepolia"
-              )
-            )
-          }
+              Linking.openURL(
+                EAS_CONSTANTS.getAttestationUrl(
+                  item.eas.txHash,
+                  item.eas.network || "sepolia"
+                )
+              );
+          }}
         >
           <Text
             className="text-xs text-blue-500 underline mt-1"
             numberOfLines={1}
           >
-            See on EAS ({item.eas.network || "sepolia"})
+            See the attestation on ({item.eas.network || "sepolia"})
           </Text>
         </Pressable>
       )}
-    </View>
+    </Pressable>
   );
 };
 
