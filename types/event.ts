@@ -22,7 +22,7 @@ export interface MaterialTrackingEvent {
   event_output_id?: MaterialTrackingEventOutput[];
   event_input_id?: MaterialTrackingEventInput[];
   Batch_quantity?: number;
-  manufactured_products?: number[];
+  manufactured_products?: number;
   weight_per_item?: string;
 }
 

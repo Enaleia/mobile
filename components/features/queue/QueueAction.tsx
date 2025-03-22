@@ -24,15 +24,15 @@ const ServiceStatusIndicator = ({
   const getStatusColor = () => {
     switch (status) {
       case ServiceStatus.COMPLETED:
-        return "#22C55E"; // green-500
+        return "#10b981"; // green-500
       case ServiceStatus.FAILED:
-        return "#EF4444"; // red-500
+        return "#f43f5e"; // red-500
       case ServiceStatus.PROCESSING:
-        return "#EAB308"; // yellow-500
+        return "#f59e0b"; // yellow-500
       case ServiceStatus.OFFLINE:
-        return "#6B7280"; // gray-500
+        return "#a3a3a3"; // gray-500
       case ServiceStatus.PENDING:
-        return type === "eas" ? "#EF4444" : "#9CA3AF"; // red-500 for blockchain pending, gray-400 for others
+        return type === "eas" ? "#f43f5e" : "#a3a3a3"; // red-500 for blockchain pending, gray-400 for others
     }
   };
 
@@ -77,8 +77,11 @@ const QueuedAction = ({ item }: QueuedActionProps) => {
 
   return (
     <Pressable
-      onPress={() => router.push(`/queue/${item.localId}`)}
-      className="bg-white px-4 py-3 border-b border-gray-200 active:opacity-70"
+      onPress={() => {
+        console.log("Navigating to queue detail with id:", item.localId);
+        router.push(`/queue/${item.localId}`);
+      }}
+      className="bg-white px-6 py-4 border-b border-gray-200 active:opacity-70"
     >
       <View className="flex-row justify-between items-start">
         <View className="flex-1 flex-col gap-1">

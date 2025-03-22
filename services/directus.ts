@@ -52,7 +52,7 @@ export async function fetchProducts() {
   }
 }
 
-export async function createEvent(event: MaterialTrackingEvent) {
+export async function createEvent(event: Omit<MaterialTrackingEvent, 'event_id'>) {
   try {
     return await directus.request(createItem("Events", event));
   } catch (error: any) {
@@ -60,7 +60,7 @@ export async function createEvent(event: MaterialTrackingEvent) {
   }
 }
 
-export async function createMaterialInput(input: MaterialTrackingEventInput) {
+export async function createMaterialInput(input: Omit<MaterialTrackingEventInput, 'event_input_id'>) {
   try {
     return await directus.request(createItem("Events_Input", input));
   } catch (error: any) {
@@ -69,7 +69,7 @@ export async function createMaterialInput(input: MaterialTrackingEventInput) {
 }
 
 export async function createMaterialOutput(
-  output: MaterialTrackingEventOutput
+  output: Omit<MaterialTrackingEventOutput, 'event_output_id'>
 ) {
   try {
     return await directus.request(createItem("Events_Output", output));
