@@ -1,11 +1,18 @@
 import { EventFormType } from "@/app/attest/new/[slug]";
 
+export const PROCESSING_TIMEOUT = 30 * 1000;  // 30 seconds per attempt
+export const MAX_RETRIES_PER_BATCH = 3;       // 3 attempts in initial phase
+export const RETRY_COOLDOWN = 20 * 60 * 1000; // 20 minutes between retries in slow mode
+export const MAX_RETRY_AGE = 7 * 24 * 60 * 60 * 1000; // 7 days maximum retry window
+export const RETRY_INTERVALS = [2000, 5000, 10000]; // Retry intervals in milliseconds for initial phase
+
 export enum QueueItemStatus {
   "PENDING" = "PENDING",
   "PROCESSING" = "PROCESSING",
   "OFFLINE" = "OFFLINE",
   "FAILED" = "FAILED",
   "COMPLETED" = "COMPLETED",
+  "SLOW_RETRY" = "SLOW_RETRY"  // New status for items in slow retry mode
 }
 
 export enum ServiceStatus {
@@ -21,6 +28,9 @@ export interface ServiceState {
   error?: string;
   lastAttempt?: Date;
   eventId?: number;
+  initialRetryCount?: number;     // Count of retries in initial phase
+  slowRetryCount?: number;        // Count of retries in slow mode
+  enteredSlowModeAt?: Date;      // When the item entered slow retry mode
   linked?: boolean; // Whether the EAS UID is linked with the Directus event
 }
 
@@ -81,4 +91,35 @@ export function getOverallStatus(item: QueueItem): QueueItemStatus {
 
   // Default to pending
   return QueueItemStatus.PENDING;
+}
+
+// Helper to determine if an item should be auto-retried
+export function shouldAutoRetry(item: QueueItem): boolean {
+  // Check if the item is in initial retry phase
+  if (!item.directus.initialRetryCount || item.directus.initialRetryCount < MAX_RETRIES_PER_BATCH) {
+    return true;
+  }
+
+  // Check if the item is in slow retry mode
+  if (item.directus.enteredSlowModeAt) {
+    const age = Date.now() - new Date(item.directus.enteredSlowModeAt).getTime();
+    if (age > MAX_RETRY_AGE) {
+      return false; // Item is too old, no more auto-retries
+    }
+
+    // Check if enough time has passed since last attempt
+    const lastAttempt = item.directus.lastAttempt ? new Date(item.directus.lastAttempt).getTime() : 0;
+    return Date.now() - lastAttempt >= RETRY_COOLDOWN;
+  }
+
+  return false;
+}
+
+// Helper to determine if an item has completely failed (exceeded all retry attempts)
+export function isCompletelyFailed(item: QueueItem): boolean {
+  if (item.directus.enteredSlowModeAt) {
+    const age = Date.now() - new Date(item.directus.enteredSlowModeAt).getTime();
+    return age > MAX_RETRY_AGE;
+  }
+  return false;
 }

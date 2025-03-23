@@ -1,4 +1,4 @@
-import { QueueItem, ServiceStatus } from "@/types/queue";
+import { QueueItem, ServiceStatus, MAX_RETRIES_PER_BATCH, RETRY_COOLDOWN, isCompletelyFailed } from "@/types/queue";
 import { View, Text, Pressable, ActivityIndicator } from "react-native";
 import QueuedAction from "@/components/features/queue/QueueAction";
 import { useState, useMemo } from "react";
@@ -48,60 +48,147 @@ const QueueSection = ({
 
   // Check if any items need retry for each service
   const needsRetry = () => {
+    console.log('Checking retry status for items:', uniqueItems.map(item => ({
+      localId: item.localId,
+      directusStatus: item.directus?.status,
+      easStatus: item.eas?.status,
+      retryCount: item.directus?.initialRetryCount || 0,
+      slowRetryCount: item.directus?.slowRetryCount || 0,
+      lastAttempt: item.lastAttempt,
+      enteredSlowModeAt: item.directus?.enteredSlowModeAt
+    })));
+
+    // Check if any item is currently processing
+    const hasProcessingItems = uniqueItems.some(item => 
+      item.directus?.status === ServiceStatus.PROCESSING || 
+      item.eas?.status === ServiceStatus.PROCESSING
+    );
+
+    if (hasProcessingItems) {
+      console.log('Found processing items, retry disabled');
+      return false;
+    }
+
     return uniqueItems.some(item => {
       const directusStatus = item?.directus?.status;
       const easStatus = item?.eas?.status;
       
-      // Failed states
-      if (directusStatus === ServiceStatus.FAILED || easStatus === ServiceStatus.FAILED) {
-        return true;
+      // Don't allow manual retry during initial auto-retry phase
+      if (item.directus?.initialRetryCount !== undefined && 
+          item.directus.initialRetryCount < MAX_RETRIES_PER_BATCH) {
+        console.log(`Item ${item.localId} still in initial retry phase, manual retry disabled`);
+        return false;
       }
+
+      // Check if the item has completely failed (exceeded 7 days)
+      if (isCompletelyFailed(item)) {
+        console.log(`Item ${item.localId} has exceeded maximum retry window`);
+        return false;
+      }
+
+      // Failed states
+      const hasFailed = directusStatus === ServiceStatus.FAILED || 
+                       easStatus === ServiceStatus.FAILED;
       
       // Pending/Offline states
       const isPendingOrOffline = (status?: ServiceStatus) => 
         status === ServiceStatus.PENDING || status === ServiceStatus.OFFLINE;
 
-      if (isPendingOrOffline(directusStatus) || isPendingOrOffline(easStatus)) {
-        return true;
+      const needsRetry = hasFailed || 
+                        isPendingOrOffline(directusStatus) || 
+                        isPendingOrOffline(easStatus);
+
+      if (needsRetry) {
+        console.log(`Item ${item.localId} needs retry:`, {
+          directusStatus,
+          easStatus,
+          hasFailed,
+          isPendingDirectus: isPendingOrOffline(directusStatus),
+          isPendingEas: isPendingOrOffline(easStatus),
+          initialRetryCount: item.directus?.initialRetryCount,
+          slowRetryCount: item.directus?.slowRetryCount,
+          enteredSlowModeAt: item.directus?.enteredSlowModeAt
+        });
       }
       
-      return false;
+      return needsRetry;
     });
   };
 
+  const getRetryButtonText = () => {
+    if (isRetrying) return "Retrying...";
+    
+    const item = uniqueItems[0]; // Use first item for status
+    if (!item) return "Retry";
+
+    if (item.directus?.enteredSlowModeAt) {
+      const nextRetryTime = new Date(
+        (item.directus.lastAttempt ? new Date(item.directus.lastAttempt).getTime() : Date.now()) 
+        + RETRY_COOLDOWN
+      );
+      const timeUntilNextRetry = nextRetryTime.getTime() - Date.now();
+      
+      if (timeUntilNextRetry > 0) {
+        const minutes = Math.ceil(timeUntilNextRetry / (60 * 1000));
+        return `Next auto-retry in ${minutes}m`;
+      }
+    }
+
+    return "Retry Manually";
+  };
+
   const handleRetry = async () => {
+    console.log('Starting retry process for items:', uniqueItems.map(item => ({
+      localId: item.localId,
+      initialRetryCount: item.directus?.initialRetryCount,
+      slowRetryCount: item.directus?.slowRetryCount,
+      enteredSlowModeAt: item.directus?.enteredSlowModeAt
+    })));
+
     setIsRetrying(true);
     try {
       for (const item of uniqueItems) {
         const directusStatus = item?.directus?.status;
         const easStatus = item?.eas?.status;
         
+        console.log(`Processing retry for item ${item.localId}:`, {
+          directusStatus,
+          easStatus,
+          initialRetryCount: item.directus?.initialRetryCount,
+          slowRetryCount: item.directus?.slowRetryCount,
+          lastAttempt: item.lastAttempt
+        });
+        
         const isDirectusFailed = directusStatus === ServiceStatus.FAILED;
         const isEasFailed = easStatus === ServiceStatus.FAILED;
-        const isDirectusPendingOrOffline = directusStatus === ServiceStatus.PENDING || directusStatus === ServiceStatus.OFFLINE;
-        const isEasPendingOrOffline = easStatus === ServiceStatus.PENDING || easStatus === ServiceStatus.OFFLINE;
+        const isDirectusPendingOrOffline = directusStatus === ServiceStatus.PENDING || 
+                                         directusStatus === ServiceStatus.OFFLINE;
+        const isEasPendingOrOffline = easStatus === ServiceStatus.PENDING || 
+                                     easStatus === ServiceStatus.OFFLINE;
         
         // Determine which service(s) to retry
         if (isDirectusFailed && !isEasFailed) {
-          // Only Directus failed
+          console.log(`Retrying Directus only for item ${item.localId}`);
           await onRetry([item], "directus");
         } else if (isEasFailed && !isDirectusFailed) {
-          // Only EAS failed
+          console.log(`Retrying EAS only for item ${item.localId}`);
           await onRetry([item], "eas");
         } else if (isDirectusFailed && isEasFailed) {
-          // Both failed
+          console.log(`Retrying both services for item ${item.localId}`);
           await onRetry([item]);
         } else if (isDirectusPendingOrOffline && !isEasPendingOrOffline) {
-          // Only Directus pending/offline
+          console.log(`Retrying pending/offline Directus for item ${item.localId}`);
           await onRetry([item], "directus");
         } else if (isEasPendingOrOffline && !isDirectusPendingOrOffline) {
-          // Only EAS pending/offline
+          console.log(`Retrying pending/offline EAS for item ${item.localId}`);
           await onRetry([item], "eas");
         } else if (isDirectusPendingOrOffline && isEasPendingOrOffline) {
-          // Both pending/offline
+          console.log(`Retrying both pending/offline services for item ${item.localId}`);
           await onRetry([item]);
         }
       }
+    } catch (error) {
+      console.error('Error during retry process:', error);
     } finally {
       setIsRetrying(false);
     }
@@ -127,7 +214,7 @@ const QueueSection = ({
         <View className="flex-row items-center">
           <ActivityIndicator size="small" color="#0D0D0D" />
           <Text className="text-enaleia-black font-dm-medium ml-2">
-            Retrying...
+            {getRetryButtonText()}
           </Text>
         </View>
       ) : (
@@ -136,7 +223,7 @@ const QueueSection = ({
             !needsRetry() ? "text-gray-400" : "text-enaleia-black"
           }`}
         >
-          Retry
+          {getRetryButtonText()}
         </Text>
       )}
     </Pressable>
