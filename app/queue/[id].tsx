@@ -4,7 +4,7 @@ import { View, Text, ScrollView, Pressable, Linking, Alert } from "react-native"
 import { Ionicons } from "@expo/vector-icons";
 import SafeAreaContent from "@/components/shared/SafeAreaContent";
 import { useQueue } from "@/contexts/QueueContext";
-import { QueueItem, ServiceStatus } from "@/types/queue";
+import { QueueItem, ServiceStatus, QueueItemStatus, MAX_RETRIES_PER_BATCH, RETRY_INTERVALS } from "@/types/queue";
 import { useBatchData } from "@/hooks/data/useBatchData";
 import { MaterialDetail } from "@/types/material";
 import { EAS_CONSTANTS } from "@/services/eas";
@@ -12,10 +12,12 @@ import { removeFromActiveQueue, removeFromAllQueues } from "@/utils/queueStorage
 import { useMemo } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { ClearConfirmationModal } from "@/components/features/queue/ClearConfirmationModal";
+import { IncompleteAttestationModal } from "@/components/features/attest/IncompleteAttestationModal";
+import { LeaveAttestationModal } from "@/components/features/attest/LeaveAttestationModal";
 
 export default function QueueItemDetails() {
   const { id } = useLocalSearchParams();
-  const { queueItems, loadQueueItems } = useQueue();
+  const { queueItems, loadQueueItems, retryItems } = useQueue();
   const [item, setItem] = useState<QueueItem | null>(null);
   const { materials: materialsData, products: productsData, actions: actionsData, collectors } = useBatchData();
   const { user } = useAuth();
@@ -28,13 +30,32 @@ export default function QueueItemDetails() {
   }, [item?.collectorId, collectors]);
 
   useEffect(() => {
-    const foundItem = queueItems.find(i => i.localId === id);
+    console.log('Loading queue item details:', {
+      id,
+      queueItemsCount: queueItems?.length || 0,
+      availableIds: queueItems?.map(i => i.localId) || []
+    });
+
+    if (!id) {
+      console.log('No ID provided');
+      return;
+    }
+
+    const foundItem = queueItems?.find(i => i.localId === id);
+    console.log('Found item:', foundItem ? {
+      localId: foundItem.localId,
+      status: foundItem.status,
+      directusStatus: foundItem.directus?.status,
+      easStatus: foundItem.eas?.status
+    } : 'null');
+
     if (foundItem) {
       setItem(foundItem);
     }
   }, [id, queueItems]);
 
-  if (!item) {
+  if (!item || !id) {
+    console.log('Rendering not found state:', { item: !!item, id: !!id });
     return (
       <SafeAreaContent>
         <View className="flex-1 items-center justify-center">
@@ -45,6 +66,17 @@ export default function QueueItemDetails() {
   }
 
   const currentAction = actionsData?.find(action => action.id === item.actionId);
+  if (!currentAction) {
+    console.log('Action not found:', { actionId: item.actionId, availableActions: actionsData?.map(a => a.id) });
+    return (
+      <SafeAreaContent>
+        <View className="flex-1 items-center justify-center">
+          <Text>Action type not found</Text>
+        </View>
+      </SafeAreaContent>
+    );
+  }
+
   const timestamp = item.lastAttempt || item.date;
   const formattedTime = new Intl.DateTimeFormat("en-US", {
     year: "numeric",
@@ -144,6 +176,57 @@ Error Information:
   const canClear = item.directus?.status === ServiceStatus.COMPLETED && 
                    item.eas?.status === ServiceStatus.COMPLETED;
 
+  const formatTimeRemaining = (nextRetryTime: Date): string => {
+    const diff = nextRetryTime.getTime() - Date.now();
+    if (diff < 60000) return 'less than a minute';
+    const minutes = Math.floor(diff / 60000);
+    return minutes === 1 ? '1 minute' : `${minutes} minutes`;
+  };
+
+  const canRetry = (item: QueueItem): boolean => {
+    if (item.status === QueueItemStatus.PROCESSING) return false;
+    
+    const isInInitialRetryPhase = item.retryCount < MAX_RETRIES_PER_BATCH;
+    if (isInInitialRetryPhase) return true;
+
+    const nextRetryTime = item.lastAttempt ? 
+      new Date(new Date(item.lastAttempt).getTime() + 
+        RETRY_INTERVALS[Math.min(item.retryCount - MAX_RETRIES_PER_BATCH, 
+          RETRY_INTERVALS.length - 1)]) : 
+      null;
+
+    return !nextRetryTime || new Date() >= nextRetryTime;
+  };
+
+  const getRetryMessage = (item: QueueItem): string => {
+    if (item.status === QueueItemStatus.PROCESSING) {
+      return 'Auto-retrying...';
+    }
+
+    const isInInitialRetryPhase = item.retryCount < MAX_RETRIES_PER_BATCH;
+    if (!isInInitialRetryPhase && item.lastAttempt) {
+      const nextRetryTime = new Date(new Date(item.lastAttempt).getTime() + 
+        RETRY_INTERVALS[Math.min(item.retryCount - MAX_RETRIES_PER_BATCH, 
+          RETRY_INTERVALS.length - 1)]);
+      
+      if (new Date() < nextRetryTime) {
+        return `Retry available in ${formatTimeRemaining(nextRetryTime)}`;
+      }
+    }
+
+    return 'Retry';
+  };
+
+  const handleRetry = async () => {
+    if (!item) return;
+    try {
+      await retryItems([item]);
+      await loadQueueItems();
+    } catch (error) {
+      console.error("Error retrying item:", error);
+    }
+  };
+
   return (
     <SafeAreaContent>
       <View className="flex-row items-center justify-between pt-2 pb-4">
@@ -153,8 +236,8 @@ Error Information:
         >
           <Ionicons name="close" size={24} color="#0D0D0D" />
           <Text className="text-base font-dm-regular text-enaleia-black">
-          Attestation detail
-        </Text> 
+            Attestation detail
+          </Text>
         </Pressable>
       </View>
 
@@ -166,7 +249,7 @@ Error Information:
         }}
       >
         <Text className="text-3xl font-dm-bold text-enaleia-black tracking-[-1px] mb-4 mt-4">
-          {currentAction?.name}
+          {currentAction?.name || 'Unknown Action'}
         </Text>
 
         {/* Collector Section */}
@@ -181,7 +264,7 @@ Error Information:
                   Collector ID
                 </Text>
                 <Text className="text-xl font-dm-bold text-enaleia-black">
-                  {item.collectorId}
+                  {item.collectorId || 'N/A'}
                 </Text>
               </View>
               <View className="p-4 py-3">
@@ -432,14 +515,30 @@ Error Information:
             </Text>
           </Pressable>
           
-          <Pressable
-            onPress={handleClear}
-            className="border border-grey-3 py-4 rounded-full"
-          >
-            <Text className="text-enaleia-black text-center font-dm-bold">
-              Clear it from device
-            </Text>
-          </Pressable>
+          {canClear && (
+            <Pressable
+              onPress={handleClear}
+              className="border border-grey-3 py-4 rounded-full"
+            >
+              <Text className="text-enaleia-black text-center font-dm-bold">
+                Clear it from device
+              </Text>
+            </Pressable>
+          )}
+
+          {!canClear && (
+            <Pressable
+              onPress={handleRetry}
+              disabled={!canRetry(item)}
+              className={`border border-grey-3 py-4 rounded-full ${
+                !canRetry(item) ? 'opacity-50' : ''
+              }`}
+            >
+              <Text className="text-enaleia-black text-center font-dm-bold">
+                {getRetryMessage(item)}
+              </Text>
+            </Pressable>
+          )}
         </View>
       </ScrollView>
 
