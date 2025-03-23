@@ -14,6 +14,8 @@ import { useAuth } from "@/contexts/AuthContext";
 import { ClearConfirmationModal } from "@/components/features/queue/ClearConfirmationModal";
 import { IncompleteAttestationModal } from "@/components/features/attest/IncompleteAttestationModal";
 import { LeaveAttestationModal } from "@/components/features/attest/LeaveAttestationModal";
+import { ServiceStatusIndicator } from "@/components/features/queue/ServiceStatusIndicator";
+
 
 export default function QueueItemDetails() {
   const { id } = useLocalSearchParams();
@@ -462,43 +464,36 @@ Error Information:
         {/* Status Section */}
         <View className="mb-12">
           <Text className="text-xl font-dm-light text-enaleia-black tracking-tighter mb-2">
-                Attestation status
-              </Text>
+            Attestation status
+          </Text>
           <View className="border border-grey-3 rounded-2xl">
             <View className="flex-row">
               <View className="flex-1 p-4 py-3 border-r border-grey-3">
                 <Text className="text-sm font-dm-bold text-grey-6 mb-1">
                   Database
                 </Text>
-                <View className="flex-row items-center">
-                  <View className={`w-4 h-4 rounded-full mr-2 ${
-                    item.directus?.status === ServiceStatus.COMPLETED ? "bg-emerald-500" :
-                    item.directus?.status === ServiceStatus.FAILED ? "bg-rose-500" :
-                    "bg-organge-500"
-                  }`} />
-                  <Text className="text-base font-dm-bold text-enaleia-black">
-                    {item.directus?.status === ServiceStatus.COMPLETED ? "OK" :
-                     item.directus?.status === ServiceStatus.FAILED ? "Failed" :
-                     "Pending"}
-                  </Text>
-                </View>
+                <ServiceStatusIndicator
+                  status={item.directus?.status || ServiceStatus.PENDING}
+                  type="directus"
+                />
               </View>
-              <View className="flex-1 p-4 py-3">
+              <View className="flex-1 p-4 py-3 border-r border-grey-3">
                 <Text className="text-sm font-dm-bold text-grey-6 mb-1">
                   Blockchain
                 </Text>
-                <View className="flex-row items-center">
-                  <View className={`w-4 h-4 rounded-full mr-2 ${
-                    item.eas?.status === ServiceStatus.COMPLETED ? "bg-emerald-500" :
-                    item.eas?.status === ServiceStatus.FAILED ? "bg-rose-500" :
-                    "bg-orange-500"
-                  }`} />
-                  <Text className="text-base font-dm-bold text-enaleia-black">
-                    {item.eas?.status === ServiceStatus.COMPLETED ? "OK" :
-                     item.eas?.status === ServiceStatus.FAILED ? "Failed" :
-                     "Pending"}
-                  </Text>
-                </View>
+                <ServiceStatusIndicator
+                  status={item.eas?.status || ServiceStatus.PENDING}
+                  type="eas"
+                />
+              </View>
+              <View className="flex-1 p-4 py-3">
+                <Text className="text-sm font-dm-bold text-grey-6 mb-1">
+                  Linking
+                </Text>
+                <ServiceStatusIndicator
+                  status={item.directus?.linked ? ServiceStatus.COMPLETED : ServiceStatus.PENDING}
+                  type="linking"
+                />
               </View>
             </View>
           </View>

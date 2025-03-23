@@ -61,7 +61,7 @@ export const SentToQueueModal = ({
           accessibilityHint="Double tap to return to home page"
         >
           <Text className="text-white font-dm-regular text-base text-center">
-            OK, Done
+            OK
           </Text>
         </Pressable>
       </View>
