@@ -498,9 +498,42 @@ export async function processQueueItems(
 
               if (!directusUpdatedEvent || !directusUpdatedEvent.event_id) {
                 console.warn(`Failed to update EAS_UID in Directus for event ${targetEventId}`);
+                await updateItemInCache(item.localId, {
+                  directus: { 
+                    status: ServiceStatus.FAILED,
+                    error: "Failed to link EAS UID with Directus event",
+                    linked: false
+                  }
+                });
+              } else {
+                // Verify the linking was successful
+                const verifyEvent = await getEvent(targetEventId);
+                if (verifyEvent && verifyEvent[0]?.EAS_UID === easResult.uid) {
+                  await updateItemInCache(item.localId, {
+                    directus: { 
+                      status: ServiceStatus.COMPLETED,
+                      linked: true
+                    }
+                  });
+                } else {
+                  await updateItemInCache(item.localId, {
+                    directus: { 
+                      status: ServiceStatus.FAILED,
+                      error: "Failed to verify EAS UID linking",
+                      linked: false
+                    }
+                  });
+                }
               }
             } catch (error) {
               console.error(`Failed to update EAS_UID in Directus for event ${targetEventId}:`, error);
+              await updateItemInCache(item.localId, {
+                directus: { 
+                  status: ServiceStatus.FAILED,
+                  error: "Failed to link EAS UID with Directus event",
+                  linked: false
+                }
+              });
             }
           }
         }

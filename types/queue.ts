@@ -21,6 +21,7 @@ export interface ServiceState {
   error?: string;
   lastAttempt?: Date;
   eventId?: number;
+  linked?: boolean; // Whether the EAS UID is linked with the Directus event
 }
 
 export interface QueueItem extends Omit<EventFormType, "type"> {
@@ -70,7 +71,7 @@ export function getOverallStatus(item: QueueItem): QueueItemStatus {
     return QueueItemStatus.FAILED;
   }
 
-  // If both services completed, show completed
+  // If both services completed, show completed (regardless of linking status)
   if (
     item.directus.status === ServiceStatus.COMPLETED &&
     item.eas.status === ServiceStatus.COMPLETED
