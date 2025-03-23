@@ -15,11 +15,11 @@ const ProcessingPill = () => {
   const opacity = useSharedValue(1);
 
   useEffect(() => {
-    // Start the animation
+    // Start the animation with faster timing (500ms instead of 1000ms)
     opacity.value = withRepeat(
       withSequence(
-        withDelay(500, withTiming(0.5, { duration: 1000 })),
-        withTiming(1, { duration: 1000 })
+        withDelay(250, withTiming(0.5, { duration: 500 })),
+        withTiming(1, { duration: 500 })
       ),
       -1,
       true
@@ -40,7 +40,7 @@ const ProcessingPill = () => {
       style={animatedStyle}
       className="flex-row items-center bg-stone-100 rounded-full px-2 py-1 border border-stone-500"
     >
-      <Ionicons name="sync" size={12} color="black" />
+      <Ionicons name="sync-circle" size={12} color="#f59e0b" />
       <Text className="text-stone-600 text-xs font-dm-medium ml-1">
         Processing
       </Text>

@@ -1,9 +1,11 @@
-import { QueueItem, ServiceStatus } from "@/types/queue";
+import { QueueItem, ServiceStatus, QueueItemStatus } from "@/types/queue";
 import { View, Text, Pressable, ActivityIndicator } from "react-native";
 import QueuedAction from "@/components/features/queue/QueueAction";
 import { useState, useMemo } from "react";
 import { Ionicons } from "@expo/vector-icons";
 import { useNetwork } from "@/contexts/NetworkContext";
+import QueueSectionHeader from "./QueueSectionHeader";
+import { removeFromAllQueues } from "@/utils/queueStorage";
 
 interface QueueSectionProps {
   title: string;
@@ -11,6 +13,7 @@ interface QueueSectionProps {
   onRetry: (items: QueueItem[], service?: "directus" | "eas") => Promise<void>;
   showRetry?: boolean;
   alwaysShow?: boolean;
+  onClearCompleted?: () => Promise<void>;
 }
 
 const QueueSection = ({
@@ -19,6 +22,7 @@ const QueueSection = ({
   onRetry,
   showRetry = true,
   alwaysShow = false,
+  onClearCompleted,
 }: QueueSectionProps) => {
   const [isRetrying, setIsRetrying] = useState(false);
 
@@ -48,25 +52,16 @@ const QueueSection = ({
 
   // Check if any items need retry for each service
   const needsRetry = () => {
-    return uniqueItems.some(item => {
-      const directusStatus = item?.directus?.status;
-      const easStatus = item?.eas?.status;
-      
-      // Failed states
-      if (directusStatus === ServiceStatus.FAILED || easStatus === ServiceStatus.FAILED) {
-        return true;
-      }
-      
-      // Pending/Offline states
-      const isPendingOrOffline = (status?: ServiceStatus) => 
-        status === ServiceStatus.PENDING || status === ServiceStatus.OFFLINE;
+    return uniqueItems.some(
+      (item) =>
+        item.status === QueueItemStatus.FAILED ||
+        item.status === QueueItemStatus.OFFLINE ||
+        (item.status === QueueItemStatus.PENDING && !item.lastAttempt)
+    );
+  };
 
-      if (isPendingOrOffline(directusStatus) || isPendingOrOffline(easStatus)) {
-        return true;
-      }
-      
-      return false;
-    });
+  const hasProcessingItems = () => {
+    return uniqueItems.some(item => item.status === QueueItemStatus.PROCESSING);
   };
 
   const handleRetry = async () => {
@@ -107,18 +102,27 @@ const QueueSection = ({
     }
   };
 
+  const handleClearCompleted = async () => {
+    if (onClearCompleted) {
+      await onClearCompleted();
+    }
+  };
+
   const itemsSortedByMostRecent = useMemo(() => 
     [...uniqueItems].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
   , [uniqueItems]);
 
   if (!hasItems && !alwaysShow) return null;
+  
+  // Don't show Pending section when empty
+  if (title === "Pending" && !hasItems) return null;
 
   const RetryButton = () => (
     <Pressable
       onPress={handleRetry}
-      disabled={isRetrying || !needsRetry()}
-      className={`h-10 px-4 rounded-full flex-row items-center justify-center border min-w-[100px] ${
-        isRetrying || !needsRetry()
+      disabled={isRetrying || !needsRetry() || hasProcessingItems()}
+      className={`h-8 px-4 rounded-full flex-row items-center justify-center border ${
+        isRetrying || !needsRetry() || hasProcessingItems()
           ? "bg-white-sand border-grey-6"
           : "bg-white border-grey-6"
       }`}
@@ -133,7 +137,7 @@ const QueueSection = ({
       ) : (
         <Text
           className={`font-dm-medium ${
-            !needsRetry() ? "text-gray-400" : "text-enaleia-black"
+            !needsRetry() || hasProcessingItems() ? "text-gray-400" : "text-enaleia-black"
           }`}
         >
           Retry
@@ -144,30 +148,23 @@ const QueueSection = ({
 
   return (
     <View className="mb-4">
-      <View className="flex-row justify-between items-center mb-2">
-        <View className="flex-row items-center">
-          <Text className="text-lg font-dm-bold">{title}</Text>
-          {showBadge && (
-            <View
-              className={`${getBadgeColor(
-                title
-              )} rounded-full w-6 h-6 ml-2 flex items-center justify-center`}
-            >
-              <Text className="text-white text-xs font-dm-medium">
-                {uniqueItems.length}
-              </Text>
-            </View>
-          )}
+      <View className="flex-row items-center justify-between mb-2">
+        <View className="flex-1 flex-row items-center">
+          <QueueSectionHeader
+            title={title}
+            showClearOption={title === "Completed" && hasItems}
+            onClear={handleClearCompleted}
+            badgeCount={showBadge ? uniqueItems.length : undefined}
+            badgeColor={getBadgeColor(title)}
+          />
         </View>
 
         {showRetry && uniqueItems.length > 0 && (
-          <View className="flex-row gap-2 mt-1">
-            <RetryButton />
-          </View>
+          <RetryButton />
         )}
       </View>
 
-      <View className="rounded-2xl overflow-hidden border border-gray-200 mt-1">
+      <View className="rounded-2xl overflow-hidden border border-gray-200">
         {hasItems ? (
           itemsSortedByMostRecent.map((item) => (
             <QueuedAction key={item.localId} item={item} />

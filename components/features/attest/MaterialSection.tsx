@@ -1,13 +1,10 @@
-import { useMemo, useRef } from "react";
+import { useMemo, useRef, useEffect } from "react";
 import { Alert, Linking, Pressable, Text, TextInput, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { Camera } from "expo-camera";
-import QRTextInput, {
-  QRTextInputRef,
-} from "@/components/features/scanning/QRTextInput";
+import QRTextInput, { QRTextInputRef } from "@/components/features/scanning/QRTextInput";
 import { MaterialDetail, MaterialsData } from "@/types/material";
 import AddMaterialModal from "@/components/features/attest/AddMaterialModal";
-import MaterialPickerModal from "@/components/features/attest/MaterialPickerModal";
 
 interface MaterialSectionProps {
   materials: MaterialsData | undefined;
@@ -46,6 +43,45 @@ const MaterialSection = ({
       return count > 0 ? `(${count + 1})` : "";
     };
   }, [selectedMaterials]);
+
+  // Effect to auto-launch QR scanner when material is added
+  useEffect(() => {
+    const handleAutoLaunchScanner = async () => {
+      // Only proceed if we're in the material section and have materials
+      if (selectedMaterials.length > 0 && !hideCodeInput) {
+        const lastIndex = selectedMaterials.length - 1;
+        const lastMaterial = selectedMaterials[lastIndex];
+        
+        // Only launch scanner if the code field is empty
+        if (!lastMaterial.code) {
+          try {
+            const { status } = await Camera.requestCameraPermissionsAsync();
+            if (status === 'granted') {
+              // Get the QR input ref for the last added material
+              const qrInputRef = codeInputRefs.current[lastIndex];
+              if (qrInputRef) {
+                // Trigger the QR scanner
+                qrInputRef.openScanner();
+              }
+            }
+          } catch (error) {
+            console.error("Error checking camera permissions:", error);
+          }
+        }
+      }
+    };
+
+    // Call the function when materials change
+    handleAutoLaunchScanner();
+  }, [selectedMaterials.length, hideCodeInput]);
+
+  // Function to focus weight input after QR scan
+  const handleQRScanComplete = (index: number) => {
+    // Focus the corresponding weight input
+    if (weightInputRefs.current[index]) {
+      weightInputRefs.current[index]?.focus();
+    }
+  };
 
   if (!materials) {
     return null;
@@ -122,12 +158,8 @@ const MaterialSection = ({
                       </Text>
                       <QRTextInput
                         ref={(ref) => {
-                          // Store ref in the array
                           if (codeInputRefs.current.length <= index) {
-                            codeInputRefs.current = [
-                              ...codeInputRefs.current,
-                              ref,
-                            ];
+                            codeInputRefs.current = [...codeInputRefs.current, ref];
                           } else {
                             codeInputRefs.current[index] = ref;
                           }
@@ -140,6 +172,7 @@ const MaterialSection = ({
                           newMaterials[index] = { ...material, code: text };
                           setSelectedMaterials(newMaterials);
                         }}
+                        onScanComplete={() => handleQRScanComplete(index)}
                         editable={!disabled}
                       />
                     </Pressable>

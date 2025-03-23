@@ -26,6 +26,7 @@ import {
 } from "@/utils/queueStorage";
 import { useWallet } from "@/contexts/WalletContext";
 import { getBatchData } from "@/utils/batchStorage";
+import NetInfo from "@react-native-community/netinfo";
 
 interface QueueContextType {
   queueItems: QueueItem[];
@@ -173,9 +174,12 @@ export function QueueProvider({ children }: { children: React.ReactNode }) {
 
   const updateQueueItems = async (items: QueueItem[]): Promise<void> => {
     try {
-      // Deduplicate items based on localId
+      // Get existing items
+      const existingItems = await getActiveQueue();
+
+      // Combine existing and new items, deduplicating based on localId
       const seenIds = new Set<string>();
-      const uniqueItems = items.filter(item => {
+      const uniqueItems = [...items, ...existingItems].filter(item => {
         if (seenIds.has(item.localId)) {
           return false;
         }
@@ -183,32 +187,40 @@ export function QueueProvider({ children }: { children: React.ReactNode }) {
         return true;
       });
 
-      // Separate active and completed items
-      const completedItems = uniqueItems.filter(
-        (item) => item.status === QueueItemStatus.COMPLETED
-      );
-      const activeItems = uniqueItems.filter(
-        (item) => item.status !== QueueItemStatus.COMPLETED
-      );
-
-      // Update active queue and verify
-      await updateActiveQueue(activeItems);
+      // First, save all items to storage
+      await updateActiveQueue(uniqueItems);
+      
+      // Verify items were saved
       const savedItems = await getActiveQueue();
-      if (!savedItems.length && activeItems.length > 0) {
-        throw new Error("Failed to save active queue items");
+      if (!savedItems.length && uniqueItems.length > 0) {
+        throw new Error("Failed to save queue items");
       }
 
-      // Move newly completed items to completed queue
-      for (const item of completedItems) {
-        if (!item.hasOwnProperty("completedAt")) {
-          await addToCompletedQueue(item);
-        }
-      }
-
-      // Update state with combined items
+      // Update state with all items
       setQueueItems(uniqueItems);
 
-      const pendingItems = activeItems.filter(
+      // Now check network and process items if online
+      const netInfo = await NetInfo.fetch();
+      const isOnline = netInfo.isConnected && netInfo.isInternetReachable;
+
+      if (!isOnline) {
+        // Mark all new items as offline
+        const offlineItems = uniqueItems.map(item => {
+          if (items.find(newItem => newItem.localId === item.localId)) {
+            return {
+              ...item,
+              status: QueueItemStatus.OFFLINE
+            };
+          }
+          return item;
+        });
+        await updateActiveQueue(offlineItems);
+        setQueueItems(offlineItems);
+        return;
+      }
+
+      // If online, process items that need processing
+      const pendingItems = uniqueItems.filter(
         (i) =>
           i.status === QueueItemStatus.PENDING ||
           i.status === QueueItemStatus.OFFLINE
@@ -251,87 +263,36 @@ export function QueueProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  const retryItems = async (items: QueueItem[], service?: "directus" | "eas"): Promise<void> => {
-    console.log("Retrying items:", {
-      itemsToRetry: items.length,
-      itemIds: items.map((i) => i.localId),
-      service,
-    });
-
+  const retryItems = async (items: QueueItem[], service?: "directus" | "eas") => {
     try {
-      // Process items sequentially
-      for (const item of items) {
-        try {
-          // Reset only the specified service or both if none specified
-          const resetItem = {
-            ...item,
-            status: QueueItemStatus.PENDING,
-            retryCount: (item.retryCount || 0) + 1,
-            lastError: undefined,
-            lastAttempt: undefined,
-            directus: service === "eas" ? item.directus : { 
-              status: ServiceStatus.PENDING,
-              error: undefined 
-            },
-            eas: service === "directus" ? item.eas : { 
-              status: ServiceStatus.PENDING,
-              error: undefined 
-            },
-          };
+      // Filter out items that are already processing
+      const itemsToRetry = items.filter(item => item.status !== QueueItemStatus.PROCESSING);
+      
+      if (itemsToRetry.length === 0) {
+        console.log("No items to retry - all items are currently processing");
+        return;
+      }
 
-          // Update queue with reset item
-          const updatedItems = queueItems.map((qi) =>
-            qi.localId === item.localId ? resetItem : qi
-          );
-          await updateActiveQueue(updatedItems);
-          setQueueItems(updatedItems);
+      // Reset status and increment retry count for items that need retry
+      const updatedItems = itemsToRetry.map((item) => ({
+        ...item,
+        status: QueueItemStatus.PENDING,
+        retryCount: (item.retryCount || 0) + 1,
+        lastError: undefined,
+        directus: service === "eas" ? item.directus : { ...item.directus, status: ServiceStatus.PENDING },
+        eas: service === "directus" ? item.eas : { ...item.eas, status: ServiceStatus.PENDING },
+      }));
 
-          // Process the item
-          await processItem(resetItem);
+      // Update items in storage and state
+      await updateQueueItems(updatedItems);
 
-          // Add delay between items
-          await new Promise((resolve) => setTimeout(resolve, 1000));
-        } catch (error) {
-          console.error(`Failed to process item ${item.localId}:`, error);
-          const errorMessage = error instanceof Error ? error.message : "Unknown error";
-
-          // Check if it's an auth error
-          const isAuthError =
-            errorMessage.toLowerCase().includes("token") ||
-            errorMessage.toLowerCase().includes("auth") ||
-            errorMessage.toLowerCase().includes("unauthorized");
-
-          if (isAuthError) {
-            console.log("Auth error detected, stopping retry process");
-            break;
-          }
-
-          // Update item state to failed for the specified service with detailed error message
-          const updatedItems = queueItems.map((qi) =>
-            qi.localId === item.localId
-              ? {
-                  ...qi,
-                  status: QueueItemStatus.PENDING, // Keep in pending if not all services are complete
-                  lastError: errorMessage,
-                  lastAttempt: new Date(),
-                  directus: service === "eas" ? qi.directus : { 
-                    status: ServiceStatus.FAILED, 
-                    error: errorMessage 
-                  },
-                  eas: service === "directus" ? qi.eas : { 
-                    status: ServiceStatus.FAILED, 
-                    error: errorMessage 
-                  },
-                }
-              : qi
-          );
-          await updateActiveQueue(updatedItems);
-          setQueueItems(updatedItems);
-        }
+      // Process items if online
+      const netInfo = await NetInfo.fetch();
+      if (netInfo.isConnected && netInfo.isInternetReachable) {
+        await processItems(updatedItems);
       }
     } catch (error) {
-      console.error("Error in retryItems:", error);
-      throw error;
+      console.error("Error retrying items:", error);
     }
   };
 

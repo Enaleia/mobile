@@ -19,11 +19,13 @@ interface QRTextInputProps {
   label?: string;
   error?: string;
   editable?: boolean;
+  onScanComplete?: () => void;
 }
 
 export interface QRTextInputRef {
   focus: () => void;
   blur: () => void;
+  openScanner: () => void;
 }
 
 const scannerReducer = (state: any, action: any) => {
@@ -61,6 +63,7 @@ const QRTextInput = forwardRef<QRTextInputRef, QRTextInputProps>(
       label,
       error,
       editable = true,
+      onScanComplete,
     },
     ref
   ) => {
@@ -75,6 +78,16 @@ const QRTextInput = forwardRef<QRTextInputRef, QRTextInputProps>(
       blur: () => {
         inputRef.current?.blur();
       },
+      openScanner: async () => {
+        try {
+          const { status } = await Camera.requestCameraPermissionsAsync();
+          if (status === 'granted') {
+            setScanner(true);
+          }
+        } catch (error) {
+          console.error("Error opening scanner:", error);
+        }
+      }
     }));
 
     const currentState = scannerStates[id] || { isVisible: false, error: null };
@@ -123,6 +136,7 @@ const QRTextInput = forwardRef<QRTextInputRef, QRTextInputProps>(
           onChangeText(textValue.trim());
           setError(null);
           setScanner(false);
+          onScanComplete?.();
         } catch (error) {
           dispatch({
             type: "SET_ERROR",
@@ -136,7 +150,7 @@ const QRTextInput = forwardRef<QRTextInputRef, QRTextInputProps>(
           });
         }
       },
-      [id, onChangeText]
+      [id, onChangeText, onScanComplete]
     );
 
     const containerClass =

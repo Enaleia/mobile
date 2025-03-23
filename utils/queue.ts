@@ -17,11 +17,16 @@ export const isCompletedItem = (item: QueueItem): boolean =>
   item.status === QueueItemStatus.COMPLETED;
 
 export const filterQueueItems = (items: QueueItem[]) => {
+  const processingItems = items.filter(isProcessingItem);
+  const pendingItems = items.filter(isPendingItem);
+  const failedItems = items.filter(isFailedItem);
+  const completedItems = items.filter(isCompletedItem);
+
   return {
-    processingItems: items.filter(isProcessingItem),
-    pendingItems: items.filter(isPendingItem),
-    failedItems: items.filter(isFailedItem),
-    completedItems: items.filter(isCompletedItem),
+    // Combine processing and pending items
+    pendingItems: [...processingItems, ...pendingItems],
+    failedItems,
+    completedItems,
   };
 };
 
