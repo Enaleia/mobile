@@ -33,13 +33,19 @@ export default function QueueStatusIndicator({ status, className = "" }: QueueSt
         return {
           icon: "warning-outline",
           color: "#EF4444", // red-500
-          text: "Send by email"
+          text: "Contact support"
         };
       case QueueItemStatus.OFFLINE:
         return {
           icon: "cloud-offline-outline",
           color: "#6B7280", // gray-500
           text: "Offline"
+        };
+      case QueueItemStatus.COMPLETED:
+        return {
+          icon: "checkmark-circle-outline",
+          color: "#10B981", // green-500
+          text: "Completed"
         };
       default:
         return {
@@ -53,16 +59,17 @@ export default function QueueStatusIndicator({ status, className = "" }: QueueSt
   const config = getStatusConfig();
 
   return (
-    <View className={`flex-row items-center ${className}`}>
+    <View className={`flex-row items-center  gap-1 ${className}`}>
+    <Text className="text-sm font-dm-regular text-grey-6">
+        {config.text}
+      </Text>
       <Ionicons 
         name={config.icon as any} 
-        size={16} 
+        size={28} 
         color={config.color}
         style={status === QueueItemStatus.PROCESSING ? { transform: [{ rotate: '45deg' }] } : undefined}
       />
-      <Text className="ml-1 text-xs font-dm-medium" style={{ color: config.color }}>
-        {config.text}
-      </Text>
+  
     </View>
   );
 } 
