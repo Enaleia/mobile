@@ -39,7 +39,7 @@ export const ServiceStatusIndicator = ({
       case ServiceStatus.OFFLINE:
         return "#a3a3a3"; // gray-500
       case ServiceStatus.PENDING:
-        return type === "eas" ? "#f43f5e" : "#a3a3a3"; // red-500 for blockchain pending, gray-400 for others
+        return "#a3a3a3"; // gray-500 for all pending states
     }
   };
 

@@ -64,7 +64,14 @@ const QueueSection = ({
       return false;
     }
 
+    // Check if any items are eligible for retry
     return uniqueItems.some(item => {
+      // Don't retry completed or failed items
+      if (item.status === QueueItemStatus.COMPLETED || 
+          item.status === QueueItemStatus.FAILED) {
+        return false;
+      }
+
       const directusStatus = item?.directus?.status;
       const easStatus = item?.eas?.status;
       
@@ -124,6 +131,12 @@ const QueueSection = ({
     setIsRetrying(true);
     try {
       for (const item of uniqueItems) {
+        // Skip completed or failed items
+        if (item.status === QueueItemStatus.COMPLETED || 
+            item.status === QueueItemStatus.FAILED) {
+          continue;
+        }
+
         const directusStatus = item?.directus?.status;
         const easStatus = item?.eas?.status;
         
@@ -136,17 +149,17 @@ const QueueSection = ({
         
         // Determine which service(s) to retry
         if (isDirectusFailed && !isEasFailed) {
-          await onRetry([item], "directus");
+          await onRetry([{ ...item, status: QueueItemStatus.QUEUED }], "directus");
         } else if (isEasFailed && !isDirectusFailed) {
-          await onRetry([item], "eas");
+          await onRetry([{ ...item, status: QueueItemStatus.QUEUED }], "eas");
         } else if (isDirectusFailed && isEasFailed) {
-          await onRetry([item]);
+          await onRetry([{ ...item, status: QueueItemStatus.QUEUED }]);
         } else if (isDirectusPendingOrOffline && !isEasPendingOrOffline) {
-          await onRetry([item], "directus");
+          await onRetry([{ ...item, status: QueueItemStatus.QUEUED }], "directus");
         } else if (isEasPendingOrOffline && !isDirectusPendingOrOffline) {
-          await onRetry([item], "eas");
+          await onRetry([{ ...item, status: QueueItemStatus.QUEUED }], "eas");
         } else if (isDirectusPendingOrOffline && isEasPendingOrOffline) {
-          await onRetry([item]);
+          await onRetry([{ ...item, status: QueueItemStatus.QUEUED }]);
         }
       }
     } catch (error) {
