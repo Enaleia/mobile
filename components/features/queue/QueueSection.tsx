@@ -43,9 +43,9 @@ const QueueSection = ({
   const getBadgeColor = (title: string) => {
     switch (title.toLowerCase()) {
       case "completed":
-        return "bg-green-500";
+        return "bg-emerald-600";
       case "active":
-        return "bg-blue-500";
+        return "bg-blue-ocean";
       default:
         return "bg-grey-6";
     }
@@ -124,7 +124,7 @@ const QueueSection = ({
       }
     }
 
-    return "Retry Manually";
+    return "Retry all";
   };
 
   const handleRetry = async () => {

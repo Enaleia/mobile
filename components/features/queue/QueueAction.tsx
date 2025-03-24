@@ -132,16 +132,19 @@ const QueuedAction = ({ item }: QueuedActionProps) => {
         </View>
 
         {/* Progress Bar */}
-        {(item.status === QueueItemStatus.PROCESSING || item.status === QueueItemStatus.COMPLETED) && (
-          <View className="w-full h-1 relative overflow-hidden opacity-30">
-            <View 
-              className={`h-full absolute left-0 top-0 ${
-                item.status === QueueItemStatus.COMPLETED ? 'bg-[#A4C6E1]' : 'bg-[#A4C6E1]'
-              }`}
-              style={{ width: `${progress}%` }}
-            />
-          </View>
-        )}
+        <View className="w-full h-1 relative overflow-hidden">
+          {/* Background bar */}
+          <View className="w-full h-full bg-grey-3" />
+          {/* Progress bar */}
+          <View 
+            className={`h-full absolute left-0 top-0 ${
+              item.status === QueueItemStatus.COMPLETED ? 'bg-[#A4C6E1]' :
+              item.status === QueueItemStatus.PROCESSING ? 'bg-[#A4C6E1]' :
+              'bg-grey-2'
+            }`}
+            style={{ width: `${progress}%` }}
+          />
+        </View>
       </View>
     </Pressable>
   );

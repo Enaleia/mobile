@@ -14,19 +14,19 @@ export default function QueueStatusIndicator({ status, className = "" }: QueueSt
       case QueueItemStatus.PENDING:
         return {
           icon: "time-outline",
-          color: "#6B7280", // gray-500
+          color: "#0D0D0D", // enaleia-black
           text: "Pending"
         };
       case QueueItemStatus.QUEUED:
         return {
           icon: "layers-outline",
-          color: "#3B82F6", // blue-500
+          color: "#0D0D0D", // enaleia-black
           text: "Queued"
         };
       case QueueItemStatus.PROCESSING:
         return {
           icon: "sync",
-          color: "#10B981", // green-500
+          color: "#0D0D0D", // enaleia-black
           text: "Processing"
         };
       case QueueItemStatus.FAILED:
@@ -38,19 +38,19 @@ export default function QueueStatusIndicator({ status, className = "" }: QueueSt
       case QueueItemStatus.OFFLINE:
         return {
           icon: "cloud-offline-outline",
-          color: "#6B7280", // gray-500
+          color: "#0D0D0D", // enaleia-black
           text: "Offline"
         };
       case QueueItemStatus.COMPLETED:
         return {
           icon: "checkmark-circle-outline",
-          color: "#10B981", // green-500
+          color: "#0D0D0D", // enaleia-black
           text: "Completed"
         };
       default:
         return {
           icon: "help-circle-outline",
-          color: "#6B7280",
+          color: "#0D0D0D", // enaleia-black
           text: "Unknown"
         };
     }
@@ -60,7 +60,7 @@ export default function QueueStatusIndicator({ status, className = "" }: QueueSt
 
   return (
     <View className={`flex-row items-center  gap-1 ${className}`}>
-    <Text className="text-sm font-dm-regular text-grey-6">
+    <Text className="text-xs font-dm-regular text-grey-6">
         {config.text}
       </Text>
       <Ionicons 
