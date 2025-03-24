@@ -378,6 +378,12 @@ export async function processQueueItems(
 
   // Process items sequentially
   for (const item of itemsToProcess) {
+    // Skip items that are not in QUEUED or PENDING state
+    if (item.status !== QueueItemStatus.QUEUED && item.status !== QueueItemStatus.PENDING) {
+      console.log(`Skipping item ${item.localId} - not in QUEUED or PENDING state`);
+      continue;
+    }
+
     console.log(`\n=== Processing item ${item.localId} ===`);
     console.log('Item state:', {
       status: item.status,

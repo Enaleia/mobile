@@ -265,7 +265,7 @@ export function QueueProvider({ children }: { children: React.ReactNode }) {
           // Reset only the specified service or both if none specified
           const resetItem = {
             ...item,
-            status: QueueItemStatus.PENDING,
+            status: QueueItemStatus.QUEUED,
             retryCount: (item.retryCount || 0) + 1,
             lastError: undefined,
             lastAttempt: undefined,
@@ -311,7 +311,7 @@ export function QueueProvider({ children }: { children: React.ReactNode }) {
             qi.localId === item.localId
               ? {
                   ...qi,
-                  status: QueueItemStatus.PENDING, // Keep in pending if not all services are complete
+                  status: QueueItemStatus.FAILED,
                   lastError: errorMessage,
                   lastAttempt: new Date(),
                   directus: service === "eas" ? qi.directus : { 

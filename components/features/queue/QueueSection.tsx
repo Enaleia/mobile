@@ -1,13 +1,15 @@
-import { QueueItem, ServiceStatus, MAX_RETRIES_PER_BATCH, RETRY_COOLDOWN, isCompletelyFailed } from "@/types/queue";
+import { QueueItem, ServiceStatus, MAX_RETRIES_PER_BATCH, RETRY_COOLDOWN, isCompletelyFailed, QueueItemStatus } from "@/types/queue";
 import { View, Text, Pressable, ActivityIndicator } from "react-native";
 import QueuedAction from "@/components/features/queue/QueueAction";
 import { useState, useMemo } from "react";
 import { useNetwork } from "@/contexts/NetworkContext";
+import { Ionicons } from "@expo/vector-icons";
 
 interface QueueSectionProps {
   title: string;
   items: QueueItem[];
   onRetry: (items: QueueItem[], service?: "directus" | "eas") => Promise<void>;
+  onClearAll?: () => Promise<void>;
   showRetry?: boolean;
   alwaysShow?: boolean;
 }
@@ -16,10 +18,12 @@ const QueueSection = ({
   title,
   items,
   onRetry,
+  onClearAll,
   showRetry = true,
   alwaysShow = false,
 }: QueueSectionProps) => {
   const [isRetrying, setIsRetrying] = useState(false);
+  const [showClearOptions, setShowClearOptions] = useState(false);
 
   // Deduplicate items based on localId
   const uniqueItems = useMemo(() => {
@@ -49,13 +53,14 @@ const QueueSection = ({
 
   // Check if any items need retry for each service
   const needsRetry = () => {
-    // Check if any item is currently processing
-    const hasProcessingItems = uniqueItems.some(item => 
+    // Check if any item is currently processing or queued
+    const hasProcessingOrQueuedItems = uniqueItems.some(item => 
       item.directus?.status === ServiceStatus.PROCESSING || 
-      item.eas?.status === ServiceStatus.PROCESSING
+      item.eas?.status === ServiceStatus.PROCESSING ||
+      item.status === QueueItemStatus.QUEUED
     );
 
-    if (hasProcessingItems) {
+    if (hasProcessingOrQueuedItems) {
       return false;
     }
 
@@ -93,6 +98,11 @@ const QueueSection = ({
     
     const item = uniqueItems[0]; // Use first item for status
     if (!item) return "Retry";
+
+    // Check for queued state
+    if (item.status === QueueItemStatus.QUEUED) {
+      return "Queued for Processing";
+    }
 
     if (item.directus?.enteredSlowModeAt) {
       const nextRetryTime = new Date(
@@ -144,6 +154,53 @@ const QueueSection = ({
     } finally {
       setIsRetrying(false);
     }
+  };
+
+  const handleClearAll = async () => {
+    if (onClearAll) {
+      await onClearAll();
+      setShowClearOptions(false);
+    }
+  };
+
+  const ClearAllButton = () => {
+    if (title.toLowerCase() !== "completed" || !hasItems) return null;
+
+    if (showClearOptions) {
+      return (
+        <View className="flex-row gap-2">
+          <Pressable
+            onPress={() => setShowClearOptions(false)}
+            className="h-10 px-4 rounded-full flex-row items-center justify-center border bg-white border-grey-6"
+          >
+            <Text className="text-enaleia-black font-dm-light text-sm">Cancel</Text>
+            <View className="w-4 h-4 ml-1">
+              <Ionicons name="close" size={16} color="#0D0D0D" />
+            </View>
+          </Pressable>
+          <Pressable
+            onPress={handleClearAll}
+            className="h-10 px-4 rounded-full flex-row items-center justify-center bg-[#FF453A]"
+          >
+            <Text className="text-white font-dm-light text-sm">Clear</Text>
+            <View className="w-4 h-4 ml-1">
+              <Ionicons name="trash-outline" size={16} color="white" />
+            </View>
+          </Pressable>
+        </View>
+      );
+    }
+
+    return (
+      <Pressable
+        onPress={() => setShowClearOptions(true)}
+        className="h-10 w-10 rounded-full flex-row items-center justify-center border border-grey-6"
+      >
+        <View className="w-5 h-5">
+          <Ionicons name="trash-outline" size={20} color="#8E8E93" />
+        </View>
+      </Pressable>
+    );
   };
 
   const itemsSortedByMostRecent = useMemo(() => 
@@ -199,11 +256,12 @@ const QueueSection = ({
           )}
         </View>
 
-        {showRetry && uniqueItems.length > 0 && (
-          <View className="flex-row gap-2 mt-1">
+        <View className="flex-row gap-2 mt-1">
+          {showRetry && uniqueItems.length > 0 && (
             <RetryButton />
-          </View>
-        )}
+          )}
+          <ClearAllButton />
+        </View>
       </View>
 
       <View className="rounded-2xl overflow-hidden border border-gray-200 mt-1">

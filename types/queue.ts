@@ -12,7 +12,8 @@ export enum QueueItemStatus {
   "OFFLINE" = "OFFLINE",
   "FAILED" = "FAILED",
   "COMPLETED" = "COMPLETED",
-  "SLOW_RETRY" = "SLOW_RETRY"  // New status for items in slow retry mode
+  "SLOW_RETRY" = "SLOW_RETRY",  // New status for items in slow retry mode
+  "QUEUED" = "QUEUED"  // New status for items that have been queued for retry
 }
 
 export enum ServiceStatus {
@@ -123,3 +124,10 @@ export function isCompletelyFailed(item: QueueItem): boolean {
   }
   return false;
 }
+
+export const isPendingItem = (item: QueueItem): boolean =>
+  item.status === QueueItemStatus.OFFLINE ||
+  item.status === QueueItemStatus.PENDING ||
+  item.status === QueueItemStatus.QUEUED ||
+  (item.status === QueueItemStatus.FAILED &&
+    (item.retryCount || 0) < MAX_RETRIES);

@@ -5,9 +5,9 @@ import { QueueItem, QueueItemStatus, ServiceStatus, RETRY_COOLDOWN } from "@/typ
 import { isProcessingItem } from "@/utils/queue";
 import { Ionicons } from "@expo/vector-icons";
 import { Linking, Pressable, Text, View } from "react-native";
-import ProcessingPill from "./ProcessingPill";
 import { router } from "expo-router";
 import { ServiceStatusIndicator } from "./ServiceStatusIndicator";
+import QueueStatusIndicator from "./QueueStatusIndicator";
 
 interface QueuedActionProps {
   item: QueueItem;
@@ -54,12 +54,15 @@ const QueuedAction = ({ item }: QueuedActionProps) => {
     >
       <View className="flex-row justify-between items-start">
         <View className="flex-1 flex-col gap-1">
-          <Text
-            className="font-dm-bold text-base tracking-tight"
-            numberOfLines={1}
-          >
-            {action.name}
-          </Text>
+          <View className="flex-row justify-between items-center">
+            <Text
+              className="font-dm-bold text-base tracking-tight flex-1"
+              numberOfLines={1}
+            >
+              {action.name}
+            </Text>
+            <QueueStatusIndicator status={item.status} />
+          </View>
           <Text className="text-gray-600 text-sm">{formattedTime}</Text>
 
           {/* Service Status Indicators */}
@@ -74,13 +77,11 @@ const QueuedAction = ({ item }: QueuedActionProps) => {
               type="eas"
               extraClasses="flex-1"
             />
-            {(item.directus?.status === ServiceStatus.COMPLETED && item.eas?.status === ServiceStatus.COMPLETED) && (
-              <ServiceStatusIndicator
-                status={item.directus?.linked ? ServiceStatus.COMPLETED : ServiceStatus.PENDING}
-                type="linking"
-                extraClasses="flex-1"
-              />
-            )}
+            <ServiceStatusIndicator
+              status={item.directus?.linked ? ServiceStatus.COMPLETED : ServiceStatus.PENDING}
+              type="linking"
+              extraClasses="flex-1"
+            />
           </View>
 
           {/* Retry Information */}
@@ -90,7 +91,6 @@ const QueuedAction = ({ item }: QueuedActionProps) => {
             </Text>
           )}
         </View>
-        {isProcessing && <ProcessingPill />}
       </View>
 
       {/* Error Messages */}

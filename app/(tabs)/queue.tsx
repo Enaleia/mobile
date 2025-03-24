@@ -9,7 +9,9 @@ import { QueueItemStatus } from "@/types/queue";
 import { useEventListener } from "expo";
 import { useNavigation } from "expo-router";
 import { useEffect } from "react";
-import { Image, ScrollView, Text, View, Pressable, Linking } from "react-native";
+import { Image, ScrollView, Text, View, Pressable, Linking, Alert } from "react-native";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { getCompletedQueueCacheKey } from "@/utils/storage";
 
 const QueueScreen = () => {
   const { queueItems, loadQueueItems, retryItems } = useQueue();
@@ -34,6 +36,21 @@ const QueueScreen = () => {
   
   // Count items needing attention (all active items)
   const attentionCount = activeItems.length;
+
+  const handleClearAllCompleted = async () => {
+    try {
+      // Clear completed items from AsyncStorage
+      await AsyncStorage.setItem(getCompletedQueueCacheKey(), JSON.stringify([]));
+      // Reload queue items to update the UI
+      await loadQueueItems();
+    } catch (error) {
+      console.error("Error clearing completed items:", error);
+      Alert.alert(
+        "Error",
+        "Failed to clear completed items. Please try again."
+      );
+    }
+  };
 
   const contactSupport = async () => {
     const url = "mailto:app-support@enaleia.com,enaleia@pollenlabs.org";
@@ -102,6 +119,7 @@ const QueueScreen = () => {
                 items={completedItems}
                 onRetry={retryItems}
                 showRetry={false}
+                onClearAll={handleClearAllCompleted}
               />
             </View>
           )}
