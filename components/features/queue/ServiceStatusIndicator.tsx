@@ -13,6 +13,21 @@ export const ServiceStatusIndicator = ({
   type,
   extraClasses,
 }: ServiceStatusIndicatorProps) => {
+  const getStatusIcon = () => {
+    switch (status) {
+      case ServiceStatus.COMPLETED:
+        return "checkmark-circle";
+      case ServiceStatus.FAILED:
+        return "alert-circle";
+      case ServiceStatus.PROCESSING:
+        return "sync";
+      case ServiceStatus.OFFLINE:
+        return "cloud-offline";
+      case ServiceStatus.PENDING:
+        return "time";
+    }
+  };
+
   const getStatusColor = () => {
     switch (status) {
       case ServiceStatus.COMPLETED:
@@ -28,21 +43,6 @@ export const ServiceStatusIndicator = ({
     }
   };
 
-  const getStatusIcon = () => {
-    switch (status) {
-      case ServiceStatus.COMPLETED:
-        return "checkmark-circle";
-      case ServiceStatus.FAILED:
-        return "alert-circle";
-      case ServiceStatus.PROCESSING:
-        return "sync";
-      case ServiceStatus.OFFLINE:
-        return "cloud-offline";
-      case ServiceStatus.PENDING:
-        return "time"; // Use time icon for all pending states
-    }
-  };
-
   const getLabel = () => {
     switch (type) {
       case "directus":
@@ -55,9 +55,9 @@ export const ServiceStatusIndicator = ({
   };
 
   return (
-    <View className={`flex-row items-center gap-1 ${extraClasses}`}>
-      <Ionicons name={getStatusIcon()} size={16} color={getStatusColor()} />
-      <Text className="text-xs text-grey-6">
+    <View className={`flex-row items-center justify-center gap-1 ${extraClasses}`}>
+      <Ionicons name={getStatusIcon()} size={20} color={getStatusColor()} />
+      <Text className="text-sm text-grey-6">
         {getLabel()}
       </Text>
     </View>

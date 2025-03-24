@@ -27,40 +27,6 @@ const QueuedAction = ({ item }: QueuedActionProps) => {
   if (!action) return null;
   const isProcessing = isProcessingItem(item);
 
-  // Helper to get status color
-  const getStatusColor = (status?: ServiceStatus) => {
-    switch (status) {
-      case ServiceStatus.COMPLETED:
-        return "bg-green-500";
-      case ServiceStatus.PROCESSING:
-        return "bg-blue-500";
-      case ServiceStatus.FAILED:
-        return "bg-red-500";
-      case ServiceStatus.OFFLINE:
-        return "bg-yellow-500";
-      default:
-        return "bg-gray-300";
-    }
-  };
-
-  // Helper to get status text
-  const getStatusText = (status?: ServiceStatus) => {
-    switch (status) {
-      case ServiceStatus.COMPLETED:
-        return "Completed";
-      case ServiceStatus.PROCESSING:
-        return "Processing";
-      case ServiceStatus.FAILED:
-        return "Failed";
-      case ServiceStatus.OFFLINE:
-        return "Offline";
-      case ServiceStatus.PENDING:
-        return item.directus?.enteredSlowModeAt ? "Waiting for retry" : "Pending";
-      default:
-        return "Pending";
-    }
-  };
-
   // Helper to get retry information
   const getRetryInfo = () => {
     if (!item.directus?.enteredSlowModeAt) return null;
@@ -97,40 +63,32 @@ const QueuedAction = ({ item }: QueuedActionProps) => {
           <Text className="text-gray-600 text-sm">{formattedTime}</Text>
 
           {/* Service Status Indicators */}
-          <View className="flex-col space-y-2 mt-2">
-            {/* Directus Status */}
-            <View className="flex-row items-center">
-              <View className={`w-2 h-2 rounded-full ${getStatusColor(item.directus?.status)} mr-1`} />
-              <Text className="text-sm">
-                Database: {getStatusText(item.directus?.status)}
-              </Text>
-            </View>
-
-            {/* EAS Status */}
-            <View className="flex-row items-center">
-              <View className={`w-2 h-2 rounded-full ${getStatusColor(item.eas?.status)} mr-1`} />
-              <Text className="text-sm">
-                Blockchain: {getStatusText(item.eas?.status)}
-              </Text>
-            </View>
-
-            {/* Linking Status */}
+          <View className="flex-row justify-between items-center mt-2">
+            <ServiceStatusIndicator
+              status={item.directus?.status || ServiceStatus.PENDING}
+              type="directus"
+              extraClasses="flex-1"
+            />
+            <ServiceStatusIndicator
+              status={item.eas?.status || ServiceStatus.PENDING}
+              type="eas"
+              extraClasses="flex-1"
+            />
             {(item.directus?.status === ServiceStatus.COMPLETED && item.eas?.status === ServiceStatus.COMPLETED) && (
-              <View className="flex-row items-center">
-                <View className={`w-2 h-2 rounded-full ${item.directus?.linked ? 'bg-green-500' : 'bg-yellow-500'} mr-1`} />
-                <Text className="text-sm">
-                  {item.directus?.linked ? 'Linked' : 'Linking...'}
-                </Text>
-              </View>
-            )}
-
-            {/* Retry Information */}
-            {getRetryInfo() && (
-              <Text className="text-xs text-gray-500 mt-1">
-                {getRetryInfo()}
-              </Text>
+              <ServiceStatusIndicator
+                status={item.directus?.linked ? ServiceStatus.COMPLETED : ServiceStatus.PENDING}
+                type="linking"
+                extraClasses="flex-1"
+              />
             )}
           </View>
+
+          {/* Retry Information */}
+          {getRetryInfo() && (
+            <Text className="text-xs text-gray-500 mt-1">
+              {getRetryInfo()}
+            </Text>
+          )}
         </View>
         {isProcessing && <ProcessingPill />}
       </View>
