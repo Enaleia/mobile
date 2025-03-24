@@ -5,7 +5,7 @@ import { UserProfile } from "@/components/shared/UserProfile";
 import { useAuth } from "@/contexts/AuthContext";
 import { useQueue } from "@/contexts/QueueContext";
 import { QueueEvents, queueEventEmitter } from "@/services/events";
-import { filterQueueItems, getAttentionCount } from "@/utils/queue";
+import { QueueItemStatus } from "@/types/queue";
 import { useEventListener } from "expo";
 import { useNavigation } from "expo-router";
 import { useEffect } from "react";
@@ -17,9 +17,23 @@ const QueueScreen = () => {
   const navigation = useNavigation();
 
   const items = queueItems.length > 0 ? queueItems : [];
-  const { processingItems, pendingItems, failedItems, completedItems } =
-    filterQueueItems(items);
-  const attentionCount = getAttentionCount(items);
+  
+  // Split items into active and completed
+  // Active includes all items that are not completed (PENDING, PROCESSING, FAILED, OFFLINE, SLOW_RETRY)
+  const activeItems = items.filter(item => {
+    const nonCompletedStates = [
+      QueueItemStatus.PENDING,
+      QueueItemStatus.PROCESSING,
+      QueueItemStatus.FAILED,
+      QueueItemStatus.OFFLINE,
+      QueueItemStatus.SLOW_RETRY
+    ];
+    return nonCompletedStates.includes(item.status);
+  });
+  const completedItems = items.filter(item => item.status === QueueItemStatus.COMPLETED);
+  
+  // Count items needing attention (all active items)
+  const attentionCount = activeItems.length;
 
   const contactSupport = async () => {
     const url = "mailto:app-support@enaleia.com,enaleia@pollenlabs.org";
@@ -68,57 +82,26 @@ const QueueScreen = () => {
                 accessibilityRole="image"
               />
               <Text className="text-base text-center mt-1 font-regular">
-                There is no items here...
+                There are no items here...
               </Text>
             </View>
           ) : (
             <View className="flex-1 py-4">
-              {processingItems.length > 0 && (
-                <QueueSection
-                  title="Processing"
-                  items={processingItems}
-                  onRetry={retryItems}
-                  showRetry={false}
-                />
-              )}
-
-              {(pendingItems.length > 0 || failedItems.length > 0) && (
-                <View className="mb-4 p-3 bg-[#FF453A1A] rounded-xl border border-[#FFAEA9]">
-                  <Text className="text-left text-lg font-dm-bold text-enaleia-black mb-1">
-                    You have {pendingItems.length > 0 ? `${pendingItems.length} pending` : ""}{pendingItems.length > 0 && failedItems.length > 0 ? " and " : ""}{failedItems.length > 0 ? `${failedItems.length} failed` : ""} {(pendingItems.length + failedItems.length) === 1 ? "item" : "items"}.
-                  </Text>
-                  <Text className="text-left text-sm text-enaleia-black">
-                    Make sure you are connected to the internet and retry submitting these attestations. If the issue persists, please{" "}
-                    <Text className="text-blue-ocean underline" onPress={contactSupport}>
-                      contact support
-                    </Text>.
-                  </Text>
-                </View>
-              )}
-
+              {/* Active Items Section */}
               <QueueSection
-                title="Pending"
-                items={pendingItems}
+                title="Active"
+                items={activeItems}
                 onRetry={retryItems}
                 showRetry={true}
                 alwaysShow={true}
               />
 
-              {failedItems.length > 0 && (
-                <QueueSection
-                  title="Failed"
-                  items={failedItems}
-                  onRetry={retryItems}
-                  showRetry={true}
-                />
-              )}
-
+              {/* Completed Items Section */}
               <QueueSection
                 title="Completed"
                 items={completedItems}
                 onRetry={retryItems}
                 showRetry={false}
-                isCollapsible={true}
               />
             </View>
           )}
