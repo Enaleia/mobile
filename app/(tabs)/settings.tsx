@@ -146,6 +146,26 @@ const SettingsScreen = () => {
           </View>
           <Ionicons name="mail-open-outline" size={16} color="#0D0D0D" />
         </Pressable>
+
+        {__DEV__ && (
+          <Pressable
+            onPress={() => router.push("/settings/queue-test")}
+            className="flex-row items-center justify-between px-4 py-4 border-b border-neutral-200 bg-white"
+          >
+            <View className="flex-row items-center gap-2">
+              <Ionicons
+                name="bug-outline"
+                size={24}
+                color="#0D0D0D"
+              />
+              <Text className="text-base font-dm-bold text-slate-800 tracking-tighter">
+                Queue Testing
+              </Text>
+            </View>
+            <Ionicons name="chevron-forward-outline" size={16} color="#0D0D0D" />
+          </Pressable>
+        )}
+
         <Pressable
           onPress={() => setIsSignOutModalVisible(true)}
           className="flex-row items-center justify-between px-4 py-4 border-b border-neutral-200 bg-white rounded-b-2xl"

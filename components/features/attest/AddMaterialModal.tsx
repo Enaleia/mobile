@@ -98,14 +98,16 @@ export default function AddMaterialModal({
   selectedMaterials,
   setSelectedMaterials,
   materials,
+  onMaterialSelect,
 }: {
   isVisible: boolean;
   materials: MaterialsData["options"];
   onClose: () => void;
   selectedMaterials: MaterialDetail[];
   setSelectedMaterials: (materials: MaterialDetail[]) => void;
+  onMaterialSelect?: () => Promise<void>;
 }) {
-  const handleAddMaterial = (materialId: number) => {
+  const handleAddMaterial = async (materialId: number) => {
     const currentMaterials = selectedMaterials || [];
     const newMaterialDetails: MaterialDetail[] = [
       ...currentMaterials,
@@ -118,6 +120,9 @@ export default function AddMaterialModal({
     setSelectedMaterials(newMaterialDetails);
     Keyboard.dismiss();
     onClose();
+    if (onMaterialSelect) {
+      await onMaterialSelect();
+    }
   };
 
   return (

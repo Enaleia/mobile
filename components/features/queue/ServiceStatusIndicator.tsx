@@ -39,7 +39,7 @@ export const ServiceStatusIndicator = ({
       case ServiceStatus.OFFLINE:
         return "cloud-offline";
       case ServiceStatus.PENDING:
-        return type === "eas" ? "close-circle" : "time"; // close-circle for blockchain pending, time for others
+        return "time"; // Use time icon for all pending states
     }
   };
 
