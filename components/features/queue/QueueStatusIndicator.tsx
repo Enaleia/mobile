@@ -32,7 +32,7 @@ export default function QueueStatusIndicator({ status, className = "" }: QueueSt
       case QueueItemStatus.FAILED:
         return {
           icon: "warning-outline",
-          color: "#EF4444", // red-500
+          color: "#f43f5e", // rose-500
           text: "Contact support"
         };
       case QueueItemStatus.OFFLINE:

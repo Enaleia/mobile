@@ -9,6 +9,7 @@ import { router } from "expo-router";
 import { ServiceStatusIndicator } from "./ServiceStatusIndicator";
 import QueueStatusIndicator from "./QueueStatusIndicator";
 import { useEffect, useState } from "react";
+import { ProcessingSpinner } from "./ProcessingSpinner";
 
 interface QueuedActionProps {
   item: QueueItem;
@@ -144,6 +145,12 @@ const QueuedAction = ({ item }: QueuedActionProps) => {
             }`}
             style={{ width: `${progress}%` }}
           />
+          {/* Processing Spinner */}
+          {item.status === QueueItemStatus.PROCESSING && (
+            <View className="absolute right-2 top-1/2 -translate-y-1/2">
+              <ProcessingSpinner size={8} color="#A4C6E1" />
+            </View>
+          )}
         </View>
       </View>
     </Pressable>

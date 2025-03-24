@@ -31,9 +31,9 @@ export const ServiceStatusIndicator = ({
   const getStatusColor = () => {
     switch (status) {
       case ServiceStatus.COMPLETED:
-        return "#059669"; // green-500
+        return "#059669"; // emerald-600
       case ServiceStatus.FAILED:
-        return "#f43f5e"; // red-500
+        return "#f43f5e"; // rose-500
       case ServiceStatus.PROCESSING:
         return "#f59e0b"; // yellow-500
       case ServiceStatus.OFFLINE:

@@ -98,7 +98,8 @@ export default function QueueItemDetails() {
       `Action Type: ${currentAction.name}`,
       `Status:
   - Database: ${item.directus?.status || "N/A"}
-  - Blockchain: ${item.eas?.status || "N/A"}`,
+  - Blockchain: ${item.eas?.status || "N/A"}
+  - Linking: ${item.directus?.linked ? "Completed" : "Pending"}`,
       item.collectorId ? `Collector Information:
   - ID: ${item.collectorId}
   - Name: ${collectorInfo?.collector_name || "N/A"}` : null,
@@ -132,10 +133,13 @@ Other Details:
   - Created Date: ${formattedTime}
   - Location: ${item.location?.coords ? `${item.location.coords.latitude}, ${item.location.coords.longitude}` : "N/A"}
   - Attestation UID: ${item.eas?.txHash || "N/A"}`,
-      item.directus?.error ? `
-Error Information:
-  - Database Error: ${item.directus.error}` : null,
-      item.eas?.error ? `  - Blockchain Error: ${item.eas.error}` : null
+      (item.directus?.error || item.eas?.error || (item.directus?.status === ServiceStatus.FAILED && !item.directus?.linked)) ? `
+Error:
+${[
+  item.directus?.error ? `  - Database: ${item.directus.error}` : null,
+  item.eas?.error ? `  - Blockchain: ${item.eas.error}` : null,
+  item.directus?.status === ServiceStatus.FAILED && !item.directus?.linked ? `  - Linking: Failed to link attestation with database` : null
+].filter(Boolean).join("\n")}` : null
     ].filter(Boolean).join("\n\n");
 
     return sections;
@@ -284,11 +288,16 @@ Error Information:
         {/* Incoming Materials Section */}
         {item.incomingMaterials && item.incomingMaterials.length > 0 && (
           <View className="mb-8">
-            <View className="flex-row items-center mb-2">
+            <View className="flex-row items-center gap-1 mb-2">
               <Text className="text-xl font-dm-light text-enaleia-black tracking-tighter">
                 Incoming
               </Text>
-              <Ionicons name="arrow-down" size={24} color="#8E8E93" className="ml-1" />
+              <Ionicons 
+                name="arrow-down" 
+                size={24} 
+                color="#8E8E93" 
+                style={{ transform: [{ rotate: '-45deg' }] }}
+              />
             </View>
             
             {item.incomingMaterials.map((material, index) => {
@@ -332,11 +341,16 @@ Error Information:
         {/* Outgoing Materials Section */}
         {item.outgoingMaterials && item.outgoingMaterials.length > 0 && (
           <View className="mb-8">
-            <View className="flex-row items-center mb-2">
+            <View className="flex-row items-center gap-1 mb-2">
               <Text className="text-xl font-dm-light text-enaleia-black tracking-tighter">
                 Outgoing
               </Text>
-              <Ionicons name="arrow-up" size={24} color="#8E8E93" className="rotate-45" />
+              <Ionicons 
+                name="arrow-up" 
+                size={24} 
+                color="#8E8E93" 
+                style={{ transform: [{ rotate: '45deg' }] }}
+              />
             </View>
             
             {item.outgoingMaterials.map((material, index) => {
@@ -380,11 +394,11 @@ Error Information:
         {/* Manufacturing Section */}
         {currentAction?.name === "Manufacturing" && (
           <View className="mb-8">
-            <View className="flex-row items-center mb-4">
+            <View className="flex-row items-center gap-1 mb-4">
               <Text className="text-[20px] font-dm-light text-enaleia-black tracking-tighter">
                 Manufacturing
               </Text>
-              <Ionicons name="cube-outline" size={24} color="#8E8E93" className="ml-1" />
+              <Ionicons name="cube-outline" size={24} color="#8E8E93" />
             </View>
             
             <View className="border border-grey-3 rounded-2xl">
@@ -517,6 +531,28 @@ Error Information:
                 />
               </View>
             </View>
+            {(item.directus?.error || item.eas?.error || (item.directus?.status === ServiceStatus.FAILED && !item.directus?.linked)) && (
+              <View className="border-t border-grey-3 p-4">
+                <Text className="text-base font-dm-bold text-rose-500 mb-2">
+                  Error:
+                </Text>
+                {item.directus?.error && (
+                  <Text className="text-sm text-rose-500 font-dm-regular mb-1">
+                    Database: {item.directus.error}
+                  </Text>
+                )}
+                {item.eas?.error && (
+                  <Text className="text-sm text-rose-500 font-dm-regular mb-1">
+                    Blockchain: {item.eas.error}
+                  </Text>
+                )}
+                {item.directus?.status === ServiceStatus.FAILED && !item.directus?.linked && (
+                  <Text className="text-sm text-rose-500 font-dm-regular">
+                    Linking: Failed to link attestation with database
+                  </Text>
+                )}
+              </View>
+            )}
           </View>
         </View>
 
