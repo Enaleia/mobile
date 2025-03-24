@@ -1,18 +1,27 @@
 import { EnaleiaEASSchema } from "@/types/enaleia";
 import { EAS } from "eas-lib";
 
+type Environment = "development" | "production" | "preview";
+
 export const EAS_CONSTANTS = {
   SCHEMA:
     "string userID, string portOrCompanyName, string[] portOrCompanyCoordinates, string actionType, string actionDate, string[] actionCoordinates, string collectorName, string[] incomingMaterials, uint16[] incomingWeightsKg, string[] incomingCodes, string[] outgoingMaterials, uint16[] outgoingWeightsKg, string[] outgoingCodes, string productName, uint16 batchQuantity, string weightPerItemKg",
-  SCHEMA_UID:
-    "0xe087bb7707db4d063a9704af8e00f91715d1abd73d5ae3d63ee5ac1063604421",
+  SCHEMA_UID: (() => {
+    const env = (process.env.NODE_ENV || "development") as Environment;
+    const normalizedEnv = env === "preview" ? "development" : env;
+    const schemaUid = process.env[`EXPO_PUBLIC_EAS_SCHEMA_UID_${normalizedEnv.toUpperCase()}`];
+    if (!schemaUid) {
+      throw new Error(`EAS Schema UID not found for environment: ${normalizedEnv}`);
+    }
+    return schemaUid;
+  })(),
   PROVIDER_URLS: {
     sepolia: process.env.EXPO_PUBLIC_EAS_SEPOLIA_PROVIDER_URL,
     optimism: process.env.EXPO_PUBLIC_EAS_OPTIMISM_PROVIDER_URL,
   },
   SCAN_URLS: {
-    sepolia: "https://optimism-sepolia.easscan.org",
-    optimism: "https://optimism.easscan.org",
+    sepolia: process.env.EXPO_PUBLIC_EAS_SCAN_URL_SEPOLIA,
+    optimism: process.env.EXPO_PUBLIC_EAS_SCAN_URL_OPTIMISM,
   },
   MINIMUM_BALANCE: 0.0005,
   getNetworkFromProviderUrl: (url: string): "sepolia" | "optimism" => {
