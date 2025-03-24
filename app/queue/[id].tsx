@@ -497,29 +497,20 @@ Error Information:
             Attestation status
           </Text>
           <View className="border border-grey-3 rounded-2xl">
-            <View className="flex-row">
+            <View className="flex-row justify-between">
               <View className="flex-1 p-4 py-3 border-r border-grey-3">
-                <Text className="text-sm font-dm-bold text-grey-6 mb-1">
-                  Database
-                </Text>
                 <ServiceStatusIndicator 
                   status={item.directus?.status || ServiceStatus.PENDING}
                   type="directus"
                 />
               </View>
               <View className="flex-1 p-4 py-3 border-r border-grey-3">
-                <Text className="text-sm font-dm-bold text-grey-6 mb-1">
-                  Blockchain
-                </Text>
                 <ServiceStatusIndicator
                   status={item.eas?.status || ServiceStatus.PENDING}
                   type="eas"
                 />
               </View>
               <View className="flex-1 p-4 py-3">
-                <Text className="text-sm font-dm-bold text-grey-6 mb-1">
-                  Linking
-                </Text>
                 <ServiceStatusIndicator
                   status={item.directus?.linked ? ServiceStatus.COMPLETED : ServiceStatus.PENDING}
                   type="linking"

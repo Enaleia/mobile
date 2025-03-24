@@ -55,7 +55,7 @@ export const ServiceStatusIndicator = ({
   };
 
   return (
-    <View className={`flex-row items-center justify-center gap-1 ${extraClasses}`}>
+    <View className={`flex-row items-center justify-left gap-1 ${extraClasses}`}>
       <Ionicons name={getStatusIcon()} size={20} color={getStatusColor()} />
       <Text className="text-sm text-grey-6">
         {getLabel()}
