@@ -584,23 +584,51 @@ export async function processQueueItems(
           continue;
         }
 
+        try {
+          // Process EAS attestation
+          const easResult = await processEASAttestation(item, requiredData, wallet);
+          easUid = easResult.uid;
 
-      try {
-        // Process EAS attestation
-        const easResult = await processEASAttestation(item, requiredData, wallet);
-        easUid = easResult.uid;
+          // If we have both the event ID and EAS UID, update Directus
+          if (eventId || item.directus?.eventId) {
+            const targetEventId = eventId || item.directus?.eventId;
+            if (targetEventId) {
+              try {
+                const directusUpdatedEvent = await updateEvent(targetEventId, {
+                  EAS_UID: easResult.uid,
+                });
 
-        // If we have both the event ID and EAS UID, update Directus
-        if (eventId || item.directus?.eventId) {
-          const targetEventId = eventId || item.directus?.eventId;
-          if (targetEventId) {
-            try {
-              const directusUpdatedEvent = await updateEvent(targetEventId, {
-                EAS_UID: easResult.uid,
-              });
-
-              if (!directusUpdatedEvent || !directusUpdatedEvent.event_id) {
-                console.warn(`Failed to update EAS_UID in Directus for event ${targetEventId}`);
+                if (!directusUpdatedEvent || !directusUpdatedEvent.event_id) {
+                  console.warn(`Failed to update EAS_UID in Directus for event ${targetEventId}`);
+                  await updateItemInCache(item.localId, {
+                    directus: { 
+                      status: ServiceStatus.FAILED,
+                      error: "Failed to link EAS UID with Directus event",
+                      linked: false
+                    }
+                  });
+                } else {
+                  // Verify the linking was successful
+                  const verifyEvent = await getEvent(targetEventId);
+                  if (verifyEvent && verifyEvent[0]?.EAS_UID === easResult.uid) {
+                    await updateItemInCache(item.localId, {
+                      directus: { 
+                        status: ServiceStatus.COMPLETED,
+                        linked: true
+                      }
+                    });
+                  } else {
+                    await updateItemInCache(item.localId, {
+                      directus: { 
+                        status: ServiceStatus.FAILED,
+                        error: "Failed to verify EAS UID linking",
+                        linked: false
+                      }
+                    });
+                  }
+                }
+              } catch (error) {
+                console.error(`Failed to update EAS_UID in Directus for event ${targetEventId}:`, error);
                 await updateItemInCache(item.localId, {
                   directus: { 
                     status: ServiceStatus.FAILED,
@@ -608,38 +636,11 @@ export async function processQueueItems(
                     linked: false
                   }
                 });
-              } else {
-                // Verify the linking was successful
-                const verifyEvent = await getEvent(targetEventId);
-                if (verifyEvent && verifyEvent[0]?.EAS_UID === easResult.uid) {
-                  await updateItemInCache(item.localId, {
-                    directus: { 
-                      status: ServiceStatus.COMPLETED,
-                      linked: true
-                    }
-                  });
-                } else {
-                  await updateItemInCache(item.localId, {
-                    directus: { 
-                      status: ServiceStatus.FAILED,
-                      error: "Failed to verify EAS UID linking",
-                      linked: false
-                    }
-                  });
-                }
               }
-            } catch (error) {
-              console.error(`Failed to update EAS_UID in Directus for event ${targetEventId}:`, error);
-              await updateItemInCache(item.localId, {
-                directus: { 
-                  status: ServiceStatus.FAILED,
-                  error: "Failed to link EAS UID with Directus event",
-                  linked: false
-                }
-              });
             }
           }
 
+          // Update EAS status to completed
           await updateItemInCache(item.localId, {
             eas: {
               status: ServiceStatus.COMPLETED,

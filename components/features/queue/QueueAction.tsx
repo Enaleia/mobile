@@ -1,7 +1,7 @@
 import { useBatchData } from "@/hooks/data/useBatchData";
 import { EAS_CONSTANTS } from "@/services/eas";
 import { Action } from "@/types/action";
-import { QueueItem, QueueItemStatus, ServiceStatus } from "@/types/queue";
+import { QueueItem, QueueItemStatus, ServiceStatus, RETRY_COOLDOWN } from "@/types/queue";
 import { isProcessingItem } from "@/utils/queue";
 import { Ionicons } from "@expo/vector-icons";
 import { Linking, Pressable, Text, View } from "react-native";
@@ -27,6 +27,57 @@ const QueuedAction = ({ item }: QueuedActionProps) => {
   if (!action) return null;
   const isProcessing = isProcessingItem(item);
 
+  // Helper to get status color
+  const getStatusColor = (status?: ServiceStatus) => {
+    switch (status) {
+      case ServiceStatus.COMPLETED:
+        return "bg-green-500";
+      case ServiceStatus.PROCESSING:
+        return "bg-blue-500";
+      case ServiceStatus.FAILED:
+        return "bg-red-500";
+      case ServiceStatus.OFFLINE:
+        return "bg-yellow-500";
+      default:
+        return "bg-gray-300";
+    }
+  };
+
+  // Helper to get status text
+  const getStatusText = (status?: ServiceStatus) => {
+    switch (status) {
+      case ServiceStatus.COMPLETED:
+        return "Completed";
+      case ServiceStatus.PROCESSING:
+        return "Processing";
+      case ServiceStatus.FAILED:
+        return "Failed";
+      case ServiceStatus.OFFLINE:
+        return "Offline";
+      case ServiceStatus.PENDING:
+        return item.directus?.enteredSlowModeAt ? "Waiting for retry" : "Pending";
+      default:
+        return "Pending";
+    }
+  };
+
+  // Helper to get retry information
+  const getRetryInfo = () => {
+    if (!item.directus?.enteredSlowModeAt) return null;
+
+    const nextRetryTime = new Date(
+      (item.directus.lastAttempt ? new Date(item.directus.lastAttempt).getTime() : Date.now()) 
+      + RETRY_COOLDOWN
+    );
+    const timeUntilNextRetry = nextRetryTime.getTime() - Date.now();
+    
+    if (timeUntilNextRetry > 0) {
+      const minutes = Math.ceil(timeUntilNextRetry / (60 * 1000));
+      return `Next retry in ${minutes}m`;
+    }
+    return null;
+  };
+
   return (
     <Pressable
       onPress={() => {
@@ -46,21 +97,39 @@ const QueuedAction = ({ item }: QueuedActionProps) => {
           <Text className="text-gray-600 text-sm">{formattedTime}</Text>
 
           {/* Service Status Indicators */}
-          <View className="flex-row space-x-3">
-            <ServiceStatusIndicator
-              status={item.directus?.status || ServiceStatus.PENDING}
-              type="directus"
-              extraClasses="mr-3"
-            />
-            <ServiceStatusIndicator
-              status={item.eas?.status || ServiceStatus.PENDING}
-              type="eas"
-              extraClasses="mr-3"
-            />
-            <ServiceStatusIndicator
-              status={item.directus?.linked ? ServiceStatus.COMPLETED : ServiceStatus.PENDING}
-              type="linking"
-            />
+          <View className="flex-col space-y-2 mt-2">
+            {/* Directus Status */}
+            <View className="flex-row items-center">
+              <View className={`w-2 h-2 rounded-full ${getStatusColor(item.directus?.status)} mr-1`} />
+              <Text className="text-sm">
+                Database: {getStatusText(item.directus?.status)}
+              </Text>
+            </View>
+
+            {/* EAS Status */}
+            <View className="flex-row items-center">
+              <View className={`w-2 h-2 rounded-full ${getStatusColor(item.eas?.status)} mr-1`} />
+              <Text className="text-sm">
+                Blockchain: {getStatusText(item.eas?.status)}
+              </Text>
+            </View>
+
+            {/* Linking Status */}
+            {(item.directus?.status === ServiceStatus.COMPLETED && item.eas?.status === ServiceStatus.COMPLETED) && (
+              <View className="flex-row items-center">
+                <View className={`w-2 h-2 rounded-full ${item.directus?.linked ? 'bg-green-500' : 'bg-yellow-500'} mr-1`} />
+                <Text className="text-sm">
+                  {item.directus?.linked ? 'Linked' : 'Linking...'}
+                </Text>
+              </View>
+            )}
+
+            {/* Retry Information */}
+            {getRetryInfo() && (
+              <Text className="text-xs text-gray-500 mt-1">
+                {getRetryInfo()}
+              </Text>
+            )}
           </View>
         </View>
         {isProcessing && <ProcessingPill />}
@@ -69,14 +138,14 @@ const QueuedAction = ({ item }: QueuedActionProps) => {
       {/* Error Messages */}
       {(item.directus?.error || item.eas?.error) &&
         item.status !== QueueItemStatus.COMPLETED && (
-          <View className="mt-2">
+          <View className="mt-2 space-y-1">
             {item.directus?.error && (
-              <Text className="text-grey-6 text-sm" numberOfLines={2}>
+              <Text className="text-red-500 text-sm" numberOfLines={2}>
                 Database: {item.directus.error}
               </Text>
             )}
             {item.eas?.error && (
-              <Text className="text-grey-6 text-sm" numberOfLines={2}>
+              <Text className="text-red-500 text-sm" numberOfLines={2}>
                 Blockchain: {item.eas.error}
               </Text>
             )}
@@ -96,12 +165,13 @@ const QueuedAction = ({ item }: QueuedActionProps) => {
                 )
               );
           }}
+          className="mt-2"
         >
           <Text
-            className="text-xs text-blue-500 underline mt-1"
+            className="text-xs text-blue-500 underline"
             numberOfLines={1}
           >
-            See the attestation on ({item.eas.network || "sepolia"})
+            View on {item.eas.network || "sepolia"}
           </Text>
         </Pressable>
       )}
