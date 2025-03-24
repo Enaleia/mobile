@@ -314,7 +314,7 @@ Error Information:
                         </Text>
                         <View className="flex-row items-baseline">
                           <Text className="text-xl font-dm-bold text-enaleia-black">
-                            {material.weight}
+                            {material.weight || "-"}
                           </Text>
                           <Text className="text-sm text-right font-dm-bold text-grey-6 ml-2">
                             Kg
@@ -362,7 +362,7 @@ Error Information:
                         </Text>
                         <View className="flex-row items-baseline">
                           <Text className="text-xl font-dm-bold text-enaleia-black">
-                            {material.weight}
+                            {material.weight || "-"}
                           </Text>
                           <Text className="text-sm text-right font-dm-bold text-grey-6 ml-2">
                             Kg
@@ -450,12 +450,42 @@ Error Information:
                   : "N/A"}
               </Text>
             </View>
-            <View className="p-4 py-3">
+            <View className="p-4 py-3 border-b border-grey-3">
               <Text className="text-sm font-dm-bold text-grey-6">
                 Attestation UID
               </Text>
+              {item.eas?.txHash ? (
+                <View className="flex-row items-center">
+                  <Text className="text-base font-dm-bold text-enaleia-black flex-1">
+                    {item.eas.txHash}
+                  </Text>
+                  <Pressable
+                    onPress={() => {
+                      const network = item.eas?.network || "sepolia";
+                      const txHash = item.eas.txHash;
+                      if (txHash) {
+                        const url = EAS_CONSTANTS.getAttestationUrl(txHash, network);
+                        Linking.openURL(url);
+                      }
+                    }}
+                    hitSlop={8}
+                    className="ml-2"
+                  >
+                    <Ionicons name="open-outline" size={20} color="#0D0D0D" />
+                  </Pressable>
+                </View>
+              ) : (
+                <Text className="text-base font-dm-bold text-enaleia-black">
+                  N/A
+                </Text>
+              )}
+            </View>
+            <View className="p-4 py-3">
+              <Text className="text-sm font-dm-bold text-grey-6">
+                Database event ID
+              </Text>
               <Text className="text-base font-dm-bold text-enaleia-black">
-                {item.eas?.txHash || "N/A"}
+                {item.directus?.eventId || "N/A"}
               </Text>
             </View>
           </View>
@@ -472,7 +502,7 @@ Error Information:
                 <Text className="text-sm font-dm-bold text-grey-6 mb-1">
                   Database
                 </Text>
-                <ServiceStatusIndicator
+                <ServiceStatusIndicator 
                   status={item.directus?.status || ServiceStatus.PENDING}
                   type="directus"
                 />
