@@ -277,7 +277,7 @@ export default function LoginForm() {
               console.error("Failed to reset storage:", error);
             }
           }}
-          className="flex flex-row items-center justify-center p-3 bg-red-500 rounded-full tracking-tight mt-4"
+          className="flex flex-row items-center justify-center p-3 bg-rose-500 rounded-full tracking-tight mt-4"
         >
           <Text className="text-white font-dm-medium text-base">
             Reset Storage (Dev Only)

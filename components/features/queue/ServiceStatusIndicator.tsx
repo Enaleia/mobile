@@ -31,9 +31,9 @@ export const ServiceStatusIndicator = ({
   const getStatusColor = () => {
     switch (status) {
       case ServiceStatus.COMPLETED:
-        return "#10b981"; // green-500
+        return "#059669"; // emerald-600
       case ServiceStatus.FAILED:
-        return "#f43f5e"; // red-500
+        return "#f43f5e"; // rose-500
       case ServiceStatus.PROCESSING:
         return "#f59e0b"; // yellow-500
       case ServiceStatus.OFFLINE:
@@ -55,7 +55,7 @@ export const ServiceStatusIndicator = ({
   };
 
   return (
-    <View className={`flex-row items-center justify-center gap-1 ${extraClasses}`}>
+    <View className={`flex-row items-center justify-left gap-1 ${extraClasses}`}>
       <Ionicons name={getStatusIcon()} size={20} color={getStatusColor()} />
       <Text className="text-sm text-grey-6">
         {getLabel()}

@@ -75,7 +75,7 @@ export default function DecimalInput({
         </View>
       </View>
       {error && (
-        <Text className="text-sm font-dm-regular text-red-500 mt-1">
+        <Text className="text-sm font-dm-regular text-rose-500 mt-1">
           {error}
         </Text>
       )}

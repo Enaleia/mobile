@@ -14,37 +14,43 @@ export default function QueueStatusIndicator({ status, className = "" }: QueueSt
       case QueueItemStatus.PENDING:
         return {
           icon: "time-outline",
-          color: "#6B7280", // gray-500
+          color: "#0D0D0D", // enaleia-black
           text: "Pending"
         };
       case QueueItemStatus.QUEUED:
         return {
           icon: "layers-outline",
-          color: "#3B82F6", // blue-500
+          color: "#0D0D0D", // enaleia-black
           text: "Queued"
         };
       case QueueItemStatus.PROCESSING:
         return {
           icon: "sync",
-          color: "#10B981", // green-500
+          color: "#0D0D0D", // enaleia-black
           text: "Processing"
         };
       case QueueItemStatus.FAILED:
         return {
           icon: "warning-outline",
-          color: "#EF4444", // red-500
-          text: "Send by email"
+          color: "#f43f5e", // rose-500
+          text: "Contact support"
         };
       case QueueItemStatus.OFFLINE:
         return {
           icon: "cloud-offline-outline",
-          color: "#6B7280", // gray-500
+          color: "#0D0D0D", // enaleia-black
           text: "Offline"
+        };
+      case QueueItemStatus.COMPLETED:
+        return {
+          icon: "checkmark-circle-outline",
+          color: "#0D0D0D", // enaleia-black
+          text: "Completed"
         };
       default:
         return {
           icon: "help-circle-outline",
-          color: "#6B7280",
+          color: "#0D0D0D", // enaleia-black
           text: "Unknown"
         };
     }
@@ -53,16 +59,17 @@ export default function QueueStatusIndicator({ status, className = "" }: QueueSt
   const config = getStatusConfig();
 
   return (
-    <View className={`flex-row items-center ${className}`}>
+    <View className={`flex-row items-center  gap-1 ${className}`}>
+    <Text className="text-xs font-dm-regular text-grey-6">
+        {config.text}
+      </Text>
       <Ionicons 
         name={config.icon as any} 
-        size={16} 
+        size={28} 
         color={config.color}
         style={status === QueueItemStatus.PROCESSING ? { transform: [{ rotate: '45deg' }] } : undefined}
       />
-      <Text className="ml-1 text-xs font-dm-medium" style={{ color: config.color }}>
-        {config.text}
-      </Text>
+  
     </View>
   );
 } 

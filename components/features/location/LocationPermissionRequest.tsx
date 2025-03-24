@@ -250,7 +250,7 @@ export function LocationPermissionRequest({
             className="flex-row items-center space-x-2"
             accessibilityRole="text"
           >
-            <Ionicons name="checkmark-circle" size={20} color="#10B981" />
+            <Ionicons name="checkmark-circle" size={20} color="#059669" />
             <Text className="text-sm font-dm-regular text-gray-700">
               Verify event location accuracy
             </Text>
@@ -259,7 +259,7 @@ export function LocationPermissionRequest({
             className="flex-row items-center space-x-2"
             accessibilityRole="text"
           >
-            <Ionicons name="checkmark-circle" size={20} color="#10B981" />
+            <Ionicons name="checkmark-circle" size={20} color="#059669" />
             <Text className="text-sm font-dm-regular text-gray-700">
               Works offline with location caching
             </Text>
@@ -268,7 +268,7 @@ export function LocationPermissionRequest({
             className="flex-row items-center space-x-2"
             accessibilityRole="text"
           >
-            <Ionicons name="checkmark-circle" size={20} color="#10B981" />
+            <Ionicons name="checkmark-circle" size={20} color="#059669" />
             <Text className="text-sm font-dm-regular text-gray-700">
               Battery efficient location updates
             </Text>

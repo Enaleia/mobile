@@ -214,7 +214,7 @@ export default function QueueTestScreen() {
         {result && (
           <Text
             className={`mt-2 text-sm ${
-              result.success ? "text-green-500" : "text-red-500"
+              result.success ? "text-emerald-600" : "text-rose-500"
             }`}
           >
             {result.message}
