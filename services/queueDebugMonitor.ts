@@ -1,0 +1,209 @@
+import { QueueItem, QueueItemStatus, ServiceStatus, PROCESSING_TIMEOUT, MAX_RETRIES_PER_BATCH, RETRY_COOLDOWN, MAX_RETRY_AGE } from "@/types/queue";
+import { filterQueueItems } from "@/utils/queue";
+
+interface QueueMetrics {
+  totalItems: number;
+  activeItems: number;
+  stuckItems: number;
+  failedItems: number;
+  completedItems: number;
+  averageProcessingTime: number;
+  retryStats: {
+    initialPhase: number;
+    slowPhase: number;
+    manualRetries: number;
+  };
+}
+
+export class QueueDebugMonitor {
+  private static instance: QueueDebugMonitor;
+  private debugEnabled: boolean = true;
+  private lastMetrics: QueueMetrics | null = null;
+  private lastNotificationTime: { [key: string]: number } = {};
+  private NOTIFICATION_COOLDOWN = 5 * 60 * 1000; // 5 minutes
+
+  private constructor() {}
+
+  static getInstance(): QueueDebugMonitor {
+    if (!QueueDebugMonitor.instance) {
+      QueueDebugMonitor.instance = new QueueDebugMonitor();
+    }
+    return QueueDebugMonitor.instance;
+  }
+
+  enableDebug(enabled: boolean = true) {
+    this.debugEnabled = enabled;
+  }
+
+  disableDebug() {
+    this.debugEnabled = false;
+  }
+
+  private log(message: string, data?: any) {
+    if (this.debugEnabled) {
+      console.log(`[QueueMonitor] ${message}`, data ? data : '');
+    }
+  }
+
+  private isItemStuck(item: QueueItem): boolean {
+    return Boolean(
+      item.status === QueueItemStatus.PROCESSING &&
+      item.lastAttempt &&
+      Date.now() - new Date(item.lastAttempt).getTime() > PROCESSING_TIMEOUT
+    );
+  }
+
+  private getRetryInfo(item: QueueItem) {
+    const now = new Date();
+    const lastAttempt = item.lastAttempt ? new Date(item.lastAttempt) : null;
+    const timeSinceLastAttempt = lastAttempt ? 
+      `${Math.round((now.getTime() - lastAttempt.getTime()) / 1000)}s` : 
+      'N/A';
+
+    const retryPhase = item.directus?.enteredSlowModeAt ? 'slow' : 'initial';
+    const retryCount = item.directus?.enteredSlowModeAt ? 
+      item.directus.slowRetryCount || 0 : 
+      item.directus?.initialRetryCount || 0;
+    
+    const maxRetries = item.directus?.enteredSlowModeAt ? 
+      Math.ceil(MAX_RETRY_AGE / RETRY_COOLDOWN) : 
+      MAX_RETRIES_PER_BATCH;
+
+    const nextRetry = item.directus?.enteredSlowModeAt ? 
+      `${Math.round((RETRY_COOLDOWN - (now.getTime() - new Date(item.directus.enteredSlowModeAt).getTime())) / (60 * 1000))}m` : 
+      'N/A';
+
+    return {
+      retryPhase,
+      retryCount,
+      maxRetries,
+      timeSinceLastAttempt,
+      nextRetry
+    };
+  }
+
+  private calculateMetrics(items: QueueItem[]): QueueMetrics {
+    const now = Date.now();
+    let totalProcessingTime = 0;
+    let completedCount = 0;
+
+    const metrics = items.reduce((acc, item) => {
+      // Count total items
+      acc.totalItems++;
+
+      // Count by status
+      if (item.status === QueueItemStatus.PROCESSING) {
+        acc.activeItems++;
+      } else if (item.status === QueueItemStatus.FAILED) {
+        acc.failedItems++;
+      } else if (item.status === QueueItemStatus.COMPLETED) {
+        acc.completedItems++;
+        // Calculate processing time for completed items
+        if (item.lastAttempt) {
+          const processingTime = new Date(item.lastAttempt).getTime() - new Date(item.date).getTime();
+          totalProcessingTime += processingTime;
+          completedCount++;
+        }
+      }
+
+      // Check for stuck items
+      if (this.isItemStuck(item)) {
+        acc.stuckItems++;
+      }
+
+      // Track retry stats
+      if (item.directus?.enteredSlowModeAt) {
+        acc.retryStats.slowPhase++;
+      } else {
+        acc.retryStats.initialPhase++;
+      }
+
+      return acc;
+    }, {
+      totalItems: 0,
+      activeItems: 0,
+      stuckItems: 0,
+      failedItems: 0,
+      completedItems: 0,
+      averageProcessingTime: 0,
+      retryStats: {
+        initialPhase: 0,
+        slowPhase: 0,
+        manualRetries: 0
+      }
+    });
+
+    // Calculate average processing time
+    metrics.averageProcessingTime = completedCount > 0 ? 
+      Math.round(totalProcessingTime / completedCount / 1000) : 0;
+
+    return metrics;
+  }
+
+  logQueueMetrics(items: QueueItem[]) {
+    const currentMetrics = this.calculateMetrics(items);
+
+    // Only log if metrics have changed
+    if (!this.lastMetrics || 
+        JSON.stringify(this.lastMetrics) !== JSON.stringify(currentMetrics)) {
+      
+      this.log(`Queue Stats:
+  Total: ${currentMetrics.totalItems}
+  Active: ${currentMetrics.activeItems}
+  Stuck: ${currentMetrics.stuckItems}
+  Failed: ${currentMetrics.failedItems}
+  Completed: ${currentMetrics.completedItems}
+  Avg Processing: ${currentMetrics.averageProcessingTime}s
+  Retries: ${currentMetrics.retryStats.initialPhase} initial, ${currentMetrics.retryStats.slowPhase} slow, ${currentMetrics.retryStats.manualRetries} manual`);
+      
+      this.lastMetrics = currentMetrics;
+    }
+  }
+
+  logItemStateChange(item: QueueItem, updates: Partial<QueueItem>) {
+    const oldStatus = item.status;
+    const newStatus = updates.status || item.status;
+    
+    // Only log state changes that are relevant to retries or stuck items
+    if (newStatus === QueueItemStatus.PROCESSING || 
+        newStatus === QueueItemStatus.FAILED) {
+      const retryInfo = this.getRetryInfo(item);
+      this.log(`[${item.localId}] ${oldStatus} → ${newStatus} | ${retryInfo.retryPhase} #${retryInfo.retryCount}/${retryInfo.maxRetries}`);
+    }
+  }
+
+  logProcessingStart(item: QueueItem) {
+    const retryInfo = this.getRetryInfo(item);
+    this.log(`[${item.localId}] Processing | ${retryInfo.retryPhase} #${retryInfo.retryCount}/${retryInfo.maxRetries}`);
+  }
+
+  logProcessingComplete(item: QueueItem, success: boolean, error?: string) {
+    const duration = item.lastAttempt ? 
+      `${Math.round((Date.now() - new Date(item.lastAttempt).getTime()) / 1000)}s` : 
+      'unknown';
+    
+    const retryInfo = this.getRetryInfo(item);
+    this.log(`${success ? '✓' : '✗'} [${item.localId}] ${duration} | ${retryInfo.retryPhase} #${retryInfo.retryCount}/${retryInfo.maxRetries}${error ? ` | ${error}` : ''}`);
+  }
+
+  logRetryAttempt(item: QueueItem, service?: "directus" | "eas", isManual: boolean = false) {
+    const retryInfo = this.getRetryInfo(item);
+    const serviceIndicator = service ? `[${service}]` : '';
+    
+    // Update manual retry count if it's a manual retry
+    if (isManual && this.lastMetrics) {
+      this.lastMetrics.retryStats.manualRetries++;
+    }
+    
+    this.log(`${isManual ? '🔄' : '↻'} [${item.localId}] ${serviceIndicator} ${retryInfo.retryPhase} #${retryInfo.retryCount}/${retryInfo.maxRetries} | ${retryInfo.timeSinceLastAttempt} ago | Next: ${retryInfo.nextRetry}`);
+  }
+
+  logStuckItem(item: QueueItem) {
+    const retryInfo = this.getRetryInfo(item);
+    this.log(`⚠️ [${item.localId}] Stuck | ${retryInfo.retryPhase} #${retryInfo.retryCount}/${retryInfo.maxRetries} | ${retryInfo.timeSinceLastAttempt} since last attempt`);
+  }
+
+  logNetworkStatus(isConnected: boolean, isInternetReachable: boolean) {
+    this.log(`Network: ${isConnected ? '✓' : '✗'} Connected | ${isInternetReachable ? '✓' : '✗'} Internet`);
+  }
+} 
