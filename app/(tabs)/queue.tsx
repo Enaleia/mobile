@@ -14,7 +14,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { getCompletedQueueCacheKey } from "@/utils/storage";
 
 const QueueScreen = () => {
-  const { queueItems, loadQueueItems, retryItems } = useQueue();
+  const { queueItems, loadQueueItems, retryItems, refreshQueueStatus } = useQueue();
   const { user } = useAuth();
   const navigation = useNavigation();
 
@@ -67,9 +67,15 @@ const QueueScreen = () => {
   }, [attentionCount]);
 
   useEffect(() => {
-    const unsubscribe = navigation.addListener("focus", loadQueueItems);
+    const unsubscribe = navigation.addListener("focus", async () => {
+      console.log("Queue screen focused, refreshing status...");
+      // First refresh the status of queue items
+      await refreshQueueStatus();
+      // Then load the updated queue items
+      await loadQueueItems();
+    });
     return unsubscribe;
-  }, [navigation]);
+  }, [navigation, refreshQueueStatus, loadQueueItems]);
 
   useEventListener(queueEventEmitter, QueueEvents.UPDATED, loadQueueItems);
 

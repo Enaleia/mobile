@@ -26,6 +26,8 @@ import {
 } from "@/utils/queueStorage";
 import { useWallet } from "@/contexts/WalletContext";
 import { getBatchData } from "@/utils/batchStorage";
+import { getEvent } from "@/services/directus";
+import NetInfo from "@react-native-community/netinfo";
 
 interface QueueContextType {
   queueItems: QueueItem[];
@@ -33,6 +35,7 @@ interface QueueContextType {
   updateQueueItems: (items: QueueItem[]) => Promise<void>;
   retryItems: (items: QueueItem[], service?: "directus" | "eas") => Promise<void>;
   completedCount: number;
+  refreshQueueStatus: () => Promise<void>;
 }
 
 const QueueContext = createContext<QueueContextType | null>(null);
@@ -142,7 +145,9 @@ export function QueueProvider({ children }: { children: React.ReactNode }) {
       "change",
       async (nextAppState) => {
         if (nextAppState === "active") {
-          // App came to foreground, process any pending items
+          // App came to foreground, refresh status and process any pending items
+          await refreshQueueStatus();
+
           const pendingItems = queueItems.filter(
             (item) =>
               item.status === QueueItemStatus.PENDING ||
@@ -491,6 +496,164 @@ export function QueueProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
+  const refreshItemStatus = async (item: QueueItem): Promise<QueueItem> => {
+    const networkInfo = await NetInfo.fetch();
+    const isConnected = networkInfo.isConnected;
+    
+    // Create a copy of the item to modify
+    const updatedItem = { ...item };
+    let statusChanged = false;
+
+    // Check Directus status based on stored values
+    if (updatedItem.directus?.eventId) {
+      // If we have an eventId, Directus was successful
+      if (updatedItem.directus.status !== ServiceStatus.COMPLETED) {
+        statusChanged = true;
+      }
+      updatedItem.directus = {
+        ...updatedItem.directus,
+        status: ServiceStatus.COMPLETED,
+      };
+    } else {
+      if (updatedItem.directus?.status !== ServiceStatus.PENDING) {
+        statusChanged = true;
+      }
+      updatedItem.directus = {
+        ...updatedItem.directus,
+        status: ServiceStatus.PENDING,
+      };
+    }
+
+    // Check EAS status based on stored values
+    if (updatedItem.eas?.txHash) {
+      if (updatedItem.eas.status !== ServiceStatus.COMPLETED) {
+        statusChanged = true;
+      }
+      updatedItem.eas = {
+        ...updatedItem.eas,
+        status: ServiceStatus.COMPLETED,
+      };
+    } else {
+      if (updatedItem.eas?.status !== ServiceStatus.PENDING) {
+        statusChanged = true;
+      }
+      updatedItem.eas = {
+        ...updatedItem.eas,
+        status: ServiceStatus.PENDING,
+      };
+    }
+
+    // Check linking status only if online
+    if (isConnected && updatedItem.directus?.eventId && updatedItem.eas?.txHash) {
+      try {
+        const event = await getEvent(updatedItem.directus.eventId);
+        if (event && event[0]) {
+          // Check if EAS UID is linked to Directus event
+          const isLinked = event[0].EAS_UID === updatedItem.eas.txHash;
+          const wasLinked = updatedItem.directus.linked || false;
+          if (isLinked !== wasLinked) {
+            statusChanged = true;
+          }
+          updatedItem.directus = {
+            ...updatedItem.directus,
+            linked: isLinked,
+          };
+        }
+      } catch (error) {
+        console.error(`Error checking linking status for item ${updatedItem.localId}:`, error);
+        // Keep existing linking status if check fails
+        updatedItem.directus = {
+          ...updatedItem.directus,
+          linked: updatedItem.directus.linked || false,
+        };
+      }
+    } else if (!isConnected) {
+      // When offline, preserve existing linking status
+      updatedItem.directus = {
+        ...updatedItem.directus,
+        linked: updatedItem.directus?.linked || false,
+      };
+    }
+
+    // Update overall status based on service statuses
+    const prevStatus = updatedItem.status;
+    
+    if (updatedItem.directus?.status === ServiceStatus.COMPLETED && 
+        updatedItem.eas?.status === ServiceStatus.COMPLETED) {
+      // Both services completed - mark as COMPLETED
+      updatedItem.status = QueueItemStatus.COMPLETED;
+    } else if (updatedItem.status === QueueItemStatus.COMPLETED || 
+               updatedItem.status === QueueItemStatus.PROCESSING ||
+               updatedItem.status === QueueItemStatus.FAILED) {
+      // Reset to PENDING if:
+      // 1. Item was marked as COMPLETED but services aren't complete
+      // 2. Item is stuck in PROCESSING but services aren't complete
+      // 3. Item was marked as FAILED but services aren't actually in failed state
+      updatedItem.status = QueueItemStatus.PENDING;
+      
+      // Reset last attempt time to allow immediate processing
+      updatedItem.lastAttempt = undefined;
+      
+      // Clear last error if we're resetting from FAILED
+      if (prevStatus === QueueItemStatus.FAILED) {
+        updatedItem.lastError = undefined;
+      }
+      
+      if (prevStatus !== updatedItem.status) {
+        console.log(`Reset item ${updatedItem.localId} from ${prevStatus} to PENDING`);
+        statusChanged = true;
+      }
+    }
+    
+    if (statusChanged) {
+      console.log(`Item ${updatedItem.localId} status refreshed: ${JSON.stringify({
+        oldStatus: prevStatus,
+        newStatus: updatedItem.status,
+        directus: {
+          old: item.directus?.status,
+          new: updatedItem.directus?.status,
+          linked: updatedItem.directus?.linked
+        },
+        eas: {
+          old: item.eas?.status,
+          new: updatedItem.eas?.status
+        }
+      })}`);
+    }
+
+    return updatedItem;
+  };
+
+  const refreshQueueStatus = async () => {
+    try {
+      console.log("Refreshing queue status...");
+      const [activeItems, completedItems] = await Promise.all([
+        getActiveQueue(),
+        getCompletedQueue(),
+      ]);
+
+      // Refresh status for active items
+      const refreshedActiveItems = await Promise.all(
+        activeItems.map(item => refreshItemStatus(item))
+      );
+
+      // Update active queue with refreshed items
+      await updateActiveQueue(refreshedActiveItems);
+
+      // Combine active and completed items
+      const allItems = [...refreshedActiveItems, ...completedItems];
+
+      // Update state
+      setQueueItems(allItems);
+
+      // Emit update event
+      queueEventEmitter.emit(QueueEvents.UPDATED);
+      console.log("Queue status refresh completed");
+    } catch (error) {
+      console.error("Error refreshing queue status:", error);
+    }
+  };
+
   return (
     <QueueContext.Provider
       value={{
@@ -499,6 +662,7 @@ export function QueueProvider({ children }: { children: React.ReactNode }) {
         updateQueueItems,
         retryItems,
         completedCount,
+        refreshQueueStatus,
       }}
     >
       {children}
