@@ -5,6 +5,7 @@ import {
   Image,
   ActivityIndicator,
   Alert,
+  Linking,
 } from "react-native";
 import { useCurrentLocation } from "@/hooks/useCurrentLocation";
 import { Ionicons } from "@expo/vector-icons";
@@ -70,7 +71,7 @@ export function LocationPermissionRequest({
             },
             {
               text: "Open Settings",
-              onPress: () => Location.openSettings(),
+              onPress: () => Linking.openSettings(),
             },
           ]
         );
@@ -206,6 +207,7 @@ export function LocationPermissionRequest({
           onClose={() => setShowEducationalModal(false)}
           onRequestLocation={handleRequestPermission}
           onSkip={() => setShowEducationalModal(false)}
+          permissionStatus={permissionStatus}
         />
 
         <SavedLocationsSelector
@@ -273,7 +275,7 @@ export function LocationPermissionRequest({
               Battery efficient location updates
             </Text>
           </View>
-        </View> */}
+        </View>
 
         <View className="flex-row space-x-2">
           <Pressable
@@ -319,6 +321,7 @@ export function LocationPermissionRequest({
         onClose={() => setShowEducationalModal(false)}
         onRequestLocation={handleRequestPermission}
         onSkip={() => setShowEducationalModal(false)}
+        permissionStatus={permissionStatus}
       />
 
       <SavedLocationsSelector
