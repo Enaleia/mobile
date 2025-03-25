@@ -68,14 +68,11 @@ const QueueScreen = () => {
 
   useEffect(() => {
     const unsubscribe = navigation.addListener("focus", async () => {
-      console.log("Queue screen focused, refreshing status...");
-      // First refresh the status of queue items
-      await refreshQueueStatus();
-      // Then load the updated queue items
+      // Only load queue items without refreshing status
       await loadQueueItems();
     });
     return unsubscribe;
-  }, [navigation, refreshQueueStatus, loadQueueItems]);
+  }, [navigation, loadQueueItems]);
 
   useEventListener(queueEventEmitter, QueueEvents.UPDATED, loadQueueItems);
 
