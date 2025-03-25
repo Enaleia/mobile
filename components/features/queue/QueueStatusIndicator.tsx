@@ -1,4 +1,4 @@
-import { View } from "react-native";
+import { View, ActivityIndicator } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { QueueItemStatus } from "@/types/queue";
 import { Text } from "react-native";
@@ -59,17 +59,19 @@ export default function QueueStatusIndicator({ status, className = "" }: QueueSt
   const config = getStatusConfig();
 
   return (
-    <View className={`flex-row items-center  gap-1 ${className}`}>
-    <Text className="text-xs font-dm-regular text-grey-6">
+    <View className={`flex-row items-center gap-1 ${className}`}>
+      <Text className="text-xs font-dm-regular text-grey-6">
         {config.text}
       </Text>
-      <Ionicons 
-        name={config.icon as any} 
-        size={28} 
-        color={config.color}
-        style={status === QueueItemStatus.PROCESSING ? { transform: [{ rotate: '45deg' }] } : undefined}
-      />
-  
+      {status === QueueItemStatus.PROCESSING ? (
+        <ActivityIndicator size="small" color="#0D0D0D" />
+      ) : (
+        <Ionicons 
+          name={config.icon as any} 
+          size={28} 
+          color={config.color}
+        />
+      )}
     </View>
   );
 } 

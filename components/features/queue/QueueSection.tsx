@@ -39,6 +39,11 @@ const QueueSection = ({
 
   const showBadge = uniqueItems.length > 0;
   const hasItems = uniqueItems.length > 0;
+  
+  // Check if any items are currently processing
+  const hasProcessingItems = useMemo(() => 
+    uniqueItems.some(item => item.status === QueueItemStatus.PROCESSING),
+  [uniqueItems]);
 
   const getBadgeColor = (title: string) => {
     switch (title.toLowerCase()) {
@@ -276,6 +281,22 @@ const QueueSection = ({
           <ClearAllButton />
         </View>
       </View>
+
+      {title.toLowerCase() === "active" && hasProcessingItems && (
+        <View className="mb-2 p-3 bg-amber-50 border border-amber-200 rounded-lg">
+          <View className="flex-row items-start">
+            <Ionicons 
+              name="information-circle" 
+              size={20} 
+              color="#f59e0b" 
+              style={{ marginRight: 8, marginTop: 2 }} 
+            />
+            <Text className="text-sm font-dm-medium text-amber-800 flex-1 flex-wrap">
+              Currently sending data, please do not close the app.
+            </Text>
+          </View>
+        </View>
+      )}
 
       <View className="rounded-2xl overflow-hidden border border-gray-200 mt-1">
         {hasItems ? (
