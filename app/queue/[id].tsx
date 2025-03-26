@@ -551,25 +551,47 @@ ${[
                 />
               </View>
             </View>
-            {(item.directus?.error || item.eas?.error || (item.directus?.status === ServiceStatus.FAILED && !item.directus?.linked)) && (
+            {((item.directus?.error || item.eas?.error || (item.directus?.status === ServiceStatus.FAILED && !item.directus?.linked)) || 
+              (item.retryCount > 0 || (item.slowRetryCount ?? 0) > 0)) && (
               <View className="border-t border-grey-3 p-4">
-                <Text className="text-base font-dm-bold text-rose-500 mb-2">
-                  Error:
-                </Text>
-                {item.directus?.error && (
-                  <Text className="text-sm text-rose-500 font-dm-regular mb-1">
-                    Database: {item.directus.error}
-                  </Text>
+                {(item.directus?.error || item.eas?.error || (item.directus?.status === ServiceStatus.FAILED && !item.directus?.linked)) && (
+                  <>
+                    <Text className="text-base font-dm-bold text-rose-500 mb-2">
+                      Error:
+                    </Text>
+                    {item.directus?.error && (
+                      <Text className="text-sm text-rose-500 font-dm-regular mb-1">
+                        Database: {item.directus.error}
+                      </Text>
+                    )}
+                    {item.eas?.error && (
+                      <Text className="text-sm text-rose-500 font-dm-regular mb-1">
+                        Blockchain: {item.eas.error}
+                      </Text>
+                    )}
+                    {item.directus?.status === ServiceStatus.FAILED && !item.directus?.linked && (
+                      <Text className="text-sm text-rose-500 font-dm-regular">
+                        Linking: Failed to link attestation with database
+                      </Text>
+                    )}
+                  </>
                 )}
-                {item.eas?.error && (
-                  <Text className="text-sm text-rose-500 font-dm-regular mb-1">
-                    Blockchain: {item.eas.error}
-                  </Text>
-                )}
-                {item.directus?.status === ServiceStatus.FAILED && !item.directus?.linked && (
-                  <Text className="text-sm text-rose-500 font-dm-regular">
-                    Linking: Failed to link attestation with database
-                  </Text>
+                {(item.retryCount > 0 || (item.slowRetryCount ?? 0) > 0) && (
+                  <View className={`${(item.directus?.error || item.eas?.error || (item.directus?.status === ServiceStatus.FAILED && !item.directus?.linked)) ? "mt-4" : ""}`}>
+                    <Text className="text-base font-dm-bold text-grey-6 mb-2">
+                      Retry Information:
+                    </Text>
+                    {item.retryCount > 0 && (
+                      <Text className="text-sm text-grey-6 font-dm-regular mb-1">
+                        Initial Retries: {item.retryCount} of {MAX_RETRIES_PER_BATCH}
+                      </Text>
+                    )}
+                    {(item.slowRetryCount ?? 0) > 0 && (
+                      <Text className="text-sm text-grey-6 font-dm-regular">
+                        Slow Mode Retries: {item.slowRetryCount}
+                      </Text>
+                    )}
+                  </View>
                 )}
               </View>
             )}

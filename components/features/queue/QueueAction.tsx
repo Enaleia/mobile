@@ -90,7 +90,7 @@ const QueueAction = ({ item, isLastItem = false }: QueueActionProps) => {
             </View>
             <View className="flex-1 h-[32px] flex-col justify-center items-end gap-1 mt-1">
               <View className="flex-row items-center gap-1">
-                <QueueStatusIndicator status={item.status} />
+                <QueueStatusIndicator status={item.status} item={item} />
               </View>
             </View>
           </View>
