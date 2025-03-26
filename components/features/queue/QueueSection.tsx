@@ -86,7 +86,7 @@ const QueueSection = ({
         : "text-sm font-dm-medium flex-1 flex-wrap text-gray-700";
     }
     if (title.toLowerCase() === "critical") {
-      return "text-sm font-dm-medium flex-1 flex-wrap text-rose-600";
+      return "text-sm font-dm-medium flex-1 flex-wrap text-gray-700";
     }
     return "text-sm font-dm-medium flex-1 flex-wrap text-gray-700";
   };
@@ -100,7 +100,7 @@ const QueueSection = ({
           : "mb-2 p-3 rounded-2xl bg-sand-beige";
     }
     if (title.toLowerCase() === "critical") {
-      return "mb-2 p-3 rounded-2xl bg-rose-50";
+      return "mb-2 p-3 rounded-2xl bg-sand-beige";
     }
     return "mb-2 p-3 rounded-2xl bg-sand-beige";
   };
