@@ -16,7 +16,7 @@ interface QueueActionProps {
   isLastItem?: boolean;
 }
 
-const QueuedAction = ({ item }: QueuedActionProps) => {
+const QueueAction = ({ item, isLastItem = false }: QueueActionProps) => {
   const { actions } = useBatchData();
   const action = actions?.find((a: Action) => a.id === item.actionId);
   const timestamp = item.lastAttempt || item.date;
