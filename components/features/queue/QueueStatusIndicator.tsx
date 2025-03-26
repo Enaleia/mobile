@@ -13,43 +13,43 @@ export default function QueueStatusIndicator({ status, className = "" }: QueueSt
     switch (status) {
       case QueueItemStatus.PENDING:
         return {
-          icon: "time-outline",
-          color: "#0D0D0D", // enaleia-black
+          icon: "time",
+          color: "#737373", // grey-400
           text: "Pending"
         };
       case QueueItemStatus.QUEUED:
         return {
-          icon: "layers-outline",
-          color: "#0D0D0D", // enaleia-black
+          icon: "layers",
+          color: "#737373", // grey-400
           text: "Queued"
         };
       case QueueItemStatus.PROCESSING:
         return {
           icon: "sync",
-          color: "#0D0D0D", // enaleia-black
+          color: "#737373", // grey-400
           text: "Processing"
         };
       case QueueItemStatus.FAILED:
         return {
-          icon: "warning-outline",
+          icon: "alert-circle",
           color: "#f43f5e", // rose-500
           text: "Contact support"
         };
       case QueueItemStatus.OFFLINE:
         return {
-          icon: "cloud-offline-outline",
-          color: "#0D0D0D", // enaleia-black
+          icon: "cloud-offline",
+          color: "#737373", // grey-400
           text: "Offline"
         };
       case QueueItemStatus.COMPLETED:
         return {
-          icon: "checkmark-circle-outline",
-          color: "#0D0D0D", // enaleia-black
+          icon: "checkmark-circle",
+          color: "#059669", // emerald-600
           text: "Completed"
         };
       default:
         return {
-          icon: "help-circle-outline",
+          icon: "help-circle",
           color: "#0D0D0D", // enaleia-black
           text: "Unknown"
         };
@@ -60,7 +60,7 @@ export default function QueueStatusIndicator({ status, className = "" }: QueueSt
 
   return (
     <View className={`flex-row items-center gap-1 ${className}`}>
-      <Text className="text-xs font-dm-regular text-grey-6">
+      <Text className="text-sm font-dm-regular text-grey-6">
         {config.text}
       </Text>
       {status === QueueItemStatus.PROCESSING ? (

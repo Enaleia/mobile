@@ -300,8 +300,12 @@ const QueueSection = ({
 
       <View className="rounded-2xl overflow-hidden border border-gray-200 mt-1">
         {hasItems ? (
-          itemsSortedByMostRecent.map((item) => (
-            <QueuedAction key={item.localId} item={item} />
+          itemsSortedByMostRecent.map((item, index) => (
+            <QueuedAction 
+              key={item.localId} 
+              item={item} 
+              isLastItem={index === itemsSortedByMostRecent.length - 1}
+            />
           ))
         ) : (
           <View className="py-4 px-4 bg-white">
