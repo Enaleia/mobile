@@ -22,7 +22,6 @@ const QueueSection = ({
   showRetry = true,
   alwaysShow = false,
 }: QueueSectionProps) => {
-  const [isRetrying, setIsRetrying] = useState(false);
   const [showClearOptions, setShowClearOptions] = useState(false);
 
   // Deduplicate items based on localId
@@ -53,101 +52,6 @@ const QueueSection = ({
         return "bg-blue-ocean";
       default:
         return "bg-grey-6";
-    }
-  };
-
-  // Check if any items need retry for each service
-  const needsRetry = () => {
-    // Check if any item is currently processing
-    const hasProcessingItems = uniqueItems.some(item => 
-      item.directus?.status === ServiceStatus.PROCESSING || 
-      item.eas?.status === ServiceStatus.PROCESSING
-    );
-
-    if (hasProcessingItems) {
-      return false;
-    }
-
-    // Check if any items are eligible for retry
-    return uniqueItems.some(item => {
-      // Don't retry completed or failed items
-      if (item.status === QueueItemStatus.COMPLETED || 
-          item.status === QueueItemStatus.FAILED) {
-        return false;
-      }
-
-      const directusStatus = item?.directus?.status;
-      const easStatus = item?.eas?.status;
-      
-      // Don't allow manual retry during initial auto-retry phase
-      if (item.directus?.initialRetryCount !== undefined && 
-          item.directus.initialRetryCount < MAX_RETRIES_PER_BATCH) {
-        return false;
-      }
-
-      // Check if the item has completely failed (exceeded 7 days)
-      if (isCompletelyFailed(item)) {
-        return false;
-      }
-
-      // Failed states
-      const hasFailed = directusStatus === ServiceStatus.FAILED || 
-                       easStatus === ServiceStatus.FAILED;
-      
-      // Pending/Offline states
-      const isPendingOrOffline = (status?: ServiceStatus) => 
-        status === ServiceStatus.PENDING || status === ServiceStatus.OFFLINE;
-
-      return hasFailed || 
-             isPendingOrOffline(directusStatus) || 
-             isPendingOrOffline(easStatus);
-    });
-  };
-
-  const getRetryButtonText = () => {
-    const item = uniqueItems[0]; // Use first item for status
-    if (!item) return "Retry";
-
-    if (item.directus?.enteredSlowModeAt) {
-      const nextRetryTime = new Date(
-        (item.directus.lastAttempt ? new Date(item.directus.lastAttempt).getTime() : Date.now()) 
-        + RETRY_COOLDOWN
-      );
-      const now = new Date();
-      if (nextRetryTime > now) {
-        const minutesLeft = Math.ceil((nextRetryTime.getTime() - now.getTime()) / (60 * 1000));
-        return `Retry in ${minutesLeft}m`;
-      }
-    }
-
-    return "Retry";
-  };
-
-  const handleRetry = async (item: QueueItem, service?: "directus" | "eas") => {
-    try {
-      if (service === "directus") {
-        await onRetry([{ ...item, status: QueueItemStatus.PENDING }], "directus");
-      } else if (service === "eas") {
-        await onRetry([{ ...item, status: QueueItemStatus.PENDING }], "eas");
-      } else {
-        await onRetry([{ ...item, status: QueueItemStatus.PENDING }]);
-      }
-    } catch (error) {
-      console.error("Error retrying item:", error);
-    }
-  };
-
-  const handleRetryAll = async (service?: "directus" | "eas") => {
-    try {
-      if (service === "directus") {
-        await onRetry(uniqueItems.map(item => ({ ...item, status: QueueItemStatus.PENDING })), "directus");
-      } else if (service === "eas") {
-        await onRetry(uniqueItems.map(item => ({ ...item, status: QueueItemStatus.PENDING })), "eas");
-      } else {
-        await onRetry(uniqueItems.map(item => ({ ...item, status: QueueItemStatus.PENDING })));
-      }
-    } catch (error) {
-      console.error("Error retrying all items:", error);
     }
   };
 
@@ -204,57 +108,6 @@ const QueueSection = ({
 
   if (!hasItems && !alwaysShow) return null;
 
-  const RetryButton = () => (
-    <Pressable
-      onPress={() => handleRetryAll()}
-      disabled={isRetrying || !needsRetry()}
-      className={`h-10 px-4 rounded-full flex-row items-center justify-center border min-w-[100px] ${
-        isRetrying || !needsRetry()
-          ? "bg-white-sand border-grey-6"
-          : "bg-white border-grey-6"
-      }`}
-    >
-      {isRetrying ? (
-        <View className="flex-row items-center">
-          <ActivityIndicator size="small" color="#0D0D0D" />
-          <Text className="text-enaleia-black font-dm-medium ml-2">
-            {getRetryButtonText()}
-          </Text>
-        </View>
-      ) : (
-        <Text
-          className={`font-dm-medium ${
-            !needsRetry() ? "text-gray-400" : "text-enaleia-black"
-          }`}
-        >
-          {getRetryButtonText()}
-        </Text>
-      )}
-    </Pressable>
-  );
-
-  const getStatusText = (item: QueueItem) => {
-    // Check for processing state
-    if (item.directus?.status === ServiceStatus.PROCESSING || 
-        item.eas?.status === ServiceStatus.PROCESSING) {
-      return "Processing";
-    }
-
-    // Check for failed state
-    if (item.directus?.status === ServiceStatus.FAILED || 
-        item.eas?.status === ServiceStatus.FAILED) {
-      return "Failed";
-    }
-
-    // Check for offline state
-    if (item.status === QueueItemStatus.OFFLINE) {
-      return "Offline";
-    }
-
-    // Default to pending
-    return "Pending";
-  };
-
   return (
     <View className="flex-1">
       <View className="mb-4">
@@ -275,9 +128,6 @@ const QueueSection = ({
           </View>
 
           <View className="flex-row gap-2 mt-1">
-            {showRetry && uniqueItems.length > 0 && (
-              <RetryButton />
-            )}
             <ClearAllButton />
           </View>
         </View>
