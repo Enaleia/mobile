@@ -475,10 +475,9 @@ ${[
                   </Text>
                   <Pressable
                     onPress={() => {
-                      const network = item.eas?.network || "sepolia";
                       const txHash = item.eas.txHash;
                       if (txHash) {
-                        const url = EAS_CONSTANTS.getAttestationUrl(txHash, network);
+                        const url = EAS_CONSTANTS.getAttestationUrl(txHash);
                         Linking.openURL(url);
                       }
                     }}
