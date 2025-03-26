@@ -19,7 +19,7 @@ import { ServiceStatusIndicator } from "@/components/features/queue/ServiceStatu
 
 export default function QueueItemDetails() {
   const { id } = useLocalSearchParams();
-  const { queueItems, loadQueueItems, retryItems } = useQueue();
+  const { queueItems, loadQueueItems } = useQueue();
   const [item, setItem] = useState<QueueItem | null>(null);
   const { materials: materialsData, products: productsData, actions: actionsData, collectors } = useBatchData();
   const { user } = useAuth();
@@ -181,57 +181,6 @@ ${[
 
   const canClear = item.directus?.status === ServiceStatus.COMPLETED && 
                    item.eas?.status === ServiceStatus.COMPLETED;
-
-  const formatTimeRemaining = (nextRetryTime: Date): string => {
-    const diff = nextRetryTime.getTime() - Date.now();
-    if (diff < 60000) return 'less than a minute';
-    const minutes = Math.floor(diff / 60000);
-    return minutes === 1 ? '1 minute' : `${minutes} minutes`;
-  };
-
-  const canRetry = (item: QueueItem): boolean => {
-    if (item.status === QueueItemStatus.PROCESSING) return false;
-    
-    const isInInitialRetryPhase = item.retryCount < MAX_RETRIES_PER_BATCH;
-    if (isInInitialRetryPhase) return true;
-
-    const nextRetryTime = item.lastAttempt ? 
-      new Date(new Date(item.lastAttempt).getTime() + 
-        RETRY_INTERVALS[Math.min(item.retryCount - MAX_RETRIES_PER_BATCH, 
-          RETRY_INTERVALS.length - 1)]) : 
-      null;
-
-    return !nextRetryTime || new Date() >= nextRetryTime;
-  };
-
-  const getRetryMessage = (item: QueueItem): string => {
-    if (item.status === QueueItemStatus.PROCESSING) {
-      return 'Auto-retrying...';
-    }
-
-    const isInInitialRetryPhase = item.retryCount < MAX_RETRIES_PER_BATCH;
-    if (!isInInitialRetryPhase && item.lastAttempt) {
-      const nextRetryTime = new Date(new Date(item.lastAttempt).getTime() + 
-        RETRY_INTERVALS[Math.min(item.retryCount - MAX_RETRIES_PER_BATCH, 
-          RETRY_INTERVALS.length - 1)]);
-      
-      if (new Date() < nextRetryTime) {
-        return `Retry available in ${formatTimeRemaining(nextRetryTime)}`;
-      }
-    }
-
-    return 'Retry';
-  };
-
-  const handleRetry = async () => {
-    if (!item) return;
-    try {
-      await retryItems([item]);
-      await loadQueueItems();
-    } catch (error) {
-      console.error("Error retrying item:", error);
-    }
-  };
 
   return (
     <SafeAreaContent>
@@ -574,20 +523,6 @@ ${[
             >
               <Text className="text-enaleia-black text-center font-dm-bold">
                 Clear it from device
-              </Text>
-            </Pressable>
-          )}
-
-          {!canClear && (
-            <Pressable
-              onPress={handleRetry}
-              disabled={!canRetry(item)}
-              className={`border border-grey-3 py-4 rounded-full ${
-                !canRetry(item) ? 'opacity-50' : ''
-              }`}
-            >
-              <Text className="text-enaleia-black text-center font-dm-bold">
-                {getRetryMessage(item)}
               </Text>
             </Pressable>
           )}

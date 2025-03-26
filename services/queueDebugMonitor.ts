@@ -60,17 +60,17 @@ export class QueueDebugMonitor {
       `${Math.round((now.getTime() - lastAttempt.getTime()) / 1000)}s` : 
       'N/A';
 
-    const retryPhase = item.directus?.enteredSlowModeAt ? 'slow' : 'initial';
-    const retryCount = item.directus?.enteredSlowModeAt ? 
-      item.directus.slowRetryCount || 0 : 
-      item.directus?.initialRetryCount || 0;
+    const retryPhase = item.enteredSlowModeAt ? 'slow' : 'initial';
+    const retryCount = item.enteredSlowModeAt ? 
+      item.slowRetryCount || 0 : 
+      item.initialRetryCount || 0;
     
-    const maxRetries = item.directus?.enteredSlowModeAt ? 
+    const maxRetries = item.enteredSlowModeAt ? 
       Math.ceil(MAX_RETRY_AGE / RETRY_COOLDOWN) : 
       MAX_RETRIES_PER_BATCH;
 
-    const nextRetry = item.directus?.enteredSlowModeAt ? 
-      `${Math.round((RETRY_COOLDOWN - (now.getTime() - new Date(item.directus.enteredSlowModeAt).getTime())) / (60 * 1000))}m` : 
+    const nextRetry = item.enteredSlowModeAt ? 
+      `${Math.round((RETRY_COOLDOWN - (now.getTime() - new Date(item.enteredSlowModeAt).getTime())) / (60 * 1000))}m` : 
       'N/A';
 
     return {
@@ -112,7 +112,7 @@ export class QueueDebugMonitor {
       }
 
       // Track retry stats
-      if (item.directus?.enteredSlowModeAt) {
+      if (item.enteredSlowModeAt) {
         acc.retryStats.slowPhase++;
       } else {
         acc.retryStats.initialPhase++;
