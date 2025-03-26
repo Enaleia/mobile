@@ -182,55 +182,21 @@ ${[
     const subject = `Attestation Details - ${currentAction?.name}${getStatusSummary()}`;
     const url = `mailto:app-support@enaleia.com,enaleia@pollenlabs.org?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(emailBody)}`;
     
-    const canOpen = await Linking.canOpenURL(url);
-    if (canOpen) {
-      await Linking.openURL(url);
-    } else {
-      Alert.alert("Error", "Could not open email client");
-    }
-  };
-
-  const handleEmailInApp = async () => {
     try {
-      const response = await fetch(`${process.env.API_URL}/send-attestation-email`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${user?.token}` // Assuming you have auth token
-        },
-        body: JSON.stringify({
-          subject: `Attestation Details - ${currentAction?.name}${getStatusSummary()}`,
-          content: formatEmailBody(),
-          attestationId: item.localId,
-          userId: user?.id,
-          recipientEmails: ['app-support@enaleia.com', 'enaleia@pollenlabs.org']
-        })
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to send email');
+      const canOpen = await Linking.canOpenURL(url);
+      if (canOpen) {
+        await Linking.openURL(url);
+      } else {
+        Alert.alert(
+          "Error", 
+          "Could not open email client. Please make sure you have an email app installed."
+        );
       }
-
-      Alert.alert(
-        "Success",
-        "Email sent successfully",
-        [{ text: "OK" }]
-      );
     } catch (error) {
-      console.error('Email sending error:', error);
+      console.error('Error opening email client:', error);
       Alert.alert(
         "Error",
-        "Failed to send email. Would you like to open your email client instead?",
-        [
-          {
-            text: "Cancel",
-            style: "cancel"
-          },
-          {
-            text: "Open Email Client",
-            onPress: handleEmail
-          }
-        ]
+        "Failed to open email client. Please try again later."
       );
     }
   };
@@ -596,7 +562,7 @@ ${[
         {/* Action Buttons */}
         <View className="space-y-4">
           <Pressable
-            onPress={handleEmailInApp}
+            onPress={handleEmail}
             className="border border-grey-3 py-4 rounded-full"
           >
             <Text className="text-enaleia-black text-center font-dm-bold">
