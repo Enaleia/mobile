@@ -5,7 +5,7 @@ import { UserProfile } from "@/components/shared/UserProfile";
 import { useAuth } from "@/contexts/AuthContext";
 import { useQueue } from "@/contexts/QueueContext";
 import { QueueEvents, queueEventEmitter } from "@/services/events";
-import { QueueItemStatus } from "@/types/queue";
+import { QueueItemStatus, isCompletelyFailed } from "@/types/queue";
 import { useEventListener } from "expo";
 import { useNavigation } from "expo-router";
 import { useEffect } from "react";
@@ -20,8 +20,7 @@ const QueueScreen = () => {
 
   const items = queueItems.length > 0 ? queueItems : [];
   
-  // Split items into active and completed
-  // Active includes all items that are not completed (PENDING, PROCESSING, FAILED, OFFLINE, SLOW_RETRY)
+  // Split items into active, critical, and completed
   const activeItems = items.filter(item => {
     const nonCompletedStates = [
       QueueItemStatus.PENDING,
@@ -30,12 +29,16 @@ const QueueScreen = () => {
       QueueItemStatus.OFFLINE,
       QueueItemStatus.SLOW_RETRY
     ];
-    return nonCompletedStates.includes(item.status);
+    return nonCompletedStates.includes(item.status) && !isCompletelyFailed(item);
   });
+
+  // Critical items are those that have completely failed
+  const criticalItems = items.filter(item => isCompletelyFailed(item));
+  
   const completedItems = items.filter(item => item.status === QueueItemStatus.COMPLETED);
   
   // Count items needing attention (all active items)
-  const attentionCount = activeItems.length;
+  const attentionCount = activeItems.length + criticalItems.length;
 
   const handleClearAllCompleted = async () => {
     try {
@@ -114,6 +117,15 @@ const QueueScreen = () => {
                 onRetry={retryItems}
                 showRetry={true}
                 alwaysShow={true}
+              />
+
+              {/* Critical Items Section */}
+              <QueueSection
+                title="Critical"
+                items={criticalItems}
+                onRetry={retryItems}
+                showRetry={false}
+                alwaysShow={false}
               />
 
               {/* Completed Items Section */}

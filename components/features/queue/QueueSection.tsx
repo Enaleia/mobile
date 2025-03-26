@@ -50,9 +50,59 @@ const QueueSection = ({
         return "bg-emerald-600";
       case "active":
         return "bg-blue-ocean";
+      case "critical":
+        return "bg-rose-500";
       default:
         return "bg-grey-6";
     }
+  };
+
+  const getInfoMessage = (title: string) => {
+    switch (title.toLowerCase()) {
+      case "active":
+        if (items.length === 0) {
+          return "All the active attestations will be displayed under this section.";
+        }
+        return hasProcessingItems
+          ? "Currently sending attestation to database and blockchain, please do not close the app."
+          : "All the active attestations will be automatically sent to database and blockchain shortly.";
+      case "critical":
+        if (items.length === 0) {
+          return "Items that have completely failed and exceeded their retry window will appear here.";
+        }
+        return "These items have failed all retry attempts and require manual intervention.";
+      default:
+        return null;
+    }
+  };
+
+  const getInfoMessageStyle = (title: string) => {
+    if (title.toLowerCase() === "active") {
+      if (items.length === 0) {
+        return "text-sm font-dm-medium flex-1 flex-wrap text-gray-700";
+      }
+      return hasProcessingItems
+        ? "text-sm font-dm-medium flex-1 flex-wrap text-orange-600"
+        : "text-sm font-dm-medium flex-1 flex-wrap text-gray-700";
+    }
+    if (title.toLowerCase() === "critical") {
+      return "text-sm font-dm-medium flex-1 flex-wrap text-rose-600";
+    }
+    return "text-sm font-dm-medium flex-1 flex-wrap text-gray-700";
+  };
+
+  const getInfoBoxStyle = (title: string) => {
+    if (title.toLowerCase() === "active") {
+      return items.length === 0 
+        ? "mb-2 p-3 rounded-2xl bg-sand-beige"
+        : hasProcessingItems
+          ? "mb-2 p-3 rounded-2xl bg-orange-50"
+          : "mb-2 p-3 rounded-2xl bg-sand-beige";
+    }
+    if (title.toLowerCase() === "critical") {
+      return "mb-2 p-3 rounded-2xl bg-rose-50";
+    }
+    return "mb-2 p-3 rounded-2xl bg-sand-beige";
   };
 
   const handleClearAll = async () => {
@@ -132,33 +182,11 @@ const QueueSection = ({
           </View>
         </View>
 
-        {title.toLowerCase() === "active" && (
-          <View className={
-            items.length === 0 
-              ? "mb-2 p-3 rounded-2xl bg-sand-beige"
-              : hasProcessingItems
-                ? "mb-2 p-3 rounded-2xl bg-orange-50"
-                : "mb-2 p-3 rounded-2xl bg-sand-beige"
-          }>
+        {getInfoMessage(title) && (
+          <View className={getInfoBoxStyle(title)}>
             <View className="flex-row items-start">
-              {/* <Ionicons 
-                name={items.length === 0 ? "information-circle" : (hasProcessingItems ? "time" : "checkmark-circle")}
-                size={20}
-                color={items.length === 0 ? "#6B7280" : (hasProcessingItems ? "#f59e0b" : "#3b82f6")}
-                style={{ marginRight: 8, marginTop: 2 }} 
-              /> */}
-              <Text className={
-                items.length === 0 
-                  ? "text-sm font-dm-medium flex-1 flex-wrap text-gray-700"
-                  : hasProcessingItems
-                    ? "text-sm font-dm-medium flex-1 flex-wrap text-orange-600"
-                    : "text-sm font-dm-medium flex-1 flex-wrap text-gray-700"
-              }>
-                {items.length === 0 
-                  ? "All the active attestations will be displayed under this section."
-                  : hasProcessingItems
-                    ? "Currently sending attestation to database and blockchain, please do not close the app."
-                    : "All the active attestations will be automatically sent to database and blockchain shortly."}
+              <Text className={getInfoMessageStyle(title)}>
+                {getInfoMessage(title)}
               </Text>
             </View>
           </View>
@@ -180,6 +208,8 @@ const QueueSection = ({
                   ? "No active items"
                   : title === "Completed"
                   ? "No completed items"
+                  : title === "Critical"
+                  ? "No critical items"
                   : `No ${title.toLowerCase()} attestations`}
               </Text>
             </View>
