@@ -1,6 +1,6 @@
 import { QueueItem, ServiceStatus, MAX_RETRIES_PER_BATCH, RETRY_COOLDOWN, isCompletelyFailed, QueueItemStatus } from "@/types/queue";
 import { View, Text, Pressable, ActivityIndicator } from "react-native";
-import QueuedAction from "@/components/features/queue/QueueAction";
+import QueueAction from "@/components/features/queue/QueueAction";
 import { useState, useMemo } from "react";
 import { useNetwork } from "@/contexts/NetworkContext";
 import { Ionicons } from "@expo/vector-icons";
@@ -58,14 +58,13 @@ const QueueSection = ({
 
   // Check if any items need retry for each service
   const needsRetry = () => {
-    // Check if any item is currently processing or queued
-    const hasProcessingOrQueuedItems = uniqueItems.some(item => 
+    // Check if any item is currently processing
+    const hasProcessingItems = uniqueItems.some(item => 
       item.directus?.status === ServiceStatus.PROCESSING || 
-      item.eas?.status === ServiceStatus.PROCESSING ||
-      item.status === QueueItemStatus.QUEUED
+      item.eas?.status === ServiceStatus.PROCESSING
     );
 
-    if (hasProcessingOrQueuedItems) {
+    if (hasProcessingItems) {
       return false;
     }
 
@@ -106,71 +105,49 @@ const QueueSection = ({
   };
 
   const getRetryButtonText = () => {
-    if (isRetrying) return "Retrying...";
-    
     const item = uniqueItems[0]; // Use first item for status
     if (!item) return "Retry";
-
-    // Check for queued state
-    if (item.status === QueueItemStatus.QUEUED) {
-      return "Queued for Processing";
-    }
 
     if (item.directus?.enteredSlowModeAt) {
       const nextRetryTime = new Date(
         (item.directus.lastAttempt ? new Date(item.directus.lastAttempt).getTime() : Date.now()) 
         + RETRY_COOLDOWN
       );
-      const timeUntilNextRetry = nextRetryTime.getTime() - Date.now();
-      
-      if (timeUntilNextRetry > 0) {
-        const minutes = Math.ceil(timeUntilNextRetry / (60 * 1000));
-        return `Next auto-retry in ${minutes}m`;
+      const now = new Date();
+      if (nextRetryTime > now) {
+        const minutesLeft = Math.ceil((nextRetryTime.getTime() - now.getTime()) / (60 * 1000));
+        return `Retry in ${minutesLeft}m`;
       }
     }
 
-    return "Retry all";
+    return "Retry";
   };
 
-  const handleRetry = async () => {
-    setIsRetrying(true);
+  const handleRetry = async (item: QueueItem, service?: "directus" | "eas") => {
     try {
-      for (const item of uniqueItems) {
-        // Skip completed or failed items
-        if (item.status === QueueItemStatus.COMPLETED || 
-            item.status === QueueItemStatus.FAILED) {
-          continue;
-        }
-
-        const directusStatus = item?.directus?.status;
-        const easStatus = item?.eas?.status;
-        
-        const isDirectusFailed = directusStatus === ServiceStatus.FAILED;
-        const isEasFailed = easStatus === ServiceStatus.FAILED;
-        const isDirectusPendingOrOffline = directusStatus === ServiceStatus.PENDING || 
-                                         directusStatus === ServiceStatus.OFFLINE;
-        const isEasPendingOrOffline = easStatus === ServiceStatus.PENDING || 
-                                     easStatus === ServiceStatus.OFFLINE;
-        
-        // Determine which service(s) to retry
-        if (isDirectusFailed && !isEasFailed) {
-          await onRetry([{ ...item, status: QueueItemStatus.QUEUED }], "directus");
-        } else if (isEasFailed && !isDirectusFailed) {
-          await onRetry([{ ...item, status: QueueItemStatus.QUEUED }], "eas");
-        } else if (isDirectusFailed && isEasFailed) {
-          await onRetry([{ ...item, status: QueueItemStatus.QUEUED }]);
-        } else if (isDirectusPendingOrOffline && !isEasPendingOrOffline) {
-          await onRetry([{ ...item, status: QueueItemStatus.QUEUED }], "directus");
-        } else if (isEasPendingOrOffline && !isDirectusPendingOrOffline) {
-          await onRetry([{ ...item, status: QueueItemStatus.QUEUED }], "eas");
-        } else if (isDirectusPendingOrOffline && isEasPendingOrOffline) {
-          await onRetry([{ ...item, status: QueueItemStatus.QUEUED }]);
-        }
+      if (service === "directus") {
+        await onRetry([{ ...item, status: QueueItemStatus.PENDING }], "directus");
+      } else if (service === "eas") {
+        await onRetry([{ ...item, status: QueueItemStatus.PENDING }], "eas");
+      } else {
+        await onRetry([{ ...item, status: QueueItemStatus.PENDING }]);
       }
     } catch (error) {
-      console.error('Error during retry process:', error);
-    } finally {
-      setIsRetrying(false);
+      console.error("Error retrying item:", error);
+    }
+  };
+
+  const handleRetryAll = async (service?: "directus" | "eas") => {
+    try {
+      if (service === "directus") {
+        await onRetry(uniqueItems.map(item => ({ ...item, status: QueueItemStatus.PENDING })), "directus");
+      } else if (service === "eas") {
+        await onRetry(uniqueItems.map(item => ({ ...item, status: QueueItemStatus.PENDING })), "eas");
+      } else {
+        await onRetry(uniqueItems.map(item => ({ ...item, status: QueueItemStatus.PENDING })));
+      }
+    } catch (error) {
+      console.error("Error retrying all items:", error);
     }
   };
 
@@ -212,7 +189,7 @@ const QueueSection = ({
     return (
       <Pressable
         onPress={() => setShowClearOptions(true)}
-        className="h-10 w-10 rounded-full flex-row items-center justify-center border border-grey-6"
+        className="h-10 w-10 rounded-full flex-row items-center justify-center"
       >
         <View className="w-5 h-5">
           <Ionicons name="trash-outline" size={20} color="#8E8E93" />
@@ -229,7 +206,7 @@ const QueueSection = ({
 
   const RetryButton = () => (
     <Pressable
-      onPress={handleRetry}
+      onPress={() => handleRetryAll()}
       disabled={isRetrying || !needsRetry()}
       className={`h-10 px-4 rounded-full flex-row items-center justify-center border min-w-[100px] ${
         isRetrying || !needsRetry()
@@ -256,56 +233,75 @@ const QueueSection = ({
     </Pressable>
   );
 
+  const getStatusText = (item: QueueItem) => {
+    // Check for processing state
+    if (item.directus?.status === ServiceStatus.PROCESSING || 
+        item.eas?.status === ServiceStatus.PROCESSING) {
+      return "Processing";
+    }
+
+    // Check for failed state
+    if (item.directus?.status === ServiceStatus.FAILED || 
+        item.eas?.status === ServiceStatus.FAILED) {
+      return "Failed";
+    }
+
+    // Check for offline state
+    if (item.status === QueueItemStatus.OFFLINE) {
+      return "Offline";
+    }
+
+    // Default to pending
+    return "Pending";
+  };
+
   return (
-    <View className="mb-4">
-      <View className="flex-row justify-between items-center mb-2">
-        <View className="flex-row items-center">
-          <Text className="text-lg font-dm-bold">{title}</Text>
-          {showBadge && (
-            <View
-              className={`${getBadgeColor(
-                title
-              )} rounded-full w-6 h-6 ml-2 flex items-center justify-center`}
-            >
-              <Text className="text-white text-xs font-dm-medium">
-                {uniqueItems.length}
-              </Text>
-            </View>
-          )}
-        </View>
+    <View className="flex-1">
+      <View className="mb-4">
+        <View className="flex-row justify-between items-center mb-2">
+          <View className="flex-row items-center">
+            <Text className="text-lg font-dm-bold">{title}</Text>
+            {showBadge && (
+              <View
+                className={`${getBadgeColor(
+                  title
+                )} rounded-full w-6 h-6 ml-2 flex items-center justify-center`}
+              >
+                <Text className="text-white text-xs font-dm-medium">
+                  {uniqueItems.length}
+                </Text>
+              </View>
+            )}
+          </View>
 
-        <View className="flex-row gap-2 mt-1">
-          {showRetry && uniqueItems.length > 0 && (
-            <RetryButton />
-          )}
-          <ClearAllButton />
-        </View>
-      </View>
-
-      {title.toLowerCase() === "active" && hasProcessingItems && (
-        <View className="mb-2 p-3 bg-amber-50 border border-amber-200 rounded-lg">
-          <View className="flex-row items-start">
-            <Ionicons 
-              name="information-circle" 
-              size={20} 
-              color="#f59e0b" 
-              style={{ marginRight: 8, marginTop: 2 }} 
-            />
-            <Text className="text-sm font-dm-medium text-amber-800 flex-1 flex-wrap">
-              Currently sending data, please do not close the app.
-            </Text>
+          <View className="flex-row gap-2 mt-1">
+            {showRetry && uniqueItems.length > 0 && (
+              <RetryButton />
+            )}
+            <ClearAllButton />
           </View>
         </View>
-      )}
+
+        {title.toLowerCase() === "active" && hasProcessingItems && (
+          <View className="mb-2 p-3 bg-amber-50 border border-amber-200 rounded-lg">
+            <View className="flex-row items-start">
+              <Ionicons 
+                name="information-circle" 
+                size={20} 
+                color="#f59e0b" 
+                style={{ marginRight: 8, marginTop: 2 }} 
+              />
+              <Text className="text-sm font-dm-medium text-amber-800 flex-1 flex-wrap">
+                Currently sending data, please do not close the app.
+              </Text>
+            </View>
+          </View>
+        )}
 
       <View className="rounded-2xl overflow-hidden border border-gray-200 mt-1">
         {hasItems ? (
-          itemsSortedByMostRecent.map((item, index) => (
-            <QueuedAction 
-              key={item.localId} 
-              item={item} 
-              isLastItem={index === itemsSortedByMostRecent.length - 1}
-            />
+          itemsSortedByMostRecent.map((item) => (
+            <QueuedAction key={item.localId} item={item} />
           ))
         ) : (
           <View className="py-4 px-4 bg-white">

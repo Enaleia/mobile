@@ -58,6 +58,20 @@ export function QueueProvider({ children }: { children: React.ReactNode }) {
   const backgroundManager = BackgroundTaskManager.getInstance();
   const { wallet } = useWallet();
 
+  // Add initial load effect
+  useEffect(() => {
+    const initializeQueue = async () => {
+      try {
+        console.log("Initializing queue on app launch...");
+        await refreshQueueStatus();
+      } catch (error) {
+        console.error("Failed to initialize queue on app launch:", error);
+      }
+    };
+
+    initializeQueue();
+  }, []); // Empty dependency array means this runs once on mount
+
   // Load completed count on init
   useEffect(() => {
     AsyncStorage.getItem(COMPLETED_COUNT_KEY)
@@ -270,7 +284,7 @@ export function QueueProvider({ children }: { children: React.ReactNode }) {
           // Reset only the specified service or both if none specified
           const resetItem = {
             ...item,
-            status: QueueItemStatus.QUEUED,
+            status: QueueItemStatus.PENDING,
             retryCount: (item.retryCount || 0) + 1,
             lastError: undefined,
             lastAttempt: undefined,

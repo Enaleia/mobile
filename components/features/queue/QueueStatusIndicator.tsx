@@ -19,8 +19,8 @@ export default function QueueStatusIndicator({ status, className = "" }: QueueSt
         };
       case QueueItemStatus.QUEUED:
         return {
-          icon: "layers",
-          color: "#737373", // grey-400
+          icon: "layers-outline",
+          color: "#0D0D0D", // enaleia-black
           text: "Queued"
         };
       case QueueItemStatus.PROCESSING:

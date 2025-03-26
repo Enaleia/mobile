@@ -9,11 +9,10 @@ export const RETRY_INTERVALS = [2000, 5000, 10000]; // Retry intervals in millis
 export enum QueueItemStatus {
   "PENDING" = "PENDING",
   "PROCESSING" = "PROCESSING",
-  "OFFLINE" = "OFFLINE",
-  "FAILED" = "FAILED",
   "COMPLETED" = "COMPLETED",
-  "SLOW_RETRY" = "SLOW_RETRY",  // New status for items in slow retry mode
-  "QUEUED" = "QUEUED"  // New status for items that have been queued for retry
+  "FAILED" = "FAILED",
+  "OFFLINE" = "OFFLINE",
+  "SLOW_RETRY" = "SLOW_RETRY"
 }
 
 export enum ServiceStatus {
@@ -127,6 +126,5 @@ export function isCompletelyFailed(item: QueueItem): boolean {
 export const isPendingItem = (item: QueueItem): boolean =>
   item.status === QueueItemStatus.OFFLINE ||
   item.status === QueueItemStatus.PENDING ||
-  item.status === QueueItemStatus.QUEUED ||
   (item.status === QueueItemStatus.FAILED &&
     (item.retryCount || 0) < MAX_RETRIES);
