@@ -91,16 +91,48 @@ export default function QueueItemDetails() {
       return num + suffix;
     });
 
+  const getStatusSummary = () => {
+    if (!item) return "";
+    
+    const hasDirectusFailed = item.directus?.status === ServiceStatus.FAILED;
+    const hasEasFailed = item.eas?.status === ServiceStatus.FAILED;
+    const hasLinkingFailed = item.directus?.status === ServiceStatus.COMPLETED && !item.directus?.linked;
+    
+    if (hasDirectusFailed || hasEasFailed || hasLinkingFailed) {
+      const failures = [];
+      if (hasDirectusFailed) failures.push("Database failed");
+      if (hasEasFailed) failures.push("Blockchain failed");
+      if (hasLinkingFailed) failures.push("Linking failed");
+      return `: ${failures.join(", ")}`;
+    }
+    
+    if (item.directus?.status === ServiceStatus.COMPLETED && 
+        item.eas?.status === ServiceStatus.COMPLETED && 
+        item.directus?.linked) {
+      return ": Completed successfully";
+    }
+    
+    return "";
+  };
+
+  const getStatusEmoji = (status: ServiceStatus | undefined, isLinked?: boolean) => {
+    if (status === ServiceStatus.COMPLETED && isLinked) return "✅";
+    if (status === ServiceStatus.FAILED) return "❌";
+    if (status === ServiceStatus.PROCESSING) return "⏳";
+    return "⏳";
+  };
+
   const formatEmailBody = () => {
     if (!item || !currentAction) return "";
 
     const sections = [
       `Action Type: ${currentAction.name}`,
-      `Status:
-  - Database: ${item.directus?.status || "N/A"}
-  - Blockchain: ${item.eas?.status || "N/A"}
-  - Linking: ${item.directus?.linked ? "Completed" : "Pending"}`,
-      item.collectorId ? `Collector Information:
+      `Status Summary:
+  Database: ${item.directus?.status || "N/A"} ${getStatusEmoji(item.directus?.status)}
+  Blockchain: ${item.eas?.status || "N/A"} ${getStatusEmoji(item.eas?.status)}
+  Linking: ${item.directus?.linked ? "Completed" : "Pending"} ${getStatusEmoji(item.directus?.status, item.directus?.linked)}`,
+      item.collectorId ? `
+Collector Information:
   - ID: ${item.collectorId}
   - Name: ${collectorInfo?.collector_name || "N/A"}` : null,
       item.incomingMaterials?.length ? `
@@ -147,7 +179,7 @@ ${[
 
   const handleEmail = async () => {
     const emailBody = formatEmailBody();
-    const subject = `Attestation Details - ${currentAction?.name || "Unknown Action"}`;
+    const subject = `Attestation Details - ${currentAction?.name}${getStatusSummary()}`;
     const url = `mailto:app-support@enaleia.com,enaleia@pollenlabs.org?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(emailBody)}`;
     
     const canOpen = await Linking.canOpenURL(url);
@@ -155,6 +187,51 @@ ${[
       await Linking.openURL(url);
     } else {
       Alert.alert("Error", "Could not open email client");
+    }
+  };
+
+  const handleEmailInApp = async () => {
+    try {
+      const response = await fetch(`${process.env.API_URL}/send-attestation-email`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${user?.token}` // Assuming you have auth token
+        },
+        body: JSON.stringify({
+          subject: `Attestation Details - ${currentAction?.name}${getStatusSummary()}`,
+          content: formatEmailBody(),
+          attestationId: item.localId,
+          userId: user?.id,
+          recipientEmails: ['app-support@enaleia.com', 'enaleia@pollenlabs.org']
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to send email');
+      }
+
+      Alert.alert(
+        "Success",
+        "Email sent successfully",
+        [{ text: "OK" }]
+      );
+    } catch (error) {
+      console.error('Email sending error:', error);
+      Alert.alert(
+        "Error",
+        "Failed to send email. Would you like to open your email client instead?",
+        [
+          {
+            text: "Cancel",
+            style: "cancel"
+          },
+          {
+            text: "Open Email Client",
+            onPress: handleEmail
+          }
+        ]
+      );
     }
   };
 
@@ -519,7 +596,7 @@ ${[
         {/* Action Buttons */}
         <View className="space-y-4">
           <Pressable
-            onPress={handleEmail}
+            onPress={handleEmailInApp}
             className="border border-grey-3 py-4 rounded-full"
           >
             <Text className="text-enaleia-black text-center font-dm-bold">
