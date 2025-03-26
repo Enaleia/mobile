@@ -4,7 +4,7 @@ import SafeAreaContent from "@/components/shared/SafeAreaContent";
 import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
 import { useQueue } from "@/contexts/QueueContext";
-import { QueueItem, QueueItemStatus, ServiceStatus } from "@/types/queue";
+import { QueueItem, QueueItemStatus, ServiceStatus, MAX_RETRIES_PER_BATCH, MAX_RETRY_AGE, RETRY_COOLDOWN } from "@/types/queue";
 
 const TEST_ACTIONS = [
   {
@@ -63,7 +63,7 @@ export default function QueueTestScreen() {
     message: string;
   } | null>(null);
 
-  const handleSubmitTestForms = async (count: number) => {
+  const handleSubmitTestForms = async (count: number, shouldBeFailed: boolean = false) => {
     setIsSubmitting(true);
     setResult(null);
 
@@ -76,11 +76,15 @@ export default function QueueTestScreen() {
         const randomQuantity = Math.floor(Math.random() * 50) + 1;
         const randomCode = Math.floor(Math.random() * 1000).toString().padStart(6, '0');
         
+        // Calculate a date 8 days ago for failed items (exceeding 7 day retry window)
+        const eightDaysAgo = new Date();
+        eightDaysAgo.setDate(eightDaysAgo.getDate() - 8);
+        
         return {
           localId: `test-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-          status: QueueItemStatus.PENDING,
-          retryCount: 0,
-          date: new Date().toISOString(),
+          status: shouldBeFailed ? QueueItemStatus.FAILED : QueueItemStatus.PENDING,
+          retryCount: shouldBeFailed ? MAX_RETRIES_PER_BATCH : 0,
+          date: shouldBeFailed ? eightDaysAgo.toISOString() : new Date().toISOString(),
           actionId: action.actionId,
           actionName: `${index + 1} - ${action.name}`, // Add count prefix
           incomingMaterials: action.incomingMaterials.map(material => ({
@@ -99,11 +103,20 @@ export default function QueueTestScreen() {
             weightPerItem: randomWeight,
           })),
           directus: {
-            status: ServiceStatus.PENDING,
+            status: ServiceStatus.FAILED,
+            error: shouldBeFailed ? "Test error: Service failed after all retries" : undefined,
+            lastAttempt: shouldBeFailed ? eightDaysAgo : undefined
           },
           eas: {
-            status: ServiceStatus.PENDING,
+            status: ServiceStatus.FAILED,
+            error: shouldBeFailed ? "Test error: Service failed after all retries" : undefined,
+            lastAttempt: shouldBeFailed ? eightDaysAgo : undefined
           },
+          // Add fields needed for isCompletelyFailed check
+          enteredSlowModeAt: shouldBeFailed ? eightDaysAgo : undefined,
+          lastAttempt: shouldBeFailed ? eightDaysAgo : undefined,
+          initialRetryCount: shouldBeFailed ? MAX_RETRIES_PER_BATCH : 0,
+          slowRetryCount: shouldBeFailed ? Math.floor(MAX_RETRY_AGE / RETRY_COOLDOWN) : 0,
         };
       });
 
@@ -207,6 +220,30 @@ export default function QueueTestScreen() {
             ) : null}
             <Text className="text-lg font-dm-medium text-slate-50 tracking-tight">
               {isSubmitting ? "Preparing..." : "Submit 10 Test Forms"}
+            </Text>
+          </Pressable>
+
+          <View className="h-px bg-gray-200 my-3" />
+
+          <Text className="text-base font-dm-bold text-gray-900 mb-2">
+            Failed Items Testing
+          </Text>
+          <Text className="text-sm text-grey-6 mb-4">
+            Create test items that have exceeded their retry window (older than 7 days).
+          </Text>
+
+          <Pressable
+            onPress={() => handleSubmitTestForms(3, true)}
+            disabled={isSubmitting}
+            className={`w-full flex-row items-center justify-center p-3 h-[60px] rounded-full ${
+              isSubmitting ? "bg-primary-dark-blue opacity-50" : "bg-rose-500"
+            }`}
+          >
+            {isSubmitting ? (
+              <ActivityIndicator color="white" className="mr-2" />
+            ) : null}
+            <Text className="text-lg font-dm-medium text-slate-50 tracking-tight">
+              {isSubmitting ? "Preparing..." : "Create 3 Failed Items"}
             </Text>
           </Pressable>
         </View>
