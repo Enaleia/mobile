@@ -206,23 +206,18 @@ const NewActionScreen = () => {
       setIsSubmitting(true);
 
       try {
-        // Add runtime validation for collectorId
-        // NOTE: Comment out this section because we are not forcing the user to scan a collector ID card for collection actions
         const runtimeSchema = eventFormSchema.refine(
           (data) => {
-            // Remove collector ID validation
             return true;
           },
           {
             message: "Collector ID is required for Collection actions",
-            path: ["collectorId"], // Specify the field to attach the error to
+            path: ["collectorId"],
           }
         );
 
-        const { success: isValid, error: validationError } =
-          runtimeSchema.safeParse(value);
+        const { success: isValid, error: validationError } = runtimeSchema.safeParse(value);
         if (!isValid) {
-          // Set field-specific errors
           validationError.errors.forEach((error) => {
             const fieldPath = error.path.join(".") as keyof typeof value;
             form.setFieldMeta(fieldPath, (old) => ({
@@ -231,14 +226,8 @@ const NewActionScreen = () => {
             }));
           });
 
-          // Set general submit error
           setSubmitError("Please fill in all required fields");
           console.error("Form validation errors:", validationError);
-
-          // Scroll to the first error if possible
-          if (scrollViewRef.current && validationError.errors[0]?.path[0]) {
-            scrollViewRef.current.scrollTo({ y: 0, animated: true });
-          }
           return;
         }
 
@@ -503,10 +492,11 @@ const NewActionScreen = () => {
                   router.back();
                 }
               }}
-              className="flex-row items-center space-x-1"
+              disabled={isSubmitting}
+              className={`flex-row items-center space-x-1 ${isSubmitting ? 'opacity-50' : ''}`}
             >
-              <Ionicons name="chevron-back" size={24} color="#0D0D0D" />
-              <Text className="text-base font-dm-regular text-enaleia-black tracking-tighter">
+              <Ionicons name="chevron-back" size={24} color={isSubmitting ? "#8E8E93" : "#0D0D0D"} />
+              <Text className={`text-base font-dm-regular tracking-tighter ${isSubmitting ? 'text-grey-6' : 'text-enaleia-black'}`}>
                 Back
               </Text>
             </Pressable>
@@ -756,6 +746,9 @@ const NewActionScreen = () => {
 
                 const handleProceedWithSubmission = () => {
                   setShowSubmitConfirmation(false);
+                  // Navigate to queue immediately
+                  router.push("/queue");
+                  // Continue with form submission in background
                   form.handleSubmit();
                 };
 
