@@ -7,7 +7,7 @@ import {
   useCallback,
 } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { MAX_RETRIES, QueueItem, QueueItemStatus, ServiceStatus } from "@/types/queue";
+import { MAX_RETRIES, QueueItem, QueueItemStatus, ServiceStatus, isCompletelyFailed } from "@/types/queue";
 import { processQueueItems } from "@/services/queueProcessor";
 import { QueueEvents, queueEventEmitter } from "@/services/events";
 import { useNetwork } from "./NetworkContext";
@@ -192,9 +192,15 @@ export function QueueProvider({ children }: { children: React.ReactNode }) {
 
   const updateQueueItems = async (items: QueueItem[]): Promise<void> => {
     try {
-      // Deduplicate items based on localId
+      // Get existing items first
+      const [existingActive, existingCompleted] = await Promise.all([
+        getActiveQueue(),
+        getCompletedQueue(),
+      ]);
+
+      // Combine all items and deduplicate based on localId
       const seenIds = new Set<string>();
-      const uniqueItems = items.filter(item => {
+      const allItems = [...existingActive, ...existingCompleted, ...items].filter(item => {
         if (seenIds.has(item.localId)) {
           return false;
         }
@@ -203,10 +209,10 @@ export function QueueProvider({ children }: { children: React.ReactNode }) {
       });
 
       // Separate active and completed items
-      const completedItems = uniqueItems.filter(
+      const completedItems = allItems.filter(
         (item) => item.status === QueueItemStatus.COMPLETED
       );
-      const activeItems = uniqueItems.filter(
+      const activeItems = allItems.filter(
         (item) => item.status !== QueueItemStatus.COMPLETED
       );
 
@@ -225,7 +231,7 @@ export function QueueProvider({ children }: { children: React.ReactNode }) {
       }
 
       // Update state with combined items
-      setQueueItems(uniqueItems);
+      setQueueItems(allItems);
 
       const pendingItems = activeItems.filter(
         (i) =>
@@ -517,6 +523,21 @@ export function QueueProvider({ children }: { children: React.ReactNode }) {
     // Create a copy of the item to modify
     const updatedItem = { ...item };
     let statusChanged = false;
+
+    // First check if the item is completely failed
+    if (isCompletelyFailed(item)) {
+      // Maintain failed status for both services and overall status
+      updatedItem.status = QueueItemStatus.FAILED;
+      updatedItem.directus = {
+        ...updatedItem.directus,
+        status: ServiceStatus.FAILED
+      };
+      updatedItem.eas = {
+        ...updatedItem.eas,
+        status: ServiceStatus.FAILED
+      };
+      return updatedItem;
+    }
 
     // Check Directus status based on stored values
     if (updatedItem.directus?.eventId) {

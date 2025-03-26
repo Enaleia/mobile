@@ -80,44 +80,76 @@ export default function QueueTestScreen() {
         const eightDaysAgo = new Date();
         eightDaysAgo.setDate(eightDaysAgo.getDate() - 8);
         
-        return {
-          localId: `test-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-          status: shouldBeFailed ? QueueItemStatus.FAILED : QueueItemStatus.PENDING,
-          retryCount: shouldBeFailed ? MAX_RETRIES_PER_BATCH : 0,
-          date: shouldBeFailed ? eightDaysAgo.toISOString() : new Date().toISOString(),
-          actionId: action.actionId,
-          actionName: `${index + 1} - ${action.name}`, // Add count prefix
-          incomingMaterials: action.incomingMaterials.map(material => ({
-            ...material,
-            weight: randomWeight,
-            code: randomCode,
-          })),
-          outgoingMaterials: action.outgoingMaterials.map(material => ({
-            ...material,
-            weight: randomWeight,
-            code: randomCode,
-          })),
-          manufacturedProducts: action.manufacturedProducts?.map(product => ({
-            ...product,
-            quantity: randomQuantity,
-            weightPerItem: randomWeight,
-          })),
-          directus: {
-            status: ServiceStatus.FAILED,
-            error: shouldBeFailed ? "Test error: Service failed after all retries" : undefined,
-            lastAttempt: shouldBeFailed ? eightDaysAgo : undefined
-          },
-          eas: {
-            status: ServiceStatus.FAILED,
-            error: shouldBeFailed ? "Test error: Service failed after all retries" : undefined,
-            lastAttempt: shouldBeFailed ? eightDaysAgo : undefined
-          },
-          // Add fields needed for isCompletelyFailed check
-          enteredSlowModeAt: shouldBeFailed ? eightDaysAgo : undefined,
-          lastAttempt: shouldBeFailed ? eightDaysAgo : undefined,
-          initialRetryCount: shouldBeFailed ? MAX_RETRIES_PER_BATCH : 0,
-          slowRetryCount: shouldBeFailed ? Math.floor(MAX_RETRY_AGE / RETRY_COOLDOWN) : 0,
-        };
+        if (!shouldBeFailed) {
+          return {
+            localId: `test-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+            status: QueueItemStatus.PENDING,
+            retryCount: 0,
+            date: new Date().toISOString(),
+            actionId: action.actionId,
+            actionName: `${index + 1} - ${action.name}`,
+            incomingMaterials: action.incomingMaterials.map(material => ({
+              ...material,
+              weight: randomWeight,
+              code: randomCode,
+            })),
+            outgoingMaterials: action.outgoingMaterials.map(material => ({
+              ...material,
+              weight: randomWeight,
+              code: randomCode,
+            })),
+            manufacturedProducts: action.manufacturedProducts?.map(product => ({
+              ...product,
+              quantity: randomQuantity,
+              weightPerItem: randomWeight,
+            })),
+            directus: {
+              status: ServiceStatus.PENDING,
+            },
+            eas: {
+              status: ServiceStatus.PENDING,
+            }
+          };
+        } else {
+          // Create a completely failed item
+          return {
+            localId: `failed-test-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+            status: QueueItemStatus.FAILED,
+            retryCount: MAX_RETRIES_PER_BATCH,
+            date: eightDaysAgo.toISOString(),
+            actionId: action.actionId,
+            actionName: `Failed - ${action.name}`,
+            incomingMaterials: action.incomingMaterials.map(material => ({
+              ...material,
+              weight: randomWeight,
+              code: randomCode,
+            })),
+            outgoingMaterials: action.outgoingMaterials.map(material => ({
+              ...material,
+              weight: randomWeight,
+              code: randomCode,
+            })),
+            manufacturedProducts: action.manufacturedProducts?.map(product => ({
+              ...product,
+              quantity: randomQuantity,
+              weightPerItem: randomWeight,
+            })),
+            directus: {
+              status: ServiceStatus.FAILED,
+              error: "Test error: Service failed after all retries",
+              lastAttempt: eightDaysAgo
+            },
+            eas: {
+              status: ServiceStatus.FAILED,
+              error: "Test error: Service failed after all retries",
+              lastAttempt: eightDaysAgo
+            },
+            enteredSlowModeAt: eightDaysAgo,
+            lastAttempt: eightDaysAgo,
+            initialRetryCount: MAX_RETRIES_PER_BATCH,
+            slowRetryCount: Math.floor(MAX_RETRY_AGE / RETRY_COOLDOWN)
+          };
+        }
       });
 
       await updateQueueItems(submissions);
@@ -229,11 +261,11 @@ export default function QueueTestScreen() {
             Failed Items Testing
           </Text>
           <Text className="text-sm text-grey-6 mb-4">
-            Create test items that have exceeded their retry window (older than 7 days).
+            Create a test item that has completely failed (exceeded retry window and all retries).
           </Text>
 
           <Pressable
-            onPress={() => handleSubmitTestForms(3, true)}
+            onPress={() => handleSubmitTestForms(1, true)}
             disabled={isSubmitting}
             className={`w-full flex-row items-center justify-center p-3 h-[60px] rounded-full ${
               isSubmitting ? "bg-primary-dark-blue opacity-50" : "bg-rose-500"
@@ -243,7 +275,7 @@ export default function QueueTestScreen() {
               <ActivityIndicator color="white" className="mr-2" />
             ) : null}
             <Text className="text-lg font-dm-medium text-slate-50 tracking-tight">
-              {isSubmitting ? "Preparing..." : "Create 3 Failed Items"}
+              {isSubmitting ? "Preparing..." : "Create Failed Test Item"}
             </Text>
           </Pressable>
         </View>
