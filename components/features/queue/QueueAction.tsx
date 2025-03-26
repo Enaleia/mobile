@@ -13,9 +13,10 @@ import { ProcessingSpinner } from "./ProcessingSpinner";
 
 interface QueueActionProps {
   item: QueueItem;
+  isLastItem?: boolean;
 }
 
-const QueueAction = ({ item }: QueueActionProps) => {
+const QueueAction = ({ item, isLastItem = false }: QueueActionProps) => {
   const { actions } = useBatchData();
   const action = actions?.find((a: Action) => a.id === item.actionId);
   const timestamp = item.lastAttempt || item.date;
@@ -69,9 +70,9 @@ const QueueAction = ({ item }: QueueActionProps) => {
         console.log("Navigating to queue detail with id:", item.localId);
         router.push(`/queue/${item.localId}`);
       }}
-      className="relative"
+      className={`relative ${!isLastItem ? 'border-b border-grey-3' : ''}`}
     >
-      <View className="w-full bg-white border-b border-grey-3">
+      <View className="w-full bg-white">
         <View className="pt-3 pb-2 px-3 flex-col gap-6">
           {/* Header Section */}
           <View className="flex-row justify-between items-start">
@@ -81,7 +82,7 @@ const QueueAction = ({ item }: QueueActionProps) => {
                   <Text className="text-xl font-dm-bold text-enaleia-black" numberOfLines={1}>
                     {action.name}
                   </Text>
-                  <Text className="text-sm font-dm-medium text-grey-6">
+                  <Text className="text-sm font-dm-medium text-grey-9">
                     {formattedTime}
                   </Text>
                 </View>
@@ -95,7 +96,7 @@ const QueueAction = ({ item }: QueueActionProps) => {
           </View>
 
           {/* Service Status Section */}
-          <View className="flex-col gap-1 pt-3 pb-2">
+          <View className="flex-col gap-1  pb-2">
             <View className="flex flex-row items-left">
               <ServiceStatusIndicator
                 status={item.directus?.status || ServiceStatus.PENDING}
@@ -118,39 +119,18 @@ const QueueAction = ({ item }: QueueActionProps) => {
               item.status !== QueueItemStatus.COMPLETED && (
                 <View className="flex-col gap-1">
                   {item.directus?.error && (
-                    <Text className="text-rose-500 text-xs font-dm-light">
+                    <Text className="text-rose-500 text-sm font-dm-light">
                       Database: {item.directus.error}
                     </Text>
                   )}
                   {item.eas?.error && (
-                    <Text className="text-rose-500 text-xs font-dm-light">
+                    <Text className="text-rose-500 text-sm font-dm-light">
                       Blockchain: {item.eas.error}
                     </Text>
                   )}
                 </View>
               )}
           </View>
-        </View>
-
-        {/* Progress Bar */}
-        <View className="w-full h-1 relative overflow-hidden">
-          {/* Background bar */}
-          <View className="w-full h-full bg-grey-3" />
-          {/* Progress bar */}
-          <View 
-            className={`h-full absolute left-0 top-0 ${
-              item.status === QueueItemStatus.COMPLETED ? 'bg-[#A4C6E1]' :
-              item.status === QueueItemStatus.PROCESSING ? 'bg-[#A4C6E1]' :
-              'bg-grey-2'
-            }`}
-            style={{ width: `${progress}%` }}
-          />
-          {/* Processing Spinner */}
-          {item.status === QueueItemStatus.PROCESSING && (
-            <View className="absolute right-2 top-1/2 -translate-y-1/2">
-              <ProcessingSpinner size={8} color="#A4C6E1" />
-            </View>
-          )}
         </View>
       </View>
     </Pressable>

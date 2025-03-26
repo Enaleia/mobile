@@ -263,9 +263,9 @@ async function processEASAttestation(
   item: QueueItem,
   requiredData: RequiredData,
   wallet: WalletInfo
-): Promise<{ uid: string; network: "sepolia" | "optimism" }> {
+): Promise<{ uid: string }> {
   const { userData, materials, products } = requiredData;
-  const easService = new EASService(wallet.providerUrl, wallet.privateKey);
+  const easService = new EASService(wallet.privateKey);
 
   try {
     // Ensure wallet has sufficient balance
@@ -301,7 +301,7 @@ async function processEASAttestation(
 
     // Process attestation
     const result = await easService.attest(schema);
-    if (!result?.uid || !result?.network) {
+    if (!result?.uid) {
       throw new Error("Invalid attestation result");
     }
 
@@ -660,8 +660,7 @@ export async function processQueueItems(
                 eas: {
                   status: ServiceStatus.COMPLETED,
                   error: undefined,
-                  txHash: easResult.uid,
-                  network: easResult.network,
+                  txHash: easResult.uid
                 },
               });
             } catch (error) {

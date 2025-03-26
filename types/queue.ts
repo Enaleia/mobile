@@ -49,7 +49,6 @@ export interface QueueItem extends Omit<EventFormType, "type"> {
   eas: ServiceState & {
     txHash?: string;
     verified?: boolean;
-    network?: "sepolia" | "optimism";
   };
 }
 

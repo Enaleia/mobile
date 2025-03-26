@@ -132,17 +132,33 @@ const QueueSection = ({
           </View>
         </View>
 
-        {title.toLowerCase() === "active" && hasProcessingItems && (
-          <View className="mb-2 p-3 bg-amber-50 border border-amber-200 rounded-lg">
+        {title.toLowerCase() === "active" && (
+          <View className={
+            items.length === 0 
+              ? "mb-2 p-3 rounded-2xl bg-sand-beige"
+              : hasProcessingItems
+                ? "mb-2 p-3 rounded-2xl bg-orange-50"
+                : "mb-2 p-3 rounded-2xl bg-sand-beige"
+          }>
             <View className="flex-row items-start">
-              <Ionicons 
-                name="information-circle" 
-                size={20} 
-                color="#f59e0b" 
+              {/* <Ionicons 
+                name={items.length === 0 ? "information-circle" : (hasProcessingItems ? "time" : "checkmark-circle")}
+                size={20}
+                color={items.length === 0 ? "#6B7280" : (hasProcessingItems ? "#f59e0b" : "#3b82f6")}
                 style={{ marginRight: 8, marginTop: 2 }} 
-              />
-              <Text className="text-sm font-dm-medium text-amber-800 flex-1 flex-wrap">
-                Currently sending data, please do not close the app.
+              /> */}
+              <Text className={
+                items.length === 0 
+                  ? "text-sm font-dm-medium flex-1 flex-wrap text-gray-700"
+                  : hasProcessingItems
+                    ? "text-sm font-dm-medium flex-1 flex-wrap text-orange-600"
+                    : "text-sm font-dm-medium flex-1 flex-wrap text-gray-700"
+              }>
+                {items.length === 0 
+                  ? "All the active attestations will be displayed under this section."
+                  : hasProcessingItems
+                    ? "Currently sending attestation to database and blockchain, please do not close the app."
+                    : "All the active attestations will be automatically sent to database and blockchain shortly."}
               </Text>
             </View>
           </View>
@@ -150,8 +166,12 @@ const QueueSection = ({
 
         <View className="rounded-2xl overflow-hidden border border-gray-200 mt-1">
           {hasItems ? (
-            itemsSortedByMostRecent.map((item) => (
-              <QueueAction key={item.localId} item={item} />
+            itemsSortedByMostRecent.map((item, index) => (
+              <QueueAction 
+                key={item.localId} 
+                item={item}
+                isLastItem={index === itemsSortedByMostRecent.length - 1}
+              />
             ))
           ) : (
             <View className="py-4 px-4 bg-white">

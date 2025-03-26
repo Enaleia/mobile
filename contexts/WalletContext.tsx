@@ -31,20 +31,13 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
       );
 
       if (address && privateKey) {
-        const network =
-          process.env.EXPO_PUBLIC_NETWORK === "production"
-            ? "optimism"
-            : "sepolia";
-        const providerUrl = EAS_CONSTANTS.PROVIDER_URLS[network];
-        if (!providerUrl) {
-          throw new Error(`No provider URL found for network: ${network}`);
-        }
+        const { providerUrl } = EAS_CONSTANTS.getNetworkConfig();
+        
         const walletInfo: WalletInfo = {
           address,
-          network,
-          schemaUID: EAS_CONSTANTS.SCHEMA_UID,
           providerUrl,
           privateKey,
+          schemaUID: EAS_CONSTANTS.SCHEMA_UID,
         };
         setWallet(walletInfo);
         setIsWalletCreated(true);
@@ -79,21 +72,13 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
         const derivedAddress = EAS.getAddressFromPrivateKey(storedPrivateKey);
         if (derivedAddress === storedAddress) {
           console.log("[Wallet] Using existing wallet:", storedAddress);
-          const network =
-            process.env.EXPO_PUBLIC_NETWORK === "production"
-              ? "optimism"
-              : "sepolia";
-          const providerUrl = EAS_CONSTANTS.PROVIDER_URLS[network];
-          if (!providerUrl) {
-            throw new Error(`No provider URL found for network: ${network}`);
-          }
+          const { providerUrl } = EAS_CONSTANTS.getNetworkConfig();
 
           const walletInfo: WalletInfo = {
             address: storedAddress,
-            network,
-            schemaUID: EAS_CONSTANTS.SCHEMA_UID,
             providerUrl,
             privateKey: storedPrivateKey,
+            schemaUID: EAS_CONSTANTS.SCHEMA_UID,
           };
 
           setWallet(walletInfo);
@@ -134,20 +119,13 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
         SecureStore.setItemAsync(SECURE_STORE_KEYS.WALLET_ADDRESS, address),
       ]);
 
-      const network =
-        process.env.EXPO_PUBLIC_NETWORK === "production"
-          ? "optimism"
-          : "sepolia";
-      const providerUrl = EAS_CONSTANTS.PROVIDER_URLS[network];
-      if (!providerUrl) {
-        throw new Error(`No provider URL found for network: ${network}`);
-      }
+      const { providerUrl } = EAS_CONSTANTS.getNetworkConfig();
+      
       const walletInfo: WalletInfo = {
         address,
-        network,
-        schemaUID: EAS_CONSTANTS.SCHEMA_UID,
         providerUrl,
         privateKey,
+        schemaUID: EAS_CONSTANTS.SCHEMA_UID,
       };
 
       setWallet(walletInfo);

@@ -16,15 +16,15 @@ export const ServiceStatusIndicator = ({
   const getStatusIcon = () => {
     switch (status) {
       case ServiceStatus.COMPLETED:
-        return "checkmark-circle";
+        return "checkmark-circle-outline";
       case ServiceStatus.FAILED:
-        return "alert-circle";
+        return "alert-circle-outline";
       case ServiceStatus.PROCESSING:
-        return "sync";
+        return "sync-circle-outline";
       case ServiceStatus.OFFLINE:
-        return "cloud-offline";
+        return "cloud-offline-outline";
       case ServiceStatus.PENDING:
-        return "time";
+        return "time-outline";
     }
   };
 
@@ -35,7 +35,7 @@ export const ServiceStatusIndicator = ({
       case ServiceStatus.FAILED:
         return "#f43f5e"; // rose-500
       case ServiceStatus.PROCESSING:
-        return "#f59e0b"; // yellow-500
+        return "#f59e0b"; // amber-500
       case ServiceStatus.OFFLINE:
         return "#a3a3a3"; // gray-500
       case ServiceStatus.PENDING:
@@ -56,8 +56,8 @@ export const ServiceStatusIndicator = ({
 
   return (
     <View className={`flex-row items-center justify-left gap-1 ${extraClasses}`}>
-      <Ionicons name={getStatusIcon()} size={20} color={getStatusColor()} />
-      <Text className="text-sm text-grey-6">
+      <Ionicons name={getStatusIcon()} size={22} color={getStatusColor()} />
+      <Text className="text-xs text-grey-6">
         {getLabel()}
       </Text>
     </View>

@@ -241,12 +241,13 @@ ${[
               <Text className="text-xl font-dm-light text-enaleia-black tracking-tighter">
                 Incoming
               </Text>
-              <Ionicons 
-                name="arrow-down" 
-                size={24} 
-                color="#8E8E93" 
-                style={{ transform: [{ rotate: '-45deg' }] }}
-              />
+              <View style={{ transform: [{ rotateZ: '-45deg' }] }}>
+                <Ionicons 
+                  name="arrow-down" 
+                  size={24} 
+                  color="#8E8E93" 
+                />
+              </View>
             </View>
             
             {item.incomingMaterials.map((material, index) => {
@@ -271,7 +272,7 @@ ${[
                           Weight
                         </Text>
                         <View className="flex-row items-baseline">
-                          <Text className="text-xl font-dm-bold text-enaleia-black">
+                          <Text className="text-xl font-dm-bold text-enaleia-black flex-1">
                             {material.weight || "-"}
                           </Text>
                           <Text className="text-sm text-right font-dm-bold text-grey-6 ml-2">
@@ -294,12 +295,13 @@ ${[
               <Text className="text-xl font-dm-light text-enaleia-black tracking-tighter">
                 Outgoing
               </Text>
-              <Ionicons 
-                name="arrow-up" 
-                size={24} 
-                color="#8E8E93" 
-                style={{ transform: [{ rotate: '45deg' }] }}
-              />
+              <View style={{ transform: [{ rotateZ: '45deg' }] }}>
+                <Ionicons 
+                  name="arrow-up" 
+                  size={24} 
+                  color="#8E8E93" 
+                />
+              </View>
             </View>
             
             {item.outgoingMaterials.map((material, index) => {
@@ -320,7 +322,7 @@ ${[
                         </Text>
                       </View>
                       <View className="flex-1 p-4 py-3">
-                        <Text className="text-sm font-dm-bold text-grey-6">
+                        <Text className="text-sm font-dm-bold text-grey-6 flex-1">
                           Weight
                         </Text>
                         <View className="flex-row items-baseline">
@@ -364,17 +366,27 @@ ${[
                   <Text className="text-sm font-dm-bold text-grey-6">
                     Batch Quantity
                   </Text>
-                  <Text className="text-xl font-dm-bold text-enaleia-black">
-                    {item.manufacturing?.quantity || "0"} Unit
-                  </Text>
+                  <View className="flex-row items-baseline">
+                    <Text className="text-xl font-dm-bold text-enaleia-black flex-1">
+                      {item.manufacturing?.quantity || "0"}
+                    </Text>
+                    <Text className="text-sm text-right font-dm-bold text-grey-6 ml-2">
+                      Unit
+                    </Text>
+                  </View>
                 </View>
                 <View className="flex-1 p-4 py-3">
                   <Text className="text-sm font-dm-bold text-grey-6">
                     Weight per item
                   </Text>
-                  <Text className="text-xl font-dm-bold text-enaleia-black">
-                    {item.manufacturing?.weightInKg || "0"} kg
-                  </Text>
+                  <View className="flex-row items-baseline">
+                    <Text className="text-xl font-dm-bold text-enaleia-black flex-1">
+                      {item.manufacturing?.weightInKg || "0"}
+                    </Text>
+                    <Text className="text-sm text-right font-dm-bold text-grey-6 ml-2">
+                      Kg
+                    </Text>
+                  </View>
                 </View>
               </View>
             </View>
@@ -424,10 +436,9 @@ ${[
                   </Text>
                   <Pressable
                     onPress={() => {
-                      const network = item.eas?.network || "sepolia";
                       const txHash = item.eas.txHash;
                       if (txHash) {
-                        const url = EAS_CONSTANTS.getAttestationUrl(txHash, network);
+                        const url = EAS_CONSTANTS.getAttestationUrl(txHash);
                         Linking.openURL(url);
                       }
                     }}
