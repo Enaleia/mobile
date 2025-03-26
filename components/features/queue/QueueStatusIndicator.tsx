@@ -17,12 +17,6 @@ export default function QueueStatusIndicator({ status, className = "" }: QueueSt
           color: "#0D0D0D", // enaleia-black
           text: "Pending"
         };
-      case QueueItemStatus.QUEUED:
-        return {
-          icon: "layers-outline",
-          color: "#0D0D0D", // enaleia-black
-          text: "Queued"
-        };
       case QueueItemStatus.PROCESSING:
         return {
           icon: "sync",

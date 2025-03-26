@@ -377,20 +377,11 @@ export async function processQueueItems(
     );
 
     for (const item of itemsToProcessFiltered) {
-      // Set status to QUEUED if it's not already processing
-      if (item.status !== QueueItemStatus.PROCESSING) {
-        await updateItemInCache(item.localId, {
-          status: QueueItemStatus.QUEUED,
-          directus: {
-            ...item.directus,
-            status: ServiceStatus.PENDING,
-          },
-          eas: {
-            ...item.eas,
-            status: ServiceStatus.PENDING,
-          }
-        });
-      }
+      // Set status to PENDING if it's not already processing
+      const updatedItem = {
+        ...item,
+        status: QueueItemStatus.PENDING,
+      };
 
       // Process the item
       try {

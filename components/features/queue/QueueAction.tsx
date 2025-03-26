@@ -11,11 +11,11 @@ import QueueStatusIndicator from "./QueueStatusIndicator";
 import { useEffect, useState } from "react";
 import { ProcessingSpinner } from "./ProcessingSpinner";
 
-interface QueuedActionProps {
+interface QueueActionProps {
   item: QueueItem;
 }
 
-const QueuedAction = ({ item }: QueuedActionProps) => {
+const QueueAction = ({ item }: QueueActionProps) => {
   const { actions } = useBatchData();
   const action = actions?.find((a: Action) => a.id === item.actionId);
   const timestamp = item.lastAttempt || item.date;
@@ -157,4 +157,4 @@ const QueuedAction = ({ item }: QueuedActionProps) => {
   );
 };
 
-export default QueuedAction;
+export default QueueAction;
