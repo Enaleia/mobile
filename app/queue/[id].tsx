@@ -24,12 +24,29 @@ export default function QueueItemDetails() {
   const { materials: materialsData, products: productsData, actions: actionsData, collectors } = useBatchData();
   const { user } = useAuth();
   const [showClearModal, setShowClearModal] = useState(false);
+  const [hasEmailedSupport, setHasEmailedSupport] = useState(false);
+  const [showClearButton, setShowClearButton] = useState(false);
 
   // Find collector info if available
   const collectorInfo = useMemo(() => {
     if (!item?.collectorId || !collectors) return null;
     return collectors.find(c => c.collector_identity === item.collectorId);
   }, [item?.collectorId, collectors]);
+
+  // Effect to handle delayed showing of clear button after email
+  useEffect(() => {
+    let timeoutId: NodeJS.Timeout;
+    if (hasEmailedSupport) {
+      timeoutId = setTimeout(() => {
+        setShowClearButton(true);
+      }, 300);
+    }
+    return () => {
+      if (timeoutId) {
+        clearTimeout(timeoutId);
+      }
+    };
+  }, [hasEmailedSupport]);
 
   useEffect(() => {
     console.log('Loading queue item details:', {
@@ -186,6 +203,7 @@ ${[
       const canOpen = await Linking.canOpenURL(url);
       if (canOpen) {
         await Linking.openURL(url);
+        setHasEmailedSupport(true);
       } else {
         Alert.alert(
           "Error", 
@@ -202,9 +220,7 @@ ${[
   };
 
   const handleClear = async () => {
-    if (canClear) {
-      setShowClearModal(true);
-    }
+    setShowClearModal(true);
   };
 
   const confirmClear = async () => {
@@ -222,8 +238,9 @@ ${[
     }
   };
 
-  const canClear = item.directus?.status === ServiceStatus.COMPLETED && 
-                   item.eas?.status === ServiceStatus.COMPLETED;
+  const canClear = item.status === QueueItemStatus.FAILED && 
+                   item.directus?.status === ServiceStatus.FAILED && 
+                   item.eas?.status === ServiceStatus.FAILED;
 
   return (
     <SafeAreaContent>
@@ -534,25 +551,47 @@ ${[
                 />
               </View>
             </View>
-            {(item.directus?.error || item.eas?.error || (item.directus?.status === ServiceStatus.FAILED && !item.directus?.linked)) && (
+            {((item.directus?.error || item.eas?.error || (item.directus?.status === ServiceStatus.FAILED && !item.directus?.linked)) || 
+              (item.retryCount > 0 || (item.slowRetryCount ?? 0) > 0)) && (
               <View className="border-t border-grey-3 p-4">
-                <Text className="text-base font-dm-bold text-rose-500 mb-2">
-                  Error:
-                </Text>
-                {item.directus?.error && (
-                  <Text className="text-sm text-rose-500 font-dm-regular mb-1">
-                    Database: {item.directus.error}
-                  </Text>
+                {(item.directus?.error || item.eas?.error || (item.directus?.status === ServiceStatus.FAILED && !item.directus?.linked)) && (
+                  <>
+                    <Text className="text-base font-dm-bold text-rose-500 mb-2">
+                      Error:
+                    </Text>
+                    {item.directus?.error && (
+                      <Text className="text-sm text-rose-500 font-dm-regular mb-1">
+                        Database: {item.directus.error}
+                      </Text>
+                    )}
+                    {item.eas?.error && (
+                      <Text className="text-sm text-rose-500 font-dm-regular mb-1">
+                        Blockchain: {item.eas.error}
+                      </Text>
+                    )}
+                    {item.directus?.status === ServiceStatus.FAILED && !item.directus?.linked && (
+                      <Text className="text-sm text-rose-500 font-dm-regular">
+                        Linking: Failed to link attestation with database
+                      </Text>
+                    )}
+                  </>
                 )}
-                {item.eas?.error && (
-                  <Text className="text-sm text-rose-500 font-dm-regular mb-1">
-                    Blockchain: {item.eas.error}
-                  </Text>
-                )}
-                {item.directus?.status === ServiceStatus.FAILED && !item.directus?.linked && (
-                  <Text className="text-sm text-rose-500 font-dm-regular">
-                    Linking: Failed to link attestation with database
-                  </Text>
+                {(item.retryCount > 0 || (item.slowRetryCount ?? 0) > 0) && (
+                  <View className={`${(item.directus?.error || item.eas?.error || (item.directus?.status === ServiceStatus.FAILED && !item.directus?.linked)) ? "mt-4" : ""}`}>
+                    <Text className="text-base font-dm-bold text-grey-6 mb-2">
+                      Retry Information:
+                    </Text>
+                    {item.retryCount > 0 && (
+                      <Text className="text-sm text-grey-6 font-dm-regular mb-1">
+                        Initial Retries: {item.retryCount} of {MAX_RETRIES_PER_BATCH}
+                      </Text>
+                    )}
+                    {(item.slowRetryCount ?? 0) > 0 && (
+                      <Text className="text-sm text-grey-6 font-dm-regular">
+                        Slow Mode Retries: {item.slowRetryCount}
+                      </Text>
+                    )}
+                  </View>
                 )}
               </View>
             )}
@@ -560,7 +599,7 @@ ${[
         </View>
 
         {/* Action Buttons */}
-        <View className="space-y-4">
+        <View className="mt-6 space-y-3">
           <Pressable
             onPress={handleEmail}
             className="border border-grey-3 py-4 rounded-full"
@@ -569,8 +608,8 @@ ${[
               Email to Enaleia
             </Text>
           </Pressable>
-          
-          {canClear && (
+
+          {canClear && hasEmailedSupport && showClearButton && (
             <Pressable
               onPress={handleClear}
               className="border border-grey-3 py-4 rounded-full"
@@ -583,7 +622,7 @@ ${[
         </View>
       </ScrollView>
 
-      <ClearConfirmationModal 
+      <ClearConfirmationModal
         isVisible={showClearModal}
         onClose={() => setShowClearModal(false)}
         onConfirm={confirmClear}
