@@ -59,26 +59,21 @@ async function updateItemInCache(itemId: string, updates: Partial<QueueItem>) {
         ? {
             ...item,
             ...updates,
-            directus: updates.directus
-              ? { 
-                  ...item.directus, 
-                  ...updates.directus,
-                  // Track retry counts
-                  initialRetryCount: updates.status === QueueItemStatus.PROCESSING
-                    ? (item.directus.initialRetryCount || 0) + 1
-                    : item.directus.initialRetryCount,
-                  // Enter slow mode if initial retries are exhausted
-                  enteredSlowModeAt: updates.status === QueueItemStatus.PROCESSING &&
-                    item.directus.initialRetryCount === MAX_RETRIES_PER_BATCH - 1
-                    ? new Date()
-                    : item.directus.enteredSlowModeAt,
-                  // Track slow mode retries
-                  slowRetryCount: updates.status === QueueItemStatus.PROCESSING &&
-                    item.directus.enteredSlowModeAt
-                    ? (item.directus.slowRetryCount || 0) + 1
-                    : item.directus.slowRetryCount
-                }
-              : item.directus,
+            // Track retry counts at the queue item level
+            initialRetryCount: updates.status === QueueItemStatus.PROCESSING
+              ? (item.initialRetryCount || 0) + 1
+              : item.initialRetryCount,
+            // Enter slow mode if initial retries are exhausted
+            enteredSlowModeAt: updates.status === QueueItemStatus.PROCESSING &&
+              item.initialRetryCount === MAX_RETRIES_PER_BATCH - 1
+              ? new Date()
+              : item.enteredSlowModeAt,
+            // Track slow mode retries
+            slowRetryCount: updates.status === QueueItemStatus.PROCESSING &&
+              item.enteredSlowModeAt
+              ? (item.slowRetryCount || 0) + 1
+              : item.slowRetryCount,
+            directus: updates.directus ? { ...item.directus, ...updates.directus } : item.directus,
             eas: updates.eas ? { ...item.eas, ...updates.eas } : item.eas,
             // Update overall status based on service states and retry phase
             status: updates.status || getOverallStatus({
@@ -402,9 +397,9 @@ export async function processQueueItems(
         console.log(`\n=== Processing item ${item.localId} ===`);
         console.log('Item state:', {
           status: item.status,
-          initialRetryCount: item.directus?.initialRetryCount || 0,
-          slowRetryCount: item.directus?.slowRetryCount || 0,
-          enteredSlowModeAt: item.directus?.enteredSlowModeAt,
+          initialRetryCount: item.initialRetryCount || 0,
+          slowRetryCount: item.slowRetryCount || 0,
+          enteredSlowModeAt: item.enteredSlowModeAt,
           lastAttempt: item.lastAttempt,
           directusStatus: item.directus?.status,
           easStatus: item.eas?.status
@@ -412,18 +407,18 @@ export async function processQueueItems(
 
         // Check if item should be auto-retried
         if (!shouldAutoRetry(item)) {
-          if (item.directus?.initialRetryCount && item.directus.initialRetryCount >= MAX_RETRIES_PER_BATCH) {
-            console.log(`Item ${item.localId} has exhausted initial retry attempts (${item.directus.initialRetryCount}/${MAX_RETRIES_PER_BATCH})`);
+          if (item.initialRetryCount && item.initialRetryCount >= MAX_RETRIES_PER_BATCH) {
+            console.log(`Item ${item.localId} has exhausted initial retry attempts (${item.initialRetryCount}/${MAX_RETRIES_PER_BATCH})`);
           }
-          if (item.directus?.enteredSlowModeAt) {
-            const age = Date.now() - new Date(item.directus.enteredSlowModeAt).getTime();
+          if (item.enteredSlowModeAt) {
+            const age = Date.now() - new Date(item.enteredSlowModeAt).getTime();
             const ageInHours = Math.round(age / (60 * 60 * 1000));
             console.log(`Item ${item.localId} in slow retry mode:`, {
-              enteredAt: item.directus.enteredSlowModeAt,
+              enteredAt: item.enteredSlowModeAt,
               ageInHours,
-              slowRetryCount: item.directus.slowRetryCount || 0,
-              nextRetryIn: item.directus.lastAttempt ? 
-                `${Math.round((RETRY_COOLDOWN - (Date.now() - new Date(item.directus.lastAttempt).getTime())) / (60 * 1000))}m` : 
+              slowRetryCount: item.slowRetryCount || 0,
+              nextRetryIn: item.lastAttempt ? 
+                `${Math.round((RETRY_COOLDOWN - (Date.now() - new Date(item.lastAttempt).getTime())) / (60 * 1000))}m` : 
                 'N/A'
             });
           }
@@ -452,10 +447,10 @@ export async function processQueueItems(
           console.log(`Starting processing for item ${item.localId}:`, {
             needsDirectus,
             needsEAS,
-            retryPhase: item.directus?.enteredSlowModeAt ? 'slow' : 'initial',
-            attempt: item.directus?.enteredSlowModeAt ? 
-              item.directus.slowRetryCount || 1 : 
-              item.directus?.initialRetryCount || 1
+            retryPhase: item.enteredSlowModeAt ? 'slow' : 'initial',
+            attempt: item.enteredSlowModeAt ? 
+              item.slowRetryCount || 1 : 
+              item.initialRetryCount || 1
           });
 
           if (!needsDirectus && !needsEAS) {
@@ -719,10 +714,10 @@ export async function processQueueItems(
           const errorMessage = error instanceof Error ? error.message : "Unknown error";
           console.error(`Error processing item ${item.localId}:`, {
             error: errorMessage,
-            phase: item.directus?.enteredSlowModeAt ? 'slow' : 'initial',
-            attempt: item.directus?.enteredSlowModeAt ? 
-              item.directus.slowRetryCount || 1 : 
-              item.directus?.initialRetryCount || 1
+            phase: item.enteredSlowModeAt ? 'slow' : 'initial',
+            attempt: item.enteredSlowModeAt ? 
+              item.slowRetryCount || 1 : 
+              item.initialRetryCount || 1
           });
           
           await updateItemInCache(item.localId, {
