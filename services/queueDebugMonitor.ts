@@ -1,4 +1,4 @@
-import { QueueItem, QueueItemStatus, ServiceStatus, PROCESSING_TIMEOUT, MAX_RETRIES_PER_BATCH, RETRY_COOLDOWN, MAX_RETRY_AGE } from "@/types/queue";
+import { QueueItem, QueueItemStatus, ServiceStatus, PROCESSING_TIMEOUT, MAX_RETRIES_PER_BATCH, RETRY_COOLDOWN, MAX_RETRY_AGE, MAX_TOTAL_RETRIES } from "@/types/queue";
 import { filterQueueItems } from "@/utils/queue";
 
 interface QueueMetrics {
@@ -9,8 +9,7 @@ interface QueueMetrics {
   completedItems: number;
   averageProcessingTime: number;
   retryStats: {
-    initialPhase: number;
-    slowPhase: number;
+    attempts: number;
     manualRetries: number;
   };
 }
@@ -60,26 +59,12 @@ export class QueueDebugMonitor {
     const timeSinceLastAttempt = lastAttempt ? 
       `${Math.round((now.getTime() - lastAttempt.getTime()) / 1000)}s` : 
       'N/A';
-
-    const retryPhase = item.enteredSlowModeAt ? 'slow' : 'initial';
-    const retryCount = item.enteredSlowModeAt ? 
-      item.slowRetryCount || 0 : 
-      item.initialRetryCount || 0;
     
-    const maxRetries = item.enteredSlowModeAt ? 
-      Math.ceil(MAX_RETRY_AGE / RETRY_COOLDOWN) : 
-      MAX_RETRIES_PER_BATCH;
-
-    const nextRetry = item.enteredSlowModeAt ? 
-      `${Math.round((RETRY_COOLDOWN - (now.getTime() - new Date(item.enteredSlowModeAt).getTime())) / (60 * 1000))}m` : 
-      'N/A';
-
     return {
-      retryPhase,
-      retryCount,
-      maxRetries,
-      timeSinceLastAttempt,
-      nextRetry
+      retryCount: item.retryCount || 0,
+      maxRetriesPerBatch: MAX_RETRIES_PER_BATCH,
+      maxTotalRetries: MAX_TOTAL_RETRIES,
+      timeSinceLastAttempt
     };
   }
 
@@ -113,10 +98,8 @@ export class QueueDebugMonitor {
       }
 
       // Track retry stats
-      if (item.enteredSlowModeAt) {
-        acc.retryStats.slowPhase++;
-      } else {
-        acc.retryStats.initialPhase++;
+      if (item.retryCount && item.retryCount > 0) {
+        acc.retryStats.attempts++;
       }
 
       return acc;
@@ -128,8 +111,7 @@ export class QueueDebugMonitor {
       completedItems: 0,
       averageProcessingTime: 0,
       retryStats: {
-        initialPhase: 0,
-        slowPhase: 0,
+        attempts: 0,
         manualRetries: 0
       }
     });
@@ -155,7 +137,7 @@ export class QueueDebugMonitor {
   Failed: ${currentMetrics.failedItems}
   Completed: ${currentMetrics.completedItems}
   Avg Processing: ${currentMetrics.averageProcessingTime}s
-  Retries: ${currentMetrics.retryStats.initialPhase} initial, ${currentMetrics.retryStats.slowPhase} slow, ${currentMetrics.retryStats.manualRetries} manual`);
+  Retries: ${currentMetrics.retryStats.attempts} attempts, ${currentMetrics.retryStats.manualRetries} manual`);
       
       this.lastMetrics = currentMetrics;
     }
@@ -169,13 +151,13 @@ export class QueueDebugMonitor {
     if (newStatus === QueueItemStatus.PROCESSING || 
         newStatus === QueueItemStatus.FAILED) {
       const retryInfo = this.getRetryInfo(item);
-      this.log(`[${item.localId}] ${oldStatus} → ${newStatus} | ${retryInfo.retryPhase} #${retryInfo.retryCount}/${retryInfo.maxRetries}`);
+      this.log(`[${item.localId}] ${oldStatus} → ${newStatus} | Attempt #${retryInfo.retryCount}/${retryInfo.maxRetriesPerBatch}`);
     }
   }
 
   logProcessingStart(item: QueueItem) {
     const retryInfo = this.getRetryInfo(item);
-    this.log(`[${item.localId}] Processing | ${retryInfo.retryPhase} #${retryInfo.retryCount}/${retryInfo.maxRetries}`);
+    this.log(`[${item.localId}] Processing | Attempt #${retryInfo.retryCount}/${retryInfo.maxRetriesPerBatch}`);
   }
 
   logProcessingComplete(item: QueueItem, success: boolean, error?: string) {
@@ -184,7 +166,7 @@ export class QueueDebugMonitor {
       'unknown';
     
     const retryInfo = this.getRetryInfo(item);
-    this.log(`${success ? '✓' : '✗'} [${item.localId}] ${duration} | ${retryInfo.retryPhase} #${retryInfo.retryCount}/${retryInfo.maxRetries}${error ? ` | ${error}` : ''}`);
+    this.log(`${success ? '✓' : '✗'} [${item.localId}] ${duration} | Attempt #${retryInfo.retryCount}/${retryInfo.maxRetriesPerBatch}${error ? ` | ${error}` : ''}`);
   }
 
   logRetryAttempt(item: QueueItem, service?: "directus" | "eas", isManual: boolean = false) {
@@ -204,16 +186,14 @@ export class QueueDebugMonitor {
     }
     
     this.log(`${isManual ? '🔄' : '↻'} Retry Attempt [${item.localId}] ${serviceIndicator}
-    Phase: ${retryInfo.retryPhase}
-    Attempt: #${retryInfo.retryCount}/${retryInfo.maxRetries}
+    Attempt: #${retryInfo.retryCount}/${retryInfo.maxRetriesPerBatch} per batch, ${retryInfo.retryCount}/${retryInfo.maxTotalRetries} total
     Time since last attempt: ${retryInfo.timeSinceLastAttempt}
-    Next retry in: ${retryInfo.nextRetry}${cycleTime}
-    Services: [Directus: ${item.directus?.status || 'N/A'}] [EAS: ${item.eas?.status || 'N/A'}]`);
+    Services: [Directus: ${item.directus?.status || 'N/A'}] [EAS: ${item.eas?.status || 'N/A'}]${cycleTime}`);
   }
 
   logStuckItem(item: QueueItem) {
     const retryInfo = this.getRetryInfo(item);
-    this.log(`⚠️ [${item.localId}] Stuck | ${retryInfo.retryPhase} #${retryInfo.retryCount}/${retryInfo.maxRetries} | ${retryInfo.timeSinceLastAttempt} since last attempt`);
+    this.log(`⚠️ [${item.localId}] Stuck | Attempt #${retryInfo.retryCount}/${retryInfo.maxRetriesPerBatch} per batch, ${retryInfo.retryCount}/${retryInfo.maxTotalRetries} total | ${retryInfo.timeSinceLastAttempt} since last attempt`);
   }
 
   logNetworkStatus(isConnected: boolean, isInternetReachable: boolean) {
@@ -259,30 +239,19 @@ export class QueueDebugMonitor {
     }
 
     this.log(`State Transition [${item.localId}] ${item.status} → ${newStatus}
-    Phase: ${retryInfo.retryPhase}
-    Attempt: #${retryInfo.retryCount}/${retryInfo.maxRetries}
+    Attempt: #${retryInfo.retryCount}/${retryInfo.maxRetriesPerBatch} per batch, ${retryInfo.retryCount}/${retryInfo.maxTotalRetries} total
     ${timingInfo}
     Last attempt: ${retryInfo.timeSinceLastAttempt} ago
-    ${retryInfo.retryPhase === 'slow' ? `Next retry in: ${retryInfo.nextRetry}` : ''}
     Services: [Directus: ${item.directus?.status || 'N/A'}] [EAS: ${item.eas?.status || 'N/A'}]`);
   }
 
   logRetryEligibilityCheck(item: QueueItem, isEligible: boolean, reason: string) {
     const retryInfo = this.getRetryInfo(item);
-    const timings = this.getTimingInfo(item);
     
-    let waitTime = '';
-    if (!isEligible && item.enteredSlowModeAt) {
-      const timeUntilNextRetry = RETRY_COOLDOWN - (Date.now() - new Date(item.lastAttempt || 0).getTime());
-      waitTime = `Wait time remaining: ${this.formatDuration(Date.now(), Date.now() + timeUntilNextRetry)}`;
-    }
-
     this.log(`Retry Eligibility Check [${item.localId}]
     Result: ${isEligible ? '✓ Eligible' : '✗ Not eligible'}
     Reason: ${reason}
-    Phase: ${retryInfo.retryPhase}
-    Attempt: #${retryInfo.retryCount}/${retryInfo.maxRetries}
-    ${waitTime}
+    Attempt: #${retryInfo.retryCount}/${retryInfo.maxRetriesPerBatch} per batch, ${retryInfo.retryCount}/${retryInfo.maxTotalRetries} total
     Time since failure: ${item.lastAttempt ? this.formatDuration(new Date(item.lastAttempt).getTime()) : 'N/A'}`);
   }
 } 

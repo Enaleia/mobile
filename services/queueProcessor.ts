@@ -25,7 +25,6 @@ import {
   getOverallStatus,
   PROCESSING_TIMEOUT,
   MAX_RETRIES_PER_BATCH,
-  RETRY_COOLDOWN,
   shouldAutoRetry,
   isCompletelyFailed
 } from "@/types/queue";
@@ -60,37 +59,53 @@ async function updateItemInCache(itemId: string, updates: Partial<QueueItem>) {
         ? {
             ...item,
             ...updates,
-            // Track retry counts at the queue item level
-            initialRetryCount: updates.status === QueueItemStatus.PROCESSING
-              ? (item.initialRetryCount || 0) + 1
-              : item.initialRetryCount,
-            // Enter slow mode if initial retries are exhausted
-            enteredSlowModeAt: updates.status === QueueItemStatus.PROCESSING &&
-              item.initialRetryCount === MAX_RETRIES_PER_BATCH - 1
-              ? new Date()
-              : item.enteredSlowModeAt,
-            // Track slow mode retries
-            slowRetryCount: updates.status === QueueItemStatus.PROCESSING &&
-              item.enteredSlowModeAt
-              ? (item.slowRetryCount || 0) + 1
-              : item.slowRetryCount,
-            directus: updates.directus ? { ...item.directus, ...updates.directus } : item.directus,
-            eas: updates.eas ? { ...item.eas, ...updates.eas } : item.eas,
-            // Update overall status based on service states and retry phase
-            status: updates.status || getOverallStatus({
-              ...item,
-              directus: updates.directus
-                ? { ...item.directus, ...updates.directus }
-                : item.directus,
-              eas: updates.eas 
-                ? { ...item.eas, ...updates.eas }
-                : item.eas,
-            }),
+            retryCount: updates.status === QueueItemStatus.PROCESSING
+              ? (item.retryCount || 0) + 1
+              : item.retryCount,
+            directus: updates.directus ? { 
+              ...item.directus, 
+              ...updates.directus,
+              // Ensure service status is consistent with overall status
+              status: updates.status === QueueItemStatus.COMPLETED ? 
+                ServiceStatus.COMPLETED : 
+                updates.directus.status || item.directus?.status
+            } : item.directus,
+            eas: updates.eas ? { 
+              ...item.eas, 
+              ...updates.eas,
+              // Ensure service status is consistent with overall status
+              status: updates.status === QueueItemStatus.COMPLETED ? 
+                ServiceStatus.COMPLETED : 
+                updates.eas.status || item.eas?.status
+            } : item.eas,
+            // Calculate overall status based on service states and updates
+            status: updates.status || (() => {
+              const directusStatus = updates.directus?.status || item.directus?.status;
+              const easStatus = updates.eas?.status || item.eas?.status;
+              
+              // If either service is processing, item is processing
+              if (directusStatus === ServiceStatus.PROCESSING || easStatus === ServiceStatus.PROCESSING) {
+                return QueueItemStatus.PROCESSING;
+              }
+              
+              // If either service failed, item failed
+              if (directusStatus === ServiceStatus.FAILED || easStatus === ServiceStatus.FAILED) {
+                return QueueItemStatus.FAILED;
+              }
+              
+              // If both services completed, item completed
+              if (directusStatus === ServiceStatus.COMPLETED && easStatus === ServiceStatus.COMPLETED) {
+                return QueueItemStatus.COMPLETED;
+              }
+              
+              // Default to current status or PENDING
+              return item.status || QueueItemStatus.PENDING;
+            })(),
           }
         : item
     );
 
-    // If item is completed or has exceeded retry window, move to completed queue
+    // If item is completed or has exceeded retry attempts, move to completed queue
     const shouldComplete = (item: QueueItem) => 
       item.status === QueueItemStatus.COMPLETED || isCompletelyFailed(item);
 
@@ -102,7 +117,7 @@ async function updateItemInCache(itemId: string, updates: Partial<QueueItem>) {
       await updateActiveQueue(updatedItems);
     }
 
-    queueEventEmitter.emit(QueueEvents.UPDATED);
+    return itemToUpdate;
   } catch (error) {
     console.error("Error updating item in cache:", error);
     throw error;
@@ -140,8 +155,8 @@ async function notifyUser(title: string, body: string) {
 }
 
 let isProcessing = false;
-let lastNotificationTime = 0;
-const NOTIFICATION_COOLDOWN = 5 * 60 * 1000; // 5 minutes
+let processingTimeout: NodeJS.Timeout | null = null;
+const PROCESSING_LOCK_TIMEOUT = 5 * 60 * 1000; // 5 minutes
 
 interface RequiredData {
   userData: EnaleiaUser | null;
@@ -313,11 +328,26 @@ async function processEASAttestation(
 }
 
 function isItemStuck(item: QueueItem): boolean {
-  return Boolean(
+  const isOverallStuck = Boolean(
     item.status === QueueItemStatus.PROCESSING &&
     item.lastAttempt &&
     Date.now() - new Date(item.lastAttempt).getTime() > PROCESSING_TIMEOUT
   );
+
+  // Check if individual services are stuck
+  const isDirectusStuck = Boolean(
+    item.directus?.status === ServiceStatus.PROCESSING &&
+    item.lastAttempt &&
+    Date.now() - new Date(item.lastAttempt).getTime() > PROCESSING_TIMEOUT
+  );
+
+  const isEasStuck = Boolean(
+    item.eas?.status === ServiceStatus.PROCESSING &&
+    item.lastAttempt &&
+    Date.now() - new Date(item.lastAttempt).getTime() > PROCESSING_TIMEOUT
+  );
+
+  return isOverallStuck || isDirectusStuck || isEasStuck;
 }
 
 async function handleStuckItem(item: QueueItem) {
@@ -333,12 +363,12 @@ async function handleStuckItem(item: QueueItem) {
   await updateItemInCache(item.localId, {
     status: QueueItemStatus.FAILED,
     lastError: "Operation timed out after 30 seconds",
-    directus: item.directus.status === ServiceStatus.PROCESSING ? {
+    directus: item.directus?.status === ServiceStatus.PROCESSING ? {
       ...item.directus,
       status: ServiceStatus.FAILED,
       error: "Directus operation timed out"
     } : item.directus,
-    eas: item.eas.status === ServiceStatus.PROCESSING ? {
+    eas: item.eas?.status === ServiceStatus.PROCESSING ? {
       ...item.eas,
       status: ServiceStatus.FAILED,
       error: "EAS operation timed out"
@@ -361,7 +391,18 @@ export async function processQueueItems(
     return;
   }
 
+  // Set processing lock with timeout
   isProcessing = true;
+  if (processingTimeout) {
+    clearTimeout(processingTimeout);
+  }
+  processingTimeout = setTimeout(() => {
+    if (isProcessing) {
+      console.warn("Processing lock timeout reached, forcing release");
+      isProcessing = false;
+    }
+    processingTimeout = null;
+  }, PROCESSING_LOCK_TIMEOUT);
 
   try {
     const requiredData = await fetchRequiredData();
@@ -374,7 +415,7 @@ export async function processQueueItems(
     // Filter out completed and failed items
     const itemsToProcessFiltered = itemsToProcess.filter(item => 
       item.status !== QueueItemStatus.COMPLETED && 
-      item.status !== QueueItemStatus.FAILED
+      !isCompletelyFailed(item)
     );
 
     for (const item of itemsToProcessFiltered) {
@@ -398,13 +439,18 @@ export async function processQueueItems(
           item, 
           shouldRetry,
           shouldRetry ? 
-            item.enteredSlowModeAt ? 
-              "Eligible for slow mode retry" : 
-              "Eligible for initial retry" 
-            : "Exceeded retry limits or cooling down"
+            "Within retry limits" : 
+            "Exceeded retry limits"
         );
 
         if (!shouldRetry) {
+          // Mark as completely failed if exceeded limits
+          if (isCompletelyFailed(item)) {
+            await updateItemInCache(item.localId, {
+              status: QueueItemStatus.FAILED,
+              lastError: "Exceeded retry limits",
+            });
+          }
           continue;
         }
 
@@ -694,8 +740,14 @@ export async function processQueueItems(
       }
     }
   } catch (error) {
-    monitor.log("Error processing queue items:", error);
+    console.error("Error processing queue items:", error);
+    throw error;
   } finally {
+    // Clean up processing state and timeout
     isProcessing = false;
+    if (processingTimeout) {
+      clearTimeout(processingTimeout);
+      processingTimeout = null;
+    }
   }
 }

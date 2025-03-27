@@ -7,7 +7,14 @@ import {
   useCallback,
 } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { MAX_RETRIES, QueueItem, QueueItemStatus, ServiceStatus, isCompletelyFailed } from "@/types/queue";
+import {
+  QueueItem,
+  QueueItemStatus,
+  ServiceStatus,
+  isCompletelyFailed,
+  shouldAutoRetry,
+  PROCESSING_TIMEOUT
+} from "@/types/queue";
 import { processQueueItems } from "@/services/queueProcessor";
 import { QueueEvents, queueEventEmitter } from "@/services/events";
 import { useNetwork } from "./NetworkContext";
@@ -118,7 +125,14 @@ export function QueueProvider({ children }: { children: React.ReactNode }) {
     async (items: QueueItem[]) => {
       try {
         processingRef.current = true;
-        await processQueueItems(items, wallet);
+        // Filter out completely failed items before processing
+        const itemsToProcess = items.filter(item => !isCompletelyFailed(item));
+        if (itemsToProcess.length < items.length) {
+          console.log(`Skipping ${items.length - itemsToProcess.length} items in critical state`);
+        }
+        if (itemsToProcess.length > 0) {
+          await processQueueItems(itemsToProcess, wallet);
+        }
       } catch (error) {
         console.error("Failed to process items:", error);
       } finally {
@@ -189,6 +203,40 @@ export function QueueProvider({ children }: { children: React.ReactNode }) {
       subscription.remove();
     };
   }, [queueItems, isOnline, processItems]);
+
+  // Add periodic refresh effect
+  useEffect(() => {
+    let refreshInterval: NodeJS.Timeout;
+    
+    const startAutoRefresh = () => {
+      if (AppState.currentState === 'active') {
+        refreshInterval = setInterval(async () => {
+          if (!processingRef.current) {
+            await refreshQueueStatus();
+          }
+        }, 15000); // Refresh every 15 seconds when app is active
+      }
+    };
+    
+    startAutoRefresh();
+    
+    const subscription = AppState.addEventListener('change', (nextAppState) => {
+      if (nextAppState === 'active') {
+        startAutoRefresh();
+      } else {
+        if (refreshInterval) {
+          clearInterval(refreshInterval);
+        }
+      }
+    });
+    
+    return () => {
+      if (refreshInterval) {
+        clearInterval(refreshInterval);
+      }
+      subscription.remove();
+    };
+  }, [isOnline]);
 
   const updateQueueItems = async (items: QueueItem[]): Promise<void> => {
     try {
@@ -287,22 +335,77 @@ export function QueueProvider({ children }: { children: React.ReactNode }) {
       // Process items sequentially
       for (const item of items) {
         try {
-          // Reset only the specified service or both if none specified
+          // Check if item is in critical state (completely failed)
+          if (isCompletelyFailed(item)) {
+            console.log(`Item ${item.localId} is in critical state (exceeded retry limits), skipping retry`);
+            continue;
+          }
+
+          // Reset item state based on service, preserving completed states
           const resetItem = {
             ...item,
             status: QueueItemStatus.PENDING,
             retryCount: (item.retryCount || 0) + 1,
             lastError: undefined,
             lastAttempt: undefined,
-            directus: service === "eas" ? item.directus : { 
-              status: ServiceStatus.PENDING,
-              error: undefined 
-            },
-            eas: service === "directus" ? item.eas : { 
-              status: ServiceStatus.PENDING,
-              error: undefined 
-            },
+            // Reset Directus state only if:
+            // 1. We're retrying Directus specifically, or
+            // 2. We're retrying both services AND Directus isn't already completed
+            directus: service === "eas" ? item.directus : 
+              (item.directus?.status === ServiceStatus.COMPLETED ? item.directus : {
+                ...item.directus,
+                status: ServiceStatus.PENDING,
+                error: undefined,
+                eventId: undefined,
+                linked: false
+              }),
+            // Reset EAS state only if:
+            // 1. We're retrying EAS specifically, or
+            // 2. We're retrying both services AND EAS isn't already completed
+            eas: service === "directus" ? item.eas :
+              (item.eas?.status === ServiceStatus.COMPLETED ? item.eas : {
+                ...item.eas,
+                status: ServiceStatus.PENDING,
+                error: undefined,
+                txHash: undefined
+              })
           };
+
+          // Check if this retry would exceed limits
+          if (!shouldAutoRetry(resetItem)) {
+            console.log(`Item ${item.localId} would exceed retry limits, moving to critical state`);
+            // Update item to critical state
+            const criticalItem = {
+              ...item,
+              status: QueueItemStatus.FAILED,
+              lastError: "Exceeded retry limits",
+              directus: {
+                ...item.directus,
+                status: ServiceStatus.FAILED,
+                error: "Exceeded retry limits"
+              },
+              eas: {
+                ...item.eas,
+                status: ServiceStatus.FAILED,
+                error: "Exceeded retry limits"
+              }
+            };
+            const updatedItems = queueItems.map((qi) =>
+              qi.localId === item.localId ? criticalItem : qi
+            );
+            await updateActiveQueue(updatedItems);
+            setQueueItems(updatedItems);
+            continue;
+          }
+
+          // Log the state changes
+          console.log(`Retrying item ${item.localId}:`, {
+            service,
+            directusWasCompleted: item.directus?.status === ServiceStatus.COMPLETED,
+            easWasCompleted: item.eas?.status === ServiceStatus.COMPLETED,
+            directusNewStatus: resetItem.directus?.status,
+            easNewStatus: resetItem.eas?.status
+          });
 
           // Update queue with reset item
           const updatedItems = queueItems.map((qi) =>
@@ -331,7 +434,7 @@ export function QueueProvider({ children }: { children: React.ReactNode }) {
             break;
           }
 
-          // Update item state to failed for the specified service with detailed error message
+          // Update item state to failed
           const updatedItems = queueItems.map((qi) =>
             qi.localId === item.localId
               ? {
@@ -339,14 +442,18 @@ export function QueueProvider({ children }: { children: React.ReactNode }) {
                   status: QueueItemStatus.FAILED,
                   lastError: errorMessage,
                   lastAttempt: new Date(),
-                  directus: service === "eas" ? qi.directus : { 
-                    status: ServiceStatus.FAILED, 
-                    error: errorMessage 
-                  },
-                  eas: service === "directus" ? qi.eas : { 
-                    status: ServiceStatus.FAILED, 
-                    error: errorMessage 
-                  },
+                  directus: service === "eas" ? qi.directus : 
+                    (qi.directus?.status === ServiceStatus.COMPLETED ? qi.directus : {
+                      ...qi.directus,
+                      status: ServiceStatus.FAILED,
+                      error: errorMessage
+                    }),
+                  eas: service === "directus" ? qi.eas :
+                    (qi.eas?.status === ServiceStatus.COMPLETED ? qi.eas : {
+                      ...qi.eas,
+                      status: ServiceStatus.FAILED,
+                      error: errorMessage
+                    }),
                 }
               : qi
           );
@@ -517,146 +624,154 @@ export function QueueProvider({ children }: { children: React.ReactNode }) {
   };
 
   const refreshItemStatus = async (item: QueueItem): Promise<QueueItem> => {
-    const networkInfo = await NetInfo.fetch();
-    const isConnected = networkInfo.isConnected;
-    
-    // Create a copy of the item to modify
     const updatedItem = { ...item };
-    let statusChanged = false;
-
-    // First check if the item is completely failed
-    if (isCompletelyFailed(item)) {
-      // Maintain failed status for both services and overall status
-      updatedItem.status = QueueItemStatus.FAILED;
-      updatedItem.directus = {
-        ...updatedItem.directus,
-        status: ServiceStatus.FAILED
-      };
-      updatedItem.eas = {
-        ...updatedItem.eas,
-        status: ServiceStatus.FAILED
-      };
-      return updatedItem;
-    }
-
-    // Check Directus status based on stored values
-    if (updatedItem.directus?.eventId) {
-      // If we have an eventId, Directus was successful
-      if (updatedItem.directus.status !== ServiceStatus.COMPLETED) {
-        statusChanged = true;
-      }
-      updatedItem.directus = {
-        ...updatedItem.directus,
-        status: ServiceStatus.COMPLETED,
-      };
-    } else {
-      if (updatedItem.directus?.status !== ServiceStatus.PENDING) {
-        statusChanged = true;
-      }
-      updatedItem.directus = {
-        ...updatedItem.directus,
-        status: ServiceStatus.PENDING,
-      };
-    }
-
-    // Check EAS status based on stored values
-    if (updatedItem.eas?.txHash) {
-      if (updatedItem.eas.status !== ServiceStatus.COMPLETED) {
-        statusChanged = true;
-      }
-      updatedItem.eas = {
-        ...updatedItem.eas,
-        status: ServiceStatus.COMPLETED,
-      };
-    } else {
-      if (updatedItem.eas?.status !== ServiceStatus.PENDING) {
-        statusChanged = true;
-      }
-      updatedItem.eas = {
-        ...updatedItem.eas,
-        status: ServiceStatus.PENDING,
-      };
-    }
-
-    // Check linking status only if online
-    if (isConnected && updatedItem.directus?.eventId && updatedItem.eas?.txHash) {
-      try {
-        const event = await getEvent(updatedItem.directus.eventId);
-        if (event && event[0]) {
-          // Check if EAS UID is linked to Directus event
-          const isLinked = event[0].EAS_UID === updatedItem.eas.txHash;
-          const wasLinked = updatedItem.directus.linked || false;
-          if (isLinked !== wasLinked) {
-            statusChanged = true;
-          }
-          updatedItem.directus = {
-            ...updatedItem.directus,
-            linked: isLinked,
-          };
-        }
-      } catch (error) {
-        console.error(`Error checking linking status for item ${updatedItem.localId}:`, error);
-        // Keep existing linking status if check fails
-        updatedItem.directus = {
-          ...updatedItem.directus,
-          linked: updatedItem.directus.linked || false,
-        };
-      }
-    } else if (!isConnected) {
-      // When offline, preserve existing linking status
-      updatedItem.directus = {
-        ...updatedItem.directus,
-        linked: updatedItem.directus?.linked || false,
-      };
-    }
-
-    // Update overall status based on service statuses
     const prevStatus = updatedItem.status;
-    
-    if (updatedItem.directus?.status === ServiceStatus.COMPLETED && 
-        updatedItem.eas?.status === ServiceStatus.COMPLETED) {
-      // Both services completed - mark as COMPLETED
-      updatedItem.status = QueueItemStatus.COMPLETED;
-    } else if (updatedItem.status === QueueItemStatus.COMPLETED || 
-               updatedItem.status === QueueItemStatus.PROCESSING ||
-               updatedItem.status === QueueItemStatus.FAILED) {
-      // Reset to PENDING if:
-      // 1. Item was marked as COMPLETED but services aren't complete
-      // 2. Item is stuck in PROCESSING but services aren't complete
-      // 3. Item was marked as FAILED but services aren't actually in failed state
-      updatedItem.status = QueueItemStatus.PENDING;
-      
-      // Reset last attempt time to allow immediate processing
-      updatedItem.lastAttempt = undefined;
-      
-      // Clear last error if we're resetting from FAILED
-      if (prevStatus === QueueItemStatus.FAILED) {
-        updatedItem.lastError = undefined;
-      }
-      
-      if (prevStatus !== updatedItem.status) {
-        console.log(`Reset item ${updatedItem.localId} from ${prevStatus} to PENDING`);
-        statusChanged = true;
-      }
+
+    // 1. Network check (highest priority)
+    if (!navigator.onLine) {
+      return {
+        ...updatedItem,
+        status: QueueItemStatus.OFFLINE,
+        lastError: "Device is offline"
+      };
     }
+
+    // 2. Check for stuck processing conditions
+    const now = Date.now();
+    const lastAttemptTime = item.lastAttempt ? new Date(item.lastAttempt).getTime() : 0;
+    const timeSinceLastAttempt = now - lastAttemptTime;
     
-    if (statusChanged) {
-      console.log(`Item ${updatedItem.localId} status refreshed: ${JSON.stringify({
-        oldStatus: prevStatus,
-        newStatus: updatedItem.status,
+    // Enhanced stuck detection:
+    // - Item is in PROCESSING state overall
+    // - OR one service is COMPLETED while other is stuck in PROCESSING
+    // - OR processing time exceeded timeout
+    // - OR no last attempt recorded
+    const isStuck = Boolean(
+      (item.status === QueueItemStatus.PROCESSING &&
+       (timeSinceLastAttempt > PROCESSING_TIMEOUT || !item.lastAttempt)) ||
+      (item.directus?.status === ServiceStatus.COMPLETED && 
+       item.eas?.status === ServiceStatus.PROCESSING && 
+       timeSinceLastAttempt > PROCESSING_TIMEOUT) ||
+      (item.eas?.status === ServiceStatus.COMPLETED && 
+       item.directus?.status === ServiceStatus.PROCESSING && 
+       timeSinceLastAttempt > PROCESSING_TIMEOUT)
+    );
+
+    if (isStuck) {
+      console.log(`Item ${item.localId} detected as stuck:`, {
+        overallStatus: item.status,
+        directusStatus: item.directus?.status,
+        easStatus: item.eas?.status,
+        timeSinceLastAttempt: Math.round(timeSinceLastAttempt / 1000) + 's',
+        hasLastAttempt: !!item.lastAttempt
+      });
+
+      // If one service completed but other failed, preserve the completed state
+      return {
+        ...updatedItem,
+        status: QueueItemStatus.FAILED,
+        lastError: "Operation timed out after 30 seconds",
         directus: {
-          old: item.directus?.status,
-          new: updatedItem.directus?.status,
-          linked: updatedItem.directus?.linked
+          ...updatedItem.directus,
+          status: updatedItem.directus?.status === ServiceStatus.COMPLETED ? 
+                 ServiceStatus.COMPLETED : ServiceStatus.FAILED,
+          error: updatedItem.directus?.status !== ServiceStatus.COMPLETED ? 
+                "Operation timed out" : undefined
         },
         eas: {
-          old: item.eas?.status,
-          new: updatedItem.eas?.status
+          ...updatedItem.eas,
+          status: updatedItem.eas?.status === ServiceStatus.COMPLETED ? 
+                 ServiceStatus.COMPLETED : ServiceStatus.FAILED,
+          error: updatedItem.eas?.status !== ServiceStatus.COMPLETED ? 
+                "Operation timed out" : undefined
         }
-      })}`);
+      };
     }
 
-    return updatedItem;
+    // 3. Determine service states
+    const directusState = {
+      isComplete: Boolean(updatedItem.directus?.eventId),
+      isFailed: updatedItem.directus?.status === ServiceStatus.FAILED,
+      isProcessing: updatedItem.directus?.status === ServiceStatus.PROCESSING
+    };
+
+    const easState = {
+      isComplete: Boolean(updatedItem.eas?.txHash),
+      isFailed: updatedItem.eas?.status === ServiceStatus.FAILED,
+      isProcessing: updatedItem.eas?.status === ServiceStatus.PROCESSING
+    };
+
+    // 4. Determine overall status based on service states
+    let finalStatus: QueueItemStatus;
+    let statusReason: string | undefined;
+
+    if (directusState.isComplete && easState.isComplete) {
+      finalStatus = QueueItemStatus.COMPLETED;
+    } else if (directusState.isFailed || easState.isFailed) {
+      finalStatus = QueueItemStatus.FAILED;
+      statusReason = directusState.isFailed ? updatedItem.directus?.error : updatedItem.eas?.error;
+    } else if (directusState.isProcessing || easState.isProcessing) {
+      // Only set to PROCESSING if we have a recent last attempt
+      if (!item.lastAttempt || timeSinceLastAttempt > PROCESSING_TIMEOUT) {
+        finalStatus = QueueItemStatus.PENDING;
+        statusReason = "Reset from stale processing state";
+      } else {
+        finalStatus = QueueItemStatus.PROCESSING;
+      }
+    } else {
+      finalStatus = QueueItemStatus.PENDING;
+    }
+
+    // 5. Build the result with updated service states
+    const result = {
+      ...updatedItem,
+      status: finalStatus,
+      lastError: statusReason,
+      directus: {
+        ...updatedItem.directus,
+        status: directusState.isComplete ? ServiceStatus.COMPLETED :
+                directusState.isFailed ? ServiceStatus.FAILED :
+                directusState.isProcessing && item.lastAttempt && timeSinceLastAttempt <= PROCESSING_TIMEOUT ? 
+                ServiceStatus.PROCESSING : ServiceStatus.PENDING
+      },
+      eas: {
+        ...updatedItem.eas,
+        status: easState.isComplete ? ServiceStatus.COMPLETED :
+                easState.isFailed ? ServiceStatus.FAILED :
+                easState.isProcessing && item.lastAttempt && timeSinceLastAttempt <= PROCESSING_TIMEOUT ? 
+                ServiceStatus.PROCESSING : ServiceStatus.PENDING
+      }
+    };
+
+    // 6. Clear error state when moving back to pending
+    if (finalStatus === QueueItemStatus.PENDING) {
+      result.lastError = undefined;
+      result.lastAttempt = undefined;
+    }
+
+    // 7. Log state transitions
+    if (prevStatus !== finalStatus) {
+      console.log(`Queue item ${item.localId} state transition:`, {
+        from: prevStatus,
+        to: finalStatus,
+        reason: statusReason || 'Normal state progression',
+        timeSinceLastAttempt: Math.round(timeSinceLastAttempt / 1000) + 's',
+        services: {
+          directus: {
+            complete: directusState.isComplete,
+            failed: directusState.isFailed,
+            processing: directusState.isProcessing
+          },
+          eas: {
+            complete: easState.isComplete,
+            failed: easState.isFailed,
+            processing: easState.isProcessing
+          }
+        }
+      });
+    }
+
+    return result;
   };
 
   const refreshQueueStatus = async () => {
@@ -667,25 +782,39 @@ export function QueueProvider({ children }: { children: React.ReactNode }) {
         getCompletedQueue(),
       ]);
 
-      // Refresh status for active items
-      const refreshedActiveItems = await Promise.all(
-        activeItems.map(item => refreshItemStatus(item))
-      );
-
-      // Update active queue with refreshed items
-      await updateActiveQueue(refreshedActiveItems);
-
-      // Combine active and completed items
-      const allItems = [...refreshedActiveItems, ...completedItems];
-
-      // Update state
-      setQueueItems(allItems);
+      // Process items in smaller chunks to prevent UI blocking
+      const refreshedActiveItems = [];
+      const chunkSize = 5;
+      
+      for (let i = 0; i < activeItems.length; i += chunkSize) {
+        const chunk = activeItems.slice(i, i + chunkSize);
+        const refreshedChunk = await Promise.all(
+          chunk.map(item => refreshItemStatus(item))
+        );
+        refreshedActiveItems.push(...refreshedChunk);
+        
+        // Update storage immediately after each chunk is processed
+        await updateActiveQueue(refreshedActiveItems);
+        
+        // Update UI after each chunk
+        const currentItems = [...refreshedActiveItems, ...completedItems];
+        setQueueItems(currentItems);
+        
+        // Small delay to prevent UI blocking
+        await new Promise(resolve => setTimeout(resolve, 100));
+      }
 
       // Emit update event
       queueEventEmitter.emit(QueueEvents.UPDATED);
       console.log("Queue status refresh completed");
     } catch (error) {
       console.error("Error refreshing queue status:", error);
+      // Try to recover by reloading queue items
+      try {
+        await loadQueueItems();
+      } catch (loadError) {
+        console.error("Failed to recover from refresh error:", loadError);
+      }
     }
   };
 

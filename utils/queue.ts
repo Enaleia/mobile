@@ -1,4 +1,4 @@
-import { QueueItem, QueueItemStatus, MAX_RETRIES } from "@/types/queue";
+import { QueueItem, QueueItemStatus, MAX_TOTAL_RETRIES, isCompletelyFailed } from "@/types/queue";
 
 export const isProcessingItem = (item: QueueItem): boolean =>
   item.status === QueueItemStatus.PROCESSING;
@@ -6,12 +6,10 @@ export const isProcessingItem = (item: QueueItem): boolean =>
 export const isPendingItem = (item: QueueItem): boolean =>
   item.status === QueueItemStatus.OFFLINE ||
   item.status === QueueItemStatus.PENDING ||
-  (item.status === QueueItemStatus.FAILED &&
-    (item.retryCount || 0) < MAX_RETRIES);
+  (item.status === QueueItemStatus.FAILED && !isCompletelyFailed(item));
 
 export const isFailedItem = (item: QueueItem): boolean =>
-  item.status === QueueItemStatus.FAILED &&
-  (item.retryCount || 0) >= MAX_RETRIES;
+  item.status === QueueItemStatus.FAILED && isCompletelyFailed(item);
 
 export const isCompletedItem = (item: QueueItem): boolean =>
   item.status === QueueItemStatus.COMPLETED;

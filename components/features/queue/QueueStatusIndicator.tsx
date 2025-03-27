@@ -15,7 +15,7 @@ export default function QueueStatusIndicator({ status, className = "" }: QueueSt
         return {
           icon: "time",
           color: "#737373", // grey-400
-          text: "Pending"
+          text: "Waiting"
         };
       case QueueItemStatus.PROCESSING:
         return {
@@ -44,7 +44,7 @@ export default function QueueStatusIndicator({ status, className = "" }: QueueSt
       default:
         return {
           icon: "help-circle",
-          color: "#0D0D0D", // enaleia-black
+          color: "#737373", // grey-400
           text: "Unknown"
         };
     }
@@ -58,11 +58,11 @@ export default function QueueStatusIndicator({ status, className = "" }: QueueSt
         {config.text}
       </Text>
       {status === QueueItemStatus.PROCESSING ? (
-        <ActivityIndicator size="small" color="#0D0D0D" />
+        <ActivityIndicator size="small" color={config.color} />
       ) : (
         <Ionicons 
           name={config.icon as any} 
-          size={28} 
+          size={24} 
           color={config.color}
         />
       )}
