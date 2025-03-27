@@ -63,7 +63,7 @@ export default function QueueTestScreen() {
     message: string;
   } | null>(null);
 
-  const handleSubmitTestForms = async (count: number, shouldBeFailed: boolean = false) => {
+  const handleSubmitTestForms = async (count: number, shouldBeFailed: boolean = false, easNetworkFailure: boolean = false, nearlyFailed: boolean = false) => {
     setIsSubmitting(true);
     setResult(null);
 
@@ -76,9 +76,109 @@ export default function QueueTestScreen() {
         const randomQuantity = Math.floor(Math.random() * 50) + 1;
         const randomCode = Math.floor(Math.random() * 1000).toString().padStart(6, '0');
         
-        // Calculate a date 8 days ago for failed items (exceeding 7 day retry window)
+        // Calculate dates for different scenarios
         const eightDaysAgo = new Date();
         eightDaysAgo.setDate(eightDaysAgo.getDate() - 8);
+        
+        const sixDaysAgo = new Date();
+        sixDaysAgo.setDate(sixDaysAgo.getDate() - 6);
+
+        const lastAttemptTime = new Date(sixDaysAgo);
+        lastAttemptTime.setHours(lastAttemptTime.getHours() - 2); // Last attempt was 2 hours after initial creation
+        
+        if (nearlyFailed) {
+          // Create an item that's almost at the complete failure state (2 minutes left)
+          const almostSevenDays = new Date();
+          // Set to 6 days, 23 hours, and 58 minutes ago
+          almostSevenDays.setDate(almostSevenDays.getDate() - 6);
+          almostSevenDays.setHours(almostSevenDays.getHours() - 23);
+          almostSevenDays.setMinutes(almostSevenDays.getMinutes() - 58);
+
+          const lastAttemptTime = new Date();
+          lastAttemptTime.setMinutes(lastAttemptTime.getMinutes() - 21); // Last attempt was 21 minutes ago
+
+          // Calculate remaining time until complete failure (should be ~2 minutes)
+          const timeUntilFailure = MAX_RETRY_AGE - (Date.now() - almostSevenDays.getTime());
+          const remainingMinutes = Math.floor(timeUntilFailure / (60 * 1000));
+
+          return {
+            localId: `nearly-failed-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+            status: QueueItemStatus.FAILED,
+            retryCount: MAX_RETRIES_PER_BATCH + 15, // Had many slow mode retries
+            date: almostSevenDays.toISOString(),
+            actionId: action.actionId,
+            actionName: `Nearly Failed (502) - ${action.name} - ${remainingMinutes}min left`,
+            incomingMaterials: action.incomingMaterials.map(material => ({
+              ...material,
+              weight: randomWeight,
+              code: randomCode,
+            })),
+            outgoingMaterials: action.outgoingMaterials.map(material => ({
+              ...material,
+              weight: randomWeight,
+              code: randomCode,
+            })),
+            manufacturedProducts: action.manufacturedProducts?.map(product => ({
+              ...product,
+              quantity: randomQuantity,
+              weightPerItem: randomWeight,
+            })),
+            directus: {
+              status: ServiceStatus.COMPLETED,
+              eventId: Math.floor(Math.random() * 1000) + 1, // Simulate successful Directus event
+              linked: false,
+              lastAttempt: lastAttemptTime
+            },
+            eas: {
+              status: ServiceStatus.FAILED,
+              error: "Server Error: 502 Bad Gateway - Network error occurred while connecting to EAS service",
+              lastAttempt: lastAttemptTime
+            },
+            lastAttempt: lastAttemptTime,
+            enteredSlowModeAt: almostSevenDays, // Entered slow mode almost 7 days ago
+            initialRetryCount: MAX_RETRIES_PER_BATCH, // Used all initial retries
+            slowRetryCount: 15 // Had many slow mode retries
+          };
+        }
+        
+        if (easNetworkFailure) {
+          // Create an item where Directus succeeds but EAS fails due to network
+          return {
+            localId: `eas-network-fail-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+            status: QueueItemStatus.FAILED,
+            retryCount: 1,
+            date: new Date().toISOString(),
+            actionId: action.actionId,
+            actionName: `EAS Network Fail - ${action.name}`,
+            incomingMaterials: action.incomingMaterials.map(material => ({
+              ...material,
+              weight: randomWeight,
+              code: randomCode,
+            })),
+            outgoingMaterials: action.outgoingMaterials.map(material => ({
+              ...material,
+              weight: randomWeight,
+              code: randomCode,
+            })),
+            manufacturedProducts: action.manufacturedProducts?.map(product => ({
+              ...product,
+              quantity: randomQuantity,
+              weightPerItem: randomWeight,
+            })),
+            directus: {
+              status: ServiceStatus.COMPLETED,
+              eventId: Math.floor(Math.random() * 1000) + 1, // Simulate successful Directus event
+              linked: false
+            },
+            eas: {
+              status: ServiceStatus.FAILED,
+              error: "Network error: Unable to reach EAS service",
+              lastAttempt: new Date()
+            },
+            lastAttempt: new Date(),
+            initialRetryCount: 1
+          };
+        }
         
         if (!shouldBeFailed) {
           return {
@@ -110,46 +210,45 @@ export default function QueueTestScreen() {
               status: ServiceStatus.PENDING,
             }
           };
-        } else {
-          // Create a completely failed item
-          return {
-            localId: `failed-test-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-            status: QueueItemStatus.FAILED,
-            retryCount: MAX_RETRIES_PER_BATCH,
-            date: eightDaysAgo.toISOString(),
-            actionId: action.actionId,
-            actionName: `Failed - ${action.name}`,
-            incomingMaterials: action.incomingMaterials.map(material => ({
-              ...material,
-              weight: randomWeight,
-              code: randomCode,
-            })),
-            outgoingMaterials: action.outgoingMaterials.map(material => ({
-              ...material,
-              weight: randomWeight,
-              code: randomCode,
-            })),
-            manufacturedProducts: action.manufacturedProducts?.map(product => ({
-              ...product,
-              quantity: randomQuantity,
-              weightPerItem: randomWeight,
-            })),
-            directus: {
-              status: ServiceStatus.FAILED,
-              error: "Test error: Service failed after all retries",
-              lastAttempt: eightDaysAgo
-            },
-            eas: {
-              status: ServiceStatus.FAILED,
-              error: "Test error: Service failed after all retries",
-              lastAttempt: eightDaysAgo
-            },
-            enteredSlowModeAt: eightDaysAgo,
-            lastAttempt: eightDaysAgo,
-            initialRetryCount: MAX_RETRIES_PER_BATCH,
-            slowRetryCount: Math.floor(MAX_RETRY_AGE / RETRY_COOLDOWN)
-          };
         }
+        // Create a completely failed item
+        return {
+          localId: `failed-test-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+          status: QueueItemStatus.FAILED,
+          retryCount: MAX_RETRIES_PER_BATCH,
+          date: eightDaysAgo.toISOString(),
+          actionId: action.actionId,
+          actionName: `Failed - ${action.name}`,
+          incomingMaterials: action.incomingMaterials.map(material => ({
+            ...material,
+            weight: randomWeight,
+            code: randomCode,
+          })),
+          outgoingMaterials: action.outgoingMaterials.map(material => ({
+            ...material,
+            weight: randomWeight,
+            code: randomCode,
+          })),
+          manufacturedProducts: action.manufacturedProducts?.map(product => ({
+            ...product,
+            quantity: randomQuantity,
+            weightPerItem: randomWeight,
+          })),
+          directus: {
+            status: ServiceStatus.FAILED,
+            error: "Test error: Service failed after all retries",
+            lastAttempt: eightDaysAgo
+          },
+          eas: {
+            status: ServiceStatus.FAILED,
+            error: "Test error: Service failed after all retries",
+            lastAttempt: eightDaysAgo
+          },
+          enteredSlowModeAt: eightDaysAgo,
+          lastAttempt: eightDaysAgo,
+          initialRetryCount: MAX_RETRIES_PER_BATCH,
+          slowRetryCount: Math.floor(MAX_RETRY_AGE / RETRY_COOLDOWN)
+        };
       });
 
       await updateQueueItems(submissions);
@@ -163,9 +262,8 @@ export default function QueueTestScreen() {
         success: false,
         message: error instanceof Error ? error.message : "Failed to submit test forms",
       });
-    } finally {
-      setIsSubmitting(false);
     }
+    setIsSubmitting(false);
   };
 
   return (
@@ -261,7 +359,7 @@ export default function QueueTestScreen() {
             Failed Items Testing
           </Text>
           <Text className="text-sm text-grey-6 mb-4">
-            Create a test item that has completely failed (exceeded retry window and all retries).
+            Create test items with different failure scenarios.
           </Text>
 
           <Pressable
@@ -276,6 +374,39 @@ export default function QueueTestScreen() {
             ) : null}
             <Text className="text-lg font-dm-medium text-slate-50 tracking-tight">
               {isSubmitting ? "Preparing..." : "Create Failed Test Item"}
+            </Text>
+          </Pressable>
+
+          <Pressable
+            onPress={() => handleSubmitTestForms(1, false, true)}
+            disabled={isSubmitting}
+            className={`w-full flex-row items-center justify-center p-3 h-[60px] rounded-full ${
+              isSubmitting ? "bg-primary-dark-blue opacity-50" : "bg-amber-500"
+            }`}
+          >
+            {isSubmitting ? (
+              <ActivityIndicator color="white" className="mr-2" />
+            ) : null}
+            <Text className="text-lg font-dm-medium text-slate-50 tracking-tight">
+              {isSubmitting ? "Preparing..." : "Simulate EAS Network Failure"}
+            </Text>
+          </Pressable>
+
+          <Pressable
+            onPress={() => handleSubmitTestForms(1, false, false, true)}
+            disabled={isSubmitting}
+            className={`w-full flex-row items-center justify-center p-3 h-[60px] rounded-full ${
+              isSubmitting ? "bg-primary-dark-blue opacity-50" : "bg-red-600"
+            }`}
+          >
+            {isSubmitting ? (
+              <ActivityIndicator color="white" className="mr-2" />
+            ) : null}
+            <Text className="text-lg font-dm-medium text-slate-50 tracking-tight">
+              {isSubmitting ? "Preparing..." : "Create Nearly Failed Item (502)"}
+            </Text>
+            <Text className="text-xs font-dm-medium text-slate-50 ml-1">
+              (2min left)
             </Text>
           </Pressable>
         </View>
