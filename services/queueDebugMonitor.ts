@@ -21,6 +21,7 @@ export class QueueDebugMonitor {
   private lastMetrics: QueueMetrics | null = null;
   private lastNotificationTime: { [key: string]: number } = {};
   private NOTIFICATION_COOLDOWN = 5 * 60 * 1000; // 5 minutes
+  private itemTimings: { [key: string]: { [key: string]: number } } = {};
 
   private constructor() {}
 
@@ -39,7 +40,7 @@ export class QueueDebugMonitor {
     this.debugEnabled = false;
   }
 
-  private log(message: string, data?: any) {
+  log(message: string, data?: any) {
     if (this.debugEnabled) {
       console.log(`[QueueMonitor] ${message}`, data ? data : '');
     }
@@ -188,14 +189,26 @@ export class QueueDebugMonitor {
 
   logRetryAttempt(item: QueueItem, service?: "directus" | "eas", isManual: boolean = false) {
     const retryInfo = this.getRetryInfo(item);
+    const timings = this.getTimingInfo(item);
     const serviceIndicator = service ? `[${service}]` : '';
     
-    // Update manual retry count if it's a manual retry
+    // Calculate total cycle time if available
+    let cycleTime = '';
+    if (timings.pendingStarted && timings.processingStarted && timings.failedStarted) {
+      const totalCycle = Date.now() - timings.pendingStarted;
+      cycleTime = `\n    Cycle time (Pending→Process→Fail→Retry): ${this.formatDuration(timings.pendingStarted)}`;
+    }
+
     if (isManual && this.lastMetrics) {
       this.lastMetrics.retryStats.manualRetries++;
     }
     
-    this.log(`${isManual ? '🔄' : '↻'} [${item.localId}] ${serviceIndicator} ${retryInfo.retryPhase} #${retryInfo.retryCount}/${retryInfo.maxRetries} | ${retryInfo.timeSinceLastAttempt} ago | Next: ${retryInfo.nextRetry}`);
+    this.log(`${isManual ? '🔄' : '↻'} Retry Attempt [${item.localId}] ${serviceIndicator}
+    Phase: ${retryInfo.retryPhase}
+    Attempt: #${retryInfo.retryCount}/${retryInfo.maxRetries}
+    Time since last attempt: ${retryInfo.timeSinceLastAttempt}
+    Next retry in: ${retryInfo.nextRetry}${cycleTime}
+    Services: [Directus: ${item.directus?.status || 'N/A'}] [EAS: ${item.eas?.status || 'N/A'}]`);
   }
 
   logStuckItem(item: QueueItem) {
@@ -205,5 +218,71 @@ export class QueueDebugMonitor {
 
   logNetworkStatus(isConnected: boolean, isInternetReachable: boolean) {
     this.log(`Network: ${isConnected ? '✓' : '✗'} Connected | ${isInternetReachable ? '✓' : '✗'} Internet`);
+  }
+
+  private getTimingInfo(item: QueueItem) {
+    if (!this.itemTimings[item.localId]) {
+      this.itemTimings[item.localId] = {};
+    }
+    return this.itemTimings[item.localId];
+  }
+
+  private formatDuration(startTime: number, endTime: number = Date.now()): string {
+    const duration = endTime - startTime;
+    if (duration < 1000) return `${duration}ms`;
+    if (duration < 60000) return `${(duration / 1000).toFixed(2)}s`;
+    return `${(duration / 60000).toFixed(2)}m`;
+  }
+
+  logStateTransition(item: QueueItem, newStatus: QueueItemStatus) {
+    const timings = this.getTimingInfo(item);
+    const now = Date.now();
+    const retryInfo = this.getRetryInfo(item);
+
+    // Record timing for the state transition
+    timings[`${item.status}_to_${newStatus}`] = now;
+
+    let timingInfo = '';
+    
+    // Calculate durations based on state transitions
+    if (newStatus === QueueItemStatus.PROCESSING && item.status === QueueItemStatus.PENDING) {
+      timings.pendingStarted = timings.pendingStarted || now;
+      timingInfo = `Pending duration: ${this.formatDuration(timings.pendingStarted, now)}`;
+    }
+    else if (newStatus === QueueItemStatus.FAILED && item.status === QueueItemStatus.PROCESSING) {
+      timings.processingStarted = timings.processingStarted || timings[`PENDING_to_PROCESSING`];
+      timingInfo = `Processing duration: ${this.formatDuration(timings.processingStarted, now)}`;
+    }
+    else if (newStatus === QueueItemStatus.PENDING && item.status === QueueItemStatus.FAILED) {
+      timings.failedStarted = timings.failedStarted || timings[`PROCESSING_to_FAILED`];
+      timingInfo = `Failed duration: ${this.formatDuration(timings.failedStarted, now)}`;
+    }
+
+    this.log(`State Transition [${item.localId}] ${item.status} → ${newStatus}
+    Phase: ${retryInfo.retryPhase}
+    Attempt: #${retryInfo.retryCount}/${retryInfo.maxRetries}
+    ${timingInfo}
+    Last attempt: ${retryInfo.timeSinceLastAttempt} ago
+    ${retryInfo.retryPhase === 'slow' ? `Next retry in: ${retryInfo.nextRetry}` : ''}
+    Services: [Directus: ${item.directus?.status || 'N/A'}] [EAS: ${item.eas?.status || 'N/A'}]`);
+  }
+
+  logRetryEligibilityCheck(item: QueueItem, isEligible: boolean, reason: string) {
+    const retryInfo = this.getRetryInfo(item);
+    const timings = this.getTimingInfo(item);
+    
+    let waitTime = '';
+    if (!isEligible && item.enteredSlowModeAt) {
+      const timeUntilNextRetry = RETRY_COOLDOWN - (Date.now() - new Date(item.lastAttempt || 0).getTime());
+      waitTime = `Wait time remaining: ${this.formatDuration(Date.now(), Date.now() + timeUntilNextRetry)}`;
+    }
+
+    this.log(`Retry Eligibility Check [${item.localId}]
+    Result: ${isEligible ? '✓ Eligible' : '✗ Not eligible'}
+    Reason: ${reason}
+    Phase: ${retryInfo.retryPhase}
+    Attempt: #${retryInfo.retryCount}/${retryInfo.maxRetries}
+    ${waitTime}
+    Time since failure: ${item.lastAttempt ? this.formatDuration(new Date(item.lastAttempt).getTime()) : 'N/A'}`);
   }
 } 
