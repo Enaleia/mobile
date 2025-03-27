@@ -1,15 +1,14 @@
 import { View, ActivityIndicator } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { QueueItemStatus, isCompletelyFailed } from "@/types/queue";
+import { QueueItemStatus } from "@/types/queue";
 import { Text } from "react-native";
 
 interface QueueStatusIndicatorProps {
   status: QueueItemStatus;
-  item?: any; // Add item prop to check if completely failed
   className?: string;
 }
 
-export default function QueueStatusIndicator({ status, item, className = "" }: QueueStatusIndicatorProps) {
+export default function QueueStatusIndicator({ status, className = "" }: QueueStatusIndicatorProps) {
   const getStatusConfig = () => {
     switch (status) {
       case QueueItemStatus.PENDING:
@@ -25,20 +24,11 @@ export default function QueueStatusIndicator({ status, item, className = "" }: Q
           text: "Processing"
         };
       case QueueItemStatus.FAILED:
-        // Check if item is completely failed
-        if (item && isCompletelyFailed(item)) {
-          return {
-            icon: "alert-circle",
-            color: "#f43f5e", // rose-500 (red)
-            text: "Contact support"
-          };
-        } else {
-          return {
-            icon: "time",
-            color: "#737373", // grey-400
-            text: "Auto-retry soon"
-          };
-        }
+        return {
+          icon: "alert-circle",
+          color: "#f43f5e", // rose-500
+          text: "Contact support"
+        };
       case QueueItemStatus.OFFLINE:
         return {
           icon: "cloud-offline",
