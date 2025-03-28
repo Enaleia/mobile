@@ -1,7 +1,7 @@
 import { EnaleiaEASSchema } from "@/types/enaleia";
 import { EAS } from "eas-lib";
 
-type Environment = "development" | "production" | "preview";
+type Environment = "development" | "production";
 
 interface NetworkConfig {
   providerUrl: string;
@@ -29,25 +29,29 @@ const ENV_CONFIG: Record<Environment, EASConfig> = {
       scanUrl: process.env.EXPO_PUBLIC_NETWORK_SCAN_PRODUCTION || '',
     },
   },
-  preview: {
-    schemaUid: process.env.EXPO_PUBLIC_EAS_SCHEMA_UID_DEVELOPMENT || '', // Use development for preview
-    network: {
-      providerUrl: process.env.EXPO_PUBLIC_NETWORK_PROVIDER_DEVELOPMENT || '',
-      scanUrl: process.env.EXPO_PUBLIC_NETWORK_SCAN_DEVELOPMENT || '',
-    },
-  },
 };
 
 const getEnvironment = (): Environment => {
-  const env = (process.env.NODE_ENV || "development") as string;
-  if (env === "production") return "production";
-  if (env === "preview") return "preview";
-  return "development";
+  return process.env.NODE_ENV === "production" ? "production" : "development";
+};
+
+const validateConfig = (config: EASConfig, env: Environment): void => {
+  if (!config.schemaUid) {
+    throw new Error(`Missing EAS schema UID for environment: ${env}`);
+  }
+  if (!config.network.providerUrl) {
+    throw new Error(`Missing network provider URL for environment: ${env}`);
+  }
+  if (!config.network.scanUrl) {
+    throw new Error(`Missing network scan URL for environment: ${env}`);
+  }
 };
 
 const getCurrentConfig = (): EASConfig => {
   const env = getEnvironment();
-  return ENV_CONFIG[env];
+  const config = ENV_CONFIG[env];
+  validateConfig(config, env);
+  return config;
 };
 
 export const EAS_CONSTANTS = {
@@ -86,12 +90,6 @@ export class EASService {
     }
     
     const config = getCurrentConfig();
-    if (!config.schemaUid) {
-      throw new EASAttestationError("Missing EAS schema UID for environment: " + getEnvironment());
-    }
-    if (!config.network.providerUrl) {
-      throw new EASAttestationError("Missing network provider URL for environment: " + getEnvironment());
-    }
     
     this.eas = new EAS(
       config.network.providerUrl,
@@ -112,8 +110,11 @@ export class EASService {
       if (!uid) {
         throw new EASAttestationError("No transaction hash returned", schema);
       }
+      
+      console.log(`[EAS] Attestation successful: ${uid}`);
       return { uid };
     } catch (error) {
+      console.error("[EAS] Attestation failed:", error);
       if (error instanceof EASAttestationError) {
         throw error;
       }

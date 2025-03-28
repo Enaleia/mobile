@@ -1,6 +1,6 @@
 {
   "cli": {
-    "version": ">= 12.6.2",
+    "version": ">=16.1.0",
     "appVersionSource": "remote"
   },
   "build": {
@@ -22,6 +22,9 @@
       "android": {
         "buildType": "apk",
         "gradleCommand": ":app:assembleRelease"
+      },
+      "env": {
+        "NODE_ENV": "production"
       }
     }
   },
