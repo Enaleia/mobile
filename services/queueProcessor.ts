@@ -54,16 +54,6 @@ let currentProcessingTimeout: NodeJS.Timeout | null = null;
 let currentProcessingItemId: string | null = null;
 let currentEASProvider: JsonRpcProvider | null = null;
 
-// Helper function to handle retry count updates
-function getUpdatedRetryCount(currentCount: number | undefined, updates: Partial<QueueItem>): number {
-  // If explicitly setting the count, use that value
-  if (typeof updates.totalRetryCount === 'number') {
-    return updates.totalRetryCount;
-  }
-  // Otherwise preserve the current count
-  return currentCount || 0;
-}
-
 async function updateItemInCache(itemId: string, updates: Partial<QueueItem>) {
   try {
     const items = await getActiveQueue();
@@ -72,8 +62,8 @@ async function updateItemInCache(itemId: string, updates: Partial<QueueItem>) {
         ? {
             ...item,
             ...updates,
-            // Use helper function for retry count
-            totalRetryCount: getUpdatedRetryCount(item.totalRetryCount, updates),
+            // Track total retry count
+            totalRetryCount: updates.totalRetryCount || item.totalRetryCount || 0,
             // Safely merge service states
             directus: updates.directus ? { 
               ...(item.directus || {}), 
@@ -849,8 +839,7 @@ export async function processQueueItems(
                       status: ServiceStatus.OFFLINE,
                       error: "Blockchain network is offline"
                     },
-                    lastAttempt: undefined, // Clear last attempt to allow immediate retry when back online
-                    totalRetryCount: item.totalRetryCount // Explicitly preserve the retry count
+                    lastAttempt: undefined // Clear last attempt to allow immediate retry when back online
                   });
                   continue;
                 }

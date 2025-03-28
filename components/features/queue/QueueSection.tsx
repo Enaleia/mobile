@@ -219,28 +219,23 @@ const QueueSection = ({
   return (
     <View className="flex-1">
       <View className="mb-4">
-        <View className="flex-row justify-between items-center mb-2 h-10">
-          {/* Left side: Title and count */}
-          <View className="flex-row items-center h-full">
-            <Text className="text-lg font-dm-bold leading-none">{title}</Text>
+        <View className="flex-row justify-between items-center mb-2">
+          <View className="flex-row items-center flex-1">
+            <Text className="text-lg font-dm-bold">{title}</Text>
             {showBadge && (
               <View
                 className={`${getBadgeColor(
                   title
-                )} rounded-full w-12 h-7 ml-2 flex items-center justify-center`}
+                )} rounded-full w-6 h-6 ml-2 flex items-center justify-center`}
               >
-                <Text className="text-white text-sm font-dm-medium">
+                <Text className="text-white text-xs font-dm-medium">
                   {uniqueItems.length}
                 </Text>
               </View>
             )}
-          </View>
-
-          {/* Right side: Retry counter and buttons */}
-          <View className="flex-row items-center h-full">
             {title.toLowerCase() === 'active' && items.length > 0 && !hasProcessingItems && (
-              <>
-                <Text className="text-sm text-grey-9 leading-none">
+              <View className="flex-row items-center">
+                <Text className="text-sm text-grey-9 ml-2">
                   Next retry: {retryCountdown}
                 </Text>
                 <Pressable
@@ -248,18 +243,19 @@ const QueueSection = ({
                     setIsProcessingBatch(true);
                     onRetry(sortedItems);
                   }}
-                  className="ml-2 h-8 px-3 rounded-full bg-blue-ocean flex-row items-center"
+                  className="ml-2 px-3 py-1.5 rounded-full bg-blue-ocean flex-row items-center"
                 >
-                  <Ionicons name="refresh" size={14} color="white" style={{ marginRight: 4 }} />
-                  <Text className="text-white text-sm font-dm-medium leading-none">
+                  <Ionicons name="refresh" size={16} color="white" style={{ marginRight: 4 }} />
+                  <Text className="text-white text-sm font-dm-medium">
                     Retry now
                   </Text>
                 </Pressable>
-              </>
+              </View>
             )}
-            <View className="flex-row gap-2 ml-2 h-full items-center">
-              <ClearAllButton />
-            </View>
+          </View>
+
+          <View className="flex-row gap-2 mt-1">
+            <ClearAllButton />
           </View>
         </View>
 
