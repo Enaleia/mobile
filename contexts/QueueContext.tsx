@@ -291,18 +291,16 @@ export function QueueProvider({ children }: { children: React.ReactNode }) {
           const resetItem = {
             ...item,
             status: QueueItemStatus.PENDING,
-            retryCount: (item.retryCount || 0) + 1,
+            totalRetryCount: (item.totalRetryCount || 0) + 1,
             lastError: undefined,
             lastAttempt: undefined,
-            directus: service === "eas" ? item.directus : { 
-              status: ServiceStatus.PENDING,
-              error: undefined 
-            },
-            eas: service === "directus" ? item.eas : { 
-              status: ServiceStatus.PENDING,
-              error: undefined 
-            },
-          };
+            directus: service === "eas" ? item.directus : 
+              item.directus?.status === ServiceStatus.COMPLETED ? item.directus : 
+              { status: ServiceStatus.PENDING, error: undefined },
+            eas: service === "directus" ? item.eas : 
+              item.eas?.status === ServiceStatus.COMPLETED ? item.eas : 
+              { status: ServiceStatus.PENDING, error: undefined },
+          } as QueueItem;
 
           // Update queue with reset item
           const updatedItems = queueItems.map((qi) =>
@@ -313,9 +311,6 @@ export function QueueProvider({ children }: { children: React.ReactNode }) {
 
           // Process the item
           await processItem(resetItem);
-
-          // Add delay between items
-          await new Promise((resolve) => setTimeout(resolve, 1000));
         } catch (error) {
           console.error(`Failed to process item ${item.localId}:`, error);
           const errorMessage = error instanceof Error ? error.message : "Unknown error";
@@ -338,7 +333,7 @@ export function QueueProvider({ children }: { children: React.ReactNode }) {
                   ...qi,
                   status: QueueItemStatus.FAILED,
                   lastError: errorMessage,
-                  lastAttempt: new Date(),
+                  lastAttempt: new Date().toISOString(),
                   directus: service === "eas" ? qi.directus : { 
                     status: ServiceStatus.FAILED, 
                     error: errorMessage 

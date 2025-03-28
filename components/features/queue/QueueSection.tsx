@@ -1,9 +1,10 @@
-import { QueueItem, ServiceStatus, MAX_RETRIES_PER_BATCH, RETRY_COOLDOWN, isCompletelyFailed, QueueItemStatus } from "@/types/queue";
+import { QueueItem, ServiceStatus, MAX_RETRIES, LIST_RETRY_INTERVAL, isCompletelyFailed, QueueItemStatus } from "@/types/queue";
 import { View, Text, Pressable, ActivityIndicator } from "react-native";
 import QueueAction from "@/components/features/queue/QueueAction";
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useNetwork } from "@/contexts/NetworkContext";
 import { Ionicons } from "@expo/vector-icons";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 interface QueueSectionProps {
   title: string;
@@ -23,6 +24,67 @@ const QueueSection = ({
   alwaysShow = false,
 }: QueueSectionProps) => {
   const [showClearOptions, setShowClearOptions] = useState(false);
+  const [retryCountdown, setRetryCountdown] = useState<string>('');
+  const [isProcessingBatch, setIsProcessingBatch] = useState(false);
+
+  // Check if any items are currently processing
+  const hasProcessingItems = useMemo(() => 
+    items.some(item => item.status === QueueItemStatus.PROCESSING),
+  [items]);
+
+  // Update retry countdown
+  useEffect(() => {
+    let intervalId: NodeJS.Timeout;
+
+    const updateCountdown = async () => {
+      if (title.toLowerCase() !== 'active' || items.length === 0 || hasProcessingItems) {
+        setRetryCountdown('');
+        return;
+      }
+
+      // Get the last batch attempt time
+      const lastBatchAttempt = await AsyncStorage.getItem('QUEUE_LAST_BATCH_ATTEMPT');
+      
+      if (!lastBatchAttempt) {
+        setRetryCountdown('');
+        return;
+      }
+
+      const elapsed = Date.now() - new Date(lastBatchAttempt).getTime();
+      const remaining = LIST_RETRY_INTERVAL - elapsed;
+      
+      if (remaining > 0) {
+        // For times less than a minute, just show seconds
+        if (remaining < 60 * 1000) {
+          const seconds = Math.ceil(remaining / 1000);
+          setRetryCountdown(`${seconds}s`);
+        } else {
+          // For times over a minute, show minutes and seconds
+          const minutes = Math.floor(remaining / (60 * 1000));
+          const seconds = Math.ceil((remaining % (60 * 1000)) / 1000);
+          setRetryCountdown(`${minutes}m ${seconds}s`);
+        }
+      } else {
+        // If countdown is done, clear it and trigger retry
+        setRetryCountdown('');
+        if (!hasProcessingItems) {
+          setIsProcessingBatch(true);
+          onRetry(sortedItems);
+        }
+      }
+    };
+
+    // Update immediately
+    updateCountdown();
+    // Then update every second
+    intervalId = setInterval(updateCountdown, 1000);
+
+    return () => {
+      if (intervalId) {
+        clearInterval(intervalId);
+      }
+    };
+  }, [title, items, hasProcessingItems, onRetry]);
 
   // Deduplicate items based on localId
   const uniqueItems = useMemo(() => {
@@ -39,11 +101,6 @@ const QueueSection = ({
   const showBadge = uniqueItems.length > 0;
   const hasItems = uniqueItems.length > 0;
   
-  // Check if any items are currently processing
-  const hasProcessingItems = useMemo(() => 
-    uniqueItems.some(item => item.status === QueueItemStatus.PROCESSING),
-  [uniqueItems]);
-
   const getBadgeColor = (title: string) => {
     switch (title.toLowerCase()) {
       case "completed":
@@ -152,9 +209,10 @@ const QueueSection = ({
     );
   };
 
-  const itemsSortedByMostRecent = useMemo(() => 
-    [...uniqueItems].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
-  , [uniqueItems]);
+  // Sort items by most recent first
+  const sortedItems = useMemo(() => 
+    [...items].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+  , [items]);
 
   if (!hasItems && !alwaysShow) return null;
 
@@ -162,7 +220,7 @@ const QueueSection = ({
     <View className="flex-1">
       <View className="mb-4">
         <View className="flex-row justify-between items-center mb-2">
-          <View className="flex-row items-center">
+          <View className="flex-row items-center flex-1">
             <Text className="text-lg font-dm-bold">{title}</Text>
             {showBadge && (
               <View
@@ -173,6 +231,25 @@ const QueueSection = ({
                 <Text className="text-white text-xs font-dm-medium">
                   {uniqueItems.length}
                 </Text>
+              </View>
+            )}
+            {title.toLowerCase() === 'active' && items.length > 0 && !hasProcessingItems && (
+              <View className="flex-row items-center">
+                <Text className="text-sm text-grey-9 ml-2">
+                  Next retry: {retryCountdown}
+                </Text>
+                <Pressable
+                  onPress={() => {
+                    setIsProcessingBatch(true);
+                    onRetry(sortedItems);
+                  }}
+                  className="ml-2 px-3 py-1.5 rounded-full bg-blue-ocean flex-row items-center"
+                >
+                  <Ionicons name="refresh" size={16} color="white" style={{ marginRight: 4 }} />
+                  <Text className="text-white text-sm font-dm-medium">
+                    Retry now
+                  </Text>
+                </Pressable>
               </View>
             )}
           </View>
@@ -194,23 +271,22 @@ const QueueSection = ({
 
         <View className="rounded-2xl overflow-hidden border border-gray-200 mt-1">
           {hasItems ? (
-            itemsSortedByMostRecent.map((item, index) => (
+            uniqueItems.map((item, index) => (
               <QueueAction 
-                key={item.localId} 
+                key={`${item.localId}-${item.date}-${index}`} 
                 item={item}
-                isLastItem={index === itemsSortedByMostRecent.length - 1}
+                isLastItem={index === uniqueItems.length - 1}
+                isProcessing={hasProcessingItems}
               />
             ))
           ) : (
-            <View className="py-4 px-4 bg-white">
-              <Text className="text-base font-dm-regular text-gray-500 text-left">
+            <View className="p-4 bg-white">
+              <Text className="text-sm text-grey-9">
                 {title === "Active"
                   ? "No active items"
                   : title === "Completed"
                   ? "No completed items"
-                  : title === "Critical"
-                  ? "No critical items"
-                  : `No ${title.toLowerCase()} attestations`}
+                  : "No items"}
               </Text>
             </View>
           )}

@@ -1,10 +1,10 @@
 import { useBatchData } from "@/hooks/data/useBatchData";
 import { EAS_CONSTANTS } from "@/services/eas";
 import { Action } from "@/types/action";
-import { QueueItem, QueueItemStatus, ServiceStatus, PROCESSING_TIMEOUT } from "@/types/queue";
+import { QueueItem, QueueItemStatus, ServiceStatus, PROCESSING_TIMEOUT, LIST_RETRY_INTERVAL, isCompletelyFailed, MAX_RETRIES } from "@/types/queue";
 import { isProcessingItem } from "@/utils/queue";
 import { Ionicons } from "@expo/vector-icons";
-import { Linking, Pressable, Text, View } from "react-native";
+import { Linking, Pressable, Text, View, StyleSheet } from "react-native";
 import { router } from "expo-router";
 import { ServiceStatusIndicator } from "./ServiceStatusIndicator";
 import QueueStatusIndicator from "./QueueStatusIndicator";
@@ -14,9 +14,10 @@ import { ProcessingSpinner } from "./ProcessingSpinner";
 interface QueueActionProps {
   item: QueueItem;
   isLastItem?: boolean;
+  isProcessing?: boolean;
 }
 
-const QueueAction = ({ item, isLastItem = false }: QueueActionProps) => {
+const QueueAction = ({ item, isLastItem = false, isProcessing = false }: QueueActionProps) => {
   const { actions } = useBatchData();
   const action = actions?.find((a: Action) => a.id === item.actionId);
   const timestamp = item.lastAttempt || item.date;
@@ -62,6 +63,17 @@ const QueueAction = ({ item, isLastItem = false }: QueueActionProps) => {
     };
   }, [item.status, item.lastAttempt]);
 
+  const styles = StyleSheet.create({
+    retryInfo: {
+      marginTop: 8,
+    },
+    retryText: {
+      fontSize: 12,
+      color: "#666",
+      marginBottom: 4,
+    },
+  });
+
   if (!action) return null;
 
   return (
@@ -96,7 +108,7 @@ const QueueAction = ({ item, isLastItem = false }: QueueActionProps) => {
           </View>
 
           {/* Service Status Section */}
-          <View className="flex-col gap-1  pb-2">
+          <View className="flex-col gap-1 pb-2">
             <View className="flex flex-row items-left">
               <ServiceStatusIndicator
                 status={item.directus?.status || ServiceStatus.PENDING}
@@ -112,6 +124,13 @@ const QueueAction = ({ item, isLastItem = false }: QueueActionProps) => {
                 status={item.directus?.linked ? ServiceStatus.COMPLETED : ServiceStatus.PENDING}
                 type="linking"
               />
+            </View>
+
+            {/* Retry Information - Always show */}
+            <View style={styles.retryInfo}>
+              <Text style={styles.retryText}>
+                {item.totalRetryCount || 0}/{MAX_RETRIES} retries
+              </Text>
             </View>
 
             {/* Error Messages */}

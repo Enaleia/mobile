@@ -4,7 +4,7 @@ import SafeAreaContent from "@/components/shared/SafeAreaContent";
 import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
 import { useQueue } from "@/contexts/QueueContext";
-import { QueueItem, QueueItemStatus, ServiceStatus, MAX_RETRIES_PER_BATCH, MAX_RETRY_AGE, RETRY_COOLDOWN } from "@/types/queue";
+import { QueueItem, QueueItemStatus, ServiceStatus, MAX_RETRIES } from "@/types/queue";
 
 const TEST_ACTIONS = [
   {
@@ -55,6 +55,8 @@ const TEST_ACTIONS = [
   },
 ];
 
+const MAX_RETRIES_PER_BATCH = 3;
+
 export default function QueueTestScreen() {
   const { updateQueueItems } = useQueue();
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -82,9 +84,9 @@ export default function QueueTestScreen() {
         
         if (!shouldBeFailed) {
           return {
-            localId: `test-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+            localId: `test-${Date.now()}-${index}-${Math.random().toString(36).substr(2, 9)}`,
             status: QueueItemStatus.PENDING,
-            retryCount: 0,
+            totalRetryCount: 0,
             date: new Date().toISOString(),
             actionId: action.actionId,
             actionName: `${index + 1} - ${action.name}`,
@@ -113,10 +115,11 @@ export default function QueueTestScreen() {
         } else {
           // Create a completely failed item
           return {
-            localId: `failed-test-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+            localId: `failed-test-${Date.now()}-${index}-${Math.random().toString(36).substr(2, 9)}`,
             status: QueueItemStatus.FAILED,
-            retryCount: MAX_RETRIES_PER_BATCH,
+            totalRetryCount: MAX_RETRIES,
             date: eightDaysAgo.toISOString(),
+            lastAttempt: eightDaysAgo.toISOString(),
             actionId: action.actionId,
             actionName: `Failed - ${action.name}`,
             incomingMaterials: action.incomingMaterials.map(material => ({
@@ -143,11 +146,7 @@ export default function QueueTestScreen() {
               status: ServiceStatus.FAILED,
               error: "Test error: Service failed after all retries",
               lastAttempt: eightDaysAgo
-            },
-            enteredSlowModeAt: eightDaysAgo,
-            lastAttempt: eightDaysAgo,
-            initialRetryCount: MAX_RETRIES_PER_BATCH,
-            slowRetryCount: Math.floor(MAX_RETRY_AGE / RETRY_COOLDOWN)
+            }
           };
         }
       });
