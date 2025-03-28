@@ -4,7 +4,7 @@ import { View, Text, ScrollView, Pressable, Linking, Alert } from "react-native"
 import { Ionicons } from "@expo/vector-icons";
 import SafeAreaContent from "@/components/shared/SafeAreaContent";
 import { useQueue } from "@/contexts/QueueContext";
-import { QueueItem, ServiceStatus, QueueItemStatus, MAX_RETRIES_PER_BATCH, RETRY_INTERVALS } from "@/types/queue";
+import { QueueItem, ServiceStatus, QueueItemStatus, MAX_RETRIES } from "@/types/queue";
 import { useBatchData } from "@/hooks/data/useBatchData";
 import { MaterialDetail } from "@/types/material";
 import { EAS_CONSTANTS } from "@/services/eas";
@@ -242,6 +242,18 @@ ${[
                    item.directus?.status === ServiceStatus.FAILED && 
                    item.eas?.status === ServiceStatus.FAILED;
 
+  // Helper function to safely compare numbers
+  const safeNumberCompare = (value?: number | string) => {
+    if (typeof value === 'string') {
+      return parseFloat(value);
+    }
+    return value || 0;
+  };
+
+  const manufacturing = item.manufacturing || {};
+  const quantity = safeNumberCompare(manufacturing.quantity);
+  const weightInKg = safeNumberCompare(manufacturing.weightInKg);
+
   return (
     <SafeAreaContent>
       <View className="flex-row items-center justify-between pt-2 pb-4">
@@ -428,7 +440,7 @@ ${[
                   </Text>
                   <View className="flex-row items-baseline">
                     <Text className="text-xl font-dm-bold text-enaleia-black flex-1">
-                      {item.manufacturing?.quantity || "0"}
+                      {quantity}
                     </Text>
                     <Text className="text-sm text-right font-dm-bold text-grey-6 ml-2">
                       Unit
@@ -441,7 +453,7 @@ ${[
                   </Text>
                   <View className="flex-row items-baseline">
                     <Text className="text-xl font-dm-bold text-enaleia-black flex-1">
-                      {item.manufacturing?.weightInKg || "0"}
+                      {weightInKg}
                     </Text>
                     <Text className="text-sm text-right font-dm-bold text-grey-6 ml-2">
                       Kg
@@ -552,7 +564,7 @@ ${[
               </View>
             </View>
             {((item.directus?.error || item.eas?.error || (item.directus?.status === ServiceStatus.FAILED && !item.directus?.linked)) || 
-              (item.retryCount > 0 || (item.slowRetryCount ?? 0) > 0)) && (
+              (item.totalRetryCount > 0)) && (
               <View className="border-t border-grey-3 p-4">
                 {(item.directus?.error || item.eas?.error || (item.directus?.status === ServiceStatus.FAILED && !item.directus?.linked)) && (
                   <>
@@ -576,23 +588,14 @@ ${[
                     )}
                   </>
                 )}
-                {(item.retryCount > 0 || (item.slowRetryCount ?? 0) > 0) && (
-                  <View className={`${(item.directus?.error || item.eas?.error || (item.directus?.status === ServiceStatus.FAILED && !item.directus?.linked)) ? "mt-4" : ""}`}>
-                    <Text className="text-base font-dm-bold text-grey-6 mb-2">
-                      Retry Information:
-                    </Text>
-                    {item.retryCount > 0 && (
-                      <Text className="text-sm text-grey-6 font-dm-regular mb-1">
-                        Initial Retries: {item.retryCount} of {MAX_RETRIES_PER_BATCH}
-                      </Text>
-                    )}
-                    {(item.slowRetryCount ?? 0) > 0 && (
-                      <Text className="text-sm text-grey-6 font-dm-regular">
-                        Slow Mode Retries: {item.slowRetryCount}
-                      </Text>
-                    )}
-                  </View>
-                )}
+                <View className="mt-4">
+                  <Text className="text-base font-dm-bold text-grey-6 mb-2">
+                    Retry Information:
+                  </Text>
+                  <Text className="text-sm text-grey-6 font-dm-regular">
+                    Total Retries: {item.totalRetryCount} of {MAX_RETRIES}
+                  </Text>
+                </View>
               </View>
             )}
           </View>

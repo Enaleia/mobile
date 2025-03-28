@@ -159,7 +159,7 @@ const SettingsScreen = () => {
                 color="#0D0D0D"
               />
               <Text className="text-base font-dm-bold text-slate-800 tracking-tighter">
-                Queue Testing
+                Queue Testing (DEV ONLY)
               </Text>
             </View>
             <Ionicons name="chevron-forward-outline" size={16} color="#0D0D0D" />
@@ -180,7 +180,7 @@ const SettingsScreen = () => {
 
         <View className="items-center mt-4">
           <Text className="text-sm font-dm-regular text-gray-500">
-            Version {version} ({buildNumber})
+            Version {version} (Test:0.1)
           </Text>
         </View>
 
