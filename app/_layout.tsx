@@ -6,7 +6,7 @@ import { Stack } from "expo-router";
 import { useFonts } from "expo-font";
 import * as SplashScreen from "expo-splash-screen";
 import React, { useEffect, useState } from "react";
-import { StatusBar } from "react-native";
+import { StatusBar, LogBox, AppState, View, Text } from "react-native";
 
 import * as Localization from "expo-localization";
 
@@ -15,11 +15,19 @@ import { QueueProvider, useQueue } from "@/contexts/QueueContext";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { defaultLocale, dynamicActivate } from "@/lib/i18n";
 import { BackgroundTaskManager } from "@/services/backgroundTaskManager";
-import { Asset } from "expo-asset";
 import { ACTION_ICONS } from "@/constants/action";
 import { WalletProvider, useWallet } from "@/contexts/WalletContext";
 
-SplashScreen.preventAutoHideAsync();
+// Ignore specific warnings that might affect production
+LogBox.ignoreLogs([
+  "ViewPropTypes will be removed",
+  "ColorPropType will be removed",
+]);
+
+// Prevent splash screen from auto-hiding
+SplashScreen.preventAutoHideAsync().catch(() => {
+  // Ignore error
+});
 
 const preloadedFonts = {
   "DMSans-Bold": require("../assets/fonts/DMSans-Bold.ttf"),
@@ -27,10 +35,6 @@ const preloadedFonts = {
   "DMSans-Medium": require("../assets/fonts/DMSans-Medium.ttf"),
   "DMSans-Regular": require("../assets/fonts/DMSans-Regular.ttf"),
 };
-
-const preloadedActionIcons = Object.values(ACTION_ICONS).map(
-  (icon) => icon as number
-);
 
 const QueueNetworkHandler = () => {
   const backgroundManager = BackgroundTaskManager.getInstance();
@@ -55,34 +59,81 @@ const QueueNetworkHandler = () => {
 
 export default function RootLayout() {
   const [appIsReady, setAppIsReady] = useState(false);
+  const [error, setError] = useState<Error | null>(null);
   const [fontsLoaded] = useFonts(preloadedFonts);
   const locale = Localization.getLocales()[0]?.languageCode || defaultLocale;
 
   useEffect(() => {
-    dynamicActivate(locale);
-  }, [locale]);
+    let isMounted = true;
 
-  useEffect(() => {
     async function prepare() {
       try {
-        await Asset.loadAsync(preloadedActionIcons);
+        // Load locale
+        await dynamicActivate(locale);
+
+        // Wait for fonts
+        if (fontsLoaded && isMounted) {
+          await SplashScreen.hideAsync().catch(() => {
+            // Ignore error
+          });
+          setAppIsReady(true);
+        }
       } catch (e) {
-        console.warn("Failed to pre-load icons:", e);
+        console.warn("Error during app initialization:", e);
+        if (isMounted) {
+          setError(e instanceof Error ? e : new Error('Failed to initialize app'));
+          setAppIsReady(true); // Still mark as ready to show error UI
+        }
       }
     }
 
     prepare();
-  }, []);
 
+    return () => {
+      isMounted = false;
+    };
+  }, [fontsLoaded, locale]);
+
+  // Handle app state changes
   useEffect(() => {
-    if (fontsLoaded) {
-      setAppIsReady(true);
-      SplashScreen.hideAsync();
-    }
-  }, [fontsLoaded]);
+    const subscription = AppState.addEventListener("change", (nextAppState) => {
+      if (nextAppState === "active") {
+        // Refresh app state when coming to foreground
+        setAppIsReady((prev) => {
+          if (!prev) {
+            SplashScreen.hideAsync().catch(() => {
+              // Ignore error
+            });
+          }
+          return true;
+        });
+      }
+    });
+
+    return () => {
+      subscription.remove();
+    };
+  }, []);
 
   if (!appIsReady) {
     return null;
+  }
+
+  // Show error UI if initialization failed
+  if (error) {
+    return (
+      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#F6F4F2', padding: 20 }}>
+        <Text style={{ fontSize: 20, fontWeight: 'bold', marginBottom: 10, color: '#0D0D0D' }}>
+          Something went wrong
+        </Text>
+        <Text style={{ fontSize: 16, color: '#5C5C61', textAlign: 'center', marginBottom: 10 }}>
+          {error.message}
+        </Text>
+        <Text style={{ fontSize: 14, color: '#8E8E93' }}>
+          Please try restarting the app
+        </Text>
+      </View>
+    );
   }
 
   return (
