@@ -32,8 +32,9 @@ export const mapToEASSchema = (
     "collector_id" | "collector_name" | "collector_identity"
   >[]
 ): EnaleiaEASSchema => {
-  const formType = "actionName" in form ? form.actionName : form.type;
-  const formDate = form.date;
+  try {
+    const formType = "type" in form ? form.type : form.actionName;
+    const formDate = form.date;
 
     const company =
       typeof userData?.Company === "number"
@@ -58,10 +59,10 @@ export const mapToEASSchema = (
     const weightPerItemKg = form.manufacturing?.weightInKg?.toString() || "";
     const batchQuantity = form.manufacturing?.quantity || 0;
 
-  return {
-    userID: userData?.id || "",
-    portOrCompanyName: company?.name || "",
-    portOrCompanyCoordinates: companyCoordinates,
+    const schema: EnaleiaEASSchema = {
+      userID: userData?.id || "",
+      portOrCompanyName: company?.name || "",
+      portOrCompanyCoordinates: companyCoordinates,
 
       actionType: formType,
       actionDate: formDate,
