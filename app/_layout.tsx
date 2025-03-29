@@ -6,7 +6,7 @@ import { Stack } from "expo-router";
 import { useFonts } from "expo-font";
 import * as SplashScreen from "expo-splash-screen";
 import React, { useEffect, useState } from "react";
-import { StatusBar, LogBox, AppState, View, Text } from "react-native";
+import { StatusBar, LogBox, AppState, View, Text, Platform } from "react-native";
 
 import * as Localization from "expo-localization";
 
@@ -26,7 +26,7 @@ LogBox.ignoreLogs([
 
 // Prevent splash screen from auto-hiding
 SplashScreen.preventAutoHideAsync().catch(() => {
-  // Ignore error
+  /* ignore error */
 });
 
 const preloadedFonts = {
@@ -60,60 +60,63 @@ const QueueNetworkHandler = () => {
 export default function RootLayout() {
   const [appIsReady, setAppIsReady] = useState(false);
   const [error, setError] = useState<Error | null>(null);
-  const [fontsLoaded] = useFonts(preloadedFonts);
+  const [fontsLoaded, fontError] = useFonts(preloadedFonts);
   const locale = Localization.getLocales()[0]?.languageCode || defaultLocale;
 
   useEffect(() => {
-    let isMounted = true;
-
     async function prepare() {
       try {
         // Load locale
         await dynamicActivate(locale);
-
-        // Wait for fonts
-        if (fontsLoaded && isMounted) {
-          await SplashScreen.hideAsync().catch(() => {
-            // Ignore error
-          });
-          setAppIsReady(true);
-        }
       } catch (e) {
-        console.warn("Error during app initialization:", e);
-        if (isMounted) {
-          setError(e instanceof Error ? e : new Error('Failed to initialize app'));
-          setAppIsReady(true); // Still mark as ready to show error UI
-        }
+        console.warn("Error loading locale:", e);
+        if (e instanceof Error) setError(e);
       }
     }
 
     prepare();
+  }, [locale]);
 
-    return () => {
-      isMounted = false;
-    };
-  }, [fontsLoaded, locale]);
+  useEffect(() => {
+    if (fontError) {
+      console.warn("Error loading fonts:", fontError);
+      setError(fontError);
+      setAppIsReady(true);
+    }
+  }, [fontError]);
+
+  useEffect(() => {
+    if (fontsLoaded) {
+      // Only hide splash screen when fonts are loaded
+      const timer = setTimeout(async () => {
+        try {
+          await SplashScreen.hideAsync();
+        } catch (e) {
+          console.warn("Error hiding splash screen:", e);
+        } finally {
+          setAppIsReady(true);
+        }
+      }, Platform.OS === 'ios' ? 200 : 0);
+
+      return () => clearTimeout(timer);
+    }
+  }, [fontsLoaded]);
 
   // Handle app state changes
   useEffect(() => {
     const subscription = AppState.addEventListener("change", (nextAppState) => {
       if (nextAppState === "active") {
         // Refresh app state when coming to foreground
-        setAppIsReady((prev) => {
-          if (!prev) {
-            SplashScreen.hideAsync().catch(() => {
-              // Ignore error
-            });
-          }
-          return true;
-        });
+        if (!appIsReady) {
+          setAppIsReady(true);
+        }
       }
     });
 
     return () => {
       subscription.remove();
     };
-  }, []);
+  }, [appIsReady]);
 
   if (!appIsReady) {
     return null;
