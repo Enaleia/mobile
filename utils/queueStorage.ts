@@ -17,15 +17,55 @@ export async function clearOldCache(): Promise<void> {
 }
 
 export async function getActiveQueue(): Promise<QueueItem[]> {
-  const key = getActiveQueueCacheKey();
-  const data = await AsyncStorage.getItem(key);
-  return data ? JSON.parse(data) : [];
+  try {
+    const queueData = await AsyncStorage.getItem(getActiveQueueCacheKey());
+    if (!queueData) {
+      return [];
+    }
+    const parsedData = JSON.parse(queueData);
+    // Ensure we have a valid array of queue items
+    if (!Array.isArray(parsedData)) {
+      console.warn('Invalid queue data format, resetting to empty array');
+      await AsyncStorage.setItem(getActiveQueueCacheKey(), JSON.stringify([]));
+      return [];
+    }
+    // Filter out any invalid items
+    return parsedData.filter((item): item is QueueItem => 
+      item && 
+      typeof item === 'object' && 
+      typeof item.localId === 'string' &&
+      typeof item.status === 'string'
+    );
+  } catch (error) {
+    console.error('Error getting active queue:', error);
+    return [];
+  }
 }
 
-export async function getCompletedQueue(): Promise<CompletedQueueItem[]> {
-  const key = getCompletedQueueCacheKey();
-  const data = await AsyncStorage.getItem(key);
-  return data ? JSON.parse(data) : [];
+export async function getCompletedQueue(): Promise<QueueItem[]> {
+  try {
+    const queueData = await AsyncStorage.getItem(getCompletedQueueCacheKey());
+    if (!queueData) {
+      return [];
+    }
+    const parsedData = JSON.parse(queueData);
+    // Ensure we have a valid array of queue items
+    if (!Array.isArray(parsedData)) {
+      console.warn('Invalid completed queue data format, resetting to empty array');
+      await AsyncStorage.setItem(getCompletedQueueCacheKey(), JSON.stringify([]));
+      return [];
+    }
+    // Filter out any invalid items
+    return parsedData.filter((item): item is QueueItem => 
+      item && 
+      typeof item === 'object' && 
+      typeof item.localId === 'string' &&
+      typeof item.status === 'string'
+    );
+  } catch (error) {
+    console.error('Error getting completed queue:', error);
+    return [];
+  }
 }
 
 export async function updateActiveQueue(items: QueueItem[]): Promise<void> {

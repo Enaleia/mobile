@@ -237,25 +237,33 @@ const NewActionScreen = () => {
           throw new Error("Could not find matching action ID");
         }
 
+        // Extract only the form fields we need
+        const formData = {
+          type: value.type,
+          date: new Date().toISOString(),
+          location: value.location,
+          collectorId: value.collectorId,
+          incomingMaterials: value.incomingMaterials || [],
+          outgoingMaterials: value.outgoingMaterials || [],
+          manufacturing: value.manufacturing,
+        };
+
         const queueItem: QueueItem = {
-          ...value,
+          ...formData,
           actionId,
           actionName: currentAction.name,
           localId: uuid.v4() as string,
-          date: new Date().toISOString(),
           status: QueueItemStatus.PENDING,
-          retryCount: 0,
+          totalRetryCount: 1,
           directus: {
-            status: ServiceStatus.PENDING,
+            status: ServiceStatus.INCOMPLETE
           },
           eas: {
-            status: ServiceStatus.PENDING,
-            txHash: undefined,
-            verified: false,
+            status: ServiceStatus.INCOMPLETE
           },
-          incomingMaterials: value.incomingMaterials || [],
-          outgoingMaterials: value.outgoingMaterials || [],
-          location: value.location,
+          linking: {
+            status: ServiceStatus.INCOMPLETE
+          },
           company:
             typeof userData?.Company === "number"
               ? undefined
@@ -492,8 +500,8 @@ const NewActionScreen = () => {
                   router.back();
                 }
               }}
-              disabled={isSubmitting}
-              className={`flex-row items-center space-x-1 ${isSubmitting ? 'opacity-50' : ''}`}
+              // disabled={isSubmitting}
+              // className={`flex-row items-center space-x-1 ${isSubmitting ? 'opacity-50' : ''}`}
             >
               <Ionicons name="chevron-back" size={24} color={isSubmitting ? "#8E8E93" : "#0D0D0D"} />
               <Text className={`text-base font-dm-regular tracking-tighter ${isSubmitting ? 'text-grey-6' : 'text-enaleia-black'}`}>

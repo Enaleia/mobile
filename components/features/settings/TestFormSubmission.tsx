@@ -68,7 +68,7 @@ export const TestFormSubmission = () => {
       const submissions: QueueItem[] = TEST_ACTIONS.map((action) => ({
         localId: `test-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
         status: QueueItemStatus.PENDING,
-        retryCount: 0,
+        totalRetryCount: 1,
         date: new Date().toISOString(),
         actionId: action.actionId,
         actionName: action.name,
@@ -76,10 +76,10 @@ export const TestFormSubmission = () => {
         outgoingMaterials: action.outgoingMaterials,
         manufacturedProducts: action.manufacturedProducts,
         directus: {
-          status: ServiceStatus.PENDING,
+          status: ServiceStatus.INCOMPLETE,
         },
         eas: {
-          status: ServiceStatus.PENDING,
+          status: ServiceStatus.INCOMPLETE,
         },
       }));
 

@@ -5,47 +5,83 @@ import { UserProfile } from "@/components/shared/UserProfile";
 import { useAuth } from "@/contexts/AuthContext";
 import { useQueue } from "@/contexts/QueueContext";
 import { QueueEvents, queueEventEmitter } from "@/services/events";
-import { QueueItemStatus, isCompletelyFailed } from "@/types/queue";
+import { QueueItem, QueueItemStatus, MAX_RETRIES } from "@/types/queue";
 import { useEventListener } from "expo";
 import { useNavigation } from "expo-router";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { Image, ScrollView, Text, View, Pressable, Linking, Alert } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { getCompletedQueueCacheKey } from "@/utils/storage";
+import { getCompletedQueue } from "@/utils/queueStorage";
 
 const QueueScreen = () => {
   const { queueItems, loadQueueItems, retryItems, refreshQueueStatus } = useQueue();
   const { user } = useAuth();
   const navigation = useNavigation();
+  const [completedItems, setCompletedItems] = useState<QueueItem[]>([]);
 
   const items = queueItems.length > 0 ? queueItems : [];
   
-  // Split items into active, critical, and completed
+  // Split items into active, failed, and completed
   const activeItems = items.filter(item => {
     const nonCompletedStates = [
       QueueItemStatus.PENDING,
       QueueItemStatus.PROCESSING,
-      QueueItemStatus.FAILED,
-      QueueItemStatus.OFFLINE,
-      QueueItemStatus.SLOW_RETRY
+      QueueItemStatus.FAILED
     ];
-    return nonCompletedStates.includes(item.status) && !isCompletelyFailed(item);
+    return nonCompletedStates.includes(item.status) && item.totalRetryCount < MAX_RETRIES;
   });
 
-  // Critical items are those that have completely failed
-  const criticalItems = items.filter(item => isCompletelyFailed(item));
-  
-  const completedItems = items.filter(item => item.status === QueueItemStatus.COMPLETED);
+  // Failed items are those that have exceeded max retries
+  const failedItems = items.filter(item => item.totalRetryCount >= MAX_RETRIES);
   
   // Count items needing attention (all active items)
-  const attentionCount = activeItems.length + criticalItems.length;
+  const attentionCount = activeItems.length + failedItems.length;
+
+  // Load completed items
+  useEffect(() => {
+    const loadCompletedItems = async () => {
+      try {
+        console.log("Loading completed items...");
+        const completed = await getCompletedQueue();
+        console.log("Completed items loaded:", completed.length);
+        setCompletedItems(completed);
+      } catch (error) {
+        console.error("Error loading completed items:", error);
+      }
+    };
+
+    loadCompletedItems();
+  }, []);
+
+  // Listen for queue updates to refresh completed items
+  useEffect(() => {
+    const handleQueueUpdate = async () => {
+      try {
+        console.log("Queue update received, refreshing completed items...");
+        const completed = await getCompletedQueue();
+        console.log("Completed items refreshed:", completed.length);
+        setCompletedItems(completed);
+      } catch (error) {
+        console.error("Error refreshing completed items:", error);
+      }
+    };
+
+    queueEventEmitter.addListener(QueueEvents.UPDATED, handleQueueUpdate);
+    return () => {
+      queueEventEmitter.removeListener(QueueEvents.UPDATED, handleQueueUpdate);
+    };
+  }, []);
 
   const handleClearAllCompleted = async () => {
     try {
+      console.log("Clearing all completed items...");
       // Clear completed items from AsyncStorage
       await AsyncStorage.setItem(getCompletedQueueCacheKey(), JSON.stringify([]));
       // Reload queue items to update the UI
       await loadQueueItems();
+      setCompletedItems([]);
+      console.log("Completed items cleared successfully");
     } catch (error) {
       console.error("Error clearing completed items:", error);
       Alert.alert(
@@ -73,13 +109,16 @@ const QueueScreen = () => {
     const unsubscribe = navigation.addListener("focus", async () => {
       // Only load queue items without refreshing status
       await loadQueueItems();
+      // Also load completed items when screen comes into focus
+      const completed = await getCompletedQueue();
+      setCompletedItems(completed);
     });
     return unsubscribe;
   }, [navigation, loadQueueItems]);
 
   useEventListener(queueEventEmitter, QueueEvents.UPDATED, loadQueueItems);
 
-  const hasNoItems = items.length === 0;
+  const hasNoItems = items.length === 0 && completedItems.length === 0;
 
   return (
     <SafeAreaContent>
@@ -119,13 +158,12 @@ const QueueScreen = () => {
                 alwaysShow={true}
               />
 
-              {/* Critical Items Section */}
+              {/* Failed Items Section */}
               <QueueSection
-                title="Critical"
-                items={criticalItems}
+                title="Failed"
+                items={failedItems}
                 onRetry={retryItems}
                 showRetry={false}
-                alwaysShow={false}
               />
 
               {/* Completed Items Section */}

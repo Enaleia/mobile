@@ -1,6 +1,7 @@
 import { View, ActivityIndicator } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { QueueItemStatus, isCompletelyFailed } from "@/types/queue";
+import { QueueItem } from "@/types/queue";
+import { QueueItemStatus, MAX_RETRIES } from "@/types/queue";
 import { Text } from "react-native";
 
 interface QueueStatusIndicatorProps {
@@ -11,51 +12,45 @@ interface QueueStatusIndicatorProps {
 
 export default function QueueStatusIndicator({ status, item, className = "" }: QueueStatusIndicatorProps) {
   const getStatusConfig = () => {
+    // If item has exceeded max retries, always show as failed
+    if (item && item.totalRetryCount >= MAX_RETRIES) {
+      return {
+        icon: "alert-circle",
+        color: "#ef4444",
+        text: "Failed",
+      };
+    }
+
     switch (status) {
       case QueueItemStatus.PENDING:
         return {
-          icon: "time",
-          color: "#737373", // grey-400
-          text: "Pending"
+          icon: "time-outline",
+          color: "#f59e0b",
+          text: "Pending",
         };
       case QueueItemStatus.PROCESSING:
         return {
-          icon: "sync",
-          color: "#737373", // grey-400
-          text: "Processing"
+          icon: "sync-outline",
+          color: "#3b82f6",
+          text: "Processing",
         };
       case QueueItemStatus.FAILED:
-        // Check if item is completely failed
-        if (item && isCompletelyFailed(item)) {
-          return {
-            icon: "alert-circle",
-            color: "#f43f5e", // rose-500 (red)
-            text: "Contact support"
-          };
-        } else {
-          return {
-            icon: "time",
-            color: "#737373", // grey-400
-            text: "Auto-retry soon"
-          };
-        }
-      case QueueItemStatus.OFFLINE:
         return {
-          icon: "cloud-offline",
-          color: "#737373", // grey-400
-          text: "Offline"
+          icon: "alert-circle-outline",
+          color: "#f59e0b",
+          text: "Retry",
         };
       case QueueItemStatus.COMPLETED:
         return {
           icon: "checkmark-circle",
-          color: "#059669", // emerald-600
-          text: "Completed"
+          color: "#059669",
+          text: "Completed",
         };
       default:
         return {
-          icon: "help-circle",
-          color: "#0D0D0D", // enaleia-black
-          text: "Unknown"
+          icon: "help-circle-outline",
+          color: "#6b7280",
+          text: "Unknown",
         };
     }
   };

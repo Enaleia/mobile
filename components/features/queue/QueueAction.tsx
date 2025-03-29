@@ -1,7 +1,7 @@
 import { useBatchData } from "@/hooks/data/useBatchData";
 import { EAS_CONSTANTS } from "@/services/eas";
 import { Action } from "@/types/action";
-import { QueueItem, QueueItemStatus, ServiceStatus, PROCESSING_TIMEOUT, LIST_RETRY_INTERVAL, isCompletelyFailed, MAX_RETRIES } from "@/types/queue";
+import { QueueItem, QueueItemStatus, ServiceStatus, PROCESSING_TIMEOUT, LIST_RETRY_INTERVAL, MAX_RETRIES } from "@/types/queue";
 import { isProcessingItem } from "@/utils/queue";
 import { Ionicons } from "@expo/vector-icons";
 import { Linking, Pressable, Text, View, StyleSheet } from "react-native";
@@ -111,17 +111,17 @@ const QueueAction = ({ item, isLastItem = false, isProcessing = false }: QueueAc
           <View className="flex-col gap-1 pb-2">
             <View className="flex flex-row items-left">
               <ServiceStatusIndicator
-                status={item.directus?.status || ServiceStatus.PENDING}
+                status={item.directus?.status || ServiceStatus.INCOMPLETE}
                 type="directus"    
                 extraClasses="mr-2"           
               />
               <ServiceStatusIndicator
-                status={item.eas?.status || ServiceStatus.PENDING}
+                status={item.eas?.status || ServiceStatus.INCOMPLETE}
                 type="eas"
                 extraClasses="mr-2" 
               />
               <ServiceStatusIndicator
-                status={item.directus?.linked ? ServiceStatus.COMPLETED : ServiceStatus.PENDING}
+                status={item.linking?.status || ServiceStatus.INCOMPLETE}
                 type="linking"
               />
             </View>

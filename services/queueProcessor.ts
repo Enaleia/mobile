@@ -25,7 +25,8 @@ import {
   getOverallStatus,
   PROCESSING_TIMEOUT,
   shouldAutoRetry,
-  isCompletelyFailed
+  shouldProcessService,
+  determineItemStatus
 } from "@/types/queue";
 import { EnaleiaUser } from "@/types/user";
 import { WalletInfo } from "@/types/wallet";
@@ -45,7 +46,7 @@ import {
 } from "@/utils/queueStorage";
 import { getBatchCacheKey } from "@/utils/storage";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import NetInfo from "@react-native-community/netinfo";
+import NetInfo, { NetInfoState } from "@react-native-community/netinfo";
 import * as Notifications from "expo-notifications";
 import { Company } from "@/types/company";
 import { JsonRpcProvider } from "ethers";
@@ -54,53 +55,107 @@ let currentProcessingTimeout: NodeJS.Timeout | null = null;
 let currentProcessingItemId: string | null = null;
 let currentEASProvider: JsonRpcProvider | null = null;
 
-async function updateItemInCache(itemId: string, updates: Partial<QueueItem>) {
+let processingPromise: Promise<void> | null = null;
+let isProcessing = false;
+
+export async function updateItemInCache(itemId: string, updates: Partial<QueueItem>) {
   try {
+    console.log(`=== Updating Item ${itemId} in Cache ===`);
+    console.log('Updates:', updates);
+
     const items = await getActiveQueue();
-    const updatedItems = items.map((item) =>
-      item.localId === itemId
-        ? {
-            ...item,
-            ...updates,
-            // Track total retry count
-            totalRetryCount: updates.totalRetryCount || item.totalRetryCount || 0,
+    if (!items || !Array.isArray(items)) {
+      console.warn('Invalid queue data, resetting to empty array');
+      await updateActiveQueue([]);
+      return;
+    }
+
+    const currentItem = items.find(item => item.localId === itemId);
+    console.log('Current item state:', currentItem ? {
+      status: currentItem.status,
+      retries: currentItem.totalRetryCount,
+      directus: currentItem.directus?.status,
+      eas: currentItem.eas?.status,
+      linking: currentItem.linking?.status
+    } : 'Not found');
+
+    const updatedItems = items.map((item) => {
+      if (!item || typeof item !== 'object' || item.localId !== itemId) {
+        return item;
+      }
+
+      // Create a safe update object with all required fields
+      const safeUpdates: QueueItem = {
+        ...item, // Keep all existing fields
+        ...updates, // Apply updates
+        // Ensure required fields are present
+        localId: itemId,
+        date: updates.date || item.date,
+        // Track total retry count safely
+        totalRetryCount: typeof updates.totalRetryCount === 'number' ? 
+          updates.totalRetryCount : 
+          (item.totalRetryCount || 0),
             // Safely merge service states
             directus: updates.directus ? { 
               ...(item.directus || {}), 
-              ...updates.directus 
+          ...updates.directus,
+          status: updates.directus.status || ServiceStatus.INCOMPLETE
             } : item.directus,
             eas: updates.eas ? { 
               ...(item.eas || {}), 
-              ...updates.eas 
+          ...updates.eas,
+          status: updates.eas.status || ServiceStatus.INCOMPLETE
             } : item.eas,
+        linking: updates.linking ? {
+          ...(item.linking || {}),
+          ...updates.linking,
+          status: updates.linking.status || ServiceStatus.INCOMPLETE
+        } : item.linking
+      };
+
             // Update overall status based on service states
-            status: updates.status || getOverallStatus({
-              ...item,
-              directus: updates.directus ? { 
-                ...(item.directus || {}), 
-                ...updates.directus 
-              } : item.directus,
-              eas: updates.eas ? { 
-                ...(item.eas || {}), 
-                ...updates.eas 
-              } : item.eas,
-            }),
-          }
-        : item
-    );
+      safeUpdates.status = getOverallStatus(safeUpdates);
 
-    // If item is completed or has exceeded max retries, move to completed queue
-    const shouldComplete = (item: QueueItem) => 
-      item.status === QueueItemStatus.COMPLETED || isCompletelyFailed(item);
+      console.log('Updated item state:', {
+        status: safeUpdates.status,
+        retries: safeUpdates.totalRetryCount,
+        directus: safeUpdates.directus?.status,
+        eas: safeUpdates.eas?.status,
+        linking: safeUpdates.linking?.status
+      });
 
-    const itemToUpdate = updatedItems.find(item => item.localId === itemId);
-    if (itemToUpdate && shouldComplete(itemToUpdate)) {
+      return safeUpdates;
+    });
+
+    const itemToUpdate = updatedItems.find(item => item && item.localId === itemId);
+    if (!itemToUpdate) {
+      console.log(`Item ${itemId} not found in active queue`);
+      return;
+    }
+
+    // Update the item in the appropriate queue based on its status
+    if (itemToUpdate.status === QueueItemStatus.COMPLETED) {
+      console.log(`Moving item ${itemId} to completed queue. Status:`, {
+        status: itemToUpdate.status,
+        directusStatus: itemToUpdate.directus?.status,
+        easStatus: itemToUpdate.eas?.status,
+        linkingStatus: itemToUpdate.linking?.status,
+        totalRetries: itemToUpdate.totalRetryCount
+      });
       await addToCompletedQueue(itemToUpdate);
       await removeFromActiveQueue(itemId);
     } else {
+      console.log(`Updating item ${itemId} in active queue. Status:`, {
+        status: itemToUpdate.status,
+        directusStatus: itemToUpdate.directus?.status,
+        easStatus: itemToUpdate.eas?.status,
+        linkingStatus: itemToUpdate.linking?.status,
+        totalRetries: itemToUpdate.totalRetryCount
+      });
       await updateActiveQueue(updatedItems);
     }
 
+    console.log('Emitting queue update event');
     queueEventEmitter.emit(QueueEvents.UPDATED);
   } catch (error) {
     console.error("Error updating item in cache:", error);
@@ -138,7 +193,6 @@ async function notifyUser(title: string, body: string) {
   }
 }
 
-let isProcessing = false;
 let lastNotificationTime = 0;
 const NOTIFICATION_COOLDOWN = 5 * 60 * 1000; // 5 minutes
 
@@ -274,12 +328,12 @@ async function processEASAttestation(
       await provider.getNetwork();
       
       // If we get here, network is back online
-      // If service was previously OFFLINE, update it back to PENDING
-      if (item.eas?.status === ServiceStatus.OFFLINE) {
+      // If service was previously incomplete, update it back to incomplete
+      if (item.eas?.status === ServiceStatus.INCOMPLETE) {
         await updateItemInCache(item.localId, {
           eas: {
             ...item.eas,
-            status: ServiceStatus.PENDING,
+            status: ServiceStatus.INCOMPLETE,
             error: undefined
           }
         });
@@ -345,49 +399,42 @@ function isItemStuck(item: QueueItem): boolean {
 async function handleStuckItem(item: QueueItem) {
   if (!isItemStuck(item)) return;
 
-  console.log(`Item ${item.localId} is stuck (exceeded ${PROCESSING_TIMEOUT/1000}s timeout):`, {
+  console.log(`=== Handling stuck item ${item.localId} ===`, {
     lastAttempt: item.lastAttempt,
     timeSinceLastAttempt: item.lastAttempt ? `${(Date.now() - new Date(item.lastAttempt).getTime()) / 1000}s` : 'N/A',
     directusStatus: item.directus?.status,
     easStatus: item.eas?.status,
-    totalRetryCount: item.totalRetryCount || 0
+    eventId: item.directus?.eventId
   });
 
-  // If we've exceeded max retries, mark as completely failed
-  if (item.totalRetryCount >= MAX_RETRIES) {
-    await updateItemInCache(item.localId, {
-      status: QueueItemStatus.FAILED,
-      lastError: "Operation timed out and max retries exceeded",
-      // Only update services that are still in PROCESSING state
-      directus: item.directus?.status === ServiceStatus.PROCESSING ? {
-        ...item.directus,
-        status: ServiceStatus.FAILED,
-        error: "Directus operation timed out"
-      } : item.directus,
-      eas: item.eas?.status === ServiceStatus.PROCESSING ? {
-        ...item.eas,
-        status: ServiceStatus.FAILED,
-        error: "EAS operation timed out"
-      } : item.eas
-    });
-  } else {
-    // Otherwise, mark as failed but allow retry
-    await updateItemInCache(item.localId, {
-      status: QueueItemStatus.FAILED,
-      lastError: "Operation timed out",
-      // Only update services that are still in PROCESSING state
-      directus: item.directus?.status === ServiceStatus.PROCESSING ? {
-        ...item.directus,
-        status: ServiceStatus.FAILED,
-        error: "Directus operation timed out"
-      } : item.directus,
-      eas: item.eas?.status === ServiceStatus.PROCESSING ? {
-        ...item.eas,
-        status: ServiceStatus.FAILED,
-        error: "EAS operation timed out"
-      } : item.eas
-    });
+  // Kill any ongoing EAS provider connection
+  if (currentEASProvider) {
+    try {
+      console.log('Terminating EAS provider connection');
+      // @ts-ignore - _websocket exists but is not in type definitions
+      if (currentEASProvider._websocket) {
+        // @ts-ignore
+        currentEASProvider._websocket.terminate();
+      }
+      currentEASProvider = null;
+    } catch (error) {
+      console.log("Error closing provider:", error);
+    }
   }
+
+  // Reset processing state
+  currentProcessingItemId = null;
+
+  // Update item state to allow retry
+    await updateItemInCache(item.localId, {
+    status: QueueItemStatus.PENDING,
+      lastError: "Operation timed out",
+    lastAttempt: undefined
+  });
+
+  console.log(`=== Reset stuck item ${item.localId} to PENDING ===`);
+  // Emit queue update event to refresh UI
+  queueEventEmitter.emit(QueueEvents.UPDATED);
 }
 
 export async function cancelCurrentProcessing() {
@@ -403,13 +450,13 @@ export async function cancelCurrentProcessing() {
       await updateItemInCache(currentProcessingItemId, {
         status: QueueItemStatus.FAILED,
         lastError: "Processing cancelled",
-        // Mark processing services as failed
-        directus: currentItem.directus?.status === ServiceStatus.PROCESSING ? 
-          { ...currentItem.directus, status: ServiceStatus.FAILED, error: "Operation cancelled" } : 
-          currentItem.directus,
-        eas: currentItem.eas?.status === ServiceStatus.PROCESSING ? 
-          { ...currentItem.eas, status: ServiceStatus.FAILED, error: "Operation cancelled" } : 
-          currentItem.eas
+        // Mark services as incomplete
+        directus: currentItem.directus?.status === ServiceStatus.COMPLETED ? 
+          currentItem.directus : 
+          { ...currentItem.directus, status: ServiceStatus.INCOMPLETE, error: "Operation cancelled" },
+        eas: currentItem.eas?.status === ServiceStatus.COMPLETED ? 
+          currentItem.eas : 
+          { ...currentItem.eas, status: ServiceStatus.INCOMPLETE, error: "Operation cancelled" }
       });
     }
     currentProcessingItemId = null;
@@ -426,30 +473,30 @@ export async function processQueueItems(
     return;
   }
 
-  // Set the last batch attempt time at the start of processing
-  await AsyncStorage.setItem('QUEUE_LAST_BATCH_ATTEMPT', new Date().toISOString());
+  // If already processing, wait for it to complete
+  if (processingPromise) {
+    console.log("Already processing queue items");
+    return processingPromise;
+  }
 
-  // Filter out completed, failed, and completely failed items
+  processingPromise = (async () => {
+    try {
+      isProcessing = true;
+
+      // Filter out completed items and items that have exceeded max retries
   const itemsToProcessFiltered = itemsToProcess
     .filter((item: QueueItem) => 
       item.status !== QueueItemStatus.COMPLETED && 
-      !isCompletelyFailed(item) &&
-      (!isProcessing || item.localId === currentProcessingItemId)
+          item.totalRetryCount < MAX_RETRIES &&
+          !item.deleted // Skip deleted items
     )
-    .sort((a: QueueItem, b: QueueItem) => new Date(a.date).getTime() - new Date(b.date).getTime());
+        .sort((a: QueueItem, b: QueueItem) => new Date(b.date).getTime() - new Date(a.date).getTime()); // Sort by most recent first
 
   if (!itemsToProcessFiltered.length) {
     return;
   }
 
-  if (isProcessing) {
-    console.log("Already processing queue items");
-    return;
-  }
-
-  isProcessing = true;
-
-  try {
+      console.log(`=== Starting batch processing of ${itemsToProcessFiltered.length} items ===`);
     const requiredData = await fetchRequiredData();
     const collectors = await directusCollectors();
     const networkInfo = await NetInfo.fetch();
@@ -459,179 +506,350 @@ export async function processQueueItems(
       try {
         // Start processing timer
         currentProcessingItemId = item.localId;
-        currentProcessingTimeout = setTimeout(async () => {
-          console.log(`Processing timeout triggered for item ${item.localId}`);
           
-          // Force reset all processing states
-          isProcessing = false;
-          currentProcessingTimeout = null;
-          
-          // Forcefully close any existing provider connection
-          if (currentEASProvider) {
-            try {
-              // @ts-ignore - _websocket exists but is not in type definitions
-              if (currentEASProvider._websocket) {
-                // @ts-ignore
-                currentEASProvider._websocket.terminate();
-              }
-              currentEASProvider = null;
-            } catch (error) {
-              console.log("Error closing provider:", error);
-            }
-          }
-          
-          // Get the current item state to evaluate service statuses
-          const currentItem = (await getActiveQueue()).find(i => i.localId === item.localId);
-          if (!currentItem) return;
+          console.log(`=== Starting processing of item ${item.localId} ===`);
+          console.log('Current state:', {
+            directus: item.directus?.status,
+            eas: item.eas?.status,
+            linking: item.linking?.status,
+            retryCount: item.totalRetryCount || 0,
+            eventId: item.directus?.eventId
+          });
 
-          // Update item with evaluated statuses
+          // First update to processing state
+          await updateItemInCache(item.localId, {
+            status: QueueItemStatus.PROCESSING,
+            lastAttempt: new Date().toISOString()
+          });
+
+          // Set processing timeout
+          const timeoutPromise = new Promise((_, reject) => {
+            currentProcessingTimeout = setTimeout(() => {
+              console.log(`=== Processing timeout triggered for item ${item.localId} ===`);
+              reject(new Error('Processing timeout'));
+            }, PROCESSING_TIMEOUT);
+          });
+
+          // Process the item with timeout
+          try {
+            await Promise.race([
+              processItem(item, requiredData, collectors, networkInfo, wallet),
+              timeoutPromise
+            ]);
+            console.log(`=== Successfully completed processing item ${item.localId} ===`);
+          } catch (error: any) {
+            console.log(`=== Error processing item ${item.localId} ===`, {
+              error: error?.message,
+              type: error?.message === 'Processing timeout' ? 'TIMEOUT' : 'PROCESSING_ERROR'
+            });
+            if (error?.message === 'Processing timeout') {
+              // Kill processes and reset state
+              await handleStuckItem(item);
+            }
+            throw error;
+          } finally {
+            // Clear timeout if it exists
+            if (currentProcessingTimeout) {
+              clearTimeout(currentProcessingTimeout);
+              currentProcessingTimeout = null;
+            }
+            console.log(`=== Final state for item ${item.localId} ===`, {
+              directus: item.directus?.status,
+              eas: item.eas?.status,
+              linking: item.linking?.status,
+              retryCount: item.totalRetryCount || 0,
+              eventId: item.directus?.eventId
+            });
+          }
+        } catch (error) {
+          console.error(`Error processing item ${item.localId}:`, error);
+          // Update item with error and increment retry count
           await updateItemInCache(item.localId, {
             status: QueueItemStatus.FAILED,
-            lastError: "Operation timed out",
-            // Mark processing services as failed
-            directus: currentItem.directus?.status === ServiceStatus.PROCESSING ? 
-              { ...currentItem.directus, status: ServiceStatus.FAILED, error: "Operation timed out" } : 
-              currentItem.directus,
-            eas: currentItem.eas?.status === ServiceStatus.PROCESSING ? 
-              { ...currentItem.eas, status: ServiceStatus.FAILED, error: "Operation timed out" } : 
-              currentItem.eas
-          }).catch(error => {
-            console.error(`Error updating item ${item.localId} after timeout:`, error);
+            lastError: error instanceof Error ? error.message : "Unknown error",
+            totalRetryCount: (item.totalRetryCount || 0) + 1
           });
-
+          // Emit queue update event to refresh UI
+          queueEventEmitter.emit(QueueEvents.UPDATED);
+        } finally {
           currentProcessingItemId = null;
-        }, PROCESSING_TIMEOUT);
+        }
+      }
 
-        console.log(`Starting processing for item ${item.localId}:`, {
-          needsDirectus: Boolean(item.directus?.status !== ServiceStatus.COMPLETED),
-          needsEAS: Boolean(item.eas?.status !== ServiceStatus.COMPLETED),
-          totalRetryCount: item.totalRetryCount || 0
+      console.log('=== Batch processing completed ===');
+      // Set the last batch attempt time after all items have finished processing
+      await AsyncStorage.setItem('QUEUE_LAST_BATCH_ATTEMPT', new Date().toISOString());
+    } finally {
+      isProcessing = false;
+      processingPromise = null;
+    }
+  })();
+
+  return processingPromise;
+}
+
+async function processItem(
+  item: QueueItem,
+  requiredData: RequiredData,
+  collectors: Pick<DirectusCollector, "collector_id" | "collector_name" | "collector_identity">[],
+  networkInfo: NetInfoState,
+  wallet?: WalletInfo | null
+) {
+          console.log(`\n=== Processing item ${item.localId} ===`);
+  console.log('Initial item state:', {
+            status: item.status,
+    totalRetryCount: item.totalRetryCount,
+            directusStatus: item.directus?.status,
+    easStatus: item.eas?.status,
+    linkingStatus: item.linking?.status,
+    directusEventId: item.directus?.eventId,
+    easTxHash: item.eas?.txHash
+  });
+
+  // Process Directus if needed
+  if (shouldProcessService(item.directus)) {
+    try {
+      // Process Directus
+      const eventId = await processDirectusService(item, requiredData, collectors);
+      
+      // Mark Directus as completed
+      await updateItemInCache(item.localId, {
+        directus: { 
+          status: ServiceStatus.COMPLETED,
+          eventId: eventId
+        }
+      });
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : "Unknown error";
+      console.error(`Directus processing failed for item ${item.localId}:`, errorMessage);
+      
+      await updateItemInCache(item.localId, {
+        directus: { 
+          status: ServiceStatus.INCOMPLETE,
+          error: errorMessage
+        }
+      });
+    }
+  }
+
+  // Process EAS if needed
+  if (shouldProcessService(item.eas)) {
+    if (!wallet) {
+      await updateItemInCache(item.localId, {
+        eas: { 
+          status: ServiceStatus.INCOMPLETE,
+          error: "Wallet not initialized"
+        }
+      });
+    } else {
+      try {
+        // Process EAS
+        const easResult = await processEASAttestation(item, requiredData, wallet);
+        
+        // Mark EAS as completed
+        await updateItemInCache(item.localId, {
+          eas: { 
+            status: ServiceStatus.COMPLETED,
+            txHash: easResult.uid
+          }
         });
 
-        if (!item.directus?.status || !item.eas?.status) {
-          console.log(`Item ${item.localId} already processed by both services, skipping`);
-          continue;
+        // Get the latest state after EAS update
+        const updatedItems = await getActiveQueue();
+        const updatedItem = updatedItems.find(i => i.localId === item.localId);
+        
+        if (!updatedItem) {
+          throw new Error('Could not find updated item state');
         }
 
-        // Process the item
-        try {
-          // Check network connectivity
-          const isConnected = networkInfo.isConnected;
-          if (!isConnected) {
-            console.log("No network connection, marking item as offline");
-            await updateItemInCache(item.localId, {
-              status: QueueItemStatus.OFFLINE,
-              lastError: "No network connection",
-            });
-            continue;
-          }
-
-          // Get required data
-          const { userData } = requiredData;
-
-          console.log(`\n=== Processing item ${item.localId} ===`);
-          console.log('Item state:', {
-            status: item.status,
-            totalRetryCount: item.totalRetryCount || 0,
-            lastAttempt: item.lastAttempt,
-            directusStatus: item.directus?.status,
-            easStatus: item.eas?.status
-          });
-
-          // Check if item should be auto-retried
-          if (!shouldAutoRetry(item)) {
-            console.log(`Skipping item ${item.localId} - not eligible for auto-retry`);
-            continue;
-          }
-
-          // Check if item is stuck
-          if (isItemStuck(item)) {
-            console.log(`Item ${item.localId} appears to be stuck, handling timeout...`);
-            await handleStuckItem(item);
-            continue;
-          }
-
-          let processingTimeout: NodeJS.Timeout | null = null;
-          const needsDirectus = Boolean(item.directus?.status !== ServiceStatus.COMPLETED);
-          const needsEAS = Boolean(item.eas?.status !== ServiceStatus.COMPLETED);
-
+        // Process linking if both Directus and EAS are completed
+        if (updatedItem.directus?.eventId && updatedItem.eas?.txHash) {
           try {
-            // Start processing timer
-            currentProcessingItemId = item.localId;
-            currentProcessingTimeout = setTimeout(async () => {
-              console.log(`Processing timeout triggered for item ${item.localId}`);
-              
-              // Force reset all processing states
-              isProcessing = false;
-              currentProcessingTimeout = null;
-              
-              // Forcefully close any existing provider connection
-              if (currentEASProvider) {
-                try {
-                  // @ts-ignore - _websocket exists but is not in type definitions
-                  if (currentEASProvider._websocket) {
-                    // @ts-ignore
-                    currentEASProvider._websocket.terminate();
-                  }
-                  currentEASProvider = null;
-                } catch (error) {
-                  console.log("Error closing provider:", error);
-                }
-              }
-              
-              // Get the current item state to evaluate service statuses
-              const currentItem = (await getActiveQueue()).find(i => i.localId === item.localId);
-              if (!currentItem) return;
-
-              // Update item with evaluated statuses
-              await updateItemInCache(item.localId, {
-                status: QueueItemStatus.FAILED,
-                lastError: "Operation timed out",
-                // Mark processing services as failed
-                directus: currentItem.directus?.status === ServiceStatus.PROCESSING ? 
-                  { ...currentItem.directus, status: ServiceStatus.FAILED, error: "Operation timed out" } : 
-                  currentItem.directus,
-                eas: currentItem.eas?.status === ServiceStatus.PROCESSING ? 
-                  { ...currentItem.eas, status: ServiceStatus.FAILED, error: "Operation timed out" } : 
-                  currentItem.eas
-              }).catch(error => {
-                console.error(`Error updating item ${item.localId} after timeout:`, error);
-              });
-
-              currentProcessingItemId = null;
-            }, PROCESSING_TIMEOUT);
-
-            console.log(`Starting processing for item ${item.localId}:`, {
-              needsDirectus,
-              needsEAS,
-              totalRetryCount: item.totalRetryCount || 0
+            console.log(`\n=== Processing linking service for item ${item.localId} ===`);
+            console.log('Current state:', {
+              directusEventId: updatedItem.directus.eventId,
+              easUid: easResult.uid,
+              directusStatus: updatedItem.directus.status,
+              easStatus: updatedItem.eas.status,
+              linkingStatus: updatedItem.linking?.status,
+              directusEvent: updatedItem.directus,
+              easEvent: updatedItem.eas,
+              linkingEvent: updatedItem.linking
+            });
+            
+            // Update the event with EAS UID
+            console.log('Updating Directus event with EAS UID...');
+            console.log('Update payload:', {
+              eventId: updatedItem.directus.eventId,
+              easUid: easResult.uid
+            });
+            
+            const directusUpdatedEvent = await updateEvent(updatedItem.directus.eventId, {
+              EAS_UID: easResult.uid,
             });
 
-            // Skip if no services need processing
-            if (!needsDirectus && !needsEAS) {
-              console.log(`Item ${item.localId} already processed by both services, skipping`);
-              if (processingTimeout) clearTimeout(processingTimeout);
-              continue;
+            console.log('Directus update response:', directusUpdatedEvent);
+
+            if (!directusUpdatedEvent || !directusUpdatedEvent.event_id) {
+              throw new Error('Failed to update EAS_UID in Directus');
             }
 
-            // Update item to processing state, but only for services that need processing
-            await updateItemInCache(item.localId, {
-              status: QueueItemStatus.PROCESSING,
-              lastAttempt: new Date().toISOString(),
-              directus: needsDirectus ? { status: ServiceStatus.PROCESSING } : item.directus,
-              eas: needsEAS ? { status: ServiceStatus.PROCESSING } : item.eas,
+            // Verify the linking was successful
+            console.log('Verifying EAS UID in Directus...');
+            const verifyEvent = await getEvent(updatedItem.directus.eventId);
+            console.log('Verification response:', verifyEvent);
+            
+            if (!verifyEvent || verifyEvent[0]?.EAS_UID !== easResult.uid) {
+              console.error('Verification failed:', {
+                verifyEvent,
+                expectedUid: easResult.uid,
+                actualUid: verifyEvent?.[0]?.EAS_UID
+              });
+              throw new Error('Failed to verify EAS UID linking');
+            }
+
+            console.log('Linking verification successful:', {
+              eventId: updatedItem.directus.eventId,
+              easUid: easResult.uid,
+              directusEasUid: verifyEvent[0]?.EAS_UID
+            });
+            
+            // Mark linking as completed
+            console.log('Marking linking service as completed...');
+              await updateItemInCache(item.localId, {
+              linking: {
+                status: ServiceStatus.COMPLETED
+              }
             });
 
-            let eventId: number | undefined;
-            let easUid: string | undefined;
+            // Wait a moment to ensure state is updated
+            await new Promise(resolve => setTimeout(resolve, 500));
 
-            let directusEvent: MaterialTrackingEvent | undefined;
+            // Get the latest state after linking update
+            const finalItems = await getActiveQueue();
+            const finalItem = finalItems.find(i => i.localId === item.localId);
 
-            // Only process Directus if needed and not already completed
-            if (needsDirectus && item.directus?.status !== ServiceStatus.COMPLETED) {
-              try {
-                console.log(`Processing Directus for item ${item.localId}`);
-                
+            if (!finalItem) {
+              console.error('Could not find item after linking update');
+              return;
+            }
+
+            console.log('Item state after linking completion:', {
+              status: finalItem.status,
+              directusStatus: finalItem.directus?.status,
+              easStatus: finalItem.eas?.status,
+              linkingStatus: finalItem.linking?.status,
+              directusEventId: finalItem.directus?.eventId,
+              easUid: finalItem.eas?.txHash
+            });
+
+            // Only update to completed if all services are completed
+            if (finalItem.directus?.status === ServiceStatus.COMPLETED && 
+                finalItem.eas?.status === ServiceStatus.COMPLETED && 
+                finalItem.linking?.status === ServiceStatus.COMPLETED) {
+              
+              console.log('All services completed, updating item status...');
+            await updateItemInCache(item.localId, {
+                status: QueueItemStatus.COMPLETED
+              });
+
+              // Wait for status update
+              await new Promise(resolve => setTimeout(resolve, 500));
+
+              // Get final state before queue move
+              const updatedItems = await getActiveQueue();
+              const updatedItem = updatedItems.find(i => i.localId === item.localId);
+
+              console.log('Final state before queue move:', {
+                status: updatedItem?.status,
+                directusStatus: updatedItem?.directus?.status,
+                easStatus: updatedItem?.eas?.status,
+                linkingStatus: updatedItem?.linking?.status
+              });
+
+              if (updatedItem?.status === QueueItemStatus.COMPLETED) {
+                console.log('Moving completed item to completed queue');
+                await addToCompletedQueue(updatedItem);
+                await removeFromActiveQueue(item.localId);
+              } else {
+                console.log('Item not ready for completed queue:', {
+                  status: updatedItem?.status,
+                  directusStatus: updatedItem?.directus?.status,
+                  easStatus: updatedItem?.eas?.status,
+                  linkingStatus: updatedItem?.linking?.status
+                });
+              }
+            } else {
+              console.log('Not all services completed:', {
+                directusStatus: finalItem.directus?.status,
+                easStatus: finalItem.eas?.status,
+                linkingStatus: finalItem.linking?.status
+              });
+            }
+          } catch (linkError) {
+            console.error(`Failed to link EAS UID to Directus:`, linkError);
+            console.error('Error details:', {
+              error: linkError instanceof Error ? linkError.message : 'Unknown error',
+              stack: linkError instanceof Error ? linkError.stack : undefined,
+              itemId: item.localId,
+              directusEventId: updatedItem.directus?.eventId,
+              easUid: easResult.uid
+            });
+            // Mark linking as incomplete
+            await updateItemInCache(item.localId, {
+              linking: {
+                status: ServiceStatus.INCOMPLETE,
+                error: `Failed to link EAS UID: ${linkError instanceof Error ? linkError.message : 'Unknown error'}`
+              }
+            });
+          }
+        } else {
+          console.log('Cannot process linking - missing required data:', {
+            hasDirectusEventId: !!updatedItem.directus?.eventId,
+            hasEasTxHash: !!updatedItem.eas?.txHash,
+            directusEventId: updatedItem.directus?.eventId,
+            easTxHash: updatedItem.eas?.txHash,
+            directusState: updatedItem.directus,
+            easState: updatedItem.eas,
+            linkingState: updatedItem.linking
+          });
+          // Mark linking as incomplete
+          await updateItemInCache(item.localId, {
+            linking: {
+              status: ServiceStatus.INCOMPLETE,
+              error: 'Missing required data for linking'
+            }
+          });
+        }
+      } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : "Unknown error";
+        
+        if (errorMessage === 'BLOCKCHAIN_OFFLINE' || errorMessage.toLowerCase().includes('network')) {
+          await updateItemInCache(item.localId, {
+            eas: {
+              status: ServiceStatus.INCOMPLETE,
+              error: "Blockchain network is offline"
+            }
+          });
+        } else {
+          await updateItemInCache(item.localId, {
+            eas: { 
+              status: ServiceStatus.INCOMPLETE,
+              error: errorMessage
+            }
+          });
+        }
+      }
+    }
+  }
+}
+
+// Helper function to process Directus service
+async function processDirectusService(
+  item: QueueItem,
+  requiredData: RequiredData,
+  collectors: Pick<DirectusCollector, "collector_id" | "collector_name" | "collector_identity">[]
+): Promise<number> {
                 // Format location
                 const locationString = item.location?.coords
                   ? `${item.location.coords.latitude},${item.location.coords.longitude}`
@@ -646,321 +864,109 @@ export async function processQueueItems(
                   collectorName = collector?.collector_id?.toString();
                 }
 
-                // Process Directus
+  // Create event
                 const productId = item.manufacturing?.product ? parseInt(item.manufacturing.product, 10) : undefined;
                 const eventData: Omit<MaterialTrackingEvent, 'event_id'> = {
                   status: "draft",
-                  action: item.actionId,
+    action: parseInt(item.actionId, 10),
                   event_timestamp: new Date(item.date).toISOString(),
                   event_location: locationString,
                   collector_name: collectorName ? parseInt(collectorName, 10) : undefined,
-                  company: typeof userData?.Company === 'number' ? userData.Company : userData?.Company?.id,
+    company: typeof requiredData.userData?.Company === 'number' ? requiredData.userData.Company : requiredData.userData?.Company?.id,
                   manufactured_products: productId,
                   Batch_quantity: item.manufacturing?.quantity ?? undefined,
                   weight_per_item: item.manufacturing?.weightInKg?.toString() ?? undefined,
                   event_input_id: [],
                   event_output_id: [],
-                  // If we already have an EAS UID from previous attempts, include it
                   EAS_UID: item.eas?.txHash,
                 };
 
-                // Log what we're sending
-                console.log('=== Directus Event Creation Details ===');
-                console.log('Raw product ID:', item.manufacturing?.product);
-                console.log('Event data being sent to Directus:', JSON.stringify(eventData, null, 2));
-
                 const createdEvent = await createEvent(eventData);
-                console.log('Response from Directus:', JSON.stringify(createdEvent, null, 2));
-
                 if (!createdEvent?.event_id) {
                   throw new Error("No event ID returned from API");
                 }
-                directusEvent = createdEvent as MaterialTrackingEvent;
-                eventId = createdEvent.event_id;
 
-                // Process materials sequentially
+  // Process materials
                 if (item.incomingMaterials?.length) {
-                  for (const material of item.incomingMaterials) {
-                    if (!material || !directusEvent?.event_id) continue;
+    await Promise.all(item.incomingMaterials.map(async (material) => {
+      if (!material || !createdEvent.event_id) return;
                     const result = await createMaterialInput({
                       input_Material: material.id,
                       input_code: item.collectorId || material.code || "",
                       input_weight: material.weight || 0,
-                      event_id: directusEvent.event_id,
+        event_id: createdEvent.event_id,
                     } as MaterialTrackingEventInput);
 
                     if (!result) {
-                      throw new Error(
-                        `Failed to create input material for ${material.id}`
-                      );
+        throw new Error(`Failed to create input material for ${material.id}`);
                     }
-                  }
+    }));
                 }
 
                 if (item.outgoingMaterials?.length) {
-                  const eventId = directusEvent?.event_id;
-                  if (eventId) {
-                    await Promise.all(
-                      item.outgoingMaterials
-                        .filter((m) => m)
-                        .map(async (material) => {
+    await Promise.all(item.outgoingMaterials.map(async (material) => {
+      if (!material || !createdEvent.event_id) return;
                           const result = await createMaterialOutput({
                             output_material: material.id,
                             output_code: material.code || "",
                             output_weight: material.weight || 0,
-                            event_id: eventId,
+        event_id: createdEvent.event_id,
                           } as MaterialTrackingEventOutput);
 
                           if (!result) {
-                            throw new Error(
-                              `Failed to create output material for ${material.id}`
-                            );
-                          }
-                        })
-                    );
-                  }
-                }
+        throw new Error(`Failed to create output material for ${material.id}`);
+      }
+    }));
+  }
 
-                // Update item cache with Directus success and event ID
-                await updateItemInCache(item.localId, {
-                  directus: { 
-                    status: ServiceStatus.COMPLETED,
-                    eventId: eventId,
-                  },
-                });
-              } catch (error) {
-                const errorMessage = error instanceof Error ? error.message : "Unknown error";
-                console.error(`Directus processing failed for item ${item.localId}:`, errorMessage);
-                await updateItemInCache(item.localId, {
-                  directus: { 
-                    status: ServiceStatus.FAILED, 
-                    error: errorMessage
-                  },
-                });
-              }
-            }
+  return createdEvent.event_id;
+}
 
-            // Only process EAS independently if needed and not already completed
-            if (needsEAS && item.eas?.status !== ServiceStatus.COMPLETED) {
-              if (!wallet) {
-                const errorMessage = "Wallet not initialized";
-                console.log(`EAS processing skipped for item ${item.localId}: ${errorMessage}`);
-                await updateItemInCache(item.localId, {
-                  eas: { 
-                    status: ServiceStatus.FAILED, 
-                    error: errorMessage
-                  },
-                });
-                continue;
-              }
-
-              try {
-                // Process EAS attestation
-                const easResult = await processEASAttestation(item, requiredData, wallet);
-                easUid = easResult.uid;
-
-                // If we have both the event ID and EAS UID, update Directus
-                if (eventId || item.directus?.eventId) {
-                  const targetEventId = eventId || item.directus?.eventId;
-                  if (targetEventId) {
-                    try {
-                      const directusUpdatedEvent = await updateEvent(targetEventId, {
-                        EAS_UID: easResult.uid,
+// Helper function to link EAS to Directus
+async function linkEAStoDirectus(eventId: number, easUid: string): Promise<void> {
+  try {
+    const directusUpdatedEvent = await updateEvent(eventId, {
+      EAS_UID: easUid,
                       });
 
                       if (!directusUpdatedEvent || !directusUpdatedEvent.event_id) {
-                        console.warn(`Failed to update EAS_UID in Directus for event ${targetEventId}`);
-                        await updateItemInCache(item.localId, {
-                          directus: { 
-                            status: ServiceStatus.FAILED,
-                            error: "Failed to link EAS UID with Directus event",
-                            linked: false
-                          }
-                        });
-                      } else {
+      throw new Error('Failed to update EAS_UID in Directus');
+    }
+
                         // Verify the linking was successful
-                        const verifyEvent = await getEvent(targetEventId);
-                        if (verifyEvent && verifyEvent[0]?.EAS_UID === easResult.uid) {
-                          await updateItemInCache(item.localId, {
-                            directus: { 
-                              status: ServiceStatus.COMPLETED,
-                              linked: true
-                            }
-                          });
-                        } else {
-                          await updateItemInCache(item.localId, {
-                            directus: { 
-                              status: ServiceStatus.FAILED,
-                              error: "Failed to verify EAS UID linking",
-                              linked: false
-                            }
-                          });
-                        }
+    const verifyEvent = await getEvent(eventId);
+    if (!verifyEvent || verifyEvent[0]?.EAS_UID !== easUid) {
+      throw new Error('Failed to verify EAS UID linking');
                       }
                     } catch (error) {
-                      console.error(`Failed to update EAS_UID in Directus for event ${targetEventId}:`, error);
-                      await updateItemInCache(item.localId, {
-                        directus: { 
-                          status: ServiceStatus.FAILED,
-                          error: "Failed to link EAS UID with Directus event",
-                          linked: false
-                        }
-                      });
-                    }
-                  }
-                }
-
-                // Update EAS status to completed
-                await updateItemInCache(item.localId, {
-                  eas: {
-                    status: ServiceStatus.COMPLETED,
-                    error: undefined,
-                    txHash: easResult.uid
-                  },
-                });
-              } catch (error) {
-                const errorMessage = error instanceof Error ? error.message : "Unknown error";
-                
-                // Handle blockchain offline case
-                if (errorMessage === 'BLOCKCHAIN_OFFLINE' || 
-                    errorMessage.toLowerCase().includes('failed to detect network') || 
-                    errorMessage.toLowerCase().includes('network error') ||
-                    errorMessage.toLowerCase().includes('connection refused') ||
-                    errorMessage.toLowerCase().includes('connection timeout') ||
-                    errorMessage.toLowerCase().includes('network disconnected') ||
-                    errorMessage.toLowerCase().includes('nobridge') ||
-                    errorMessage.toLowerCase().includes('cannot start up')) {
-                  console.log(`Blockchain network is offline for item ${item.localId}:`, errorMessage);
-                  // Set blockchain service to OFFLINE without incrementing retry count
-                  await updateItemInCache(item.localId, {
-                    status: QueueItemStatus.PENDING,
-                    eas: {
-                      ...item.eas,
-                      status: ServiceStatus.OFFLINE,
-                      error: "Blockchain network is offline"
-                    },
-                    lastAttempt: undefined // Clear last attempt to allow immediate retry when back online
-                  });
-                  continue;
-                }
-
-                // Handle other errors
-                console.error(`EAS processing failed for item ${item.localId}:`, errorMessage);
-                await updateItemInCache(item.localId, {
-                  eas: { 
-                    status: ServiceStatus.FAILED, 
-                    error: errorMessage
-                  },
-                });
-              }
-            }
-
-            // Update final item status based on independent service states
-            const updatedItem = (await getActiveQueue()).find(i => i.localId === item.localId);
-            if (updatedItem?.directus?.status === ServiceStatus.COMPLETED && 
-                updatedItem?.eas?.status === ServiceStatus.COMPLETED) {
-              console.log(`Item ${item.localId} completed successfully`);
-              await updateItemInCache(item.localId, {
-                status: QueueItemStatus.COMPLETED,
-              });
-            } else if (updatedItem?.directus?.status === ServiceStatus.FAILED ||
-                      updatedItem?.eas?.status === ServiceStatus.FAILED) {
-              console.log(`Item ${item.localId} failed:`, {
-                directus: updatedItem?.directus?.status,
-                eas: updatedItem?.eas?.status,
-                totalRetryCount: updatedItem?.totalRetryCount || 0
-              });
-              await updateItemInCache(item.localId, {
-                status: QueueItemStatus.FAILED,
-              });
-            } else {
-              console.log(`Item ${item.localId} still pending:`, {
-                directus: updatedItem?.directus?.status,
-                eas: updatedItem?.eas?.status,
-                totalRetryCount: updatedItem?.totalRetryCount || 0
-              });
-              await updateItemInCache(item.localId, {
-                status: QueueItemStatus.PENDING,
-              });
-            }
-
-            // After processing each item, check if we should continue
-            if (!isProcessing) {
-              console.log("Processing interrupted, stopping queue processing");
-              break;
-            }
-
-          } catch (error) {
-            // Clear timeout and processing states on error
-            if (currentProcessingTimeout) {
-              clearTimeout(currentProcessingTimeout);
-              currentProcessingTimeout = null;
-            }
-            if (currentEASProvider) {
-              try {
-                // @ts-ignore
-                if (currentEASProvider._websocket) {
-                  // @ts-ignore
-                  currentEASProvider._websocket.terminate();
-                }
-              } catch (e) {
-                console.log("Error closing provider on error:", e);
-              }
-              currentEASProvider = null;
-            }
-            currentProcessingItemId = null;
-            isProcessing = false;
-            throw error;
-          }
-        } catch (error) {
-          console.error(`Error processing item ${item.localId}:`, error);
-          await updateItemInCache(item.localId, {
-            status: QueueItemStatus.FAILED,
-            lastError: error instanceof Error ? error.message : "Unknown error",
-          });
-        }
-      } catch (error) {
-        console.error(`Error processing item ${item.localId}:`, error);
-        await updateItemInCache(item.localId, {
-          status: QueueItemStatus.FAILED,
-          lastError: error instanceof Error ? error.message : "Unknown error",
-        });
-      }
-    }
-
-    // After all items are processed, update the last attempt time for the batch
-    // This will be used to calculate the next retry time
-    if (itemsToProcessFiltered.length > 0) {
-      // Only set the last batch attempt time if we've processed all items
-      const activeItems = await getActiveQueue();
-      const hasPendingItems = activeItems.some(item => 
-        item.status === QueueItemStatus.PENDING || 
-        item.status === QueueItemStatus.PROCESSING
-      );
-      
-      if (!hasPendingItems) {
-        console.log("All items processed, setting last batch attempt time");
-        await AsyncStorage.setItem('QUEUE_LAST_BATCH_ATTEMPT', new Date().toISOString());
-      } else {
-        console.log("Some items still pending, not setting last batch attempt time");
-      }
-    }
-
-  } catch (error) {
-    console.error("Error processing queue items:", error);
-  } finally {
-    isProcessing = false;
-    if (currentEASProvider) {
-      try {
-        // @ts-ignore
-        if (currentEASProvider._websocket) {
-          // @ts-ignore
-          currentEASProvider._websocket.terminate();
-        }
-      } catch (e) {
-        console.log("Error closing provider in finally:", e);
-      }
-      currentEASProvider = null;
-    }
+    throw new Error(`Failed to link EAS UID with Directus event: ${error instanceof Error ? error.message : 'Unknown error'}`);
   }
+}
+
+function shouldComplete(item: QueueItem): boolean {
+  // Check if all services are completed
+  const allServicesCompleted = 
+    item.directus?.status === ServiceStatus.COMPLETED &&
+    item.eas?.status === ServiceStatus.COMPLETED &&
+    item.linking?.status === ServiceStatus.COMPLETED;
+
+  // Or if we've exceeded max retries
+  const exceededMaxRetries = item.totalRetryCount >= MAX_RETRIES;
+
+  console.log('Checking if item should complete:', {
+    itemId: item.localId,
+    allServicesCompleted,
+    exceededMaxRetries,
+    serviceStatuses: {
+      directus: item.directus?.status,
+      eas: item.eas?.status,
+      linking: item.linking?.status
+    },
+    totalRetryCount: item.totalRetryCount,
+    directusEventId: item.directus?.eventId,
+    easTxHash: item.eas?.txHash,
+    linkingStatus: item.linking?.status
+  });
+
+  return allServicesCompleted || exceededMaxRetries;
 }

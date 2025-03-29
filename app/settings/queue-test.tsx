@@ -55,8 +55,6 @@ const TEST_ACTIONS = [
   },
 ];
 
-const MAX_RETRIES_PER_BATCH = 3;
-
 export default function QueueTestScreen() {
   const { updateQueueItems } = useQueue();
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -70,9 +68,12 @@ export default function QueueTestScreen() {
     setResult(null);
 
     try {
-      // Create the specified number of items by duplicating the test actions
+      // Create the specified number of items with random actions
       const submissions: QueueItem[] = Array(count).fill(null).map((_, index) => {
-        const action = TEST_ACTIONS[index % TEST_ACTIONS.length];
+        // Randomly select an action from TEST_ACTIONS
+        const randomActionIndex = Math.floor(Math.random() * TEST_ACTIONS.length);
+        const action = TEST_ACTIONS[randomActionIndex];
+        
         // Generate random data for each submission
         const randomWeight = Math.floor(Math.random() * 100) + 1;
         const randomQuantity = Math.floor(Math.random() * 50) + 1;
@@ -86,10 +87,10 @@ export default function QueueTestScreen() {
           return {
             localId: `test-${Date.now()}-${index}-${Math.random().toString(36).substr(2, 9)}`,
             status: QueueItemStatus.PENDING,
-            totalRetryCount: 0,
+            totalRetryCount: 1,
             date: new Date().toISOString(),
             actionId: action.actionId,
-            actionName: `${index + 1} - ${action.name}`,
+            actionName: `${action.name} #${index + 1}`,
             incomingMaterials: action.incomingMaterials.map(material => ({
               ...material,
               weight: randomWeight,
@@ -106,10 +107,13 @@ export default function QueueTestScreen() {
               weightPerItem: randomWeight,
             })),
             directus: {
-              status: ServiceStatus.PENDING,
+              status: ServiceStatus.INCOMPLETE,
             },
             eas: {
-              status: ServiceStatus.PENDING,
+              status: ServiceStatus.INCOMPLETE,
+            },
+            linking: {
+              status: ServiceStatus.INCOMPLETE,
             }
           };
         } else {
@@ -121,7 +125,7 @@ export default function QueueTestScreen() {
             date: eightDaysAgo.toISOString(),
             lastAttempt: eightDaysAgo.toISOString(),
             actionId: action.actionId,
-            actionName: `Failed - ${action.name}`,
+            actionName: `Failed ${action.name} #${index + 1}`,
             incomingMaterials: action.incomingMaterials.map(material => ({
               ...material,
               weight: randomWeight,
@@ -138,12 +142,17 @@ export default function QueueTestScreen() {
               weightPerItem: randomWeight,
             })),
             directus: {
-              status: ServiceStatus.FAILED,
+              status: ServiceStatus.INCOMPLETE,
               error: "Test error: Service failed after all retries",
               lastAttempt: eightDaysAgo
             },
             eas: {
-              status: ServiceStatus.FAILED,
+              status: ServiceStatus.INCOMPLETE,
+              error: "Test error: Service failed after all retries",
+              lastAttempt: eightDaysAgo
+            },
+            linking: {
+              status: ServiceStatus.INCOMPLETE,
               error: "Test error: Service failed after all retries",
               lastAttempt: eightDaysAgo
             }
@@ -210,21 +219,6 @@ export default function QueueTestScreen() {
           </Pressable>
 
           <Pressable
-            onPress={() => handleSubmitTestForms(3)}
-            disabled={isSubmitting}
-            className={`w-full flex-row items-center justify-center p-3 h-[60px] rounded-full ${
-              isSubmitting ? "bg-primary-dark-blue opacity-50" : "bg-blue-ocean"
-            }`}
-          >
-            {isSubmitting ? (
-              <ActivityIndicator color="white" className="mr-2" />
-            ) : null}
-            <Text className="text-lg font-dm-medium text-slate-50 tracking-tight">
-              {isSubmitting ? "Preparing..." : "Submit 3 Test Forms"}
-            </Text>
-          </Pressable>
-
-          <Pressable
             onPress={() => handleSubmitTestForms(5)}
             disabled={isSubmitting}
             className={`w-full flex-row items-center justify-center p-3 h-[60px] rounded-full ${
@@ -254,15 +248,6 @@ export default function QueueTestScreen() {
             </Text>
           </Pressable>
 
-          <View className="h-px bg-gray-200 my-3" />
-
-          <Text className="text-base font-dm-bold text-gray-900 mb-2">
-            Failed Items Testing
-          </Text>
-          <Text className="text-sm text-grey-6 mb-4">
-            Create a test item that has completely failed (exceeded retry window and all retries).
-          </Text>
-
           <Pressable
             onPress={() => handleSubmitTestForms(1, true)}
             disabled={isSubmitting}
@@ -274,21 +259,11 @@ export default function QueueTestScreen() {
               <ActivityIndicator color="white" className="mr-2" />
             ) : null}
             <Text className="text-lg font-dm-medium text-slate-50 tracking-tight">
-              {isSubmitting ? "Preparing..." : "Create Failed Test Item"}
+              {isSubmitting ? "Preparing..." : "Submit 1 Failed Test Form"}
             </Text>
           </Pressable>
         </View>
-
-        {result && (
-          <Text
-            className={`mt-2 text-sm ${
-              result.success ? "text-emerald-600" : "text-rose-500"
-            }`}
-          >
-            {result.message}
-          </Text>
-        )}
       </View>
     </SafeAreaContent>
   );
-} 
+}

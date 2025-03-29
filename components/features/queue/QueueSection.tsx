@@ -1,10 +1,11 @@
-import { QueueItem, ServiceStatus, MAX_RETRIES, LIST_RETRY_INTERVAL, isCompletelyFailed, QueueItemStatus } from "@/types/queue";
+import { QueueItem, ServiceStatus, MAX_RETRIES, LIST_RETRY_INTERVAL, QueueItemStatus } from "@/types/queue";
 import { View, Text, Pressable, ActivityIndicator } from "react-native";
 import QueueAction from "@/components/features/queue/QueueAction";
 import { useState, useMemo, useEffect } from "react";
 import { useNetwork } from "@/contexts/NetworkContext";
 import { Ionicons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { QueueEvents, queueEventEmitter } from "@/services/events";
 
 interface QueueSectionProps {
   title: string;
@@ -26,6 +27,12 @@ const QueueSection = ({
   const [showClearOptions, setShowClearOptions] = useState(false);
   const [retryCountdown, setRetryCountdown] = useState<string>('');
   const [isProcessingBatch, setIsProcessingBatch] = useState(false);
+  const [sortedItems, setSortedItems] = useState<QueueItem[]>(items);
+
+  // Sort items by most recent first
+  const sortedItemsMemo = useMemo(() => 
+    [...items].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+  , [items]);
 
   // Check if any items are currently processing
   const hasProcessingItems = useMemo(() => 
@@ -37,6 +44,10 @@ const QueueSection = ({
     let intervalId: NodeJS.Timeout;
 
     const updateCountdown = async () => {
+      // Clear countdown and hide if:
+      // - Not in active section
+      // - No items
+      // - Items are processing
       if (title.toLowerCase() !== 'active' || items.length === 0 || hasProcessingItems) {
         setRetryCountdown('');
         return;
@@ -69,7 +80,7 @@ const QueueSection = ({
         setRetryCountdown('');
         if (!hasProcessingItems) {
           setIsProcessingBatch(true);
-          onRetry(sortedItems);
+          onRetry(sortedItemsMemo);
         }
       }
     };
@@ -84,7 +95,21 @@ const QueueSection = ({
         clearInterval(intervalId);
       }
     };
-  }, [title, items, hasProcessingItems, onRetry]);
+  }, [title, items, hasProcessingItems, onRetry, sortedItemsMemo]);
+
+  // Listen for queue updates to refresh items
+  useEffect(() => {
+    const handleQueueUpdate = () => {
+      // Force re-sort of items when queue updates
+      const newSortedItems = [...items].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+      setSortedItems(newSortedItems);
+    };
+
+    queueEventEmitter.addListener(QueueEvents.UPDATED, handleQueueUpdate);
+    return () => {
+      queueEventEmitter.removeListener(QueueEvents.UPDATED, handleQueueUpdate);
+    };
+  }, [items]);
 
   // Deduplicate items based on localId
   const uniqueItems = useMemo(() => {
@@ -107,7 +132,7 @@ const QueueSection = ({
         return "bg-emerald-600";
       case "active":
         return "bg-blue-ocean";
-      case "critical":
+      case "failed":
         return "bg-rose-500";
       default:
         return "bg-grey-6";
@@ -123,9 +148,9 @@ const QueueSection = ({
         return hasProcessingItems
           ? "Currently sending attestation to database and blockchain, please do not close the app."
           : "All the active attestations will be automatically sent to database and blockchain shortly.";
-      case "critical":
+      case "failed":
         if (items.length === 0) {
-          return "Items that have completely failed and exceeded their retry window will appear here.";
+          return "Items that have exceeded their retry limit will appear here.";
         }
         return "These items have failed all retry attempts and require manual intervention.";
       default:
@@ -142,7 +167,7 @@ const QueueSection = ({
         ? "text-sm font-dm-medium flex-1 flex-wrap text-orange-600"
         : "text-sm font-dm-medium flex-1 flex-wrap text-gray-700";
     }
-    if (title.toLowerCase() === "critical") {
+    if (title.toLowerCase() === "failed") {
       return "text-sm font-dm-medium flex-1 flex-wrap text-gray-700";
     }
     return "text-sm font-dm-medium flex-1 flex-wrap text-gray-700";
@@ -156,7 +181,7 @@ const QueueSection = ({
           ? "mb-2 p-3 rounded-2xl bg-orange-50"
           : "mb-2 p-3 rounded-2xl bg-sand-beige";
     }
-    if (title.toLowerCase() === "critical") {
+    if (title.toLowerCase() === "failed") {
       return "mb-2 p-3 rounded-2xl bg-sand-beige";
     }
     return "mb-2 p-3 rounded-2xl bg-sand-beige";
@@ -209,11 +234,6 @@ const QueueSection = ({
     );
   };
 
-  // Sort items by most recent first
-  const sortedItems = useMemo(() => 
-    [...items].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
-  , [items]);
-
   if (!hasItems && !alwaysShow) return null;
 
   return (
@@ -233,7 +253,7 @@ const QueueSection = ({
                 </Text>
               </View>
             )}
-            {title.toLowerCase() === 'active' && items.length > 0 && !hasProcessingItems && (
+            {title.toLowerCase() === 'active' && items.length > 0 && !hasProcessingItems && retryCountdown && (
               <View className="flex-row items-center">
                 <Text className="text-sm text-grey-9 ml-2">
                   Next retry: {retryCountdown}
@@ -241,7 +261,7 @@ const QueueSection = ({
                 <Pressable
                   onPress={() => {
                     setIsProcessingBatch(true);
-                    onRetry(sortedItems);
+                    onRetry(sortedItemsMemo);
                   }}
                   className="ml-2 px-3 py-1.5 rounded-full bg-blue-ocean flex-row items-center"
                 >

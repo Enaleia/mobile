@@ -2,126 +2,97 @@ import { EventFormType } from "@/app/attest/new/[slug]";
 import { MaterialDetail } from "@/types/material";
 
 export const PROCESSING_TIMEOUT = 15 * 1000;  // 15 seconds per attempt
-export const MAX_RETRIES = 15; // Maximum total retries before completely failing
+export const MAX_RETRIES = 5; // Maximum total retries before completely failing
 export const LIST_RETRY_INTERVAL = 1 * 30 * 1000; // 1 minute in milliseconds
+
+export enum ServiceStatus {
+  "COMPLETED" = "COMPLETED",
+  "INCOMPLETE" = "INCOMPLETE"
+}
 
 export enum QueueItemStatus {
   "PENDING" = "PENDING",
   "PROCESSING" = "PROCESSING",
   "COMPLETED" = "COMPLETED",
-  "FAILED" = "FAILED",
-  "OFFLINE" = "OFFLINE"
-}
-
-export enum ServiceStatus {
-  "PENDING" = "PENDING",
-  "PROCESSING" = "PROCESSING",
-  "OFFLINE" = "OFFLINE",
-  "FAILED" = "FAILED",
-  "COMPLETED" = "COMPLETED",
+  "FAILED" = "FAILED"
 }
 
 export interface ServiceState {
   status: ServiceStatus;
   error?: string;
-  lastAttempt?: Date;
   eventId?: number;
-  linked?: boolean; // Whether the EAS UID is linked with the Directus event
+  txHash?: string;
 }
 
 export interface QueueItem {
   localId: string;
   date: string;
   actionId: number;
+  collectorId?: string;
   location?: {
     coords: {
       latitude: number;
       longitude: number;
     };
   };
-  collectorId?: string;
-  incomingMaterials?: MaterialDetail[];
-  outgoingMaterials?: MaterialDetail[];
   manufacturing?: {
     product?: string;
     quantity?: number;
     weightInKg?: number;
   };
+  incomingMaterials?: MaterialDetail[];
+  outgoingMaterials?: MaterialDetail[];
   status: QueueItemStatus;
-  lastError?: string;
+  totalRetryCount: number;
   lastAttempt?: string;
-  totalRetryCount: number; // Total number of retries across all attempts
-  directus?: {
-    status: ServiceStatus;
-    error?: string;
-    eventId?: number;
-    linked?: boolean;
-  };
-  eas?: {
-    status: ServiceStatus;
-    error?: string;
-    txHash?: string;
-  };
+  lastError?: string;
+  deleted?: boolean;
+  directus?: ServiceState;
+  eas?: ServiceState;
+  linking?: ServiceState;
 }
 
 export function shouldAutoRetry(item: QueueItem): boolean {
-  // Don't retry if item is completed or completely failed
-  if (item.status === QueueItemStatus.COMPLETED || isCompletelyFailed(item)) {
+  // Don't retry if item is completed or has exceeded max retries
+  if (item.status === QueueItemStatus.COMPLETED || item.totalRetryCount >= MAX_RETRIES) {
     return false;
   }
 
-  // Don't retry if we've exceeded max total retries
-  if (item.totalRetryCount >= MAX_RETRIES) {
-    return false;
-  }
-
-  // Check service statuses
-  const hasFailedService = item.directus?.status === ServiceStatus.FAILED || 
-                          item.eas?.status === ServiceStatus.FAILED;
-  const hasPendingService = item.directus?.status === ServiceStatus.PENDING || 
-                           item.eas?.status === ServiceStatus.PENDING;
-
-  // Retry if we have a failed service or a pending service
-  return hasFailedService || hasPendingService;
-}
-
-export function isCompletelyFailed(item: QueueItem): boolean {
-  // Check if item has exceeded max total retries
-  if (item.totalRetryCount >= MAX_RETRIES) {
-    return true;
-  }
-
-  // Check if all services are failed
-  const allServicesFailed = 
-    (item.directus?.status === ServiceStatus.FAILED || !item.directus) &&
-    (item.eas?.status === ServiceStatus.FAILED || !item.eas);
-
-  return allServicesFailed;
+  // Retry if any service is incomplete
+  return item.directus?.status === ServiceStatus.INCOMPLETE || 
+         item.eas?.status === ServiceStatus.INCOMPLETE;
 }
 
 export function getOverallStatus(item: QueueItem): QueueItemStatus {
-  // If any service is offline, mark the whole item as offline
-  if (item.directus?.status === ServiceStatus.OFFLINE || 
-      item.eas?.status === ServiceStatus.OFFLINE) {
-    return QueueItemStatus.OFFLINE;
+  // If max retries reached, always return FAILED
+  if (item.totalRetryCount >= MAX_RETRIES) {
+    return QueueItemStatus.FAILED;
+  }
+
+  // If item is explicitly set to PROCESSING, keep it
+  if (item.status === QueueItemStatus.PROCESSING) {
+    return QueueItemStatus.PROCESSING;
   }
 
   // If all services are completed, mark as completed
   if (item.directus?.status === ServiceStatus.COMPLETED && 
-      item.eas?.status === ServiceStatus.COMPLETED) {
+      item.eas?.status === ServiceStatus.COMPLETED &&
+      item.linking?.status === ServiceStatus.COMPLETED) {
     return QueueItemStatus.COMPLETED;
   }
 
   // If any service is processing, mark as processing
   if (item.directus?.status === ServiceStatus.PROCESSING || 
-      item.eas?.status === ServiceStatus.PROCESSING) {
+      item.eas?.status === ServiceStatus.PROCESSING ||
+      item.linking?.status === ServiceStatus.PROCESSING) {
     return QueueItemStatus.PROCESSING;
   }
 
-  // If any service is failed, mark as failed
-  if (item.directus?.status === ServiceStatus.FAILED || 
-      item.eas?.status === ServiceStatus.FAILED) {
-    return QueueItemStatus.FAILED;
+  // If any service is incomplete, mark as pending
+  if (item.directus?.status === ServiceStatus.INCOMPLETE || 
+      item.eas?.status === ServiceStatus.INCOMPLETE ||
+      item.linking?.status === ServiceStatus.INCOMPLETE) {
+    return QueueItemStatus.PENDING;
   }
 
   // Default to pending
@@ -129,6 +100,43 @@ export function getOverallStatus(item: QueueItem): QueueItemStatus {
 }
 
 export const isPendingItem = (item: QueueItem): boolean =>
-  item.status === QueueItemStatus.OFFLINE ||
   item.status === QueueItemStatus.PENDING ||
   (item.status === QueueItemStatus.FAILED && item.totalRetryCount < MAX_RETRIES);
+
+export function shouldProcessItem(item: QueueItem): boolean {
+  // Don't process if already completed or deleted
+  if (item.status === QueueItemStatus.COMPLETED || item.deleted) {
+    return false;
+  }
+
+  // Don't process if max retries reached
+  if (item.totalRetryCount >= MAX_RETRIES) {
+    return false;
+  }
+
+  // Process if item is pending or failed
+  return item.status === QueueItemStatus.PENDING || 
+         item.status === QueueItemStatus.FAILED;
+}
+
+export function determineItemStatus(item: QueueItem): QueueItemStatus {
+  // If max retries reached, mark as failed
+  if (item.totalRetryCount >= MAX_RETRIES) {
+    return QueueItemStatus.FAILED;
+  }
+
+  // If all services completed, mark as completed
+  if (item.directus?.status === ServiceStatus.COMPLETED && 
+      item.eas?.status === ServiceStatus.COMPLETED &&
+      item.linking?.status === ServiceStatus.COMPLETED) {
+    return QueueItemStatus.COMPLETED;
+  }
+
+  // Default to pending
+  return QueueItemStatus.PENDING;
+}
+
+export function shouldProcessService(service?: ServiceState): boolean {
+  // Process if service is undefined or explicitly INCOMPLETE
+  return !service || service.status === ServiceStatus.INCOMPLETE;
+}
