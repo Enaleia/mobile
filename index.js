@@ -7,3 +7,6 @@ import 'react-native-get-random-values'
 
 // Run the app
 import 'expo-router/entry'
+
+// load gesture handler
+import 'react-native-gesture-handler';

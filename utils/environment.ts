@@ -5,8 +5,18 @@ type Environment = "development" | "production" | "preview";
  * @returns The normalized environment name (development, production, or preview)
  */
 export const getEnvironment = (): Environment => {
-  const env = (process.env.NODE_ENV || "development") as string;
-  if (env === "production") return "production";
-  if (env === "preview") return "development"; // Treat preview same as development
-  return "development";
+  // In development mode:
+  // 1. __DEV__ is true when running in Expo Go or development client
+  // 2. process.env.NODE_ENV === "development" when running in development mode
+  // 3. Explicitly set NODE_ENV in .env takes precedence
+  if (
+    __DEV__ || 
+    process.env.NODE_ENV === "development" ||
+    process.env.EXPO_PUBLIC_FORCE_DEVELOPMENT === "true"
+  ) {
+    return "development";
+  }
+  
+  // For production builds
+  return "production";
 }; 

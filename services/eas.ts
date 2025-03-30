@@ -1,48 +1,25 @@
 import { EnaleiaEASSchema } from "@/types/enaleia";
 import { EAS } from "eas-lib";
 import { getEnvironment } from "@/utils/environment";
+import { getNetworkConfig, getEASSchemaUID } from "@/utils/env";
 
 type Environment = "development" | "production" | "preview";
+
+type NetworkConfig = {
+  providerUrl: string;
+  scanUrl: string;
+};
 
 export const EAS_CONSTANTS = {
   SCHEMA:
     "string userID, string portOrCompanyName, string[] portOrCompanyCoordinates, string actionType, string actionDate, string[] actionCoordinates, string collectorName, string[] incomingMaterials, uint16[] incomingWeightsKg, string[] incomingCodes, string[] outgoingMaterials, uint16[] outgoingWeightsKg, string[] outgoingCodes, string productName, uint16 batchQuantity, string weightPerItemKg",
-  SCHEMA_UID: (() => {
-    const normalizedEnv = getEnvironment();
-    const schemaUid = process.env[`EXPO_PUBLIC_EAS_SCHEMA_UID_${normalizedEnv.toUpperCase()}`];
-    if (!schemaUid) {
-      throw new Error(`EAS Schema UID not found for environment: ${normalizedEnv}`);
-    }
-    return schemaUid;
-  })(),
-  getNetworkConfig: () => {
+  SCHEMA_UID: getEASSchemaUID(),
+  getNetworkConfig: (): NetworkConfig => {
     try {
-      const normalizedEnv = getEnvironment();
-      const providerUrl = process.env[`EXPO_PUBLIC_NETWORK_PROVIDER_${normalizedEnv.toUpperCase()}`];
-      const scanUrl = process.env[`EXPO_PUBLIC_NETWORK_SCAN_${normalizedEnv.toUpperCase()}`];
-      
-      if (!providerUrl) {
-        throw new Error(`Network provider URL not found for environment: ${normalizedEnv}`);
-      }
-      if (!scanUrl) {
-        throw new Error(`Network scan URL not found for environment: ${normalizedEnv}`);
-      }
-      
-      return { providerUrl, scanUrl };
+      return getNetworkConfig();
     } catch (error) {
       console.error('[EAS] Error getting network config:', error);
-      // Fallback to development URLs if available
-      const fallbackProviderUrl = process.env.EXPO_PUBLIC_NETWORK_PROVIDER_DEVELOPMENT;
-      const fallbackScanUrl = process.env.EXPO_PUBLIC_NETWORK_SCAN_DEVELOPMENT;
-      
-      if (!fallbackProviderUrl || !fallbackScanUrl) {
-        throw new Error('No network configuration available, even fallback values are missing');
-      }
-      
-      return { 
-        providerUrl: fallbackProviderUrl, 
-        scanUrl: fallbackScanUrl 
-      };
+      throw error;
     }
   },
   MINIMUM_BALANCE: 0.0005,

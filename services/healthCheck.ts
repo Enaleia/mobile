@@ -1,98 +1,70 @@
-import { getEnvironment } from "@/utils/environment";
+import { getAPIUrl, getNetworkConfig } from "@/utils/env";
 
-const HEALTH_CHECK_TIMEOUT = 5000; // 5 seconds timeout
-
-export async function checkDirectusHealth(): Promise<boolean> {
-  const apiUrl = process.env.EXPO_PUBLIC_API_URL;
-  if (!apiUrl) {
-    console.error('Directus API URL not configured');
-    return false;
-  }
-
-  try {
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), HEALTH_CHECK_TIMEOUT);
-
-    const response = await fetch(`${apiUrl}/server/health`, {
-      method: 'GET',
-      signal: controller.signal
-    });
-
-    clearTimeout(timeoutId);
-    return response.status === 200;
-  } catch (error) {
-    console.error('Directus health check failed:', error);
-    return false;
-  }
+export interface HealthCheckResult {
+  directus: {
+    status: "healthy" | "unhealthy";
+    message?: string;
+    timestamp: string;
+  };
+  eas: {
+    status: "healthy" | "unhealthy";
+    message?: string;
+    timestamp: string;
+  };
 }
 
-export async function checkEASHealth(checkSchema: boolean = false): Promise<boolean> {
-  const normalizedEnv = getEnvironment();
-  const scanUrl = process.env[`EXPO_PUBLIC_NETWORK_SCAN_${normalizedEnv.toUpperCase()}`];
-  const providerUrl = process.env[`EXPO_PUBLIC_NETWORK_PROVIDER_${normalizedEnv.toUpperCase()}`];
-  
-  if (!scanUrl || !providerUrl) {
-    console.error('EAS Network URLs not configured');
-    return false;
-  }
-
+export async function checkDirectusHealth(): Promise<HealthCheckResult["directus"]> {
   try {
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), HEALTH_CHECK_TIMEOUT);
-
-    // Check both the scan service and the blockchain provider
-    const [scanResponse, providerResponse] = await Promise.all([
-      fetch(scanUrl, {
-        method: 'GET',
-        signal: controller.signal
-      }).catch(() => ({ status: 500 })),
-      fetch(providerUrl, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          jsonrpc: '2.0',
-          method: 'net_version',
-          params: [],
-          id: 1
-        }),
-        signal: controller.signal
-      }).catch(() => ({ status: 500 }))
-    ]);
-
-    clearTimeout(timeoutId);
-
-    // Both services need to be healthy
-    const isHealthy = scanResponse.status === 200 && providerResponse.status === 200;
-
-    if (!isHealthy) {
-      console.error('EAS health check failed:', {
-        scanStatus: scanResponse.status,
-        providerStatus: providerResponse.status
-      });
+    const apiUrl = getAPIUrl();
+    const response = await fetch(`${apiUrl}/health`);
+    
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
     }
-
-    return isHealthy;
+    
+    return {
+      status: "healthy",
+      timestamp: new Date().toISOString()
+    };
   } catch (error) {
-    console.error('EAS health check failed:', error);
-    return false;
+    return {
+      status: "unhealthy",
+      message: error instanceof Error ? error.message : "Unknown error occurred",
+      timestamp: new Date().toISOString()
+    };
   }
 }
 
-export async function checkServicesHealth(checkEASSchema: boolean = false): Promise<{
-  directus: boolean;
-  eas: boolean;
-  allHealthy: boolean;
-}> {
+export async function checkEASHealth(): Promise<HealthCheckResult["eas"]> {
+  try {
+    const { providerUrl } = getNetworkConfig();
+    const response = await fetch(providerUrl);
+    
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+    
+    return {
+      status: "healthy",
+      timestamp: new Date().toISOString()
+    };
+  } catch (error) {
+    return {
+      status: "unhealthy",
+      message: error instanceof Error ? error.message : "Unknown error occurred",
+      timestamp: new Date().toISOString()
+    };
+  }
+}
+
+export async function checkHealth(): Promise<HealthCheckResult> {
   const [directusHealth, easHealth] = await Promise.all([
     checkDirectusHealth(),
-    checkEASHealth(checkEASSchema)
+    checkEASHealth()
   ]);
 
   return {
     directus: directusHealth,
-    eas: easHealth,
-    allHealthy: directusHealth && easHealth
+    eas: easHealth
   };
 } 
