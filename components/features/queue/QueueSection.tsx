@@ -154,138 +154,15 @@ const QueueSection = ({
   
   const getBadgeColor = (title: string) => {
     switch (title.toLowerCase()) {
-      case "completed":
-        return "bg-emerald-600";
       case "active":
         return "bg-blue-ocean";
       case "failed":
         return "bg-rose-500";
+      case "completed":
+        return "bg-green-500";
       default:
-        return "bg-grey-6";
+        return "bg-grey-3";
     }
-  };
-
-  const getInfoMessage = (title: string) => {
-    switch (title.toLowerCase()) {
-      case "active":
-        // If no items, just show the default message
-        if (items.length === 0) {
-          return null;
-        }
-
-        // First check network connectivity
-        if (!isConnected) {
-          return "Please connect to a **Network** to allow processing of pending items. Processing will resume automatically when connected.";
-        }
-
-        // Only check service states if we have items
-        const serviceStates = {
-          directus: items.some(item => item.directus?.status === 'COMPLETED'),
-          eas: items.some(item => item.eas?.status === 'COMPLETED')
-        };
-
-        // Show message based on actual service states
-        const unavailableServices = [];
-        if (!serviceStates.directus) unavailableServices.push("**Database**");
-        if (!serviceStates.eas) unavailableServices.push("**Blockchain**");
-        
-        if (unavailableServices.length > 0) {
-          return `Unable to reach ${unavailableServices.join(" and ")} services. Retries will be preserved until services are available.`;
-        }
-
-        return "All attestations will be automatically sent to **Database** and **Blockchain**.";
-
-      case "failed":
-        if (items.length === 0) {
-          return "Items that have exceeded their retry limit will appear here.";
-        }
-        return "**Failed items** have exceeded all retries attempts and require rescue. Tap failed item and email to Enaleia to rescue the data";
-      default:
-        return null;
-    }
-  };
-
-  const getInfoMessageStyle = (title: string) => {
-    if (title.toLowerCase() === "active") {
-      if (items.length === 0) {
-        return "text-sm font-dm-medium flex-1 flex-wrap text-gray-700";
-      }
-      if (!isConnected || (lastHealthCheck && !lastHealthCheck.result.allHealthy)) {
-        return "text-sm font-dm-medium flex-1 flex-wrap text-orange-600";
-      }
-      return hasProcessingItems
-        ? "text-sm font-dm-medium flex-1 flex-wrap text-orange-600"
-        : "text-sm font-dm-medium flex-1 flex-wrap text-gray-700";
-    }
-    if (title.toLowerCase() === "failed") {
-      return "text-sm font-dm-medium flex-1 flex-wrap text-gray-700";
-    }
-    return "text-sm font-dm-medium flex-1 flex-wrap text-gray-700";
-  };
-
-  const getInfoBoxStyle = (title: string) => {
-    if (title.toLowerCase() === "active") {
-      if (items.length === 0) {
-        return "mb-2 p-3 rounded-2xl bg-sand-beige";
-      }
-      if (!isConnected || (lastHealthCheck && !lastHealthCheck.result.allHealthy)) {
-        return "mb-2 p-3 rounded-2xl bg-orange-50";
-      }
-      return hasProcessingItems
-        ? "mb-2 p-3 rounded-2xl bg-orange-50"
-        : "mb-2 p-3 rounded-2xl bg-sand-beige";
-    }
-    if (title.toLowerCase() === "failed") {
-      return "mb-2 p-3 rounded-2xl bg-sand-beige";
-    }
-    return "mb-2 p-3 rounded-2xl bg-sand-beige";
-  };
-
-  const handleClearAll = async () => {
-    if (onClearAll) {
-      await onClearAll();
-      setShowClearOptions(false);
-    }
-  };
-
-  const ClearAllButton = () => {
-    if (title.toLowerCase() !== "completed" || !hasItems) return null;
-
-    if (showClearOptions) {
-      return (
-        <View className="flex-row gap-2">
-          <Pressable
-            onPress={() => setShowClearOptions(false)}
-            className="h-10 px-4 rounded-full flex-row items-center justify-center border bg-white border-grey-6"
-          >
-            <Text className="text-enaleia-black font-dm-light text-sm">Cancel</Text>
-            <View className="w-4 h-4 ml-1">
-              <Ionicons name="close" size={16} color="#0D0D0D" />
-            </View>
-          </Pressable>
-          <Pressable
-            onPress={handleClearAll}
-            className="h-10 px-4 rounded-full flex-row items-center justify-center bg-[#FF453A]"
-          >
-            <Text className="text-white font-dm-light text-sm">Clear</Text>
-            <View className="w-4 h-4 ml-1">
-              <Ionicons name="trash-outline" size={16} color="white" />
-            </View>
-          </Pressable>
-        </View>
-      );
-    }
-
-    return (
-      <Pressable
-        onPress={() => setShowClearOptions(true)}
-        className="h-10 w-10 rounded-full flex-row items-center justify-center"
-      >
-        <View className="w-5 h-5">
-          <Ionicons name="trash-outline" size={20} color="#8E8E93" />
-        </View>
-      </Pressable>
-    );
   };
 
   const handleRetryPress = async () => {
@@ -352,54 +229,102 @@ const QueueSection = ({
           {/* Clear button (only shown for completed section) */}
           {title.toLowerCase() === 'completed' && (
             <View className="flex-row gap-2">
-              <ClearAllButton />
+              <Pressable
+                onPress={() => setShowClearOptions(true)}
+                className="h-10 w-10 rounded-full flex-row items-center justify-center"
+              >
+                <View className="w-5 h-5">
+                  <Ionicons name="trash-outline" size={20} color="#8E8E93" />
+                </View>
+              </Pressable>
             </View>
           )}
         </View>
 
-        {getInfoMessage(title) && (
-          <View className={getInfoBoxStyle(title)}>
-            <View className="flex-row">
-              {/* Status Icons Column */}
-              {title.toLowerCase() === 'active' && items.length > 0 && (
-                <View className="flex-col justify-start space-y-2 mr-1">
-                  {/* Network status icon */}
-                  {!isConnected && (
-                    <View className="w-6 h-6 items-center justify-center">
-                      <Ionicons 
-                        name="cloud-offline" 
-                        size={20} 
-                        color="#f97316"
-                      />
-                    </View>
-                  )}
-                  
-                  {/* Database (Server) status icon */}
-                  {items.some(item => item.directus?.status === ServiceStatus.INCOMPLETE) && (
-                    <View className="w-6 h-6 items-center justify-center">
-                      <Ionicons 
-                        name="server-outline" 
-                        size={20} 
-                        color={items.some(item => item.directus?.status === ServiceStatus.COMPLETED) ? "#16a34a" : "#f97316"}
-                      />
-                    </View>
-                  )}
-                  
-                  {/* Blockchain (Cube) status icon */}
-                  {items.some(item => item.eas?.status === ServiceStatus.INCOMPLETE) && (
-                    <View className="w-6 h-6 items-center justify-center">
-                      <Ionicons 
-                        name="cube-outline" 
-                        size={20} 
-                        color={items.some(item => item.eas?.status === ServiceStatus.COMPLETED) ? "#16a34a" : "#f97316"}
-                      />
-                    </View>
-                  )}
+        {/* Info Messages Stack */}
+        <View className="space-y-2">
+          {/* Network Status Message */}
+          {title.toLowerCase() === 'active' && items.length > 0 && !isConnected && (
+            <View className="mb-2 p-3 rounded-2xl bg-blue-50 border border-blue-ocean">
+              <View className="flex-row">
+                <View className="flex-col justify-start mr-1">
+                  <View className="w-6 h-6 items-center justify-center">
+                    <Ionicons 
+                      name="cloud-offline" 
+                      size={20} 
+                      color="#0EA5E9"
+                    />
+                  </View>
                 </View>
-              )}
+                <Text className="text-sm font-dm-medium text-blue-ocean flex-1 flex-wrap">
+                  {`Network: Unreachable. Processing will resume once connected.`.split('**').map((part, index) => 
+                    index % 2 === 1 ? (
+                      <Text key={index} className="font-dm-bold">{part}</Text>
+                    ) : (
+                      part
+                    )
+                  )}
+                </Text>
+              </View>
+            </View>
+          )}
 
-              {/* Help buoy icon for failed section */}
-              {title.toLowerCase() === 'failed' && (
+          {/* Database Status Message */}
+          {title.toLowerCase() === 'active' && items.length > 0 && lastHealthCheck && !lastHealthCheck.result.directus && (
+            <View className="mb-2 p-3 rounded-2xl bg-blue-50 border" style={{borderColor: 'rgba(58, 58, 206, 0.36)'}}>
+              <View className="flex-row">
+                <View className="flex-col justify-start mr-1">
+                  <View className="w-6 h-6 items-center justify-center">
+                    <Ionicons 
+                      name="server" 
+                      size={20} 
+                      color="#0EA5E9"
+                    />
+                  </View>
+                </View>
+                <Text className="text-sm font-dm-medium text-blue-ocean flex-1 flex-wrap">
+                  {`**Database:** Server unreachable`.split('**').map((part, index) => 
+                    index % 2 === 1 ? (
+                      <Text key={index} className="font-dm-bold">{part}</Text>
+                    ) : (
+                      part
+                    )
+                  )}
+                </Text>
+              </View>
+            </View>
+          )}
+
+          {/* Blockchain Status Message */}
+          {title.toLowerCase() === 'active' && items.length > 0 && lastHealthCheck && !lastHealthCheck.result.eas && (
+            <View className="mb-2 p-3 rounded-2xl bg-blue-50 border" style={{borderColor: 'rgba(58, 58, 206, 0.36)'}}>
+              <View className="flex-row">
+                <View className="flex-col justify-start mr-1">
+                  <View className="w-6 h-6 items-center justify-center">
+                    <Ionicons 
+                      name="cube" 
+                      size={20} 
+                      color="#0EA5E9"
+                    />
+                  </View>
+                </View>
+                <Text className="text-sm font-dm-medium text-blue-ocean flex-1 flex-wrap">
+                  {`**Blockchain:** Server unreachable`.split('**').map((part, index) => 
+                    index % 2 === 1 ? (
+                      <Text key={index} className="font-dm-bold">{part}</Text>
+                    ) : (
+                      part
+                    )
+                  )}
+                </Text>
+              </View>
+            </View>
+          )}
+
+          {/* Failed Section Message */}
+          {title.toLowerCase() === 'failed' && items.length > 0 && (
+            <View className="mb-2 p-3 rounded-2xl bg-sand-beige">
+              <View className="flex-row">
                 <View className="flex-col justify-start mr-1">
                   <View className="w-6 h-6 items-center justify-center">
                     <Ionicons 
@@ -409,22 +334,13 @@ const QueueSection = ({
                     />
                   </View>
                 </View>
-              )}
-
-              {/* Message Text */}
-              <Text className={getInfoMessageStyle(title)}>
-                {getInfoMessage(title)?.split('**').map((part, index) => {
-                  // Every odd index is bold
-                  return index % 2 === 1 ? (
-                    <Text key={index} className="font-dm-bold">{part}</Text>
-                  ) : (
-                    part
-                  );
-                })}
-              </Text>
+                <Text className="text-sm font-dm-medium text-gray-700 flex-1 flex-wrap">
+                  Failed items require rescue. Tap to email Enaleia for support.
+                </Text>
+              </View>
             </View>
-          </View>
-        )}
+          )}
+        </View>
 
         <View className="rounded-2xl overflow-hidden border border-gray-200 mt-1">
           {hasItems ? (

@@ -1,6 +1,6 @@
 import { getEnvironment } from "@/utils/environment";
 
-const HEALTH_CHECK_TIMEOUT = 0; // 2 seconds timeout
+const HEALTH_CHECK_TIMEOUT = 5000; // 5 seconds timeout
 
 export async function checkDirectusHealth(): Promise<boolean> {
   const apiUrl = process.env.EXPO_PUBLIC_API_URL;

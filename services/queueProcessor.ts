@@ -679,9 +679,7 @@ export async function processQueueItems(
           // First update to processing state
           await updateItemInCache(item.localId, {
             status: QueueItemStatus.PROCESSING,
-            lastAttempt: new Date().toISOString(),
-            // Only increment retry count if not skipping
-            totalRetryCount: item.skipRetryIncrement ? (item.totalRetryCount || 0) : (item.totalRetryCount || 0) + 1
+            lastAttempt: new Date().toISOString()
           });
 
           // Set processing timeout
@@ -757,6 +755,19 @@ export async function processQueueItems(
             const finalItem = activeQueue.find(i => i.localId === item.localId);
             
             if (finalItem) {
+              // Check if all services are completed
+              const allServicesCompleted = 
+                finalItem.directus?.status === ServiceStatus.COMPLETED &&
+                finalItem.eas?.status === ServiceStatus.COMPLETED &&
+                finalItem.linking?.status === ServiceStatus.COMPLETED;
+
+              // Only increment retry count if services are not completed
+              if (!allServicesCompleted && !item.skipRetryIncrement) {
+                await updateItemInCache(item.localId, {
+                  totalRetryCount: (finalItem.totalRetryCount || 0) + 1
+                });
+              }
+
               queueDebugMonitor.log(`\n┌─ Final state for item ${item.localId} ─┐`);
               queueDebugMonitor.log('├─ Status:', finalItem.status);
               queueDebugMonitor.log('├─ Directus:', finalItem.directus?.status || 'N/A');
