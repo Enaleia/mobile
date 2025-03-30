@@ -55,13 +55,15 @@ export async function getCompletedQueue(): Promise<QueueItem[]> {
       await AsyncStorage.setItem(getCompletedQueueCacheKey(), JSON.stringify([]));
       return [];
     }
-    // Filter out any invalid items
-    return parsedData.filter((item): item is QueueItem => 
-      item && 
-      typeof item === 'object' && 
-      typeof item.localId === 'string' &&
-      typeof item.status === 'string'
-    );
+    // Filter out any invalid items and sort by date in descending order
+    return parsedData
+      .filter((item): item is QueueItem => 
+        item && 
+        typeof item === 'object' && 
+        typeof item.localId === 'string' &&
+        typeof item.status === 'string'
+      )
+      .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
   } catch (error) {
     console.error('Error getting completed queue:', error);
     return [];

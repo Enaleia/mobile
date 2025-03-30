@@ -87,7 +87,7 @@ export default function QueueTestScreen() {
           return {
             localId: `test-${Date.now()}-${index}-${Math.random().toString(36).substr(2, 9)}`,
             status: QueueItemStatus.PENDING,
-            totalRetryCount: 1,
+            totalRetryCount: 0,
             date: new Date().toISOString(),
             actionId: action.actionId,
             actionName: `${action.name} #${index + 1}`,
@@ -262,6 +262,20 @@ export default function QueueTestScreen() {
               {isSubmitting ? "Preparing..." : "Submit 1 Failed Test Form"}
             </Text>
           </Pressable>
+
+          <View className="mt-8 pt-4 border-t border-gray-200">
+            <Text className="text-base font-dm-bold text-gray-900 mb-2">
+              Health Check URLs
+            </Text>
+            <View className="space-y-2">
+              <Text className="text-sm text-grey-6">
+                Directus: {process.env.EXPO_PUBLIC_API_URL}/server/health
+              </Text>
+              <Text className="text-sm text-grey-6">
+                EAS: {process.env.EXPO_PUBLIC_NETWORK_SCAN_DEVELOPMENT}
+              </Text>
+            </View>
+          </View>
         </View>
       </View>
     </SafeAreaContent>

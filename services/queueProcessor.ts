@@ -50,6 +50,7 @@ import NetInfo, { NetInfoState } from "@react-native-community/netinfo";
 import * as Notifications from "expo-notifications";
 import { Company } from "@/types/company";
 import { JsonRpcProvider } from "ethers";
+import { queueDebugMonitor } from "@/utils/queueDebugMonitor";
 
 let currentProcessingTimeout: NodeJS.Timeout | null = null;
 let currentProcessingItemId: string | null = null;
@@ -58,107 +59,90 @@ let currentEASProvider: JsonRpcProvider | null = null;
 let processingPromise: Promise<void> | null = null;
 let isProcessing = false;
 
+const STUCK_PROCESSING_THRESHOLD = 1 * 60 * 1000; // X minutes
+
 export async function updateItemInCache(itemId: string, updates: Partial<QueueItem>) {
   try {
-    console.log(`=== Updating Item ${itemId} in Cache ===`);
-    console.log('Updates:', updates);
+    queueDebugMonitor.log(`\n┌─ Updating Item ${itemId} in Cache ─┐`);
+    queueDebugMonitor.log('├─ Updates:', updates);
 
     const items = await getActiveQueue();
     if (!items || !Array.isArray(items)) {
-      console.warn('Invalid queue data, resetting to empty array');
+      queueDebugMonitor.log('└─ Invalid queue data, resetting to empty array');
       await updateActiveQueue([]);
       return;
     }
 
     const currentItem = items.find(item => item.localId === itemId);
-    console.log('Current item state:', currentItem ? {
+    if (!currentItem) {
+      queueDebugMonitor.log('└─ Item not found in active queue');
+      return;
+    }
+
+    queueDebugMonitor.log('├─ Current item state:', {
       status: currentItem.status,
       retries: currentItem.totalRetryCount,
       directus: currentItem.directus?.status,
       eas: currentItem.eas?.status,
       linking: currentItem.linking?.status
-    } : 'Not found');
-
-    const updatedItems = items.map((item) => {
-      if (!item || typeof item !== 'object' || item.localId !== itemId) {
-        return item;
-      }
-
-      // Create a safe update object with all required fields
-      const safeUpdates: QueueItem = {
-        ...item, // Keep all existing fields
-        ...updates, // Apply updates
-        // Ensure required fields are present
-        localId: itemId,
-        date: updates.date || item.date,
-        // Track total retry count safely
-        totalRetryCount: typeof updates.totalRetryCount === 'number' ? 
-          updates.totalRetryCount : 
-          (item.totalRetryCount || 0),
-            // Safely merge service states
-            directus: updates.directus ? { 
-              ...(item.directus || {}), 
-          ...updates.directus,
-          status: updates.directus.status || ServiceStatus.INCOMPLETE
-            } : item.directus,
-            eas: updates.eas ? { 
-              ...(item.eas || {}), 
-          ...updates.eas,
-          status: updates.eas.status || ServiceStatus.INCOMPLETE
-            } : item.eas,
-        linking: updates.linking ? {
-          ...(item.linking || {}),
-          ...updates.linking,
-          status: updates.linking.status || ServiceStatus.INCOMPLETE
-        } : item.linking
-      };
-
-            // Update overall status based on service states
-      safeUpdates.status = getOverallStatus(safeUpdates);
-
-      console.log('Updated item state:', {
-        status: safeUpdates.status,
-        retries: safeUpdates.totalRetryCount,
-        directus: safeUpdates.directus?.status,
-        eas: safeUpdates.eas?.status,
-        linking: safeUpdates.linking?.status
-      });
-
-      return safeUpdates;
     });
 
-    const itemToUpdate = updatedItems.find(item => item && item.localId === itemId);
-    if (!itemToUpdate) {
-      console.log(`Item ${itemId} not found in active queue`);
-      return;
-    }
+    // Create a safe update object with all required fields
+    const safeUpdates: QueueItem = {
+      ...currentItem, // Keep all existing fields
+      ...updates, // Apply updates
+      // Ensure required fields are present
+      localId: itemId,
+      date: updates.date || currentItem.date,
+      // Track total retry count safely
+      totalRetryCount: typeof updates.totalRetryCount === 'number' ? 
+        updates.totalRetryCount : 
+        (currentItem.totalRetryCount || 0),
+            // Safely merge service states
+            directus: updates.directus ? { 
+        ...(currentItem.directus || {}), 
+        ...updates.directus,
+        status: updates.directus.status || ServiceStatus.INCOMPLETE
+      } : currentItem.directus,
+            eas: updates.eas ? { 
+        ...(currentItem.eas || {}), 
+        ...updates.eas,
+        status: updates.eas.status || ServiceStatus.INCOMPLETE
+      } : currentItem.eas,
+      linking: updates.linking ? {
+        ...(currentItem.linking || {}),
+        ...updates.linking,
+        status: updates.linking.status || ServiceStatus.INCOMPLETE
+      } : currentItem.linking
+    };
+
+            // Update overall status based on service states
+    safeUpdates.status = getOverallStatus(safeUpdates);
+
+    queueDebugMonitor.log('├─ Updated item state:', {
+      status: safeUpdates.status,
+      retries: safeUpdates.totalRetryCount,
+      directus: safeUpdates.directus?.status,
+      eas: safeUpdates.eas?.status,
+      linking: safeUpdates.linking?.status
+    });
 
     // Update the item in the appropriate queue based on its status
-    if (itemToUpdate.status === QueueItemStatus.COMPLETED) {
-      console.log(`Moving item ${itemId} to completed queue. Status:`, {
-        status: itemToUpdate.status,
-        directusStatus: itemToUpdate.directus?.status,
-        easStatus: itemToUpdate.eas?.status,
-        linkingStatus: itemToUpdate.linking?.status,
-        totalRetries: itemToUpdate.totalRetryCount
-      });
-      await addToCompletedQueue(itemToUpdate);
+    if (safeUpdates.status === QueueItemStatus.COMPLETED) {
+      queueDebugMonitor.log('├─ Moving item to completed queue');
+      await addToCompletedQueue(safeUpdates);
       await removeFromActiveQueue(itemId);
+      queueDebugMonitor.log('└─ Item successfully moved to completed queue');
     } else {
-      console.log(`Updating item ${itemId} in active queue. Status:`, {
-        status: itemToUpdate.status,
-        directusStatus: itemToUpdate.directus?.status,
-        easStatus: itemToUpdate.eas?.status,
-        linkingStatus: itemToUpdate.linking?.status,
-        totalRetries: itemToUpdate.totalRetryCount
-      });
-      await updateActiveQueue(updatedItems);
+      queueDebugMonitor.log('└─ Updating item in active queue');
+      await updateActiveQueue(items.map(item => 
+        item.localId === itemId ? safeUpdates : item
+      ));
     }
 
-    console.log('Emitting queue update event');
     queueEventEmitter.emit(QueueEvents.UPDATED);
   } catch (error) {
-    console.error("Error updating item in cache:", error);
+    queueDebugMonitor.error("└─ Error updating item in cache:", error);
     throw error;
   }
 }
@@ -175,7 +159,7 @@ async function notifyUser(title: string, body: string) {
     }
 
     if (finalStatus !== "granted") {
-      console.log("Failed to get push token for push notification!");
+      queueDebugMonitor.log("Failed to get push token for push notification!");
       return;
     }
 
@@ -189,7 +173,7 @@ async function notifyUser(title: string, body: string) {
       trigger: null,
     });
   } catch (error) {
-    console.error("Error sending notification:", error);
+    queueDebugMonitor.error("Error sending notification:", error);
   }
 }
 
@@ -229,7 +213,7 @@ const directusCollectors = async () => {
       }
       return directusCollectors;
     } catch (error) {
-      console.error("Error accessing batch data cache:", error);
+      queueDebugMonitor.error("Error accessing batch data cache:", error);
       throw new Error("Failed to access batch data - please refresh the app");
     }
   } else {
@@ -257,7 +241,7 @@ async function fetchRequiredData(
     const batchData = await getBatchData();
     if (!batchData) {
       if (retryCount < maxRetries) {
-        console.log(
+        queueDebugMonitor.log(
           `No batch data found, retrying in 1s (${
             retryCount + 1
           }/${maxRetries})`
@@ -280,7 +264,7 @@ async function fetchRequiredData(
       !products.length
     ) {
       if (retryCount < maxRetries) {
-        console.log(
+        queueDebugMonitor.log(
           `Invalid or empty data, retrying in 1s (${
             retryCount + 1
           }/${maxRetries})`
@@ -308,7 +292,7 @@ async function fetchRequiredData(
       products: validProducts,
     };
   } catch (error) {
-    console.error("Error in fetchRequiredData:", error);
+    queueDebugMonitor.error("Error in fetchRequiredData:", error);
     throw error;
   }
 }
@@ -389,28 +373,119 @@ async function processEASAttestation(
 }
 
 function isItemStuck(item: QueueItem): boolean {
-  return Boolean(
-    item.status === QueueItemStatus.PROCESSING &&
-    item.lastAttempt &&
-    Date.now() - new Date(item.lastAttempt).getTime() > PROCESSING_TIMEOUT
-  );
+  if (!item.lastAttempt) return false;
+  const timeSinceLastAttempt = Date.now() - new Date(item.lastAttempt).getTime();
+  const isStuck = timeSinceLastAttempt > STUCK_PROCESSING_THRESHOLD;
+  
+  // Format time in a readable way
+  const formatTime = (ms: number) => {
+    const seconds = Math.floor(ms / 1000);
+    if (seconds < 60) return `${seconds}s`;
+    const minutes = Math.floor(seconds / 60);
+    return `${minutes}m ${seconds % 60}s`;
+  };
+
+  queueDebugMonitor.log(`\n┌─ Checking if item ${item.localId} is stuck ─┐`);
+  queueDebugMonitor.log('├─ Time Analysis:');
+  queueDebugMonitor.log('│  ├─ Last Attempt:', item.lastAttempt);
+  queueDebugMonitor.log('│  ├─ Time Since:', formatTime(timeSinceLastAttempt));
+  queueDebugMonitor.log('│  ├─ Threshold:', formatTime(STUCK_PROCESSING_THRESHOLD));
+  queueDebugMonitor.log('│  └─ Is Stuck:', isStuck);
+  queueDebugMonitor.log('└─ Service States:');
+  queueDebugMonitor.log('   ├─ Directus:', item.directus?.status || 'N/A');
+  queueDebugMonitor.log('   ├─ EAS:', item.eas?.status || 'N/A');
+  queueDebugMonitor.log('   └─ Linking:', item.linking?.status || 'N/A');
+  
+  return isStuck;
 }
 
-async function handleStuckItem(item: QueueItem) {
-  if (!isItemStuck(item)) return;
+function isItemStuckInProcessing(item: QueueItem): boolean {
+  const isStuck = item.status === QueueItemStatus.PROCESSING && isItemStuck(item);
+  queueDebugMonitor.log(`\n┌─ Checking if item ${item.localId} is stuck in processing ─┐`);
+  queueDebugMonitor.log('├─ Status:', item.status);
+  queueDebugMonitor.log('├─ Last Attempt:', item.lastAttempt);
+  queueDebugMonitor.log('├─ Time Since:', item.lastAttempt ? 
+    `${(Date.now() - new Date(item.lastAttempt).getTime()) / 1000}s` : 'N/A');
+  queueDebugMonitor.log('├─ Threshold:', `${STUCK_PROCESSING_THRESHOLD / 1000}s`);
+  queueDebugMonitor.log('└─ Is Stuck:', isStuck);
+  return isStuck;
+}
 
-  console.log(`=== Handling stuck item ${item.localId} ===`, {
-    lastAttempt: item.lastAttempt,
-    timeSinceLastAttempt: item.lastAttempt ? `${(Date.now() - new Date(item.lastAttempt).getTime()) / 1000}s` : 'N/A',
-    directusStatus: item.directus?.status,
-    easStatus: item.eas?.status,
-    eventId: item.directus?.eventId
-  });
+async function handleStuckProcessingItem(item: QueueItem) {
+  queueDebugMonitor.log(`\n┌─ Handling stuck processing item ${item.localId} ─┐`);
+  queueDebugMonitor.log('├─ Current Item State:');
+  queueDebugMonitor.log('│  ├─ Status:', item.status);
+  queueDebugMonitor.log('│  ├─ Last Attempt:', item.lastAttempt);
+  queueDebugMonitor.log('│  ├─ Time Since Last Attempt:', item.lastAttempt ? 
+    `${(Date.now() - new Date(item.lastAttempt).getTime()) / 1000}s` : 'N/A');
+  queueDebugMonitor.log('│  ├─ Total Retry Count:', item.totalRetryCount || 0);
+  queueDebugMonitor.log('│  ├─ Last Error:', item.lastError || 'None');
+  queueDebugMonitor.log('│  ├─ Directus Status:', item.directus?.status || 'N/A');
+  queueDebugMonitor.log('│  ├─ EAS Status:', item.eas?.status || 'N/A');
+  queueDebugMonitor.log('│  └─ Linking Status:', item.linking?.status || 'N/A');
+  
+  try {
+    // First try to refresh the status by checking service states
+    const activeQueue = await getActiveQueue();
+    const currentItem = activeQueue.find(i => i.localId === item.localId);
+    
+    if (!currentItem) {
+      queueDebugMonitor.log('└─ Item not found in active queue, proceeding with reset');
+      return resetStuckItem(item);
+    }
 
+    queueDebugMonitor.log('├─ Refreshed Item State:');
+    queueDebugMonitor.log('│  ├─ Status:', currentItem.status);
+    queueDebugMonitor.log('│  ├─ Last Attempt:', currentItem.lastAttempt);
+    queueDebugMonitor.log('│  ├─ Time Since Last Attempt:', currentItem.lastAttempt ? 
+      `${(Date.now() - new Date(currentItem.lastAttempt).getTime()) / 1000}s` : 'N/A');
+    queueDebugMonitor.log('│  ├─ Total Retry Count:', currentItem.totalRetryCount || 0);
+    queueDebugMonitor.log('│  ├─ Last Error:', currentItem.lastError || 'None');
+    queueDebugMonitor.log('│  ├─ Directus Status:', currentItem.directus?.status || 'N/A');
+    queueDebugMonitor.log('│  ├─ EAS Status:', currentItem.eas?.status || 'N/A');
+    queueDebugMonitor.log('│  └─ Linking Status:', currentItem.linking?.status || 'N/A');
+
+    // Check if any services have completed
+    const hasCompletedServices = 
+      currentItem.directus?.status === ServiceStatus.COMPLETED ||
+      currentItem.eas?.status === ServiceStatus.COMPLETED ||
+      currentItem.linking?.status === ServiceStatus.COMPLETED;
+
+    if (hasCompletedServices) {
+      queueDebugMonitor.log('└─ Some services completed, updating status...');
+    await updateItemInCache(item.localId, {
+        status: getOverallStatus(currentItem),
+        lastAttempt: new Date().toISOString()
+      });
+      return;
+    }
+
+    // If no services completed, reset the item
+    queueDebugMonitor.log('└─ No services completed, resetting item...');
+    return resetStuckItem(item);
+  } catch (error) {
+    queueDebugMonitor.error('└─ Error handling stuck processing item:', error);
+    return resetStuckItem(item);
+  }
+}
+
+async function resetStuckItem(item: QueueItem) {
+  queueDebugMonitor.log(`\n┌─ Resetting stuck item ${item.localId} ─┐`);
+  queueDebugMonitor.log('├─ Current State:');
+  queueDebugMonitor.log('│  ├─ Status:', item.status);
+  queueDebugMonitor.log('│  ├─ Last Attempt:', item.lastAttempt);
+  queueDebugMonitor.log('│  ├─ Time Since Last Attempt:', item.lastAttempt ? 
+    `${(Date.now() - new Date(item.lastAttempt).getTime()) / 1000}s` : 'N/A');
+  queueDebugMonitor.log('│  ├─ Total Retry Count:', item.totalRetryCount || 0);
+  queueDebugMonitor.log('│  ├─ Last Error:', item.lastError || 'None');
+  queueDebugMonitor.log('│  ├─ Directus Status:', item.directus?.status || 'N/A');
+  queueDebugMonitor.log('│  ├─ EAS Status:', item.eas?.status || 'N/A');
+  queueDebugMonitor.log('│  └─ Linking Status:', item.linking?.status || 'N/A');
+  
   // Kill any ongoing EAS provider connection
   if (currentEASProvider) {
     try {
-      console.log('Terminating EAS provider connection');
+      queueDebugMonitor.log('├─ Terminating EAS provider connection');
       // @ts-ignore - _websocket exists but is not in type definitions
       if (currentEASProvider._websocket) {
         // @ts-ignore
@@ -418,7 +493,7 @@ async function handleStuckItem(item: QueueItem) {
       }
       currentEASProvider = null;
     } catch (error) {
-      console.log("Error closing provider:", error);
+      queueDebugMonitor.log("└─ Error closing provider:", error);
     }
   }
 
@@ -429,10 +504,24 @@ async function handleStuckItem(item: QueueItem) {
     await updateItemInCache(item.localId, {
     status: QueueItemStatus.PENDING,
       lastError: "Operation timed out",
-    lastAttempt: undefined
+    lastAttempt: undefined,
+    // Reset service states to incomplete
+    directus: item.directus?.status === ServiceStatus.COMPLETED ? 
+      item.directus : 
+      { ...item.directus, status: ServiceStatus.INCOMPLETE, error: "Operation timed out" },
+    eas: item.eas?.status === ServiceStatus.COMPLETED ? 
+      item.eas : 
+      { ...item.eas, status: ServiceStatus.INCOMPLETE, error: "Operation timed out" },
+    linking: item.linking?.status === ServiceStatus.COMPLETED ? 
+      item.linking : 
+      { ...item.linking, status: ServiceStatus.INCOMPLETE, error: "Operation timed out" }
   });
 
-  console.log(`=== Reset stuck item ${item.localId} to PENDING ===`);
+  queueDebugMonitor.log('└─ Reset Complete:');
+  queueDebugMonitor.log('   ├─ Status: PENDING');
+  queueDebugMonitor.log('   ├─ Last Attempt: Cleared');
+  queueDebugMonitor.log('   └─ Error: Operation timed out');
+  
   // Emit queue update event to refresh UI
   queueEventEmitter.emit(QueueEvents.UPDATED);
 }
@@ -475,7 +564,7 @@ export async function processQueueItems(
 
   // If already processing, wait for it to complete
   if (processingPromise) {
-    console.log("Already processing queue items");
+    queueDebugMonitor.log("Already processing queue items");
     return processingPromise;
   }
 
@@ -483,7 +572,76 @@ export async function processQueueItems(
     try {
       isProcessing = true;
 
-      // Filter out completed items and items that have exceeded max retries
+      // First check for and handle any stuck processing items
+      queueDebugMonitor.log("\n┌─ Checking for stuck processing items ─┐");
+      const activeQueue = await getActiveQueue();
+      
+      // Check for any items in PROCESSING state and reset them if not all services are completed
+      const processingItems = activeQueue.filter(item => item.status === QueueItemStatus.PROCESSING);
+      if (processingItems.length > 0) {
+        queueDebugMonitor.log(`Found ${processingItems.length} items in PROCESSING state at launch`);
+        for (const item of processingItems) {
+          const allServicesCompleted = 
+            item.directus?.status === ServiceStatus.COMPLETED &&
+            item.eas?.status === ServiceStatus.COMPLETED &&
+            item.linking?.status === ServiceStatus.COMPLETED;
+
+          if (!allServicesCompleted) {
+            queueDebugMonitor.log(`Resetting item ${item.localId} to PENDING as not all services completed`);
+            await updateItemInCache(item.localId, {
+              status: QueueItemStatus.PENDING,
+              lastError: "Reset at launch - incomplete services",
+              lastAttempt: undefined,
+              directus: item.directus?.status === ServiceStatus.COMPLETED ? 
+                item.directus : 
+                { ...item.directus, status: ServiceStatus.INCOMPLETE },
+              eas: item.eas?.status === ServiceStatus.COMPLETED ? 
+                item.eas : 
+                { ...item.eas, status: ServiceStatus.INCOMPLETE },
+              linking: item.linking?.status === ServiceStatus.COMPLETED ? 
+                item.linking : 
+                { ...item.linking, status: ServiceStatus.INCOMPLETE }
+            });
+          }
+        }
+      }
+
+      // Now check for stuck items (those that have exceeded the timeout threshold)
+      const stuckItems = activeQueue.filter(item => {
+        if (item.status === QueueItemStatus.PROCESSING && item.lastAttempt) {
+          const timeSinceLastAttempt = Date.now() - new Date(item.lastAttempt).getTime();
+          const isStuck = timeSinceLastAttempt > STUCK_PROCESSING_THRESHOLD;
+          
+          queueDebugMonitor.log(`\n┌─ Checking item ${item.localId} for stuck state ─┐`);
+          queueDebugMonitor.log('├─ Status:', item.status);
+          queueDebugMonitor.log('├─ Last Attempt:', item.lastAttempt);
+          queueDebugMonitor.log('├─ Time Since:', `${timeSinceLastAttempt / 1000}s`);
+          queueDebugMonitor.log('├─ Threshold:', `${STUCK_PROCESSING_THRESHOLD / 1000}s`);
+          queueDebugMonitor.log('├─ Directus:', item.directus?.status || 'N/A');
+          queueDebugMonitor.log('├─ EAS:', item.eas?.status || 'N/A');
+          queueDebugMonitor.log('└─ Is Stuck:', isStuck);
+          
+          return isStuck;
+        }
+        return false;
+      });
+      
+      if (stuckItems.length > 0) {
+        queueDebugMonitor.log(`\n├─ Found ${stuckItems.length} stuck processing items:`);
+        stuckItems.forEach(item => {
+          queueDebugMonitor.log(`\n│  ┌─ Item ${item.localId}:`);
+          queueDebugMonitor.log('│  ├─ Status:', item.status);
+          queueDebugMonitor.log('│  ├─ Last Attempt:', item.lastAttempt);
+          queueDebugMonitor.log('│  ├─ Directus:', item.directus?.status || 'N/A');
+          queueDebugMonitor.log('│  ├─ EAS:', item.eas?.status || 'N/A');
+          queueDebugMonitor.log('│  └─ Linking:', item.linking?.status || 'N/A');
+        });
+        await Promise.all(stuckItems.map(handleStuckProcessingItem));
+      } else {
+        queueDebugMonitor.log('└─ No stuck items found');
+      }
+
+      // Now proceed with processing the queue
   const itemsToProcessFiltered = itemsToProcess
     .filter((item: QueueItem) => 
       item.status !== QueueItemStatus.COMPLETED && 
@@ -493,10 +651,11 @@ export async function processQueueItems(
         .sort((a: QueueItem, b: QueueItem) => new Date(b.date).getTime() - new Date(a.date).getTime()); // Sort by most recent first
 
   if (!itemsToProcessFiltered.length) {
+        queueDebugMonitor.log("No items to process");
     return;
   }
 
-      console.log(`=== Starting batch processing of ${itemsToProcessFiltered.length} items ===`);
+      queueDebugMonitor.log(`=== Starting batch processing of ${itemsToProcessFiltered.length} items ===`);
     const requiredData = await fetchRequiredData();
     const collectors = await directusCollectors();
     const networkInfo = await NetInfo.fetch();
@@ -507,25 +666,28 @@ export async function processQueueItems(
         // Start processing timer
         currentProcessingItemId = item.localId;
           
-          console.log(`=== Starting processing of item ${item.localId} ===`);
-          console.log('Current state:', {
+          queueDebugMonitor.log(`=== Starting processing of item ${item.localId} ===`);
+          queueDebugMonitor.log('Current state:', {
             directus: item.directus?.status,
             eas: item.eas?.status,
             linking: item.linking?.status,
             retryCount: item.totalRetryCount || 0,
-            eventId: item.directus?.eventId
+            eventId: item.directus?.eventId,
+            lastAttempt: item.lastAttempt
           });
 
           // First update to processing state
           await updateItemInCache(item.localId, {
             status: QueueItemStatus.PROCESSING,
-            lastAttempt: new Date().toISOString()
+            lastAttempt: new Date().toISOString(),
+            // Only increment retry count if not skipping
+            totalRetryCount: item.skipRetryIncrement ? (item.totalRetryCount || 0) : (item.totalRetryCount || 0) + 1
           });
 
           // Set processing timeout
           const timeoutPromise = new Promise((_, reject) => {
             currentProcessingTimeout = setTimeout(() => {
-              console.log(`=== Processing timeout triggered for item ${item.localId} ===`);
+              queueDebugMonitor.log(`=== Processing timeout triggered for item ${item.localId} ===`);
               reject(new Error('Processing timeout'));
             }, PROCESSING_TIMEOUT);
           });
@@ -536,15 +698,51 @@ export async function processQueueItems(
               processItem(item, requiredData, collectors, networkInfo, wallet),
               timeoutPromise
             ]);
-            console.log(`=== Successfully completed processing item ${item.localId} ===`);
+            queueDebugMonitor.log(`=== Successfully completed processing item ${item.localId} ===`);
           } catch (error: any) {
-            console.log(`=== Error processing item ${item.localId} ===`, {
+            queueDebugMonitor.log(`=== Error processing item ${item.localId} ===`, {
               error: error?.message,
               type: error?.message === 'Processing timeout' ? 'TIMEOUT' : 'PROCESSING_ERROR'
             });
             if (error?.message === 'Processing timeout') {
-              // Kill processes and reset state
-              await handleStuckItem(item);
+              // Check if all services are completed
+              const activeQueue = await getActiveQueue();
+              const currentItem = activeQueue.find(i => i.localId === item.localId);
+              
+              if (currentItem) {
+                const allServicesCompleted = 
+                  currentItem.directus?.status === ServiceStatus.COMPLETED &&
+                  currentItem.eas?.status === ServiceStatus.COMPLETED &&
+                  currentItem.linking?.status === ServiceStatus.COMPLETED;
+
+                if (!allServicesCompleted) {
+                  queueDebugMonitor.log('└─ Not all services completed, resetting to PENDING');
+                  await updateItemInCache(item.localId, {
+                    status: QueueItemStatus.PENDING,
+                    lastError: "Operation timed out",
+                    lastAttempt: undefined,
+                    directus: currentItem.directus?.status === ServiceStatus.COMPLETED ? 
+                      currentItem.directus : 
+                      { ...currentItem.directus, status: ServiceStatus.INCOMPLETE },
+                    eas: currentItem.eas?.status === ServiceStatus.COMPLETED ? 
+                      currentItem.eas : 
+                      { ...currentItem.eas, status: ServiceStatus.INCOMPLETE },
+                    linking: currentItem.linking?.status === ServiceStatus.COMPLETED ? 
+                      currentItem.linking : 
+                      { ...currentItem.linking, status: ServiceStatus.INCOMPLETE }
+                  });
+                } else {
+                  queueDebugMonitor.log('└─ All services completed, keeping current state');
+                }
+              } else {
+                queueDebugMonitor.log('└─ Item not found in active queue');
+                // Reset the item if we can't find it
+                await updateItemInCache(item.localId, {
+                  status: QueueItemStatus.PENDING,
+                  lastError: "Operation timed out",
+                  lastAttempt: undefined
+                });
+              }
             }
             throw error;
           } finally {
@@ -553,21 +751,31 @@ export async function processQueueItems(
               clearTimeout(currentProcessingTimeout);
               currentProcessingTimeout = null;
             }
-            console.log(`=== Final state for item ${item.localId} ===`, {
-              directus: item.directus?.status,
-              eas: item.eas?.status,
-              linking: item.linking?.status,
-              retryCount: item.totalRetryCount || 0,
-              eventId: item.directus?.eventId
-            });
+
+            // Only log final state if item is still in active queue
+            const activeQueue = await getActiveQueue();
+            const finalItem = activeQueue.find(i => i.localId === item.localId);
+            
+            if (finalItem) {
+              queueDebugMonitor.log(`\n┌─ Final state for item ${item.localId} ─┐`);
+              queueDebugMonitor.log('├─ Status:', finalItem.status);
+              queueDebugMonitor.log('├─ Directus:', finalItem.directus?.status || 'N/A');
+              queueDebugMonitor.log('├─ EAS:', finalItem.eas?.status || 'N/A');
+              queueDebugMonitor.log('├─ Linking:', finalItem.linking?.status || 'N/A');
+              queueDebugMonitor.log('└─ Retry Count:', finalItem.totalRetryCount || 0);
+            } else {
+              queueDebugMonitor.log(`\n┌─ Item ${item.localId} moved to completed queue ─┐`);
+              queueDebugMonitor.log('└─ All services completed successfully');
+            }
           }
         } catch (error) {
-          console.error(`Error processing item ${item.localId}:`, error);
-          // Update item with error and increment retry count
+          queueDebugMonitor.error(`Error processing item ${item.localId}:`, error);
+          // Update item with error and respect skipRetryIncrement flag
           await updateItemInCache(item.localId, {
-            status: QueueItemStatus.FAILED,
             lastError: error instanceof Error ? error.message : "Unknown error",
-            totalRetryCount: (item.totalRetryCount || 0) + 1
+            totalRetryCount: item.skipRetryIncrement ? 
+              (item.totalRetryCount || 0) : 
+              (item.totalRetryCount || 0) + 1
           });
           // Emit queue update event to refresh UI
           queueEventEmitter.emit(QueueEvents.UPDATED);
@@ -576,7 +784,7 @@ export async function processQueueItems(
         }
       }
 
-      console.log('=== Batch processing completed ===');
+      queueDebugMonitor.log('=== Batch processing completed ===');
       // Set the last batch attempt time after all items have finished processing
       await AsyncStorage.setItem('QUEUE_LAST_BATCH_ATTEMPT', new Date().toISOString());
     } finally {
@@ -595,8 +803,8 @@ async function processItem(
   networkInfo: NetInfoState,
   wallet?: WalletInfo | null
 ) {
-          console.log(`\n=== Processing item ${item.localId} ===`);
-  console.log('Initial item state:', {
+          queueDebugMonitor.log(`\n=== Processing item ${item.localId} ===`);
+  queueDebugMonitor.log('Initial item state:', {
             status: item.status,
     totalRetryCount: item.totalRetryCount,
             directusStatus: item.directus?.status,
@@ -613,7 +821,7 @@ async function processItem(
       const eventId = await processDirectusService(item, requiredData, collectors);
       
       // Mark Directus as completed
-      await updateItemInCache(item.localId, {
+            await updateItemInCache(item.localId, {
         directus: { 
           status: ServiceStatus.COMPLETED,
           eventId: eventId
@@ -621,7 +829,7 @@ async function processItem(
       });
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : "Unknown error";
-      console.error(`Directus processing failed for item ${item.localId}:`, errorMessage);
+      queueDebugMonitor.error(`Directus processing failed for item ${item.localId}:`, errorMessage);
       
       await updateItemInCache(item.localId, {
         directus: { 
@@ -665,8 +873,8 @@ async function processItem(
         // Process linking if both Directus and EAS are completed
         if (updatedItem.directus?.eventId && updatedItem.eas?.txHash) {
           try {
-            console.log(`\n=== Processing linking service for item ${item.localId} ===`);
-            console.log('Current state:', {
+            queueDebugMonitor.log(`\n=== Processing linking service for item ${item.localId} ===`);
+            queueDebugMonitor.log('Current state:', {
               directusEventId: updatedItem.directus.eventId,
               easUid: easResult.uid,
               directusStatus: updatedItem.directus.status,
@@ -678,8 +886,8 @@ async function processItem(
             });
             
             // Update the event with EAS UID
-            console.log('Updating Directus event with EAS UID...');
-            console.log('Update payload:', {
+            queueDebugMonitor.log('Updating Directus event with EAS UID...');
+            queueDebugMonitor.log('Update payload:', {
               eventId: updatedItem.directus.eventId,
               easUid: easResult.uid
             });
@@ -688,19 +896,19 @@ async function processItem(
               EAS_UID: easResult.uid,
             });
 
-            console.log('Directus update response:', directusUpdatedEvent);
+            queueDebugMonitor.log('Directus update response:', directusUpdatedEvent);
 
             if (!directusUpdatedEvent || !directusUpdatedEvent.event_id) {
               throw new Error('Failed to update EAS_UID in Directus');
             }
 
             // Verify the linking was successful
-            console.log('Verifying EAS UID in Directus...');
+            queueDebugMonitor.log('Verifying EAS UID in Directus...');
             const verifyEvent = await getEvent(updatedItem.directus.eventId);
-            console.log('Verification response:', verifyEvent);
+            queueDebugMonitor.log('Verification response:', verifyEvent);
             
             if (!verifyEvent || verifyEvent[0]?.EAS_UID !== easResult.uid) {
-              console.error('Verification failed:', {
+              queueDebugMonitor.error('Verification failed:', {
                 verifyEvent,
                 expectedUid: easResult.uid,
                 actualUid: verifyEvent?.[0]?.EAS_UID
@@ -708,14 +916,14 @@ async function processItem(
               throw new Error('Failed to verify EAS UID linking');
             }
 
-            console.log('Linking verification successful:', {
+            queueDebugMonitor.log('Linking verification successful:', {
               eventId: updatedItem.directus.eventId,
               easUid: easResult.uid,
               directusEasUid: verifyEvent[0]?.EAS_UID
             });
             
             // Mark linking as completed
-            console.log('Marking linking service as completed...');
+            queueDebugMonitor.log('Marking linking service as completed...');
               await updateItemInCache(item.localId, {
               linking: {
                 status: ServiceStatus.COMPLETED
@@ -730,11 +938,11 @@ async function processItem(
             const finalItem = finalItems.find(i => i.localId === item.localId);
 
             if (!finalItem) {
-              console.error('Could not find item after linking update');
+              queueDebugMonitor.error('Could not find item after linking update');
               return;
             }
 
-            console.log('Item state after linking completion:', {
+            queueDebugMonitor.log('Item state after linking completion:', {
               status: finalItem.status,
               directusStatus: finalItem.directus?.status,
               easStatus: finalItem.eas?.status,
@@ -748,7 +956,7 @@ async function processItem(
                 finalItem.eas?.status === ServiceStatus.COMPLETED && 
                 finalItem.linking?.status === ServiceStatus.COMPLETED) {
               
-              console.log('All services completed, updating item status...');
+              queueDebugMonitor.log('All services completed, updating item status...');
             await updateItemInCache(item.localId, {
                 status: QueueItemStatus.COMPLETED
               });
@@ -760,19 +968,22 @@ async function processItem(
               const updatedItems = await getActiveQueue();
               const updatedItem = updatedItems.find(i => i.localId === item.localId);
 
-              console.log('Final state before queue move:', {
-                status: updatedItem?.status,
-                directusStatus: updatedItem?.directus?.status,
-                easStatus: updatedItem?.eas?.status,
-                linkingStatus: updatedItem?.linking?.status
-              });
-
               if (updatedItem?.status === QueueItemStatus.COMPLETED) {
-                console.log('Moving completed item to completed queue');
+                queueDebugMonitor.log('Moving completed item to completed queue:', {
+                  itemId: item.localId,
+                  status: updatedItem.status,
+                  directusStatus: updatedItem.directus?.status,
+                  easStatus: updatedItem.eas?.status,
+                  linkingStatus: updatedItem.linking?.status,
+                  directusEventId: updatedItem.directus?.eventId,
+                  easTxHash: updatedItem.eas?.txHash
+                });
                 await addToCompletedQueue(updatedItem);
                 await removeFromActiveQueue(item.localId);
+                queueDebugMonitor.log('Item successfully moved to completed queue');
               } else {
-                console.log('Item not ready for completed queue:', {
+                queueDebugMonitor.log('Item not ready for completed queue:', {
+                  itemId: item.localId,
                   status: updatedItem?.status,
                   directusStatus: updatedItem?.directus?.status,
                   easStatus: updatedItem?.eas?.status,
@@ -780,15 +991,16 @@ async function processItem(
                 });
               }
             } else {
-              console.log('Not all services completed:', {
+              queueDebugMonitor.log('Not all services completed:', {
+                itemId: item.localId,
                 directusStatus: finalItem.directus?.status,
                 easStatus: finalItem.eas?.status,
                 linkingStatus: finalItem.linking?.status
               });
             }
           } catch (linkError) {
-            console.error(`Failed to link EAS UID to Directus:`, linkError);
-            console.error('Error details:', {
+            queueDebugMonitor.error(`Failed to link EAS UID to Directus:`, linkError);
+            queueDebugMonitor.error('Error details:', {
               error: linkError instanceof Error ? linkError.message : 'Unknown error',
               stack: linkError instanceof Error ? linkError.stack : undefined,
               itemId: item.localId,
@@ -804,7 +1016,7 @@ async function processItem(
             });
           }
         } else {
-          console.log('Cannot process linking - missing required data:', {
+          queueDebugMonitor.log('Cannot process linking - missing required data:', {
             hasDirectusEventId: !!updatedItem.directus?.eventId,
             hasEasTxHash: !!updatedItem.eas?.txHash,
             directusEventId: updatedItem.directus?.eventId,
@@ -868,7 +1080,7 @@ async function processDirectusService(
                 const productId = item.manufacturing?.product ? parseInt(item.manufacturing.product, 10) : undefined;
                 const eventData: Omit<MaterialTrackingEvent, 'event_id'> = {
                   status: "draft",
-    action: parseInt(item.actionId, 10),
+                  action: item.actionId,
                   event_timestamp: new Date(item.date).toISOString(),
                   event_location: locationString,
                   collector_name: collectorName ? parseInt(collectorName, 10) : undefined,
@@ -953,7 +1165,7 @@ function shouldComplete(item: QueueItem): boolean {
   // Or if we've exceeded max retries
   const exceededMaxRetries = item.totalRetryCount >= MAX_RETRIES;
 
-  console.log('Checking if item should complete:', {
+  queueDebugMonitor.log('Checking if item should complete:', {
     itemId: item.localId,
     allServicesCompleted,
     exceededMaxRetries,

@@ -33,7 +33,9 @@ const QueueScreen = () => {
   });
 
   // Failed items are those that have exceeded max retries
-  const failedItems = items.filter(item => item.totalRetryCount >= MAX_RETRIES);
+  const failedItems = items
+    .filter(item => item.totalRetryCount >= MAX_RETRIES)
+    .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
   
   // Count items needing attention (all active items)
   const attentionCount = activeItems.length + failedItems.length;

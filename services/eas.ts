@@ -1,14 +1,8 @@
 import { EnaleiaEASSchema } from "@/types/enaleia";
 import { EAS } from "eas-lib";
+import { getEnvironment } from "@/utils/environment";
 
 type Environment = "development" | "production" | "preview";
-
-const getEnvironment = (): Environment => {
-  const env = (process.env.NODE_ENV || "development") as string;
-  if (env === "production") return "production";
-  if (env === "preview") return "development"; // Treat preview same as development
-  return "development";
-};
 
 export const EAS_CONSTANTS = {
   SCHEMA:

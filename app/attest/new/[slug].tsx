@@ -254,7 +254,7 @@ const NewActionScreen = () => {
           actionName: currentAction.name,
           localId: uuid.v4() as string,
           status: QueueItemStatus.PENDING,
-          totalRetryCount: 1,
+          totalRetryCount: 0,
           directus: {
             status: ServiceStatus.INCOMPLETE
           },

@@ -6,6 +6,7 @@ import { useNetwork } from "@/contexts/NetworkContext";
 import { Ionicons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { QueueEvents, queueEventEmitter } from "@/services/events";
+import { checkServicesHealth } from "@/services/healthCheck";
 
 interface QueueSectionProps {
   title: string;
@@ -24,10 +25,15 @@ const QueueSection = ({
   showRetry = true,
   alwaysShow = false,
 }: QueueSectionProps) => {
+  const { isConnected } = useNetwork();
   const [showClearOptions, setShowClearOptions] = useState(false);
   const [retryCountdown, setRetryCountdown] = useState<string>('');
   const [isProcessingBatch, setIsProcessingBatch] = useState(false);
   const [sortedItems, setSortedItems] = useState<QueueItem[]>(items);
+  const [lastHealthCheck, setLastHealthCheck] = useState<{
+    time: number;
+    result: { directus: boolean; eas: boolean; allHealthy: boolean; };
+  } | null>(null);
 
   // Sort items by most recent first
   const sortedItemsMemo = useMemo(() => 
@@ -39,55 +45,75 @@ const QueueSection = ({
     items.some(item => item.status === QueueItemStatus.PROCESSING),
   [items]);
 
-  // Update retry countdown
+  // Update retry countdown - new implementation
   useEffect(() => {
     let intervalId: NodeJS.Timeout;
 
     const updateCountdown = async () => {
-      // Clear countdown and hide if:
-      // - Not in active section
-      // - No items
-      // - Items are processing
-      if (title.toLowerCase() !== 'active' || items.length === 0 || hasProcessingItems) {
+      // Only check for active section and items existence
+      if (title.toLowerCase() !== 'active' || items.length === 0) {
         setRetryCountdown('');
         return;
       }
 
-      // Get the last batch attempt time
-      const lastBatchAttempt = await AsyncStorage.getItem('QUEUE_LAST_BATCH_ATTEMPT');
+      // Get current countdown or start new one
+      const currentTime = Date.now();
+      const nextRetryTime = parseInt(await AsyncStorage.getItem('NEXT_RETRY_TIME') || '0');
       
-      if (!lastBatchAttempt) {
-        setRetryCountdown('');
-        return;
-      }
-
-      const elapsed = Date.now() - new Date(lastBatchAttempt).getTime();
-      const remaining = LIST_RETRY_INTERVAL - elapsed;
-      
-      if (remaining > 0) {
-        // For times less than a minute, just show seconds
-        if (remaining < 60 * 1000) {
-          const seconds = Math.ceil(remaining / 1000);
-          setRetryCountdown(`${seconds}s`);
+      if (nextRetryTime === 0 || currentTime >= nextRetryTime) {
+        // Time to retry and reset countdown
+        await AsyncStorage.setItem('NEXT_RETRY_TIME', (currentTime + LIST_RETRY_INTERVAL).toString());
+        setIsProcessingBatch(true);
+        
+        // Check services health before retrying
+        const healthResult = await checkServicesHealth();
+        setLastHealthCheck({ time: Date.now(), result: healthResult });
+        
+        if (healthResult.allHealthy) {
+          onRetry(sortedItemsMemo);
         } else {
-          // For times over a minute, show minutes and seconds
+          // If services are unhealthy, don't increment retry counter
+          const modifiedItems = sortedItemsMemo.map(item => ({
+            ...item,
+            skipRetryIncrement: true
+          }));
+          onRetry(modifiedItems);
+        }
+      } else {
+        const remaining = Math.max(0, nextRetryTime - currentTime);
+        
+        // Perform health check when countdown reaches 15 seconds
+        if (Math.floor(remaining / 1000) === 15 && 
+            (!lastHealthCheck || (currentTime - lastHealthCheck.time) > 10000)) {
+          const healthResult = await checkServicesHealth();
+          setLastHealthCheck({ time: currentTime, result: healthResult });
+          
+          // If services are unhealthy, update the UI to show status and prevent retry increment
+          if (!healthResult.allHealthy) {
+            console.log('Services health check failed:', healthResult);
+            // Modify items to skip retry increment while services are unhealthy
+            const modifiedItems = sortedItemsMemo.map(item => ({
+              ...item,
+              skipRetryIncrement: true
+            }));
+            onRetry(modifiedItems);
+          }
+        }
+
+        // Format and display countdown
+        if (remaining < 60 * 1000) {
+          setRetryCountdown(`${Math.ceil(remaining / 1000)}s`);
+        } else {
           const minutes = Math.floor(remaining / (60 * 1000));
           const seconds = Math.ceil((remaining % (60 * 1000)) / 1000);
           setRetryCountdown(`${minutes}m ${seconds}s`);
         }
-      } else {
-        // If countdown is done, clear it and trigger retry
-        setRetryCountdown('');
-        if (!hasProcessingItems) {
-          setIsProcessingBatch(true);
-          onRetry(sortedItemsMemo);
-        }
       }
     };
 
-    // Update immediately
+    // Initialize timer immediately
     updateCountdown();
-    // Then update every second
+    // Update every second
     intervalId = setInterval(updateCountdown, 1000);
 
     return () => {
@@ -95,7 +121,7 @@ const QueueSection = ({
         clearInterval(intervalId);
       }
     };
-  }, [title, items, hasProcessingItems, onRetry, sortedItemsMemo]);
+  }, [title, items, onRetry, sortedItemsMemo, lastHealthCheck]);
 
   // Listen for queue updates to refresh items
   useEffect(() => {
@@ -142,17 +168,38 @@ const QueueSection = ({
   const getInfoMessage = (title: string) => {
     switch (title.toLowerCase()) {
       case "active":
+        // If no items, just show the default message
         if (items.length === 0) {
-          return "All the active attestations will be displayed under this section.";
+          return null;
         }
-        return hasProcessingItems
-          ? "Currently sending attestation to database and blockchain, please do not close the app."
-          : "All the active attestations will be automatically sent to database and blockchain shortly.";
+
+        // First check network connectivity
+        if (!isConnected) {
+          return "Please connect to a **Network** to allow processing of pending items. Processing will resume automatically when connected.";
+        }
+
+        // Only check service states if we have items
+        const serviceStates = {
+          directus: items.some(item => item.directus?.status === 'COMPLETED'),
+          eas: items.some(item => item.eas?.status === 'COMPLETED')
+        };
+
+        // Show message based on actual service states
+        const unavailableServices = [];
+        if (!serviceStates.directus) unavailableServices.push("**Database**");
+        if (!serviceStates.eas) unavailableServices.push("**Blockchain**");
+        
+        if (unavailableServices.length > 0) {
+          return `Unable to reach ${unavailableServices.join(" and ")} services. Retries will be preserved until services are available.`;
+        }
+
+        return "All attestations will be automatically sent to **Database** and **Blockchain**.";
+
       case "failed":
         if (items.length === 0) {
           return "Items that have exceeded their retry limit will appear here.";
         }
-        return "These items have failed all retry attempts and require manual intervention.";
+        return "**Failed items** have exceeded all retries attempts and require rescue. Tap failed item and email to Enaleia to rescue the data";
       default:
         return null;
     }
@@ -162,6 +209,9 @@ const QueueSection = ({
     if (title.toLowerCase() === "active") {
       if (items.length === 0) {
         return "text-sm font-dm-medium flex-1 flex-wrap text-gray-700";
+      }
+      if (!isConnected || (lastHealthCheck && !lastHealthCheck.result.allHealthy)) {
+        return "text-sm font-dm-medium flex-1 flex-wrap text-orange-600";
       }
       return hasProcessingItems
         ? "text-sm font-dm-medium flex-1 flex-wrap text-orange-600"
@@ -175,11 +225,15 @@ const QueueSection = ({
 
   const getInfoBoxStyle = (title: string) => {
     if (title.toLowerCase() === "active") {
-      return items.length === 0 
-        ? "mb-2 p-3 rounded-2xl bg-sand-beige"
-        : hasProcessingItems
-          ? "mb-2 p-3 rounded-2xl bg-orange-50"
-          : "mb-2 p-3 rounded-2xl bg-sand-beige";
+      if (items.length === 0) {
+        return "mb-2 p-3 rounded-2xl bg-sand-beige";
+      }
+      if (!isConnected || (lastHealthCheck && !lastHealthCheck.result.allHealthy)) {
+        return "mb-2 p-3 rounded-2xl bg-orange-50";
+      }
+      return hasProcessingItems
+        ? "mb-2 p-3 rounded-2xl bg-orange-50"
+        : "mb-2 p-3 rounded-2xl bg-sand-beige";
     }
     if (title.toLowerCase() === "failed") {
       return "mb-2 p-3 rounded-2xl bg-sand-beige";
@@ -234,13 +288,35 @@ const QueueSection = ({
     );
   };
 
+  const handleRetryPress = async () => {
+    try {
+      // Check services health before retrying
+      const healthResult = await checkServicesHealth();
+      setLastHealthCheck({ time: Date.now(), result: healthResult });
+      
+      if (healthResult.allHealthy) {
+        onRetry(sortedItemsMemo);
+      } else {
+        // If services are unhealthy, don't increment retry counter
+        const modifiedItems = sortedItemsMemo.map(item => ({
+          ...item,
+          skipRetryIncrement: true
+        }));
+        onRetry(modifiedItems);
+      }
+    } catch (error) {
+      console.error('Error during retry:', error);
+    }
+  };
+
   if (!hasItems && !alwaysShow) return null;
 
   return (
     <View className="flex-1">
       <View className="mb-4">
         <View className="flex-row justify-between items-center mb-2">
-          <View className="flex-row items-center flex-1">
+          {/* Left: Title and badge */}
+          <View className="flex-row items-center">
             <Text className="text-lg font-dm-bold">{title}</Text>
             {showBadge && (
               <View
@@ -253,37 +329,98 @@ const QueueSection = ({
                 </Text>
               </View>
             )}
-            {title.toLowerCase() === 'active' && items.length > 0 && !hasProcessingItems && retryCountdown && (
-              <View className="flex-row items-center">
-                <Text className="text-sm text-grey-9 ml-2">
-                  Next retry: {retryCountdown}
-                </Text>
-                <Pressable
-                  onPress={() => {
-                    setIsProcessingBatch(true);
-                    onRetry(sortedItemsMemo);
-                  }}
-                  className="ml-2 px-3 py-1.5 rounded-full bg-blue-ocean flex-row items-center"
-                >
-                  <Ionicons name="refresh" size={16} color="white" style={{ marginRight: 4 }} />
-                  <Text className="text-white text-sm font-dm-medium">
-                    Retry now
-                  </Text>
-                </Pressable>
-              </View>
-            )}
           </View>
 
-          <View className="flex-row gap-2 mt-1">
-            <ClearAllButton />
-          </View>
+          {/* Center and Right: Countdown and Retry button */}
+          {title.toLowerCase() === 'active' && items.length > 0 && retryCountdown && (
+            <View className="flex-row items-center gap-4">
+              <Text className="text-sm text-grey-9">
+                Auto in: {retryCountdown}
+              </Text>
+              <Pressable
+                onPress={handleRetryPress}
+                className="px-3 py-1.5 rounded-full bg-blue-ocean flex-row items-center"
+              >
+                <Ionicons name="refresh" size={16} color="white" style={{ marginRight: 4 }} />
+                <Text className="text-white text-sm font-dm-medium">
+                  Retry now
+                </Text>
+              </Pressable>
+            </View>
+          )}
+
+          {/* Clear button (only shown for completed section) */}
+          {title.toLowerCase() === 'completed' && (
+            <View className="flex-row gap-2">
+              <ClearAllButton />
+            </View>
+          )}
         </View>
 
         {getInfoMessage(title) && (
           <View className={getInfoBoxStyle(title)}>
-            <View className="flex-row items-start">
+            <View className="flex-row">
+              {/* Status Icons Column */}
+              {title.toLowerCase() === 'active' && items.length > 0 && (
+                <View className="flex-col justify-start space-y-2 mr-1">
+                  {/* Network status icon */}
+                  {!isConnected && (
+                    <View className="w-6 h-6 items-center justify-center">
+                      <Ionicons 
+                        name="cloud-offline" 
+                        size={20} 
+                        color="#f97316"
+                      />
+                    </View>
+                  )}
+                  
+                  {/* Database (Server) status icon */}
+                  {items.some(item => item.directus?.status === ServiceStatus.INCOMPLETE) && (
+                    <View className="w-6 h-6 items-center justify-center">
+                      <Ionicons 
+                        name="server-outline" 
+                        size={20} 
+                        color={items.some(item => item.directus?.status === ServiceStatus.COMPLETED) ? "#16a34a" : "#f97316"}
+                      />
+                    </View>
+                  )}
+                  
+                  {/* Blockchain (Cube) status icon */}
+                  {items.some(item => item.eas?.status === ServiceStatus.INCOMPLETE) && (
+                    <View className="w-6 h-6 items-center justify-center">
+                      <Ionicons 
+                        name="cube-outline" 
+                        size={20} 
+                        color={items.some(item => item.eas?.status === ServiceStatus.COMPLETED) ? "#16a34a" : "#f97316"}
+                      />
+                    </View>
+                  )}
+                </View>
+              )}
+
+              {/* Help buoy icon for failed section */}
+              {title.toLowerCase() === 'failed' && (
+                <View className="flex-col justify-start mr-1">
+                  <View className="w-6 h-6 items-center justify-center">
+                    <Ionicons 
+                      name="help-buoy" 
+                      size={20} 
+                      color="#ef4444"
+                    />
+                  </View>
+                </View>
+              )}
+
+              {/* Message Text */}
               <Text className={getInfoMessageStyle(title)}>
-                {getInfoMessage(title)}
+                {getInfoMessage(title)?.split('**').map((part, index) => {
+                  // Every odd index is bold
+                  return index % 2 === 1 ? (
+                    <Text key={index} className="font-dm-bold">{part}</Text>
+                  ) : (
+                    part
+                  );
+                })}
               </Text>
             </View>
           </View>

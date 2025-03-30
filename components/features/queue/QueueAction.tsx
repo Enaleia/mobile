@@ -34,6 +34,7 @@ const QueueAction = ({ item, isLastItem = false, isProcessing = false }: QueueAc
 
   // Progress bar state
   const [progress, setProgress] = useState(0);
+  const [timeRemaining, setTimeRemaining] = useState<string>('');
 
   useEffect(() => {
     let intervalId: NodeJS.Timeout;
@@ -45,6 +46,16 @@ const QueueAction = ({ item, isLastItem = false, isProcessing = false }: QueueAc
         const elapsed = now - startTime;
         const newProgress = Math.min((elapsed / PROCESSING_TIMEOUT) * 100, 100);
         setProgress(newProgress);
+
+        // Calculate time remaining
+        const remaining = PROCESSING_TIMEOUT - elapsed;
+        if (remaining > 0) {
+          const minutes = Math.floor(remaining / 60000);
+          const seconds = Math.floor((remaining % 60000) / 1000);
+          setTimeRemaining(`${minutes}:${seconds.toString().padStart(2, '0')}`);
+        } else {
+          setTimeRemaining('0:00');
+        }
       };
 
       // Update immediately and then every second
@@ -52,8 +63,10 @@ const QueueAction = ({ item, isLastItem = false, isProcessing = false }: QueueAc
       intervalId = setInterval(updateProgress, 1000);
     } else if (item.status === QueueItemStatus.COMPLETED) {
       setProgress(100);
+      setTimeRemaining('');
     } else {
       setProgress(0);
+      setTimeRemaining('');
     }
 
     return () => {
@@ -72,6 +85,29 @@ const QueueAction = ({ item, isLastItem = false, isProcessing = false }: QueueAc
       color: "#666",
       marginBottom: 4,
     },
+    progressContainer: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 8,
+      marginTop: 4,
+    },
+    progressBar: {
+      flex: 1,
+      height: 4,
+      backgroundColor: '#E5E5EA',
+      borderRadius: 2,
+      overflow: 'hidden',
+    },
+    progressFill: {
+      height: '100%',
+      backgroundColor: '#007AFF',
+    },
+    timerText: {
+      fontSize: 12,
+      color: '#666',
+      minWidth: 40,
+      textAlign: 'right',
+    },
   });
 
   if (!action) return null;
@@ -85,40 +121,37 @@ const QueueAction = ({ item, isLastItem = false, isProcessing = false }: QueueAc
       className={`relative ${!isLastItem ? 'border-b border-grey-3' : ''}`}
     >
       <View className="w-full bg-white">
-        <View className="pt-3 pb-2 px-3 flex-col gap-6">
-          {/* Header Section */}
-          <View className="flex-row justify-between items-start">
-            <View className="flex-1 h-10 justify-start items-center">
-              <View className="w-full h-full flex-row items-center gap-1">
-                <View className="w-full h-full flex-col justify-start items-start gap-1">
-                  <Text className="text-xl font-dm-bold text-enaleia-black" numberOfLines={1}>
-                    {action.name}
-                  </Text>
-                  <Text className="text-sm font-dm-medium text-grey-9">
-                    {formattedTime}
-                  </Text>
-                </View>
-              </View>
-            </View>
-            <View className="flex-1 h-[32px] flex-col justify-center items-end gap-1 mt-1">
-              <View className="flex-row items-center gap-1">
-                <QueueStatusIndicator status={item.status} item={item} />
-              </View>
-            </View>
+        <View className="pt-3 pb-2 px-3 flex-col gap-2">
+          {/* Title and Status Container */}
+          <View className="flex-row justify-between items-center">
+            <Text className="text-xl font-dm-bold text-enaleia-black" numberOfLines={1}>
+              {action.name}
+            </Text>
+            <QueueStatusIndicator status={item.status} item={item} />
+          </View>
+
+          {/* Date and Retry Counter Container */}
+          <View className="flex-row justify-between items-center">
+            <Text className="text-sm font-dm-medium text-grey-9">
+              {formattedTime}
+            </Text>
+            <Text className="text-xs font-dm-medium text-grey-6">
+              {item.totalRetryCount || 0}/{MAX_RETRIES} Retry
+            </Text>
           </View>
 
           {/* Service Status Section */}
-          <View className="flex-col gap-1 pb-2">
+          <View className="flex-col gap-1">
             <View className="flex flex-row items-left">
               <ServiceStatusIndicator
                 status={item.directus?.status || ServiceStatus.INCOMPLETE}
                 type="directus"    
-                extraClasses="mr-2"           
+                extraClasses="mr-1"           
               />
               <ServiceStatusIndicator
                 status={item.eas?.status || ServiceStatus.INCOMPLETE}
                 type="eas"
-                extraClasses="mr-2" 
+                extraClasses="mr-1" 
               />
               <ServiceStatusIndicator
                 status={item.linking?.status || ServiceStatus.INCOMPLETE}
@@ -126,12 +159,24 @@ const QueueAction = ({ item, isLastItem = false, isProcessing = false }: QueueAc
               />
             </View>
 
-            {/* Retry Information - Always show */}
-            <View style={styles.retryInfo}>
-              <Text style={styles.retryText}>
-                {item.totalRetryCount || 0}/{MAX_RETRIES} retries
-              </Text>
-            </View>
+            {/* Progress Bar and Timer */}
+            {item.status === QueueItemStatus.PROCESSING && (
+              <View style={styles.progressContainer}>
+                <View style={[styles.progressBar, { borderRadius: 12 }]}>
+                  <View 
+                    style={[
+                      styles.progressFill, 
+                      { 
+                        width: `${progress}%`,
+                        backgroundColor: '#0066FF',
+                        borderRadius: 12
+                      }
+                    ]} 
+                  />
+                </View>
+                <Text style={styles.timerText}>{timeRemaining}</Text>
+              </View>
+            )}
 
             {/* Error Messages */}
             {(item.directus?.error || item.eas?.error) &&

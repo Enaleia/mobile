@@ -30,6 +30,9 @@ import { getBatchData } from "@/utils/batchStorage";
 import { getEvent } from "@/services/directus";
 import NetInfo from "@react-native-community/netinfo";
 import { updateItemInCache } from "@/services/queueProcessor";
+import { QueueDebugMonitor } from "@/services/queueDebugMonitor";
+
+const queueDebugMonitor = QueueDebugMonitor.getInstance();
 
 export interface QueueContextType {
   queueItems: QueueItem[];
@@ -60,6 +63,7 @@ export const QueueProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const [queueItems, setQueueItems] = useState<QueueItem[]>([]);
   const [completedCount, setCompletedCount] = useState(0);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [isInitialized, setIsInitialized] = useState(false);
   const network = useNetwork();
   const isOnline = network.isConnected && network.isInternetReachable;
   const { wallet } = useWallet();
@@ -94,6 +98,71 @@ export const QueueProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     }
   }, []);
 
+  // Initialize queue state
+  const initializeQueue = useCallback(async () => {
+    try {
+      queueDebugMonitor.logQueueMetrics([]);  // Initialize metrics
+      queueDebugMonitor.logNetworkStatus(
+        network.isConnected ?? false,
+        network.isInternetReachable ?? false
+      );
+      
+      const activeQueue = await getActiveQueue();
+      
+      // Check for any items in PROCESSING state at launch
+      const processingItems = activeQueue.filter(item => item.status === QueueItemStatus.PROCESSING);
+      
+      if (processingItems.length > 0) {
+        queueDebugMonitor.logQueueMetrics(processingItems);
+        
+        for (const item of processingItems) {
+          const hasIncompleteServices = 
+            item.directus?.status !== ServiceStatus.COMPLETED ||
+            item.eas?.status !== ServiceStatus.COMPLETED ||
+            item.linking?.status !== ServiceStatus.COMPLETED;
+
+          if (hasIncompleteServices) {
+            queueDebugMonitor.logStuckItem(item);
+            await updateItemInCache(item.localId, {
+              status: QueueItemStatus.PENDING,
+              lastError: "Reset at launch - incomplete services",
+              lastAttempt: undefined,
+              // Reset service states while preserving completed ones
+              directus: item.directus?.status === ServiceStatus.COMPLETED ? 
+                item.directus : 
+                { ...item.directus, status: ServiceStatus.INCOMPLETE, error: undefined },
+              eas: item.eas?.status === ServiceStatus.COMPLETED ? 
+                item.eas : 
+                { ...item.eas, status: ServiceStatus.INCOMPLETE, error: undefined },
+              linking: item.linking?.status === ServiceStatus.COMPLETED ? 
+                item.linking : 
+                { ...item.linking, status: ServiceStatus.INCOMPLETE, error: undefined }
+            });
+            queueDebugMonitor.logItemStateChange(item, { status: QueueItemStatus.PENDING });
+            } else {
+            queueDebugMonitor.logProcessingComplete(item, true);
+          }
+        }
+      }
+
+      // Load the queue after initialization
+      await loadQueueItems();
+      setIsInitialized(true);
+      queueDebugMonitor.logQueueMetrics(await getActiveQueue());
+    } catch (error) {
+      if (error instanceof Error) {
+        queueDebugMonitor.logProcessingComplete({ localId: 'init' } as QueueItem, false, error.message);
+      }
+      // Still mark as initialized to prevent infinite retries
+      setIsInitialized(true);
+    }
+  }, [loadQueueItems, isOnline, network.isInternetReachable]);
+
+  // Run initialization at app launch
+  useEffect(() => {
+    initializeQueue();
+  }, [initializeQueue]);
+
   // Process queue items
   const processQueueItems = useCallback(async (itemsToProcess?: QueueItem[]) => {
     if (!isOnline || isProcessing) return;
@@ -123,7 +192,7 @@ export const QueueProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
           // Reload queue items to get updated state
           await loadQueueItems();
-        } catch (error) {
+      } catch (error) {
           console.error(`Error processing item ${item.localId}:`, error);
           // Continue with next item even if this one fails
           continue;
@@ -146,7 +215,7 @@ export const QueueProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       // Force a queue refresh to update UI
       queueEventEmitter.emit(QueueEvents.UPDATED);
       await loadQueueItems();
-    } catch (error) {
+          } catch (error) {
       console.error("Error updating queue item:", error);
     }
   }, [loadQueueItems]);
@@ -194,9 +263,9 @@ export const QueueProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
     try {
       await updateQueueItem(itemId, {
-        status: QueueItemStatus.PENDING,
-        lastError: undefined,
-        lastAttempt: undefined,
+            status: QueueItemStatus.PENDING,
+            lastError: undefined,
+            lastAttempt: undefined,
         // Only reset incomplete services
         directus: item.directus?.status === ServiceStatus.INCOMPLETE ? {
           ...item.directus,
@@ -211,7 +280,7 @@ export const QueueProvider: React.FC<{ children: React.ReactNode }> = ({ childre
           error: undefined
         } : item.linking
       });
-    } catch (error) {
+        } catch (error) {
       console.error("Error retrying item:", error);
     }
   }, [queueItems, updateQueueItem]);

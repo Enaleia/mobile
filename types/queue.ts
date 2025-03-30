@@ -47,9 +47,21 @@ export interface QueueItem {
   lastAttempt?: string;
   lastError?: string;
   deleted?: boolean;
-  directus?: ServiceState;
-  eas?: ServiceState;
-  linking?: ServiceState;
+  skipRetryIncrement?: boolean;
+  directus?: {
+    status: ServiceStatus;
+    error?: string;
+    linked?: boolean;
+  };
+  eas?: {
+    status: ServiceStatus;
+    error?: string;
+    txHash?: string;
+  };
+  linking?: {
+    status: ServiceStatus;
+    error?: string;
+  };
 }
 
 export function shouldAutoRetry(item: QueueItem): boolean {
@@ -82,11 +94,11 @@ export function getOverallStatus(item: QueueItem): QueueItemStatus {
   }
 
   // If any service is processing, mark as processing
-  if (item.directus?.status === ServiceStatus.PROCESSING || 
-      item.eas?.status === ServiceStatus.PROCESSING ||
-      item.linking?.status === ServiceStatus.PROCESSING) {
-    return QueueItemStatus.PROCESSING;
-  }
+  // if (item.directus?.status === ServiceStatus.PROCESSING || 
+  //     item.eas?.status === ServiceStatus.PROCESSING ||
+  //     item.linking?.status === ServiceStatus.PROCESSING) {
+  //   return QueueItemStatus.PROCESSING;
+  // }
 
   // If any service is incomplete, mark as pending
   if (item.directus?.status === ServiceStatus.INCOMPLETE || 
