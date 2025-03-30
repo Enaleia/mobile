@@ -27,9 +27,8 @@ export async function checkDirectusHealth(): Promise<boolean> {
 }
 
 export async function checkEASHealth(checkSchema: boolean = false): Promise<boolean> {
-  const normalizedEnv = getEnvironment();
-  const scanUrl = process.env[`EXPO_PUBLIC_NETWORK_SCAN_${normalizedEnv.toUpperCase()}`];
-  const providerUrl = process.env[`EXPO_PUBLIC_NETWORK_PROVIDER_${normalizedEnv.toUpperCase()}`];
+  const scanUrl = process.env.EXPO_PUBLIC_NETWORK_SCAN;
+  const providerUrl = process.env.EXPO_PUBLIC_NETWORK_PROVIDER;
   
   if (!scanUrl || !providerUrl) {
     console.error('EAS Network URLs not configured');

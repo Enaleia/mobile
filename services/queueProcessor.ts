@@ -308,7 +308,7 @@ async function processEASAttestation(
   try {
     // Check blockchain connectivity first
     try {
-      const provider = new JsonRpcProvider(process.env.EXPO_PUBLIC_EAS_OPTIMISM_PROVIDER_URL);
+      const provider = new JsonRpcProvider(process.env.EXPO_PUBLIC_NETWORK_PROVIDER);
       await provider.getNetwork();
       
       // If we get here, network is back online

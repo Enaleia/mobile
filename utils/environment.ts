@@ -6,7 +6,5 @@ type Environment = "development" | "production" | "preview";
  */
 export const getEnvironment = (): Environment => {
   const env = (process.env.NODE_ENV || "development") as string;
-  if (env === "production") return "production";
-  if (env === "preview") return "development"; // Treat preview same as development
-  return "development";
+  return env === "production" ? "production" : "development";
 }; 

@@ -3,12 +3,15 @@
     "name": "Enaleia",
     "slug": "enaleia",
     "version": "0.0.9",
-    "newArchEnabled": true,
+    "newArchEnabled": false,
     "owner": "pollen-labs",
     "orientation": "portrait",
     "icon": "./assets/images/adaptive-icon.png",
     "scheme": "myapp",
     "userInterfaceStyle": "light",
+    "runtimeVersion": {
+      "policy": "sdkVersion"
+    },
     "ios": {
       "jsEngine": "jsc",
       "supportsTablet": true,

@@ -272,7 +272,7 @@ export default function QueueTestScreen() {
                 Directus: {process.env.EXPO_PUBLIC_API_URL}/server/health
               </Text>
               <Text className="text-sm text-grey-6">
-                EAS: {process.env.EXPO_PUBLIC_NETWORK_SCAN_DEVELOPMENT}
+                EAS: {process.env.EXPO_PUBLIC_NETWORK_SCAN}
               </Text>
             </View>
           </View>
