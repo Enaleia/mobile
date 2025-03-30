@@ -44,7 +44,7 @@ export const ServiceStatusIndicator = ({
 
   return (
     <View className={`flex-row items-center justify-left gap-1 ${extraClasses}`}>
-      <Ionicons name={getStatusIcon()} size={22} color={getStatusColor()} />
+      <Ionicons name={getStatusIcon()} size={20} color={getStatusColor()} />
       <Text className="text-xs text-grey-6">
         {getLabel()}
       </Text>

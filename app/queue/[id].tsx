@@ -141,9 +141,11 @@ export default function QueueItemDetails() {
 
   const timestamp = item.lastAttempt || item.date;
   const formattedTime = new Intl.DateTimeFormat("en-US", {
-    year: "numeric",
     month: "long",
     day: "numeric",
+    hour: "numeric",
+    minute: "numeric",
+    hour12: true
   }).format(new Date(timestamp))
     .replace(/(\d+)(?=(,))/, (match) => {
       const num = parseInt(match);

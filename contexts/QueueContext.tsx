@@ -192,7 +192,7 @@ export const QueueProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
           // Reload queue items to get updated state
           await loadQueueItems();
-      } catch (error) {
+        } catch (error) {
           console.error(`Error processing item ${item.localId}:`, error);
           // Continue with next item even if this one fails
           continue;
