@@ -11,10 +11,15 @@ import { checkServicesHealth } from "@/services/healthCheck";
 interface QueueSectionProps {
   title: string;
   items: QueueItem[];
-  onRetry: (items: QueueItem[], service?: "directus" | "eas") => Promise<void>;
+  onRetry: (items: QueueItem[]) => Promise<void>;
   onClearAll?: () => Promise<void>;
-  showRetry?: boolean;
   alwaysShow?: boolean;
+}
+
+interface HealthCheckResult {
+  directus: boolean;
+  eas: boolean;
+  allHealthy: boolean;
 }
 
 const QueueSection = ({
@@ -22,120 +27,108 @@ const QueueSection = ({
   items,
   onRetry,
   onClearAll,
-  showRetry = true,
   alwaysShow = false,
 }: QueueSectionProps) => {
   const { isConnected } = useNetwork();
   const [showClearOptions, setShowClearOptions] = useState(false);
-  const [retryCountdown, setRetryCountdown] = useState<string>('');
-  const [isProcessingBatch, setIsProcessingBatch] = useState(false);
-  const [sortedItems, setSortedItems] = useState<QueueItem[]>(items);
-  const [lastHealthCheck, setLastHealthCheck] = useState<{
-    time: number;
-    result: { directus: boolean; eas: boolean; allHealthy: boolean; };
-  } | null>(null);
+  const [retryCountdown, setRetryCountdown] = useState<number | null>(null);
+  const [lastHealthCheck, setLastHealthCheck] = useState<{ time: number; result: HealthCheckResult } | null>(null);
 
   // Sort items by most recent first
   const sortedItemsMemo = useMemo(() => 
-    [...items].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
-  , [items]);
+    [...items].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()),
+    [items]
+  );
 
   // Check if any items are currently processing
   const hasProcessingItems = useMemo(() => 
     items.some(item => item.status === QueueItemStatus.PROCESSING),
-  [items]);
+    [items]
+  );
 
-  // Update retry countdown - new implementation
+  // Separate health check effect
   useEffect(() => {
-    let intervalId: NodeJS.Timeout;
+    let healthCheckInterval: NodeJS.Timeout;
+
+    const performHealthCheck = async () => {
+      try {
+        const healthResult = await checkServicesHealth();
+        setLastHealthCheck({ time: Date.now(), result: healthResult });
+      } catch (error) {
+        console.error('Health check failed:', error);
+      }
+    };
+
+    // Initial health check
+    performHealthCheck();
+
+    // Set up interval for health checks
+    healthCheckInterval = setInterval(performHealthCheck, 30000); // 30 seconds
+
+    return () => {
+      if (healthCheckInterval) {
+        clearInterval(healthCheckInterval);
+      }
+    };
+  }, []); // Empty dependency array since we want this to run independently
+
+  // Countdown timer effect
+  useEffect(() => {
+    let countdownInterval: NodeJS.Timeout;
 
     const updateCountdown = async () => {
-      // Only check for active section and items existence
-      if (title.toLowerCase() !== 'active' || items.length === 0) {
-        setRetryCountdown('');
+      if (title.toLowerCase() !== 'active' || !items.length) {
+        setRetryCountdown(null);
         return;
       }
 
-      // Get current countdown or start new one
-      const currentTime = Date.now();
-      const nextRetryTime = parseInt(await AsyncStorage.getItem('NEXT_RETRY_TIME') || '0');
-      
-      if (nextRetryTime === 0 || currentTime >= nextRetryTime) {
-        // Time to retry and reset countdown
-        await AsyncStorage.setItem('NEXT_RETRY_TIME', (currentTime + LIST_RETRY_INTERVAL).toString());
-        setIsProcessingBatch(true);
-        
-        // Check services health before retrying
-        const healthResult = await checkServicesHealth();
-        setLastHealthCheck({ time: Date.now(), result: healthResult });
-        
-        if (healthResult.allHealthy) {
-          onRetry(sortedItemsMemo);
-        } else {
-          // If services are unhealthy, don't increment retry counter
-          const modifiedItems = sortedItemsMemo.map(item => ({
-            ...item,
-            skipRetryIncrement: true
-          }));
-          onRetry(modifiedItems);
-        }
-      } else {
-        const remaining = Math.max(0, nextRetryTime - currentTime);
-        
-        // Perform health check when countdown reaches 15 seconds
-        if (Math.floor(remaining / 1000) === 15 && 
-            (!lastHealthCheck || (currentTime - lastHealthCheck.time) > 10000)) {
+      try {
+        const lastBatchAttempt = await AsyncStorage.getItem('QUEUE_LAST_BATCH_ATTEMPT');
+        const lastAttemptTime = lastBatchAttempt ? new Date(lastBatchAttempt).getTime() : 0;
+        const now = Date.now();
+        const elapsed = now - lastAttemptTime;
+        const remaining = LIST_RETRY_INTERVAL - elapsed;
+
+        if (remaining <= 0) {
+          // Time to retry
           const healthResult = await checkServicesHealth();
-          setLastHealthCheck({ time: currentTime, result: healthResult });
+          setLastHealthCheck({ time: Date.now(), result: healthResult });
           
-          // If services are unhealthy, update the UI to show status and prevent retry increment
-          if (!healthResult.allHealthy) {
-            console.log('Services health check failed:', healthResult);
-            // Modify items to skip retry increment while services are unhealthy
+          if (healthResult.allHealthy) {
+            onRetry(sortedItemsMemo);
+          } else {
+            // If services are unhealthy, don't increment retry counter
             const modifiedItems = sortedItemsMemo.map(item => ({
               ...item,
               skipRetryIncrement: true
             }));
             onRetry(modifiedItems);
           }
-        }
 
-        // Format and display countdown
-        if (remaining < 60 * 1000) {
-          setRetryCountdown(`${Math.ceil(remaining / 1000)}s`);
+          // Reset the timer
+          await AsyncStorage.setItem('QUEUE_LAST_BATCH_ATTEMPT', new Date().toISOString());
+          setRetryCountdown(LIST_RETRY_INTERVAL / 1000);
         } else {
-          const minutes = Math.floor(remaining / (60 * 1000));
-          const seconds = Math.ceil((remaining % (60 * 1000)) / 1000);
-          setRetryCountdown(`${minutes}m ${seconds}s`);
+          setRetryCountdown(Math.ceil(remaining / 1000));
         }
+      } catch (error) {
+        console.error('Error updating countdown:', error);
+        setRetryCountdown(null);
       }
     };
 
-    // Initialize timer immediately
+    // Initial update
     updateCountdown();
-    // Update every second
-    intervalId = setInterval(updateCountdown, 1000);
+
+    // Set up interval for countdown updates
+    countdownInterval = setInterval(updateCountdown, 1000);
 
     return () => {
-      if (intervalId) {
-        clearInterval(intervalId);
+      if (countdownInterval) {
+        clearInterval(countdownInterval);
       }
     };
-  }, [title, items, onRetry, sortedItemsMemo, lastHealthCheck]);
-
-  // Listen for queue updates to refresh items
-  useEffect(() => {
-    const handleQueueUpdate = () => {
-      // Force re-sort of items when queue updates
-      const newSortedItems = [...items].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-      setSortedItems(newSortedItems);
-    };
-
-    queueEventEmitter.addListener(QueueEvents.UPDATED, handleQueueUpdate);
-    return () => {
-      queueEventEmitter.removeListener(QueueEvents.UPDATED, handleQueueUpdate);
-    };
-  }, [items]);
+  }, [title, items.length, sortedItemsMemo, onRetry]);
 
   // Deduplicate items based on localId
   const uniqueItems = useMemo(() => {
@@ -159,7 +152,7 @@ const QueueSection = ({
       case "failed":
         return "bg-rose-500";
       case "completed":
-        return "bg-green-500";
+        return "bg-emerald-600";
       default:
         return "bg-grey-3";
     }
@@ -167,20 +160,7 @@ const QueueSection = ({
 
   const handleRetryPress = async () => {
     try {
-      // Check services health before retrying
-      const healthResult = await checkServicesHealth();
-      setLastHealthCheck({ time: Date.now(), result: healthResult });
-      
-      if (healthResult.allHealthy) {
-        onRetry(sortedItemsMemo);
-      } else {
-        // If services are unhealthy, don't increment retry counter
-        const modifiedItems = sortedItemsMemo.map(item => ({
-          ...item,
-          skipRetryIncrement: true
-        }));
-        onRetry(modifiedItems);
-      }
+      onRetry(sortedItemsMemo);
     } catch (error) {
       console.error('Error during retry:', error);
     }
@@ -210,10 +190,15 @@ const QueueSection = ({
 
           {/* Center and Right: Countdown and Retry button */}
           {title.toLowerCase() === 'active' && items.length > 0 && retryCountdown && (
-            <View className="flex-row items-center gap-4">
-              <Text className="text-sm text-grey-9">
-                Auto in: {retryCountdown}
-              </Text>
+            <View className="flex-row items-center gap-2">
+              <View className="px-3 py-1.5 rounded-full bg-blue-50 border border-blue-ocean flex-row items-center">
+                <Ionicons name="time" size={16} color="#0EA5E9" style={{ marginRight: 4 }} />
+                <Text className="text-blue-ocean text-sm font-dm-medium">
+                  {retryCountdown >= 60 
+                    ? `${Math.floor(retryCountdown / 60)}m ${retryCountdown % 60}s`
+                    : `${retryCountdown}s`}
+                </Text>
+              </View>
               <Pressable
                 onPress={handleRetryPress}
                 className="px-3 py-1.5 rounded-full bg-blue-ocean flex-row items-center"
@@ -229,118 +214,148 @@ const QueueSection = ({
           {/* Clear button (only shown for completed section) */}
           {title.toLowerCase() === 'completed' && (
             <View className="flex-row gap-2">
-              <Pressable
-                onPress={() => setShowClearOptions(true)}
-                className="h-10 w-10 rounded-full flex-row items-center justify-center"
-              >
-                <View className="w-5 h-5">
-                  <Ionicons name="trash-outline" size={20} color="#8E8E93" />
+              {showClearOptions ? (
+                <View className="flex-row items-center gap-1.5">
+                  <Pressable
+                    onPress={() => setShowClearOptions(false)}
+                    className="px-2 py-1.5 rounded-full bg-white flex-row items-center"
+                  >
+                    <Text className="text-sm font-dm-light text-enaleia-black mr-1">Cancel</Text>
+                    <View className="w-4 h-4">
+                      <Ionicons name="close" size={16} color="#0D0D0D" />
+                    </View>
+                  </Pressable>
+                  <Pressable
+                    onPress={async () => {
+                      if (onClearAll) {
+                        await onClearAll();
+                        setShowClearOptions(false);
+                      }
+                    }}
+                    className="px-2 py-1.5 rounded-full bg-rose-500 flex-row items-center"
+                  >
+                    <Text className="text-sm font-dm-light text-white mr-1">Clear</Text>
+                    <View className="w-4 h-4">
+                      <Ionicons name="trash-outline" size={16} color="white" />
+                    </View>
+                  </Pressable>
                 </View>
-              </Pressable>
+              ) : (
+                <Pressable
+                  onPress={() => setShowClearOptions(true)}
+                  className="h-10 w-10 rounded-full flex-row items-center justify-center"
+                >
+                  <View className="w-5 h-5">
+                    <Ionicons name="trash-outline" size={20} color="#8E8E93" />
+                  </View>
+                </Pressable>
+              )}
             </View>
           )}
         </View>
 
         {/* Info Messages Stack */}
-        <View className="space-y-2">
-          {/* Network Status Message */}
-          {title.toLowerCase() === 'active' && items.length > 0 && !isConnected && (
-            <View className="mb-2 p-3 rounded-2xl bg-blue-50 border border-blue-ocean">
-              <View className="flex-row">
-                <View className="flex-col justify-start mr-1">
-                  <View className="w-6 h-6 items-center justify-center">
-                    <Ionicons 
-                      name="cloud-offline" 
-                      size={20} 
-                      color="#0EA5E9"
-                    />
+        {title.toLowerCase() === 'active' && items.length > 0 && (
+          <View className="space-y-2 mb-2">
+            {/* Network Status Message */}
+            {!isConnected && (
+              <View className="py-2 px-4 rounded-2xl bg-blue-50 border border-blue-ocean">
+                <View className="flex-row">
+                  <View className="flex-col justify-start mr-1">
+                    <View className="w-6 h-6 items-center justify-center">
+                      <Ionicons 
+                        name="cloud-offline" 
+                        size={20} 
+                        color="#0EA5E9"
+                      />
+                    </View>
                   </View>
+                  <Text className="text-sm font-dm-medium text-blue-ocean flex-1 flex-wrap">
+                    {`Network: Unavailable. Processing will resume once connected.`.split('**').map((part, index) => 
+                      index % 2 === 1 ? (
+                        <Text key={index} className="font-dm-bold">{part}</Text>
+                      ) : (
+                        part
+                      )
+                    )}
+                  </Text>
                 </View>
-                <Text className="text-sm font-dm-medium text-blue-ocean flex-1 flex-wrap">
-                  {`Network: Unreachable. Processing will resume once connected.`.split('**').map((part, index) => 
-                    index % 2 === 1 ? (
-                      <Text key={index} className="font-dm-bold">{part}</Text>
-                    ) : (
-                      part
-                    )
-                  )}
-                </Text>
               </View>
-            </View>
-          )}
+            )}
 
-          {/* Database Status Message */}
-          {title.toLowerCase() === 'active' && items.length > 0 && lastHealthCheck && !lastHealthCheck.result.directus && (
-            <View className="mb-2 p-3 rounded-2xl bg-blue-50 border" style={{borderColor: 'rgba(58, 58, 206, 0.36)'}}>
-              <View className="flex-row">
-                <View className="flex-col justify-start mr-1">
-                  <View className="w-6 h-6 items-center justify-center">
-                    <Ionicons 
-                      name="server" 
-                      size={20} 
-                      color="#0EA5E9"
-                    />
+            {/* Database Status Message */}
+            {lastHealthCheck && !lastHealthCheck.result.directus && (
+              <View className="py-2 px-4 rounded-2xl bg-blue-50 border border-blue-ocean">
+                <View className="flex-row">
+                  <View className="flex-col justify-start mr-1">
+                    <View className="w-6 h-6 items-center justify-center">
+                      <Ionicons 
+                        name="server" 
+                        size={20} 
+                        color="#0EA5E9"
+                      />
+                    </View>
                   </View>
+                  <Text className="text-sm font-dm-medium text-blue-ocean flex-1 flex-wrap">
+                    {`Database: Unreachable`.split('**').map((part, index) => 
+                      index % 2 === 1 ? (
+                        <Text key={index} className="font-dm-bold">{part}</Text>
+                      ) : (
+                        part
+                      )
+                    )}
+                  </Text>
                 </View>
-                <Text className="text-sm font-dm-medium text-blue-ocean flex-1 flex-wrap">
-                  {`**Database:** Server unreachable`.split('**').map((part, index) => 
-                    index % 2 === 1 ? (
-                      <Text key={index} className="font-dm-bold">{part}</Text>
-                    ) : (
-                      part
-                    )
-                  )}
-                </Text>
               </View>
-            </View>
-          )}
+            )}
 
-          {/* Blockchain Status Message */}
-          {title.toLowerCase() === 'active' && items.length > 0 && lastHealthCheck && !lastHealthCheck.result.eas && (
-            <View className="mb-2 p-3 rounded-2xl bg-blue-50 border" style={{borderColor: 'rgba(58, 58, 206, 0.36)'}}>
-              <View className="flex-row">
-                <View className="flex-col justify-start mr-1">
-                  <View className="w-6 h-6 items-center justify-center">
-                    <Ionicons 
-                      name="cube" 
-                      size={20} 
-                      color="#0EA5E9"
-                    />
+            {/* Blockchain Status Message */}
+            {lastHealthCheck && !lastHealthCheck.result.eas && (
+              <View className="py-2 px-4 rounded-2xl bg-blue-50 border border-blue-ocean">
+                <View className="flex-row">
+                  <View className="flex-col justify-start mr-1">
+                    <View className="w-6 h-6 items-center justify-center">
+                      <Ionicons 
+                        name="cube" 
+                        size={20} 
+                        color="#0EA5E9"
+                      />
+                    </View>
                   </View>
+                  <Text className="text-sm font-dm-medium text-blue-ocean flex-1 flex-wrap">
+                    {`Blockchain: Unreachable`.split('**').map((part, index) => 
+                      index % 2 === 1 ? (
+                        <Text key={index} className="font-dm-bold">{part}</Text>
+                      ) : (
+                        part
+                      )
+                    )}
+                  </Text>
                 </View>
-                <Text className="text-sm font-dm-medium text-blue-ocean flex-1 flex-wrap">
-                  {`**Blockchain:** Server unreachable`.split('**').map((part, index) => 
-                    index % 2 === 1 ? (
-                      <Text key={index} className="font-dm-bold">{part}</Text>
-                    ) : (
-                      part
-                    )
-                  )}
-                </Text>
               </View>
-            </View>
-          )}
+            )}
+          </View>
+        )}
 
-          {/* Failed Section Message */}
-          {title.toLowerCase() === 'failed' && items.length > 0 && (
-            <View className="mb-2 p-3 rounded-2xl bg-sand-beige">
-              <View className="flex-row">
-                <View className="flex-col justify-start mr-1">
-                  <View className="w-6 h-6 items-center justify-center">
-                    <Ionicons 
-                      name="help-buoy" 
-                      size={20} 
-                      color="#ef4444"
-                    />
-                  </View>
+        {/* Failed Section Message */}
+        {title.toLowerCase() === 'failed' && items.length > 0 && (
+          <View className="mb-2 py-2 px-4 rounded-2xl bg-sand-beige border" style={{borderColor: 'rgba(206, 58, 66, 0.36)'}}>
+            <View className="flex-row">
+              <View className="flex-col justify-start mr-1">
+                <View className="w-6 h-6 items-center justify-center">
+                  <Ionicons 
+                    name="help-buoy" 
+                    size={20} 
+                    color="#ef4444"
+                  />
                 </View>
-                <Text className="text-sm font-dm-medium text-gray-700 flex-1 flex-wrap">
-                  Failed items require rescue. Tap to email Enaleia for support.
-                </Text>
               </View>
+              <Text className="text-sm font-dm-medium text-gray-700 flex-1 flex-wrap">
+                Failed items require your help to be rescued. Tap item and email your data to  Enaleia.
+              </Text>
             </View>
-          )}
-        </View>
+          </View>
+        )}
 
         <View className="rounded-2xl overflow-hidden border border-gray-200 mt-1">
           {hasItems ? (

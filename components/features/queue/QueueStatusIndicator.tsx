@@ -24,7 +24,7 @@ export default function QueueStatusIndicator({ status, item, className = "" }: Q
     switch (status) {
       case QueueItemStatus.PENDING:
         return {
-          icon: "time-outline",
+          icon: "time",
           color: "#f59e0b",
           text: "Pending",
         };
@@ -36,7 +36,7 @@ export default function QueueStatusIndicator({ status, item, className = "" }: Q
         };
       case QueueItemStatus.FAILED:
         return {
-          icon: "alert-circle-outline",
+          icon: "alert-circle",
           color: "#f59e0b",
           text: "Retry",
         };
@@ -48,7 +48,7 @@ export default function QueueStatusIndicator({ status, item, className = "" }: Q
         };
       default:
         return {
-          icon: "help-circle-outline",
+          icon: "help-circle",
           color: "#6b7280",
           text: "Unknown",
         };

@@ -715,9 +715,9 @@ export async function processQueueItems(
 
                 if (!allServicesCompleted) {
                   queueDebugMonitor.log('└─ Not all services completed, resetting to PENDING');
-                  await updateItemInCache(item.localId, {
+          await updateItemInCache(item.localId, {
                     status: QueueItemStatus.PENDING,
-                    lastError: "Operation timed out",
+            lastError: "Operation timed out",
                     lastAttempt: undefined,
                     directus: currentItem.directus?.status === ServiceStatus.COMPLETED ? 
                       currentItem.directus : 
@@ -743,46 +743,45 @@ export async function processQueueItems(
               }
             }
             throw error;
-          } finally {
-            // Clear timeout if it exists
-            if (currentProcessingTimeout) {
-              clearTimeout(currentProcessingTimeout);
-              currentProcessingTimeout = null;
+          }
+          // Clear timeout if it exists
+          if (currentProcessingTimeout) {
+            clearTimeout(currentProcessingTimeout);
+            currentProcessingTimeout = null;
+          }
+
+          // Only log final state if item is still in active queue
+          const activeQueue = await getActiveQueue();
+          const finalItem = activeQueue.find(i => i.localId === item.localId);
+          
+          if (finalItem) {
+            // Check if all services are completed
+            const allServicesCompleted = 
+              finalItem.directus?.status === ServiceStatus.COMPLETED &&
+              finalItem.eas?.status === ServiceStatus.COMPLETED &&
+              finalItem.linking?.status === ServiceStatus.COMPLETED;
+
+            // Only increment retry count if services are not completed
+            if (!allServicesCompleted && !item.skipRetryIncrement) {
+              await updateItemInCache(item.localId, {
+                totalRetryCount: (finalItem.totalRetryCount || 0) + 1
+              });
             }
 
-            // Only log final state if item is still in active queue
-            const activeQueue = await getActiveQueue();
-            const finalItem = activeQueue.find(i => i.localId === item.localId);
-            
-            if (finalItem) {
-              // Check if all services are completed
-              const allServicesCompleted = 
-                finalItem.directus?.status === ServiceStatus.COMPLETED &&
-                finalItem.eas?.status === ServiceStatus.COMPLETED &&
-                finalItem.linking?.status === ServiceStatus.COMPLETED;
-
-              // Only increment retry count if services are not completed
-              if (!allServicesCompleted && !item.skipRetryIncrement) {
-                await updateItemInCache(item.localId, {
-                  totalRetryCount: (finalItem.totalRetryCount || 0) + 1
-                });
-              }
-
-              queueDebugMonitor.log(`\n┌─ Final state for item ${item.localId} ─┐`);
-              queueDebugMonitor.log('├─ Status:', finalItem.status);
-              queueDebugMonitor.log('├─ Directus:', finalItem.directus?.status || 'N/A');
-              queueDebugMonitor.log('├─ EAS:', finalItem.eas?.status || 'N/A');
-              queueDebugMonitor.log('├─ Linking:', finalItem.linking?.status || 'N/A');
-              queueDebugMonitor.log('└─ Retry Count:', finalItem.totalRetryCount || 0);
-            } else {
-              queueDebugMonitor.log(`\n┌─ Item ${item.localId} moved to completed queue ─┐`);
-              queueDebugMonitor.log('└─ All services completed successfully');
-            }
+            queueDebugMonitor.log(`\n┌─ Final state for item ${item.localId} ─┐`);
+            queueDebugMonitor.log('├─ Status:', finalItem.status);
+            queueDebugMonitor.log('├─ Directus:', finalItem.directus?.status || 'N/A');
+            queueDebugMonitor.log('├─ EAS:', finalItem.eas?.status || 'N/A');
+            queueDebugMonitor.log('├─ Linking:', finalItem.linking?.status || 'N/A');
+            queueDebugMonitor.log('└─ Retry Count:', finalItem.totalRetryCount || 0);
+          } else {
+            queueDebugMonitor.log(`\n┌─ Item ${item.localId} moved to completed queue ─┐`);
+            queueDebugMonitor.log('└─ All services completed successfully');
           }
         } catch (error) {
           queueDebugMonitor.error(`Error processing item ${item.localId}:`, error);
           // Update item with error and respect skipRetryIncrement flag
-          await updateItemInCache(item.localId, {
+            await updateItemInCache(item.localId, {
             lastError: error instanceof Error ? error.message : "Unknown error",
             totalRetryCount: item.skipRetryIncrement ? 
               (item.totalRetryCount || 0) : 
@@ -814,7 +813,7 @@ async function processItem(
   networkInfo: NetInfoState,
   wallet?: WalletInfo | null
 ) {
-          queueDebugMonitor.log(`\n=== Processing item ${item.localId} ===`);
+  queueDebugMonitor.log(`\n=== Processing item ${item.localId} ===`);
   queueDebugMonitor.log('Initial item state:', {
             status: item.status,
     totalRetryCount: item.totalRetryCount,
@@ -825,225 +824,59 @@ async function processItem(
     easTxHash: item.eas?.txHash
   });
 
+  // Create promises for both services to run in parallel
+  const servicePromises = [];
+
   // Process Directus if needed
   if (shouldProcessService(item.directus)) {
-    try {
-      // Process Directus
-      const eventId = await processDirectusService(item, requiredData, collectors);
-      
-      // Mark Directus as completed
-            await updateItemInCache(item.localId, {
-        directus: { 
-          status: ServiceStatus.COMPLETED,
-          eventId: eventId
-        }
-      });
-    } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : "Unknown error";
-      queueDebugMonitor.error(`Directus processing failed for item ${item.localId}:`, errorMessage);
-      
-      await updateItemInCache(item.localId, {
-        directus: { 
-          status: ServiceStatus.INCOMPLETE,
-          error: errorMessage
-        }
-      });
-    }
+    const directusPromise = (async () => {
+      try {
+        const eventId = await processDirectusService(item, requiredData, collectors);
+        await updateItemInCache(item.localId, {
+          directus: { 
+            status: ServiceStatus.COMPLETED,
+            eventId: eventId
+          }
+        });
+        return { eventId };
+      } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : "Unknown error";
+        queueDebugMonitor.error(`Directus processing failed for item ${item.localId}:`, errorMessage);
+        
+        await updateItemInCache(item.localId, {
+          directus: { 
+            status: ServiceStatus.INCOMPLETE,
+            error: errorMessage
+          }
+        });
+        throw error;
+      }
+    })();
+    servicePromises.push(directusPromise);
   }
 
   // Process EAS if needed
   if (shouldProcessService(item.eas)) {
-    if (!wallet) {
-      await updateItemInCache(item.localId, {
-        eas: { 
-          status: ServiceStatus.INCOMPLETE,
-          error: "Wallet not initialized"
-        }
-      });
-    } else {
+    const easPromise = (async () => {
+      if (!wallet) {
+        await updateItemInCache(item.localId, {
+          eas: { 
+            status: ServiceStatus.INCOMPLETE,
+            error: "Wallet not initialized"
+          }
+        });
+        throw new Error("Wallet not initialized");
+      }
+
       try {
-        // Process EAS
         const easResult = await processEASAttestation(item, requiredData, wallet);
-        
-        // Mark EAS as completed
         await updateItemInCache(item.localId, {
           eas: { 
             status: ServiceStatus.COMPLETED,
             txHash: easResult.uid
           }
         });
-
-        // Get the latest state after EAS update
-        const updatedItems = await getActiveQueue();
-        const updatedItem = updatedItems.find(i => i.localId === item.localId);
-        
-        if (!updatedItem) {
-          throw new Error('Could not find updated item state');
-        }
-
-        // Process linking if both Directus and EAS are completed
-        if (updatedItem.directus?.eventId && updatedItem.eas?.txHash) {
-          try {
-            queueDebugMonitor.log(`\n=== Processing linking service for item ${item.localId} ===`);
-            queueDebugMonitor.log('Current state:', {
-              directusEventId: updatedItem.directus.eventId,
-              easUid: easResult.uid,
-              directusStatus: updatedItem.directus.status,
-              easStatus: updatedItem.eas.status,
-              linkingStatus: updatedItem.linking?.status,
-              directusEvent: updatedItem.directus,
-              easEvent: updatedItem.eas,
-              linkingEvent: updatedItem.linking
-            });
-            
-            // Update the event with EAS UID
-            queueDebugMonitor.log('Updating Directus event with EAS UID...');
-            queueDebugMonitor.log('Update payload:', {
-              eventId: updatedItem.directus.eventId,
-              easUid: easResult.uid
-            });
-            
-            const directusUpdatedEvent = await updateEvent(updatedItem.directus.eventId, {
-              EAS_UID: easResult.uid,
-            });
-
-            queueDebugMonitor.log('Directus update response:', directusUpdatedEvent);
-
-            if (!directusUpdatedEvent || !directusUpdatedEvent.event_id) {
-              throw new Error('Failed to update EAS_UID in Directus');
-            }
-
-            // Verify the linking was successful
-            queueDebugMonitor.log('Verifying EAS UID in Directus...');
-            const verifyEvent = await getEvent(updatedItem.directus.eventId);
-            queueDebugMonitor.log('Verification response:', verifyEvent);
-            
-            if (!verifyEvent || verifyEvent[0]?.EAS_UID !== easResult.uid) {
-              queueDebugMonitor.error('Verification failed:', {
-                verifyEvent,
-                expectedUid: easResult.uid,
-                actualUid: verifyEvent?.[0]?.EAS_UID
-              });
-              throw new Error('Failed to verify EAS UID linking');
-            }
-
-            queueDebugMonitor.log('Linking verification successful:', {
-              eventId: updatedItem.directus.eventId,
-              easUid: easResult.uid,
-              directusEasUid: verifyEvent[0]?.EAS_UID
-            });
-            
-            // Mark linking as completed
-            queueDebugMonitor.log('Marking linking service as completed...');
-              await updateItemInCache(item.localId, {
-              linking: {
-                status: ServiceStatus.COMPLETED
-              }
-            });
-
-            // Wait a moment to ensure state is updated
-            await new Promise(resolve => setTimeout(resolve, 500));
-
-            // Get the latest state after linking update
-            const finalItems = await getActiveQueue();
-            const finalItem = finalItems.find(i => i.localId === item.localId);
-
-            if (!finalItem) {
-              queueDebugMonitor.error('Could not find item after linking update');
-              return;
-            }
-
-            queueDebugMonitor.log('Item state after linking completion:', {
-              status: finalItem.status,
-              directusStatus: finalItem.directus?.status,
-              easStatus: finalItem.eas?.status,
-              linkingStatus: finalItem.linking?.status,
-              directusEventId: finalItem.directus?.eventId,
-              easUid: finalItem.eas?.txHash
-            });
-
-            // Only update to completed if all services are completed
-            if (finalItem.directus?.status === ServiceStatus.COMPLETED && 
-                finalItem.eas?.status === ServiceStatus.COMPLETED && 
-                finalItem.linking?.status === ServiceStatus.COMPLETED) {
-              
-              queueDebugMonitor.log('All services completed, updating item status...');
-            await updateItemInCache(item.localId, {
-                status: QueueItemStatus.COMPLETED
-              });
-
-              // Wait for status update
-              await new Promise(resolve => setTimeout(resolve, 500));
-
-              // Get final state before queue move
-              const updatedItems = await getActiveQueue();
-              const updatedItem = updatedItems.find(i => i.localId === item.localId);
-
-              if (updatedItem?.status === QueueItemStatus.COMPLETED) {
-                queueDebugMonitor.log('Moving completed item to completed queue:', {
-                  itemId: item.localId,
-                  status: updatedItem.status,
-                  directusStatus: updatedItem.directus?.status,
-                  easStatus: updatedItem.eas?.status,
-                  linkingStatus: updatedItem.linking?.status,
-                  directusEventId: updatedItem.directus?.eventId,
-                  easTxHash: updatedItem.eas?.txHash
-                });
-                await addToCompletedQueue(updatedItem);
-                await removeFromActiveQueue(item.localId);
-                queueDebugMonitor.log('Item successfully moved to completed queue');
-              } else {
-                queueDebugMonitor.log('Item not ready for completed queue:', {
-                  itemId: item.localId,
-                  status: updatedItem?.status,
-                  directusStatus: updatedItem?.directus?.status,
-                  easStatus: updatedItem?.eas?.status,
-                  linkingStatus: updatedItem?.linking?.status
-                });
-              }
-            } else {
-              queueDebugMonitor.log('Not all services completed:', {
-                itemId: item.localId,
-                directusStatus: finalItem.directus?.status,
-                easStatus: finalItem.eas?.status,
-                linkingStatus: finalItem.linking?.status
-              });
-            }
-          } catch (linkError) {
-            queueDebugMonitor.error(`Failed to link EAS UID to Directus:`, linkError);
-            queueDebugMonitor.error('Error details:', {
-              error: linkError instanceof Error ? linkError.message : 'Unknown error',
-              stack: linkError instanceof Error ? linkError.stack : undefined,
-              itemId: item.localId,
-              directusEventId: updatedItem.directus?.eventId,
-              easUid: easResult.uid
-            });
-            // Mark linking as incomplete
-            await updateItemInCache(item.localId, {
-              linking: {
-                status: ServiceStatus.INCOMPLETE,
-                error: `Failed to link EAS UID: ${linkError instanceof Error ? linkError.message : 'Unknown error'}`
-              }
-            });
-          }
-        } else {
-          queueDebugMonitor.log('Cannot process linking - missing required data:', {
-            hasDirectusEventId: !!updatedItem.directus?.eventId,
-            hasEasTxHash: !!updatedItem.eas?.txHash,
-            directusEventId: updatedItem.directus?.eventId,
-            easTxHash: updatedItem.eas?.txHash,
-            directusState: updatedItem.directus,
-            easState: updatedItem.eas,
-            linkingState: updatedItem.linking
-          });
-          // Mark linking as incomplete
-          await updateItemInCache(item.localId, {
-            linking: {
-              status: ServiceStatus.INCOMPLETE,
-              error: 'Missing required data for linking'
-            }
-          });
-        }
+        return { txHash: easResult.uid };
       } catch (error) {
         const errorMessage = error instanceof Error ? error.message : "Unknown error";
         
@@ -1062,8 +895,182 @@ async function processItem(
             }
           });
         }
+        throw error;
       }
+    })();
+    servicePromises.push(easPromise);
+  }
+
+  // Wait for all services to complete (success or failure)
+  const results = await Promise.allSettled(servicePromises);
+  
+  // Get the latest state after both services have completed
+  const activeQueue = await getActiveQueue();
+  const updatedItem = activeQueue.find(i => i.localId === item.localId);
+  
+  if (!updatedItem) {
+    throw new Error('Could not find updated item state');
+  }
+
+  // Process linking if both Directus and EAS are completed
+  if (updatedItem.directus?.eventId && updatedItem.eas?.txHash) {
+    try {
+      queueDebugMonitor.log(`\n=== Processing linking service for item ${item.localId} ===`);
+      queueDebugMonitor.log('Current state:', {
+        directusEventId: updatedItem.directus.eventId,
+        easUid: updatedItem.eas.txHash,
+        directusStatus: updatedItem.directus.status,
+        easStatus: updatedItem.eas.status,
+        linkingStatus: updatedItem.linking?.status
+      });
+      
+      // Update the event with EAS UID
+      queueDebugMonitor.log('Updating Directus event with EAS UID...');
+      queueDebugMonitor.log('Update payload:', {
+        eventId: updatedItem.directus.eventId,
+        easUid: updatedItem.eas.txHash
+      });
+      
+      const directusUpdatedEvent = await updateEvent(updatedItem.directus.eventId, {
+        EAS_UID: updatedItem.eas.txHash,
+      });
+
+      queueDebugMonitor.log('Directus update response:', directusUpdatedEvent);
+
+      if (!directusUpdatedEvent || !directusUpdatedEvent.event_id) {
+        throw new Error('Failed to update EAS_UID in Directus');
+      }
+
+      // Verify the linking was successful
+      queueDebugMonitor.log('Verifying EAS UID in Directus...');
+      const verifyEvent = await getEvent(updatedItem.directus.eventId);
+      queueDebugMonitor.log('Verification response:', verifyEvent);
+      
+      if (!verifyEvent || verifyEvent[0]?.EAS_UID !== updatedItem.eas.txHash) {
+        queueDebugMonitor.error('Verification failed:', {
+          verifyEvent,
+          expectedUid: updatedItem.eas.txHash,
+          actualUid: verifyEvent?.[0]?.EAS_UID
+        });
+        throw new Error('Failed to verify EAS UID linking');
+      }
+
+      queueDebugMonitor.log('Linking verification successful:', {
+        eventId: updatedItem.directus.eventId,
+        easUid: updatedItem.eas.txHash,
+        directusEasUid: verifyEvent[0]?.EAS_UID
+      });
+      
+      // Mark linking as completed
+      queueDebugMonitor.log('Marking linking service as completed...');
+              await updateItemInCache(item.localId, {
+        linking: {
+          status: ServiceStatus.COMPLETED
+        }
+      });
+
+      // Wait a moment to ensure state is updated
+      await new Promise(resolve => setTimeout(resolve, 500));
+
+      // Get the latest state after linking update
+      const finalItems = await getActiveQueue();
+      const finalItem = finalItems.find(i => i.localId === item.localId);
+
+      if (!finalItem) {
+        queueDebugMonitor.error('Could not find item after linking update');
+        return;
+      }
+
+      queueDebugMonitor.log('Item state after linking completion:', {
+        status: finalItem.status,
+        directusStatus: finalItem.directus?.status,
+        easStatus: finalItem.eas?.status,
+        linkingStatus: finalItem.linking?.status,
+        directusEventId: finalItem.directus?.eventId,
+        easUid: finalItem.eas?.txHash
+      });
+
+      // Only update to completed if all services are completed
+      if (finalItem.directus?.status === ServiceStatus.COMPLETED && 
+          finalItem.eas?.status === ServiceStatus.COMPLETED && 
+          finalItem.linking?.status === ServiceStatus.COMPLETED) {
+        
+        queueDebugMonitor.log('All services completed, updating item status...');
+            await updateItemInCache(item.localId, {
+          status: QueueItemStatus.COMPLETED
+        });
+
+        // Wait for status update
+        await new Promise(resolve => setTimeout(resolve, 500));
+
+        // Get final state before queue move
+        const updatedItems = await getActiveQueue();
+        const updatedItem = updatedItems.find(i => i.localId === item.localId);
+
+        if (updatedItem?.status === QueueItemStatus.COMPLETED) {
+          queueDebugMonitor.log('Moving completed item to completed queue:', {
+            itemId: item.localId,
+            status: updatedItem.status,
+            directusStatus: updatedItem.directus?.status,
+            easStatus: updatedItem.eas?.status,
+            linkingStatus: updatedItem.linking?.status,
+            directusEventId: updatedItem.directus?.eventId,
+            easTxHash: updatedItem.eas?.txHash
+          });
+          await addToCompletedQueue(updatedItem);
+          await removeFromActiveQueue(item.localId);
+          queueDebugMonitor.log('Item successfully moved to completed queue');
+        } else {
+          queueDebugMonitor.log('Item not ready for completed queue:', {
+            itemId: item.localId,
+            status: updatedItem?.status,
+            directusStatus: updatedItem?.directus?.status,
+            easStatus: updatedItem?.eas?.status,
+            linkingStatus: updatedItem?.linking?.status
+          });
+        }
+      } else {
+        queueDebugMonitor.log('Not all services completed:', {
+          itemId: item.localId,
+          directusStatus: finalItem.directus?.status,
+          easStatus: finalItem.eas?.status,
+          linkingStatus: finalItem.linking?.status
+        });
+      }
+    } catch (linkError) {
+      queueDebugMonitor.error(`Failed to link EAS UID to Directus:`, linkError);
+      queueDebugMonitor.error('Error details:', {
+        error: linkError instanceof Error ? linkError.message : 'Unknown error',
+        stack: linkError instanceof Error ? linkError.stack : undefined,
+        itemId: item.localId,
+        directusEventId: updatedItem.directus?.eventId,
+        easUid: updatedItem.eas?.txHash
+      });
+      // Mark linking as incomplete
+      await updateItemInCache(item.localId, {
+        linking: {
+          status: ServiceStatus.INCOMPLETE,
+          error: `Failed to link EAS UID: ${linkError instanceof Error ? linkError.message : 'Unknown error'}`
+        }
+      });
     }
+  } else {
+    queueDebugMonitor.log('Cannot process linking - missing required data:', {
+      hasDirectusEventId: !!updatedItem.directus?.eventId,
+      hasEasTxHash: !!updatedItem.eas?.txHash,
+      directusEventId: updatedItem.directus?.eventId,
+      easTxHash: updatedItem.eas?.txHash,
+      directusState: updatedItem.directus,
+      easState: updatedItem.eas,
+      linkingState: updatedItem.linking
+    });
+    // Mark linking as incomplete
+    await updateItemInCache(item.localId, {
+      linking: {
+        status: ServiceStatus.INCOMPLETE,
+        error: 'Missing required data for linking'
+      }
+    });
   }
 }
 

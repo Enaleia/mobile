@@ -22,9 +22,11 @@ const QueueAction = ({ item, isLastItem = false, isProcessing = false }: QueueAc
   const action = actions?.find((a: Action) => a.id === item.actionId);
   const timestamp = item.lastAttempt || item.date;
   const formattedTime = new Intl.DateTimeFormat("en-US", {
-    year: "numeric",
     month: "long",
     day: "numeric",
+    hour: "numeric",
+    minute: "numeric",
+    hour12: true
   }).format(new Date(timestamp))
     .replace(/(\d+)(?=(,))/, (match) => {
       const num = parseInt(match);
@@ -94,7 +96,7 @@ const QueueAction = ({ item, isLastItem = false, isProcessing = false }: QueueAc
     progressBar: {
       flex: 1,
       height: 4,
-      backgroundColor: '#E5E5EA',
+      backgroundColor: "ocean-blue",
       borderRadius: 2,
       overflow: 'hidden',
     },
@@ -121,7 +123,7 @@ const QueueAction = ({ item, isLastItem = false, isProcessing = false }: QueueAc
       className={`relative ${!isLastItem ? 'border-b border-grey-3' : ''}`}
     >
       <View className="w-full bg-white">
-        <View className="pt-3 pb-2 px-3 flex-col gap-2">
+        <View className="p-5 flex-col gap-2">
           {/* Title and Status Container */}
           <View className="flex-row justify-between items-center">
             <Text className="text-xl font-dm-bold text-enaleia-black" numberOfLines={1}>
@@ -132,7 +134,7 @@ const QueueAction = ({ item, isLastItem = false, isProcessing = false }: QueueAc
 
           {/* Date and Retry Counter Container */}
           <View className="flex-row justify-between items-center">
-            <Text className="text-sm font-dm-medium text-grey-9">
+            <Text className="text-sm font-dm-medium text-grey-7">
               {formattedTime}
             </Text>
             <Text className="text-xs font-dm-medium text-grey-6">
@@ -141,17 +143,17 @@ const QueueAction = ({ item, isLastItem = false, isProcessing = false }: QueueAc
           </View>
 
           {/* Service Status Section */}
-          <View className="flex-col gap-1">
+          <View className="flex-col">
             <View className="flex flex-row items-left">
               <ServiceStatusIndicator
                 status={item.directus?.status || ServiceStatus.INCOMPLETE}
                 type="directus"    
-                extraClasses="mr-1"           
+                extraClasses="mr-2"           
               />
               <ServiceStatusIndicator
                 status={item.eas?.status || ServiceStatus.INCOMPLETE}
                 type="eas"
-                extraClasses="mr-1" 
+                extraClasses="mr-2" 
               />
               <ServiceStatusIndicator
                 status={item.linking?.status || ServiceStatus.INCOMPLETE}
@@ -168,7 +170,7 @@ const QueueAction = ({ item, isLastItem = false, isProcessing = false }: QueueAc
                       styles.progressFill, 
                       { 
                         width: `${progress}%`,
-                        backgroundColor: '#0066FF',
+                        backgroundColor: '#2985D0', // Blue ocean code
                         borderRadius: 12
                       }
                     ]} 
