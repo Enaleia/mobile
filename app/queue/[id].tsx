@@ -294,7 +294,7 @@ ${[
   return (
     <SafeAreaContent>
       <ScrollView
-        className="flex-1"
+        className="flex-1 mb-10"
         showsVerticalScrollIndicator={false}
       >
 
@@ -652,7 +652,7 @@ ${[
               <Pressable
                 onPress={() => {
                   Alert.alert(
-                    "Delete Item",
+                    "Delete item",
                     "Are you sure you want to delete this item? This action cannot be undone.",
                     [
                       {
@@ -683,7 +683,7 @@ ${[
                 className="border border-red-500 py-4 rounded-full"
               >
                 <Text className="text-red-500 text-center font-dm-bold">
-                  Delete Item
+                  Delete item
                 </Text>
               </Pressable>
 

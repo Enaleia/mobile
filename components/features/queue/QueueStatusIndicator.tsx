@@ -25,7 +25,7 @@ export default function QueueStatusIndicator({ status, item, className = "" }: Q
       case QueueItemStatus.PENDING:
         return {
           icon: "time",
-          color: "#f59e0b",
+          color: "#6b7280",
           text: "Pending",
         };
       case QueueItemStatus.PROCESSING:

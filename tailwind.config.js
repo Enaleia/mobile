@@ -17,6 +17,7 @@ module.exports = {
 					"blue-ocean": "#2985D0",
 					"enaleia-black": "#0D0D0D",
 					"sand-beige": "#EEEAE7",
+					"med-ocean": "#6C9EC6",
 				},
 				fontFamily: {
 					"dm-light": ["DMSans-Light", "system-ui", "sans-serif"],

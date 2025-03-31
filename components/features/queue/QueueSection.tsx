@@ -179,9 +179,9 @@ const QueueSection = ({
               <View
                 className={`${getBadgeColor(
                   title
-                )} rounded-full w-6 h-6 ml-2 flex items-center justify-center`}
+                )} rounded-full w-12 h-7 ml-2 flex items-center justify-center`}
               >
-                <Text className="text-white text-xs font-dm-medium">
+                <Text className="text-white text-sm font-dm-medium">
                   {uniqueItems.length}
                 </Text>
               </View>
@@ -191,21 +191,15 @@ const QueueSection = ({
           {/* Center and Right: Countdown and Retry button */}
           {title.toLowerCase() === 'active' && items.length > 0 && retryCountdown && (
             <View className="flex-row items-center gap-2">
-              <View className="px-3 py-1.5 rounded-full bg-blue-50 border border-blue-ocean flex-row items-center">
-                <Ionicons name="time" size={16} color="#0EA5E9" style={{ marginRight: 4 }} />
-                <Text className="text-blue-ocean text-sm font-dm-medium">
-                  {retryCountdown >= 60 
-                    ? `${Math.floor(retryCountdown / 60)}m ${retryCountdown % 60}s`
-                    : `${retryCountdown}s`}
-                </Text>
-              </View>
               <Pressable
                 onPress={handleRetryPress}
-                className="px-3 py-1.5 rounded-full bg-blue-ocean flex-row items-center"
+                className="px-3 py-2 rounded-full bg-blue-ocean flex-row items-center"
               >
                 <Ionicons name="refresh" size={16} color="white" style={{ marginRight: 4 }} />
                 <Text className="text-white text-sm font-dm-medium">
-                  Retry now
+                  Retry in {retryCountdown >= 60 
+                    ? `${Math.floor(retryCountdown / 60)}m ${retryCountdown % 60}s`
+                    : `${retryCountdown}s`}
                 </Text>
               </Pressable>
             </View>
@@ -256,82 +250,81 @@ const QueueSection = ({
 
         {/* Info Messages Stack */}
         {title.toLowerCase() === 'active' && items.length > 0 && (
-          <View className="space-y-2 mb-2">
-            {/* Network Status Message */}
-            {!isConnected && (
-              <View className="py-2 px-4 rounded-2xl bg-blue-50 border border-blue-ocean">
-                <View className="flex-row">
-                  <View className="flex-col justify-start mr-1">
-                    <View className="w-6 h-6 items-center justify-center">
-                      <Ionicons 
-                        name="cloud-offline" 
-                        size={20} 
-                        color="#0EA5E9"
-                      />
+          <View className="space-y-2">
+            {/* Status Messages Container */}
+            {(!isConnected || (lastHealthCheck && (!lastHealthCheck.result.directus || !lastHealthCheck.result.eas))) && (
+              <View className="mb-1 bg-sand-beige rounded-2xl p-4 rounded-2xl">
+                {/* Network Status Message */}
+                {!isConnected && (
+                  <View className="flex-row">
+                    <View className="flex-col justify-start">
+                      <View className="items-center justify-center mr-1">
+                        <Ionicons 
+                          name="cloud-offline" 
+                          size={18} 
+                          color="#6C9EC6"
+                        />
+                      </View>
                     </View>
+                    <Text className="text-sm font-dm-regular text-grey-7 flex-1 flex-wrap">
+                      {`Network: Unavailable. Processing will resume once connected.`.split('**').map((part, index) => 
+                        index % 2 === 1 ? (
+                          <Text key={index} className="font-dm-bold">{part}</Text>
+                        ) : (
+                          part
+                        )
+                      )}
+                    </Text>
                   </View>
-                  <Text className="text-sm font-dm-medium text-blue-ocean flex-1 flex-wrap">
-                    {`Network: Unavailable. Processing will resume once connected.`.split('**').map((part, index) => 
-                      index % 2 === 1 ? (
-                        <Text key={index} className="font-dm-bold">{part}</Text>
-                      ) : (
-                        part
-                      )
-                    )}
-                  </Text>
-                </View>
-              </View>
-            )}
+                )}
 
-            {/* Database Status Message */}
-            {lastHealthCheck && !lastHealthCheck.result.directus && (
-              <View className="py-2 px-4 rounded-2xl bg-blue-50 border border-blue-ocean">
-                <View className="flex-row">
-                  <View className="flex-col justify-start mr-1">
-                    <View className="w-6 h-6 items-center justify-center">
-                      <Ionicons 
-                        name="server" 
-                        size={20} 
-                        color="#0EA5E9"
-                      />
+                {/* Database Status Message */}
+                {lastHealthCheck && !lastHealthCheck.result.directus && (
+                  <View className="flex-row">
+                    <View className="flex-col justify-start">
+                      <View className="items-center justify-center mr-1">
+                        <Ionicons 
+                          name="server" 
+                          size={18} 
+                          color="#6C9EC6"
+                        />
+                      </View>
                     </View>
+                    <Text className="text-sm font-dm-regular text-grey-7 flex-1 flex-wrap">
+                      {`Database: Unreachable`.split('**').map((part, index) => 
+                        index % 2 === 1 ? (
+                          <Text key={index} className="font-dm-bold">{part}</Text>
+                        ) : (
+                          part
+                        )
+                      )}
+                    </Text>
                   </View>
-                  <Text className="text-sm font-dm-medium text-blue-ocean flex-1 flex-wrap">
-                    {`Database: Unreachable`.split('**').map((part, index) => 
-                      index % 2 === 1 ? (
-                        <Text key={index} className="font-dm-bold">{part}</Text>
-                      ) : (
-                        part
-                      )
-                    )}
-                  </Text>
-                </View>
-              </View>
-            )}
+                )}
 
-            {/* Blockchain Status Message */}
-            {lastHealthCheck && !lastHealthCheck.result.eas && (
-              <View className="py-2 px-4 rounded-2xl bg-blue-50 border border-blue-ocean">
-                <View className="flex-row">
-                  <View className="flex-col justify-start mr-1">
-                    <View className="w-6 h-6 items-center justify-center">
-                      <Ionicons 
-                        name="cube" 
-                        size={20} 
-                        color="#0EA5E9"
-                      />
+                {/* Blockchain Status Message */}
+                {lastHealthCheck && !lastHealthCheck.result.eas && (
+                  <View className="flex-row">
+                    <View className="flex-col justify-start">
+                      <View className="items-center justify-center mr-1">
+                        <Ionicons 
+                          name="cube" 
+                          size={18} 
+                          color="#6C9EC6"
+                        />
+                      </View>
                     </View>
+                    <Text className="text-sm font-dm-regular text-grey-7 flex-1 flex-wrap">
+                      {`Blockchain: Unreachable`.split('**').map((part, index) => 
+                        index % 2 === 1 ? (
+                          <Text key={index} className="font-dm-bold">{part}</Text>
+                        ) : (
+                          part
+                        )
+                      )}
+                    </Text>
                   </View>
-                  <Text className="text-sm font-dm-medium text-blue-ocean flex-1 flex-wrap">
-                    {`Blockchain: Unreachable`.split('**').map((part, index) => 
-                      index % 2 === 1 ? (
-                        <Text key={index} className="font-dm-bold">{part}</Text>
-                      ) : (
-                        part
-                      )
-                    )}
-                  </Text>
-                </View>
+                )}
               </View>
             )}
           </View>
@@ -339,18 +332,18 @@ const QueueSection = ({
 
         {/* Failed Section Message */}
         {title.toLowerCase() === 'failed' && items.length > 0 && (
-          <View className="mb-2 py-2 px-4 rounded-2xl bg-sand-beige border" style={{borderColor: 'rgba(206, 58, 66, 0.36)'}}>
+          <View className="mb-2 py-2 px-4 rounded-2xl bg-sand-beige border border-rose-500">
             <View className="flex-row">
               <View className="flex-col justify-start mr-1">
-                <View className="w-6 h-6 items-center justify-center">
+                <View className="items-center justify-center">
                   <Ionicons 
                     name="help-buoy" 
-                    size={20} 
+                    size={18} 
                     color="#ef4444"
                   />
                 </View>
               </View>
-              <Text className="text-sm font-dm-medium text-gray-700 flex-1 flex-wrap">
+              <Text className="text-sm font-dm-regular text-grey-7 flex-1 flex-wrap">
                 Failed items require your help to be rescued. Tap item and email your data to  Enaleia.
               </Text>
             </View>

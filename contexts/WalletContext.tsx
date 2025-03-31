@@ -173,7 +173,6 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
       return false;
     }
   };
-
   return (
     <WalletContext.Provider
       value={{
@@ -187,7 +186,7 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
       {children}
     </WalletContext.Provider>
   );
-}
+};
 
 export function useWallet() {
   const context = useContext(WalletContext);
