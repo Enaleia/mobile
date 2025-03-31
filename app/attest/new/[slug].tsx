@@ -142,6 +142,7 @@ const NewActionScreen = () => {
   const { updateQueueItems } = useQueue();
   const { data: locationData, isLoading: locationLoading } =
     useCurrentLocation();
+  const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const [isSentToQueue, setIsSentToQueue] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -184,6 +185,11 @@ const NewActionScreen = () => {
     }
     return matchingAction;
   }, [actionsData, slug]);
+
+  // Clear form state when entering new form
+  useEffect(() => {
+    deleteFormState();
+  }, []);
 
   const form = useForm({
     defaultValues: {
@@ -271,9 +277,13 @@ const NewActionScreen = () => {
 
         await addItemToQueue(queueItem);
         setSubmitError(null);
-        setIsSentToQueue(true);
+        
+        // Clear form state immediately after successful submission
+        await deleteFormState();
+        
+        // Reset form to default values
+        form.reset();
       } catch (error) {
-        setIsSentToQueue(false);
         const errorMsg =
           error instanceof Error && error.message.includes("Cache key")
             ? "Unable to access queue storage. Please try again or contact support"
@@ -282,7 +292,6 @@ const NewActionScreen = () => {
         console.error("Error adding to queue:", error);
       } finally {
         setIsSubmitting(false);
-        await deleteFormState();
       }
     },
     validatorAdapter: zodValidator(),
@@ -335,45 +344,12 @@ const NewActionScreen = () => {
     return unsubscribe;
   }, [navigation]);
 
-  const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  // Remove the auto-save effect to prevent race conditions
   useEffect(() => {
-    const loadState = async () => {
-      const savedState = await loadFormState();
-      if (savedState) {
-        const formFields: Array<keyof EventFormType> = [
-          "type",
-          "date",
-          "location",
-          "collectorId",
-          "incomingMaterials",
-          "outgoingMaterials",
-          "manufacturing",
-        ];
-        formFields.forEach((key) => {
-          if (key in savedState) {
-            form.setFieldValue(key, savedState[key]);
-          }
-        });
-      }
-    };
-    loadState();
-
-    const saveState = () => {
-      if (saveTimeoutRef.current) {
-        clearTimeout(saveTimeoutRef.current);
-      }
-
-      saveTimeoutRef.current = setTimeout(() => {
-        const formValues = form.store.state.values;
-        saveFormState(formValues);
-      }, 500);
-    };
-
-    const unsubscribe = form.store.subscribe(saveState);
-
     const handleAppStateChange = (nextAppState: string) => {
       if (nextAppState === "active") {
-        loadState();
+        // Clear form state when app becomes active
+        deleteFormState();
       }
     };
 
@@ -383,14 +359,23 @@ const NewActionScreen = () => {
     );
 
     return () => {
+      subscription.remove();
+      // Clear form state on unmount
+      deleteFormState();
+    };
+  }, []);
+
+  // Handle back navigation
+  useEffect(() => {
+    if (saveTimeoutRef?.current) {
+      clearTimeout(saveTimeoutRef.current);
+    }
+    return () => {
       if (saveTimeoutRef?.current) {
         clearTimeout(saveTimeoutRef.current);
       }
-      unsubscribe();
-      deleteFormState();
-      subscription.remove();
     };
-  }, []);
+  }, [navigation]);
 
   if (!actionsData?.length) return null;
   if (!currentAction) {
@@ -415,45 +400,13 @@ const NewActionScreen = () => {
       const activeItems = (await getActiveQueue()) || [];
       const updatedItems = [...activeItems, queueItem];
 
-      // Use QueueContext to handle both storage and processing
-      await updateQueueItems(updatedItems);
+      // Add to queue storage without waiting for processing
+      updateQueueItems(updatedItems).catch(error => {
+        console.error("Background queue processing error:", error);
+      });
 
-      // Verify the item was saved by checking both active and completed queues
-      const [savedActiveItems, savedCompletedItems] = await Promise.all([
-        getActiveQueue(),
-        getCompletedQueue(),
-      ]);
-
-      const isInActiveQueue = savedActiveItems?.find(
-        (item) => item.localId === queueItem.localId
-      );
-      const isInCompletedQueue = savedCompletedItems?.find(
-        (item) => item.localId === queueItem.localId
-      );
-
-      if (!isInActiveQueue && !isInCompletedQueue) {
-        console.error(
-          "Failed to verify queue item was saved. Active items:",
-          savedActiveItems,
-          "Completed items:",
-          savedCompletedItems
-        );
-        throw new Error("Failed to verify queue item was saved");
-      }
-      console.log("save data verified");
-      // console.log("Verified saved data:", {
-      //   active: savedActiveItems,
-      //   completed: savedCompletedItems,
-      // });
     } catch (error) {
       console.error("Error in addItemToQueue:", error);
-
-      const errorMessage =
-        error instanceof Error && error.message.includes("Cache key")
-          ? "Queue functionality is not properly configured. Please contact support."
-          : "Failed to add item to queue. Please try again.";
-
-      setSubmitError(errorMessage);
       throw error;
     }
   };
@@ -752,24 +705,25 @@ const NewActionScreen = () => {
 
                 const handleProceedWithSubmission = async () => {
                   try {
-                    // Start submission
+                    // 1. Show loading spinner
                     setIsSubmitting(true);
                     
-                    // Submit form
+                    // 2. Create queue item
                     await form.handleSubmit();
                     
-                    // Clear form state
-                    await deleteFormState();
-                    
-                    // Wait for 2 seconds
-                    await new Promise(resolve => setTimeout(resolve, 2000));
-                    
-                    // Navigate to queue
-                    router.push("/queue");
+                    // 3. During 2-second delay: Form and confirmation modal remain visible with loading state
+                    setTimeout(() => {
+                      // 4. After 2 seconds, execute all cleanup actions together
+                      setShowSubmitConfirmation(false);  // Close modal
+                      deleteFormState();                 // Clean form state
+                      form.reset();                      // Reset form
+                      setIsSubmitting(false);           // Stop the spinner
+                      router.push("/queue");            // Navigate to queue
+                    }, 2000);
+
                   } catch (error) {
-                    console.error("Error submitting form:", error);
-                    setSubmitError("Failed to submit form. Please try again.");
-                  } finally {
+                    console.error("Error creating queue item:", error);
+                    setSubmitError("Failed to create queue item. Please try again.");
                     setShowSubmitConfirmation(false);
                     setIsSubmitting(false);
                   }
