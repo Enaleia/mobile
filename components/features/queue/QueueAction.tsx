@@ -178,23 +178,6 @@ const QueueAction = ({ item, isLastItem = false, isProcessing = false }: QueueAc
                 <Text style={styles.timerText}>{timeRemaining}</Text>
               </View>
             )}
-
-            {/* Error Messages */}
-            {(item.directus?.error || item.eas?.error) &&
-              item.status !== QueueItemStatus.COMPLETED && (
-                <View className="flex-col gap-1">
-                  {item.directus?.error && (
-                    <Text className="text-rose-500 text-sm font-dm-light">
-                      Database: {item.directus.error}
-                    </Text>
-                  )}
-                  {item.eas?.error && (
-                    <Text className="text-rose-500 text-sm font-dm-light">
-                      Blockchain: {item.eas.error}
-                    </Text>
-                  )}
-                </View>
-              )}
           </View>
         </View>
       </View>
