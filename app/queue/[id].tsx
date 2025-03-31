@@ -295,17 +295,11 @@ ${[
     <SafeAreaContent>
       <ScrollView
         className="flex-1"
-        contentContainerStyle={{ paddingBottom: 20 }}
         showsVerticalScrollIndicator={false}
       >
-        <View className="mt-4">
-          <Text className="text-3xl font-dm-bold text-enaleia-black tracking-[-1px] mb-2">
-            Queue Item Details
-          </Text>
-        </View>
 
         {item && (
-          <View className="flex-1 py-4">
+          <View className="flex-1 py-2">
             <View className="flex-row items-center justify-between pt-2 pb-4">
               <Pressable className="flex-row items-center space-x-1"
                 onPress={() => router.back()}

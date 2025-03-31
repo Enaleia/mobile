@@ -500,8 +500,7 @@ const NewActionScreen = () => {
                   router.back();
                 }
               }}
-              // disabled={isSubmitting}
-              // className={`flex-row items-center space-x-1 ${isSubmitting ? 'opacity-50' : ''}`}
+              className="flex-row items-center space-x-1"
             >
               <Ionicons name="chevron-back" size={24} color={isSubmitting ? "#8E8E93" : "#0D0D0D"} />
               <Text className={`text-base font-dm-regular tracking-tighter ${isSubmitting ? 'text-grey-6' : 'text-enaleia-black'}`}>

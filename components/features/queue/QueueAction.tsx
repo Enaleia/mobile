@@ -9,7 +9,6 @@ import { router } from "expo-router";
 import { ServiceStatusIndicator } from "./ServiceStatusIndicator";
 import QueueStatusIndicator from "./QueueStatusIndicator";
 import { useEffect, useState } from "react";
-import { ProcessingSpinner } from "./ProcessingSpinner";
 
 interface QueueActionProps {
   item: QueueItem;

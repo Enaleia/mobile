@@ -64,7 +64,7 @@ const WalletScreen = () => {
           </Pressable>
         </View>
         <Text className="font-dm-light text-sm text-grey-6">
-          Network: {wallet?.network || "Not connected"}
+          Network: Data will be attestaed on the Optimismn, a layer-two blockchain on top of Ethereum.
         </Text>
       </View>
     </SafeAreaContent>
