@@ -49,13 +49,17 @@ const QueueSection = ({
   // Separate health check effect
   useEffect(() => {
     let healthCheckInterval: NodeJS.Timeout;
+    let isMounted = true;
 
     const performHealthCheck = async () => {
       try {
         const healthResult = await checkServicesHealth();
-        setLastHealthCheck({ time: Date.now(), result: healthResult });
+        if (isMounted) {
+          setLastHealthCheck({ time: Date.now(), result: healthResult });
+        }
       } catch (error) {
         console.error('Health check failed:', error);
+        // Don't update state if there's an error, keep previous state
       }
     };
 
@@ -66,11 +70,22 @@ const QueueSection = ({
     healthCheckInterval = setInterval(performHealthCheck, 30000); // 30 seconds
 
     return () => {
+      isMounted = false;
       if (healthCheckInterval) {
         clearInterval(healthCheckInterval);
       }
     };
   }, []); // Empty dependency array since we want this to run independently
+
+  // Sync health check with queue processing
+  useEffect(() => {
+    if (items.some(item => item.directus?.status === ServiceStatus.COMPLETED)) {
+      setLastHealthCheck(prev => prev ? {
+        ...prev,
+        result: { ...prev.result, directus: true }
+      } : null);
+    }
+  }, [items]);
 
   // Countdown timer effect
   useEffect(() => {
@@ -166,6 +181,22 @@ const QueueSection = ({
     }
   };
 
+  const shouldShowServiceError = (service: 'directus' | 'eas') => {
+    // Don't show error if we have any items with COMPLETED status for this service
+    const hasCompletedItems = items.some(item => item[service]?.status === ServiceStatus.COMPLETED);
+    if (hasCompletedItems) return false;
+
+    // Don't show error if we have any items currently PROCESSING this service
+    const hasProcessingItems = items.some(item => 
+      item.status === QueueItemStatus.PROCESSING && 
+      (!item[service] || item[service]?.status === ServiceStatus.INCOMPLETE)
+    );
+    if (hasProcessingItems) return false;
+
+    // Show error if health check indicates service is down
+    return !lastHealthCheck?.result[service];
+  };
+
   if (!hasItems && !alwaysShow) return null;
 
   return (
@@ -256,81 +287,82 @@ const QueueSection = ({
 
         {/* Info Messages Stack */}
         {title.toLowerCase() === 'active' && items.length > 0 && (
-          <View className="space-y-2">
-            {/* Status Messages Container */}
-            {(!isConnected || (lastHealthCheck && (!lastHealthCheck.result.directus || !lastHealthCheck.result.eas))) && (
-              <View className="mb-1 bg-sand-beige rounded-2xl p-4 rounded-2xl">
-                {/* Network Status Message */}
-                {!isConnected && (
-                  <View className="flex-row">
-                    <View className="flex-col justify-start">
-                      <View className="items-center justify-center mr-1">
-                        <Ionicons 
-                          name="cloud-offline" 
-                          size={18} 
-                          color="#6C9EC6"
-                        />
-                      </View>
+          <View className="space-y-2 mb-2">
+            {/* Network Status Message */}
+            {!isConnected && (
+              <View className="py-2 px-4 rounded-2xl bg-blue-50 border border-blue-ocean">
+                <View className="flex-row">
+                  <View className="flex-col justify-start mr-1">
+                    <View className="w-6 h-6 items-center justify-center">
+                      <Ionicons 
+                        name="cloud-offline" 
+                        size={20} 
+                        color="#0EA5E9"
+                      />
                     </View>
-                    <Text className="text-sm font-dm-regular text-grey-7 flex-1 flex-wrap">
-                      {`Network: Unavailable. Processing will resume once connected.`.split('**').map((part, index) => 
-                        index % 2 === 1 ? (
-                          <Text key={index} className="font-dm-bold">{part}</Text>
-                        ) : (
-                          part
-                        )
-                      )}
-                    </Text>
                   </View>
-                )}
+                  <Text className="text-sm font-dm-medium text-blue-ocean flex-1 flex-wrap">
+                    {`Network: Unavailable. Processing will resume once connected.`.split('**').map((part, index) => 
+                      index % 2 === 1 ? (
+                        <Text key={index} className="font-dm-bold">{part}</Text>
+                      ) : (
+                        part
+                      )
+                    )}
+                  </Text>
+                </View>
+              </View>
+            )}
 
-                {/* Database Status Message */}
-                {lastHealthCheck && !lastHealthCheck.result.directus && (
-                  <View className="flex-row">
-                    <View className="flex-col justify-start">
-                      <View className="items-center justify-center mr-1">
-                        <Ionicons 
-                          name="server" 
-                          size={18} 
-                          color="#6C9EC6"
-                        />
-                      </View>
+            {/* Database Status Message */}
+            {lastHealthCheck && items.length > 0 && shouldShowServiceError('directus') && (
+              <View className="py-2 px-4 rounded-2xl bg-blue-50 border border-blue-ocean">
+                <View className="flex-row">
+                  <View className="flex-col justify-start mr-1">
+                    <View className="w-6 h-6 items-center justify-center">
+                      <Ionicons 
+                        name="server" 
+                        size={20} 
+                        color="#0EA5E9"
+                      />
                     </View>
-                    <Text className="text-sm font-dm-regular text-grey-7 flex-1 flex-wrap">
-                      {`Database: Unreachable`.split('**').map((part, index) => 
-                        index % 2 === 1 ? (
-                          <Text key={index} className="font-dm-bold">{part}</Text>
-                        ) : (
-                          part
-                        )
-                      )}
-                    </Text>
                   </View>
-                )}
+                  <Text className="text-sm font-dm-medium text-blue-ocean flex-1 flex-wrap">
+                    {`Database: Unreachable`.split('**').map((part, index) => 
+                      index % 2 === 1 ? (
+                        <Text key={index} className="font-dm-bold">{part}</Text>
+                      ) : (
+                        part
+                      )
+                    )}
+                  </Text>
+                </View>
+              </View>
+            )}
 
-                {/* Blockchain Status Message */}
-                {lastHealthCheck && !lastHealthCheck.result.eas && (
-                  <View className="flex-row">
-                    <View className="flex-col justify-start">
-                      <View className="items-center justify-center mr-1">
-                        <Ionicons 
-                          name="cube" 
-                          size={18} 
-                          color="#6C9EC6"
-                        />
-                      </View>
+            {/* Blockchain Status Message */}
+            {lastHealthCheck && items.length > 0 && shouldShowServiceError('eas') && (
+              <View className="py-2 px-4 rounded-2xl bg-blue-50 border border-blue-ocean">
+                <View className="flex-row">
+                  <View className="flex-col justify-start mr-1">
+                    <View className="w-6 h-6 items-center justify-center">
+                      <Ionicons 
+                        name="cube" 
+                        size={20} 
+                        color="#0EA5E9"
+                      />
                     </View>
-                    <Text className="text-sm font-dm-regular text-grey-7 flex-1 flex-wrap">
-                      {`Blockchain: Unreachable`.split('**').map((part, index) => 
-                        index % 2 === 1 ? (
-                          <Text key={index} className="font-dm-bold">{part}</Text>
-                        ) : (
-                          part
-                        )
-                      )}
-                    </Text>
                   </View>
-                )}
+                  <Text className="text-sm font-dm-medium text-blue-ocean flex-1 flex-wrap">
+                    {`Blockchain: Unreachable`.split('**').map((part, index) => 
+                      index % 2 === 1 ? (
+                        <Text key={index} className="font-dm-bold">{part}</Text>
+                      ) : (
+                        part
+                      )
+                    )}
+                  </Text>
+                </View>
               </View>
             )}
           </View>
