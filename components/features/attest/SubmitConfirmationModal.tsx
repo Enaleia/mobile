@@ -1,16 +1,18 @@
 import ModalBase from "@/components/shared/ModalBase";
-import { Pressable, Text, View, Image } from "react-native";
+import { Pressable, Text, View, Image, ActivityIndicator } from "react-native";
 
 interface SubmitConfirmationModalProps {
   isVisible: boolean;
   onClose: () => void;
   onProceed: () => void;
+  isSubmitting?: boolean;
 }
 
 export const SubmitConfirmationModal = ({
   isVisible,
   onClose,
   onProceed,
+  isSubmitting = false,
 }: SubmitConfirmationModalProps) => {
   return (
     <ModalBase isVisible={isVisible} onClose={onClose} canClose={false}>
@@ -22,7 +24,7 @@ export const SubmitConfirmationModal = ({
             accessibilityRole="image"
             accessibilityLabel="ready to attest illustration"
           />
-          </View>
+        </View>
         <Text className="text-3xl font-dm-bold text-enaleia-black tracking-tighter mb-3 text-center">
           Ready to attest?
         </Text>
@@ -32,7 +34,8 @@ export const SubmitConfirmationModal = ({
         <View className="flex-row items-center gap-2 justify-center">
           <Pressable
             onPress={onClose}
-            className="px-4 py-4 rounded-full border border-grey-3 flex-1"
+            disabled={isSubmitting}
+            className={`px-4 py-4 rounded-full border border-grey-3 flex-1 ${isSubmitting ? 'opacity-50' : ''}`}
           >
             <Text className="text-base font-dm-medium text-enaleia-black text-center">
               Review
@@ -40,11 +43,21 @@ export const SubmitConfirmationModal = ({
           </Pressable>
           <Pressable
             onPress={onProceed}
-            className="px-4 py-4 rounded-full bg-blue-ocean flex-1"
+            disabled={isSubmitting}
+            className={`px-4 py-4 rounded-full bg-blue-ocean flex-1 ${isSubmitting ? 'opacity-50' : ''}`}
           >
-            <Text className="text-base font-dm-medium text-white text-center">
-              Submit
-            </Text>
+            {isSubmitting ? (
+              <View className="flex-row items-center justify-center space-x-2">
+                <ActivityIndicator color="white" size="small" />
+                <Text className="text-base font-dm-medium text-white text-center">
+                  Submitting...
+                </Text>
+              </View>
+            ) : (
+              <Text className="text-base font-dm-medium text-white text-center">
+                Submit
+              </Text>
+            )}
           </Pressable>
         </View>
       </View>

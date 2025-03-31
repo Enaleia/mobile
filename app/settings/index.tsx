@@ -22,17 +22,6 @@ const SettingsScreen = () => {
           </View>
           <Ionicons name="chevron-forward" size={24} color="#0D0D0D" />
         </Pressable>
-
-        <Pressable
-          onPress={() => router.push("/settings/preferences")}
-          className="bg-white rounded-2xl p-4 flex-row items-center justify-between"
-        >
-          <View className="flex-row items-center space-x-3">
-            <Ionicons name="settings-outline" size={24} color="#0D0D0D" />
-            <Text className="text-base font-dm-medium text-enaleia-black">Preferences</Text>
-          </View>
-          <Ionicons name="chevron-forward" size={24} color="#0D0D0D" />
-        </Pressable>
       </View>
     </SafeAreaContent>
   );

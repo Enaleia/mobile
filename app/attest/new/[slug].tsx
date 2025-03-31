@@ -1,7 +1,6 @@
 import { IncompleteAttestationModal } from "@/components/features/attest/IncompleteAttestationModal";
 import { LeaveAttestationModal } from "@/components/features/attest/LeaveAttestationModal";
 import MaterialSection from "@/components/features/attest/MaterialSection";
-import { SentToQueueModal } from "@/components/features/attest/SentToQueueModal";
 import { SubmitConfirmationModal } from "@/components/features/attest/SubmitConfirmationModal";
 
 import { BatchHelpModal } from "@/components/features/help/BatchHelpModal";
@@ -751,12 +750,29 @@ const NewActionScreen = () => {
                   setShowSubmitConfirmation(true);
                 };
 
-                const handleProceedWithSubmission = () => {
-                  setShowSubmitConfirmation(false);
-                  // Navigate to queue immediately
-                  router.push("/queue");
-                  // Continue with form submission in background
-                  form.handleSubmit();
+                const handleProceedWithSubmission = async () => {
+                  try {
+                    // Start submission
+                    setIsSubmitting(true);
+                    
+                    // Submit form
+                    await form.handleSubmit();
+                    
+                    // Clear form state
+                    await deleteFormState();
+                    
+                    // Wait for 2 seconds
+                    await new Promise(resolve => setTimeout(resolve, 2000));
+                    
+                    // Navigate to queue
+                    router.push("/queue");
+                  } catch (error) {
+                    console.error("Error submitting form:", error);
+                    setSubmitError("Failed to submit form. Please try again.");
+                  } finally {
+                    setShowSubmitConfirmation(false);
+                    setIsSubmitting(false);
+                  }
                 };
 
                 return (
@@ -782,6 +798,7 @@ const NewActionScreen = () => {
                       isVisible={showSubmitConfirmation}
                       onClose={() => setShowSubmitConfirmation(false)}
                       onProceed={handleProceedWithSubmission}
+                      isSubmitting={isSubmitting}
                     />
 
                     <IncompleteAttestationModal
@@ -789,7 +806,7 @@ const NewActionScreen = () => {
                       onClose={() => setShowIncompleteModal(false)}
                       onSubmitAnyway={() => {
                         setShowIncompleteModal(false);
-                        form.handleSubmit();
+                        setShowSubmitConfirmation(true);
                       }}
                     />
                   </>
@@ -800,9 +817,6 @@ const NewActionScreen = () => {
         </ScrollView>
       </View>
 
-      {isSentToQueue && (
-        <SentToQueueModal isVisible={isSentToQueue} onClose={() => {}} />
-      )}
       <LeaveAttestationModal
         isVisible={showLeaveModal}
         onClose={() => setShowLeaveModal(false)}
