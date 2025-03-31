@@ -65,20 +65,28 @@ export default function RootLayout() {
   useEffect(() => {
     async function prepare() {
       try {
-        await Asset.loadAsync(preloadedActionIcons);
+        // Load all assets in parallel
+        const [assetsLoaded] = await Promise.all([
+          Asset.loadAsync(preloadedActionIcons),
+          // Add any other asset loading here if needed
+        ]);
+        
+        // Only set app as ready when both fonts and assets are loaded
+        if (fontsLoaded && assetsLoaded) {
+          setAppIsReady(true);
+          await SplashScreen.hideAsync();
+        }
       } catch (e) {
-        console.warn("Failed to pre-load icons:", e);
+        console.warn("Failed to pre-load assets:", e);
+        // Even if asset loading fails, we should still show the app
+        if (fontsLoaded) {
+          setAppIsReady(true);
+          await SplashScreen.hideAsync();
+        }
       }
     }
 
     prepare();
-  }, []);
-
-  useEffect(() => {
-    if (fontsLoaded) {
-      setAppIsReady(true);
-      SplashScreen.hideAsync();
-    }
   }, [fontsLoaded]);
 
   if (!appIsReady) {
