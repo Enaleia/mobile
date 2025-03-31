@@ -179,7 +179,7 @@ const QueueSection = ({
               <View
                 className={`${getBadgeColor(
                   title
-                )} rounded-full w-12 h-7 ml-2 flex items-center justify-center`}
+                )} rounded-full w-7 h-7 ml-2 flex items-center justify-center`}
               >
                 <Text className="text-white text-sm font-dm-medium">
                   {uniqueItems.length}

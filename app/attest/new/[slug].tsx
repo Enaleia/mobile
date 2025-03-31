@@ -208,7 +208,6 @@ const NewActionScreen = () => {
     onSubmit: async ({ value }) => {
       setHasAttemptedSubmit(true);
       setSubmitError(null);
-      setIsSubmitting(true);
 
       try {
         const runtimeSchema = eventFormSchema.refine(
@@ -394,16 +393,15 @@ const NewActionScreen = () => {
 
   const addItemToQueue = async (queueItem: QueueItem) => {
     try {
-      console.log("Adding queue item:", JSON.stringify(queueItem, null, 2));
-
-      // Get current items, defaulting to empty array if none exist
       const activeItems = (await getActiveQueue()) || [];
       const updatedItems = [...activeItems, queueItem];
 
-      // Add to queue storage without waiting for processing
-      updateQueueItems(updatedItems).catch(error => {
-        console.error("Background queue processing error:", error);
-      });
+      // Process queue in background after navigation
+      setTimeout(() => {
+        updateQueueItems(updatedItems).catch(error => {
+          console.error("Background queue processing error:", error);
+        });
+      }, 500);
 
     } catch (error) {
       console.error("Error in addItemToQueue:", error);
@@ -425,6 +423,24 @@ const NewActionScreen = () => {
     }
 
     return incomingMaterials.length > 0 || outgoingMaterials.length > 0;
+  };
+
+  const handleProceedWithSubmission = async () => {
+    try {
+      // Show loading state
+      setIsSubmitting(true);
+
+      // Submit form and create queue item
+      await form.handleSubmit();
+
+    } catch (error) {
+      // Just log the error, queue page will show appropriate status
+      console.error("Submission error:", error);
+    } finally {
+      // Always close modal and navigate to queue
+      setShowSubmitConfirmation(false);
+      router.push("/queue");
+    }
   };
 
   return (
@@ -701,32 +717,6 @@ const NewActionScreen = () => {
 
                   // If validation passes, show the confirmation modal
                   setShowSubmitConfirmation(true);
-                };
-
-                const handleProceedWithSubmission = async () => {
-                  try {
-                    // 1. Show loading spinner
-                    setIsSubmitting(true);
-                    
-                    // 2. Create queue item
-                    await form.handleSubmit();
-                    
-                    // 3. During 2-second delay: Form and confirmation modal remain visible with loading state
-                    setTimeout(() => {
-                      // 4. After 2 seconds, execute all cleanup actions together
-                      setShowSubmitConfirmation(false);  // Close modal
-                      deleteFormState();                 // Clean form state
-                      form.reset();                      // Reset form
-                      setIsSubmitting(false);           // Stop the spinner
-                      router.push("/queue");            // Navigate to queue
-                    }, 2000);
-
-                  } catch (error) {
-                    console.error("Error creating queue item:", error);
-                    setSubmitError("Failed to create queue item. Please try again.");
-                    setShowSubmitConfirmation(false);
-                    setIsSubmitting(false);
-                  }
                 };
 
                 return (
