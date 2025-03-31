@@ -119,6 +119,18 @@ const SettingsScreen = () => {
           <Ionicons name="chevron-forward-outline" size={16} color="#0D0D0D" />
         </Pressable>
         <Pressable
+          onPress={() => router.push("/settings/preferences")}
+          className="flex-row items-center justify-between px-4 py-4 border-b border-neutral-200 bg-white"
+        >
+          <View className="flex-row items-center gap-2">
+            <Ionicons name="settings-outline" size={24} color="#0D0D0D" />
+            <Text className="text-base font-dm-bold text-slate-800 tracking-tighter">
+              Preferences
+            </Text>
+          </View>
+          <Ionicons name="chevron-forward-outline" size={16} color="#0D0D0D" />
+        </Pressable>
+        <Pressable
           onPress={openGuides}
           className="flex-row items-center justify-between px-4 py-4 border-b border-neutral-200 bg-white"
         >

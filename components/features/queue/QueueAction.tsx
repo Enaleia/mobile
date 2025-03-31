@@ -9,6 +9,7 @@ import { router } from "expo-router";
 import { ServiceStatusIndicator } from "./ServiceStatusIndicator";
 import QueueStatusIndicator from "./QueueStatusIndicator";
 import { useEffect, useState } from "react";
+import { usePreferences } from "@/contexts/PreferencesContext";
 
 interface QueueActionProps {
   item: QueueItem;
@@ -18,6 +19,7 @@ interface QueueActionProps {
 
 const QueueAction = ({ item, isLastItem = false, isProcessing = false }: QueueActionProps) => {
   const { actions } = useBatchData();
+  const { showAdvancedMode } = usePreferences();
   const action = actions?.find((a: Action) => a.id === item.actionId);
   const timestamp = item.lastAttempt || item.date;
   const formattedTime = new Intl.DateTimeFormat("en-US", {
@@ -136,9 +138,11 @@ const QueueAction = ({ item, isLastItem = false, isProcessing = false }: QueueAc
             <Text className="text-sm font-dm-medium text-grey-7">
               {formattedTime}
             </Text>
-            <Text className="text-xs font-dm-medium text-grey-6">
-              {item.totalRetryCount || 0}/{MAX_RETRIES} Retry
-            </Text>
+            {showAdvancedMode && (
+              <Text className="text-xs font-dm-medium text-grey-6">
+                {item.totalRetryCount || 0}/{MAX_RETRIES} Retry
+              </Text>
+            )}
           </View>
 
           {/* Service Status Section */}

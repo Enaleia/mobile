@@ -13,6 +13,7 @@ import * as Localization from "expo-localization";
 import { NetworkProvider } from "@/contexts/NetworkContext";
 import { QueueProvider, useQueue } from "@/contexts/QueueContext";
 import { AuthProvider } from "@/contexts/AuthContext";
+import { PreferencesProvider } from "@/contexts/PreferencesContext";
 import { defaultLocale, dynamicActivate } from "@/lib/i18n";
 import { BackgroundTaskManager } from "@/services/backgroundTaskManager";
 import { Asset } from "expo-asset";
@@ -89,36 +90,38 @@ export default function RootLayout() {
     <NetworkProvider>
       <WalletProvider>
         <AuthProvider>
-          <QueueProvider>
-            <QueueNetworkHandler />
-            <Stack
-              screenOptions={{
-                headerShown: false,
-                contentStyle: { backgroundColor: "white" },
-                navigationBarHidden: true,
-              }}
-            >
-              <Stack.Screen
-                name="(tabs)"
-                options={{
+          <PreferencesProvider>
+            <QueueProvider>
+              <QueueNetworkHandler />
+              <Stack
+                screenOptions={{
                   headerShown: false,
+                  contentStyle: { backgroundColor: "white" },
+                  navigationBarHidden: true,
                 }}
-              />
-              <Stack.Screen
-                name="(auth)/login"
-                options={{
-                  headerShown: false,
-                }}
-              />
-              <Stack.Screen
-                name="attest/new/[slug]"
-                options={{
-                  headerShown: false,
-                }}
-              />
-            </Stack>
-            <StatusBar barStyle="dark-content" />
-          </QueueProvider>
+              >
+                <Stack.Screen
+                  name="(tabs)"
+                  options={{
+                    headerShown: false,
+                  }}
+                />
+                <Stack.Screen
+                  name="(auth)/login"
+                  options={{
+                    headerShown: false,
+                  }}
+                />
+                <Stack.Screen
+                  name="attest/new/[slug]"
+                  options={{
+                    headerShown: false,
+                  }}
+                />
+              </Stack>
+              <StatusBar barStyle="dark-content" />
+            </QueueProvider>
+          </PreferencesProvider>
         </AuthProvider>
       </WalletProvider>
     </NetworkProvider>

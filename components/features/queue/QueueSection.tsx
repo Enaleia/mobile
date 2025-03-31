@@ -7,6 +7,7 @@ import { Ionicons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { QueueEvents, queueEventEmitter } from "@/services/events";
 import { checkServicesHealth } from "@/services/healthCheck";
+import { usePreferences } from "@/contexts/PreferencesContext";
 
 interface QueueSectionProps {
   title: string;
@@ -30,6 +31,7 @@ const QueueSection = ({
   alwaysShow = false,
 }: QueueSectionProps) => {
   const { isConnected } = useNetwork();
+  const { showAdvancedMode } = usePreferences();
   const [showClearOptions, setShowClearOptions] = useState(false);
   const [retryCountdown, setRetryCountdown] = useState<number | null>(null);
   const [lastHealthCheck, setLastHealthCheck] = useState<{ time: number; result: HealthCheckResult } | null>(null);
@@ -191,15 +193,23 @@ const QueueSection = ({
           {/* Center and Right: Countdown and Retry button */}
           {title.toLowerCase() === 'active' && items.length > 0 && retryCountdown && (
             <View className="flex-row items-center gap-2">
+              {showAdvancedMode && (
+                <View className="py-2 rounded-full flex-row items-center">
+                  <Ionicons name="time" size={16} color="#6C9EC6" style={{ marginRight: 4 }} />
+                  <Text className="text-med-ocean text-sm font-dm-medium">
+                    {retryCountdown >= 60 
+                      ? `${Math.floor(retryCountdown / 60)}m ${retryCountdown % 60}s`
+                      : `${retryCountdown}s`}
+                  </Text>
+                </View>
+              )}
               <Pressable
                 onPress={handleRetryPress}
-                className="px-3 py-2 rounded-full bg-blue-ocean flex-row items-center"
+                className="px-3 py-2 rounded-full border border-grey-6 flex-row items-center"
               >
-                <Ionicons name="refresh" size={16} color="white" style={{ marginRight: 4 }} />
-                <Text className="text-white text-sm font-dm-medium">
-                  Retry in {retryCountdown >= 60 
-                    ? `${Math.floor(retryCountdown / 60)}m ${retryCountdown % 60}s`
-                    : `${retryCountdown}s`}
+                <Ionicons name="refresh" size={16} color="#4b5563" style={{ marginRight: 4 }} />
+                <Text className="text-grey-6 text-sm font-dm-medium">
+                  Retry 
                 </Text>
               </Pressable>
             </View>
