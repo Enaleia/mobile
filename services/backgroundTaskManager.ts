@@ -275,9 +275,6 @@ export class BackgroundTaskManager {
         }
       }
 
-      // Notify that processing is complete
-      queueEventEmitter.emit(QueueEvents.UPDATED);
-
       return BackgroundFetch.BackgroundFetchResult.NewData;
     } catch (error) {
       console.error("Error processing queue items:", error);

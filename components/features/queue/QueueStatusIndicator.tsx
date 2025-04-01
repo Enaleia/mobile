@@ -25,7 +25,7 @@ export default function QueueStatusIndicator({ status, item, className = "" }: Q
       case QueueItemStatus.PENDING:
         return {
           icon: "time",
-          color: "#6b7280",
+          color: "#2985D0",
           text: "Pending",
         };
       case QueueItemStatus.PROCESSING:
@@ -63,7 +63,7 @@ export default function QueueStatusIndicator({ status, item, className = "" }: Q
         {config.text}
       </Text>
       {status === QueueItemStatus.PROCESSING ? (
-        <ActivityIndicator size="small" color="#0D0D0D" />
+        <ActivityIndicator size="small" color="#2985D0" />
       ) : (
         <Ionicons 
           name={config.icon as any} 

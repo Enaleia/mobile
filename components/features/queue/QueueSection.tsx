@@ -7,6 +7,7 @@ import { Ionicons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { QueueEvents, queueEventEmitter } from "@/services/events";
 import { checkServicesHealth } from "@/services/healthCheck";
+import { useDevMode } from "@/contexts/DevModeContext";
 
 interface QueueSectionProps {
   title: string;
@@ -30,9 +31,11 @@ const QueueSection = ({
   alwaysShow = false,
 }: QueueSectionProps) => {
   const { isConnected } = useNetwork();
+  const { showTimers } = useDevMode();
   const [showClearOptions, setShowClearOptions] = useState(false);
   const [retryCountdown, setRetryCountdown] = useState<number | null>(null);
   const [lastHealthCheck, setLastHealthCheck] = useState<{ time: number; result: HealthCheckResult } | null>(null);
+  const [showRetryButton, setShowRetryButton] = useState(true);
 
   // Sort items by most recent first
   const sortedItemsMemo = useMemo(() => 
@@ -45,6 +48,27 @@ const QueueSection = ({
     items.some(item => item.status === QueueItemStatus.PROCESSING),
     [items]
   );
+
+  // Debounce retry button visibility
+  useEffect(() => {
+    let timeoutId: NodeJS.Timeout;
+    
+    if (hasProcessingItems) {
+      // When items start processing, hide the button immediately
+      setShowRetryButton(false);
+    } else {
+      // When no items are processing, wait 500ms before showing the button
+      timeoutId = setTimeout(() => {
+        setShowRetryButton(true);
+      }, 1500);
+    }
+
+    return () => {
+      if (timeoutId) {
+        clearTimeout(timeoutId);
+      }
+    };
+  }, [hasProcessingItems]);
 
   // Separate health check effect
   useEffect(() => {
@@ -59,7 +83,25 @@ const QueueSection = ({
         }
       } catch (error) {
         console.error('Health check failed:', error);
-        // Don't update state if there's an error, keep previous state
+        // Update state to show service as unhealthy
+        if (isMounted) {
+          setLastHealthCheck(prev => prev ? {
+            ...prev,
+            result: {
+              ...prev.result,
+              directus: false,
+              eas: false,
+              allHealthy: false
+            }
+          } : {
+            time: Date.now(),
+            result: {
+              directus: false,
+              eas: false,
+              allHealthy: false
+            }
+          });
+        }
       }
     };
 
@@ -90,6 +132,7 @@ const QueueSection = ({
   // Countdown timer effect
   useEffect(() => {
     let countdownInterval: NodeJS.Timeout;
+    let isMounted = true;
 
     const updateCountdown = async () => {
       if (title.toLowerCase() !== 'active' || !items.length) {
@@ -106,13 +149,15 @@ const QueueSection = ({
 
         if (remaining <= 0) {
           // Time to retry
-          const healthResult = await checkServicesHealth();
-          setLastHealthCheck({ time: Date.now(), result: healthResult });
-          
-          if (healthResult.allHealthy) {
+          if (isMounted) {
+            // Start countdown immediately
+            setRetryCountdown(LIST_RETRY_INTERVAL / 1000);
+          }
+
+          // Use existing health check result for retry
+          if (lastHealthCheck?.result.allHealthy) {
             onRetry(sortedItemsMemo);
           } else {
-            // If services are unhealthy, don't increment retry counter
             const modifiedItems = sortedItemsMemo.map(item => ({
               ...item,
               skipRetryIncrement: true
@@ -122,13 +167,16 @@ const QueueSection = ({
 
           // Reset the timer
           await AsyncStorage.setItem('QUEUE_LAST_BATCH_ATTEMPT', new Date().toISOString());
-          setRetryCountdown(LIST_RETRY_INTERVAL / 1000);
         } else {
-          setRetryCountdown(Math.ceil(remaining / 1000));
+          if (isMounted) {
+            setRetryCountdown(Math.ceil(remaining / 1000));
+          }
         }
       } catch (error) {
         console.error('Error updating countdown:', error);
-        setRetryCountdown(null);
+        if (isMounted) {
+          setRetryCountdown(null);
+        }
       }
     };
 
@@ -139,11 +187,12 @@ const QueueSection = ({
     countdownInterval = setInterval(updateCountdown, 1000);
 
     return () => {
+      isMounted = false;
       if (countdownInterval) {
         clearInterval(countdownInterval);
       }
     };
-  }, [title, items.length, sortedItemsMemo, onRetry]);
+  }, [title, items.length, sortedItemsMemo, onRetry, lastHealthCheck]);
 
   // Deduplicate items based on localId
   const uniqueItems = useMemo(() => {
@@ -182,17 +231,6 @@ const QueueSection = ({
   };
 
   const shouldShowServiceError = (service: 'directus' | 'eas') => {
-    // Don't show error if we have any items with COMPLETED status for this service
-    const hasCompletedItems = items.some(item => item[service]?.status === ServiceStatus.COMPLETED);
-    if (hasCompletedItems) return false;
-
-    // Don't show error if we have any items currently PROCESSING this service
-    const hasProcessingItems = items.some(item => 
-      item.status === QueueItemStatus.PROCESSING && 
-      (!item[service] || item[service]?.status === ServiceStatus.INCOMPLETE)
-    );
-    if (hasProcessingItems) return false;
-
     // Show error if health check indicates service is down
     return !lastHealthCheck?.result[service];
   };
@@ -220,25 +258,31 @@ const QueueSection = ({
           </View>
 
           {/* Center and Right: Countdown and Retry button */}
-          {title.toLowerCase() === 'active' && items.length > 0 && retryCountdown && (
+          {title.toLowerCase() === 'active' && items.length > 0 && (
             <View className="flex-row items-center gap-2">
-              <View className="py-2 rounded-full flex-row items-center">
-                <Ionicons name="time" size={16} color="#6C9EC6" style={{ marginRight: 4 }} />
-                <Text className="text-med-ocean text-sm font-dm-medium">
-                  {retryCountdown >= 60 
-                    ? `${Math.floor(retryCountdown / 60)}m ${retryCountdown % 60}s`
-                    : `${retryCountdown}s`}
-                </Text>
-              </View>
-              <Pressable
-                onPress={handleRetryPress}
-                className="px-3 py-2 rounded-full bg-blue-ocean flex-row items-center"
-              >
-                <Ionicons name="refresh" size={16} color="white" style={{ marginRight: 4 }} />
-                <Text className="text-white text-sm font-dm-medium">
-                  Retry 
-                </Text>
-              </Pressable>
+              {/* Only show countdown timer in dev mode */}
+              {retryCountdown && showTimers && (
+                <View className="py-2 rounded-full flex-row items-center">
+                  <Ionicons name="time" size={16} color="#6C9EC6" style={{ marginRight: 4 }} />
+                  <Text className="text-med-ocean text-sm font-dm-medium">
+                    {retryCountdown >= 60 
+                      ? `${Math.floor(retryCountdown / 60)}m ${retryCountdown % 60}s`
+                      : `${retryCountdown}s`}
+                  </Text>
+                </View>
+              )}
+              {/* Show retry button based on showRetryButton state */}
+              {items.length > 0 && showRetryButton && (
+                <Pressable
+                  onPress={handleRetryPress}
+                  className="px-3 py-2 rounded-full bg-blue-ocean flex-row items-center"
+                >
+                  <Ionicons name="refresh" size={16} color="white" style={{ marginRight: 4 }} />
+                  <Text className="text-white text-sm font-dm-medium">
+                    Retry 
+                  </Text>
+                </Pressable>
+              )}
             </View>
           )}
 
@@ -286,7 +330,7 @@ const QueueSection = ({
         </View>
 
         {/* Info Messages Stack */}
-        {title.toLowerCase() === 'active' && items.length > 0 && (
+        {title.toLowerCase() === 'active' && (
           <View className="space-y-2 mb-2">
             {/* Network Status Message */}
             {!isConnected && (
@@ -315,7 +359,7 @@ const QueueSection = ({
             )}
 
             {/* Database Status Message */}
-            {lastHealthCheck && items.length > 0 && shouldShowServiceError('directus') && (
+            {lastHealthCheck && shouldShowServiceError('directus') && (
               <View className="py-2 px-4 rounded-2xl bg-blue-50 border border-blue-ocean">
                 <View className="flex-row">
                   <View className="flex-col justify-start mr-1">
@@ -341,7 +385,7 @@ const QueueSection = ({
             )}
 
             {/* Blockchain Status Message */}
-            {lastHealthCheck && items.length > 0 && shouldShowServiceError('eas') && (
+            {lastHealthCheck && shouldShowServiceError('eas') && (
               <View className="py-2 px-4 rounded-2xl bg-blue-50 border border-blue-ocean">
                 <View className="flex-row">
                   <View className="flex-col justify-start mr-1">

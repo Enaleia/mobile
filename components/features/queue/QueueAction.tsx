@@ -9,6 +9,7 @@ import { router } from "expo-router";
 import { ServiceStatusIndicator } from "./ServiceStatusIndicator";
 import QueueStatusIndicator from "./QueueStatusIndicator";
 import { useEffect, useState } from "react";
+import { useDevMode } from "@/contexts/DevModeContext";
 
 interface QueueActionProps {
   item: QueueItem;
@@ -18,6 +19,7 @@ interface QueueActionProps {
 
 const QueueAction = ({ item, isLastItem = false, isProcessing = false }: QueueActionProps) => {
   const { actions } = useBatchData();
+  const { showTimers } = useDevMode();
   const action = actions?.find((a: Action) => a.id === item.actionId);
   const timestamp = item.lastAttempt || item.date;
   const formattedTime = new Intl.DateTimeFormat("en-US", {
@@ -51,11 +53,10 @@ const QueueAction = ({ item, isLastItem = false, isProcessing = false }: QueueAc
         // Calculate time remaining
         const remaining = PROCESSING_TIMEOUT - elapsed;
         if (remaining > 0) {
-          const minutes = Math.floor(remaining / 60000);
-          const seconds = Math.floor((remaining % 60000) / 1000);
-          setTimeRemaining(`${minutes}:${seconds.toString().padStart(2, '0')}`);
+          const seconds = Math.floor(remaining / 1000);
+          setTimeRemaining(`${seconds}s`);
         } else {
-          setTimeRemaining('0:00');
+          setTimeRemaining('0s');
         }
       };
 
@@ -95,7 +96,7 @@ const QueueAction = ({ item, isLastItem = false, isProcessing = false }: QueueAc
     progressBar: {
       flex: 1,
       height: 4,
-      backgroundColor: "ocean-blue",
+      backgroundColor: "#EEEAE7", // sand beige color
       borderRadius: 2,
       overflow: 'hidden',
     },
@@ -136,9 +137,11 @@ const QueueAction = ({ item, isLastItem = false, isProcessing = false }: QueueAc
             <Text className="text-sm font-dm-medium text-grey-7">
               {formattedTime}
             </Text>
-            <Text className="text-xs font-dm-medium text-grey-6">
-              {item.totalRetryCount || 0}/{MAX_RETRIES} Retry
-            </Text>
+            {showTimers && (
+              <Text className="text-xs font-dm-medium text-grey-6">
+                {item.totalRetryCount || 0}/{MAX_RETRIES} Retry
+              </Text>
+            )}
           </View>
 
           {/* Service Status Section */}
@@ -160,22 +163,23 @@ const QueueAction = ({ item, isLastItem = false, isProcessing = false }: QueueAc
               />
             </View>
 
-            {/* Progress Bar and Timer */}
+            {/* Progress bar and timer */}
             {item.status === QueueItemStatus.PROCESSING && (
-              <View style={styles.progressContainer}>
-                <View style={[styles.progressBar, { borderRadius: 12 }]}>
-                  <View 
-                    style={[
-                      styles.progressFill, 
-                      { 
-                        width: `${progress}%`,
-                        backgroundColor: '#2985D0', // Blue ocean code
-                        borderRadius: 12
-                      }
-                    ]} 
+              <View className="flex-row items-center gap-2 mt-1">
+                <View className="flex-1 h-2 bg-gray-200 rounded-full overflow-hidden">
+                  <View
+                    className="h-full bg-blue-ocean"
+                    style={{
+                      width: `${progress}%`,
+                    }}
                   />
                 </View>
-                <Text style={styles.timerText}>{timeRemaining}</Text>
+                {/* Only show processing time in dev mode */}
+                {showTimers && (
+                  <Text className="text-sm font-dm-medium text-gray-500">
+                    {timeRemaining}
+                  </Text>
+                )}
               </View>
             )}
           </View>

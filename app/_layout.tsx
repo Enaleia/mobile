@@ -18,6 +18,7 @@ import { BackgroundTaskManager } from "@/services/backgroundTaskManager";
 import { Asset } from "expo-asset";
 import { ACTION_ICONS } from "@/constants/action";
 import { WalletProvider, useWallet } from "@/contexts/WalletContext";
+import { DevModeProvider } from "@/contexts/DevModeContext";
 
 SplashScreen.preventAutoHideAsync();
 
@@ -95,40 +96,59 @@ export default function RootLayout() {
 
   return (
     <NetworkProvider>
-      <WalletProvider>
-        <AuthProvider>
-          <QueueProvider>
-            <QueueNetworkHandler />
-            <Stack
-              screenOptions={{
-                headerShown: false,
-                contentStyle: { backgroundColor: "white" },
-                navigationBarHidden: true,
-              }}
-            >
-              <Stack.Screen
-                name="(tabs)"
-                options={{
+      <DevModeProvider>
+        <WalletProvider>
+          <AuthProvider>
+            <QueueProvider>
+              <Stack
+                screenOptions={{
                   headerShown: false,
+                  contentStyle: { backgroundColor: "white" },
+                  navigationBarHidden: true,
                 }}
-              />
-              <Stack.Screen
-                name="(auth)/login"
-                options={{
-                  headerShown: false,
-                }}
-              />
-              <Stack.Screen
-                name="attest/new/[slug]"
-                options={{
-                  headerShown: false,
-                }}
-              />
-            </Stack>
-            <StatusBar barStyle="dark-content" />
-          </QueueProvider>
-        </AuthProvider>
-      </WalletProvider>
+              >
+                <Stack.Screen
+                  name="(tabs)"
+                  options={{
+                    headerShown: false,
+                  }}
+                />
+                <Stack.Screen
+                  name="(auth)/login"
+                  options={{
+                    headerShown: false,
+                  }}
+                />
+                <Stack.Screen
+                  name="attest/new/[slug]"
+                  options={{
+                    headerShown: false,
+                  }}
+                />
+                <Stack.Screen
+                  name="queue/[id]"
+                  options={{
+                    headerShown: false,
+                  }}
+                />
+                <Stack.Screen
+                  name="settings/wallet"
+                  options={{
+                    headerShown: false,
+                  }}
+                />
+                <Stack.Screen
+                  name="settings/queue-test"
+                  options={{
+                    headerShown: false,
+                  }}
+                />
+              </Stack>
+              <StatusBar barStyle="dark-content" />
+            </QueueProvider>
+          </AuthProvider>
+        </WalletProvider>
+      </DevModeProvider>
     </NetworkProvider>
   );
 }

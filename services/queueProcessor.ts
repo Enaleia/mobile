@@ -453,7 +453,7 @@ async function handleStuckProcessingItem(item: QueueItem) {
 
     if (hasCompletedServices) {
       queueDebugMonitor.log('└─ Some services completed, updating status...');
-    await updateItemInCache(item.localId, {
+      await updateItemInCache(item.localId, {
         status: getOverallStatus(currentItem),
         lastAttempt: new Date().toISOString()
       });
@@ -586,7 +586,11 @@ export async function processQueueItems(
             item.eas?.status === ServiceStatus.COMPLETED &&
             item.linking?.status === ServiceStatus.COMPLETED;
 
-          if (!allServicesCompleted) {
+          if (allServicesCompleted) {
+            queueDebugMonitor.log(`Moving item ${item.localId} to completed queue as all services are completed`);
+            await addToCompletedQueue(item);
+            await removeFromActiveQueue(item.localId);
+          } else {
             queueDebugMonitor.log(`Resetting item ${item.localId} to PENDING as not all services completed`);
             await updateItemInCache(item.localId, {
               status: QueueItemStatus.PENDING,
@@ -642,29 +646,29 @@ export async function processQueueItems(
       }
 
       // Now proceed with processing the queue
-  const itemsToProcessFiltered = itemsToProcess
-    .filter((item: QueueItem) => 
-      item.status !== QueueItemStatus.COMPLETED && 
+      const itemsToProcessFiltered = itemsToProcess
+        .filter((item: QueueItem) => 
+          item.status !== QueueItemStatus.COMPLETED && 
           item.totalRetryCount < MAX_RETRIES &&
           !item.deleted // Skip deleted items
-    )
+        )
         .sort((a: QueueItem, b: QueueItem) => new Date(b.date).getTime() - new Date(a.date).getTime()); // Sort by most recent first
 
-  if (!itemsToProcessFiltered.length) {
+      if (!itemsToProcessFiltered.length) {
         queueDebugMonitor.log("No items to process");
-    return;
-  }
+        return;
+      }
 
       queueDebugMonitor.log(`=== Starting batch processing of ${itemsToProcessFiltered.length} items ===`);
-    const requiredData = await fetchRequiredData();
-    const collectors = await directusCollectors();
-    const networkInfo = await NetInfo.fetch();
+      const requiredData = await fetchRequiredData();
+      const collectors = await directusCollectors();
+      const networkInfo = await NetInfo.fetch();
 
-    // Process items sequentially
-    for (const item of itemsToProcessFiltered) {
-      try {
-        // Start processing timer
-        currentProcessingItemId = item.localId;
+      // Process items sequentially
+      for (const item of itemsToProcessFiltered) {
+        try {
+          // Start processing timer
+          currentProcessingItemId = item.localId;
           
           queueDebugMonitor.log(`=== Starting processing of item ${item.localId} ===`);
           queueDebugMonitor.log('Current state:', {
@@ -715,9 +719,9 @@ export async function processQueueItems(
 
                 if (!allServicesCompleted) {
                   queueDebugMonitor.log('└─ Not all services completed, resetting to PENDING');
-          await updateItemInCache(item.localId, {
+                  await updateItemInCache(item.localId, {
                     status: QueueItemStatus.PENDING,
-            lastError: "Operation timed out",
+                    lastError: "Operation timed out",
                     lastAttempt: undefined,
                     directus: currentItem.directus?.status === ServiceStatus.COMPLETED ? 
                       currentItem.directus : 
@@ -781,7 +785,7 @@ export async function processQueueItems(
         } catch (error) {
           queueDebugMonitor.error(`Error processing item ${item.localId}:`, error);
           // Update item with error and respect skipRetryIncrement flag
-            await updateItemInCache(item.localId, {
+          await updateItemInCache(item.localId, {
             lastError: error instanceof Error ? error.message : "Unknown error",
             totalRetryCount: item.skipRetryIncrement ? 
               (item.totalRetryCount || 0) : 

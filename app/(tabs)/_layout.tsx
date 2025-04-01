@@ -4,6 +4,7 @@ import React from "react";
 import { useQueue } from "@/contexts/QueueContext";
 import { QueueItemStatus } from "@/types/queue";
 import { Icon } from "../../components/shared/Icon";
+import { Platform } from "react-native";
 
 const TabsLayout = () => {
   const { queueItems } = useQueue();
@@ -18,6 +19,25 @@ const TabsLayout = () => {
         headerShown: false,
         tabBarActiveTintColor: "#0D0D0D",
         tabBarInactiveTintColor: "#8E8E93",
+        tabBarStyle: {
+          position: 'absolute',
+          bottom: Platform.OS === 'ios' ? 0 : 10,
+          left: 20,
+          right: 20,
+          elevation: 0,
+          backgroundColor: 'white',
+          borderRadius: 21,
+          height: 88,
+          paddingBottom: 5,
+          paddingTop: 10,
+          shadowColor: '#000',
+          shadowOffset: {
+            width: 0,
+            height: 2,
+          },
+          shadowOpacity: 0.05,
+          shadowRadius: 22,
+        },
       }}
     >
       <Tabs.Screen

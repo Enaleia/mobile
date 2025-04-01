@@ -98,71 +98,6 @@ export const QueueProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     }
   }, []);
 
-  // Initialize queue state
-  const initializeQueue = useCallback(async () => {
-    try {
-      queueDebugMonitor.logQueueMetrics([]);  // Initialize metrics
-      queueDebugMonitor.logNetworkStatus(
-        network.isConnected ?? false,
-        network.isInternetReachable ?? false
-      );
-      
-      const activeQueue = await getActiveQueue();
-      
-      // Check for any items in PROCESSING state at launch
-      const processingItems = activeQueue.filter(item => item.status === QueueItemStatus.PROCESSING);
-      
-      if (processingItems.length > 0) {
-        queueDebugMonitor.logQueueMetrics(processingItems);
-        
-        for (const item of processingItems) {
-          const hasIncompleteServices = 
-            item.directus?.status !== ServiceStatus.COMPLETED ||
-            item.eas?.status !== ServiceStatus.COMPLETED ||
-            item.linking?.status !== ServiceStatus.COMPLETED;
-
-          if (hasIncompleteServices) {
-            queueDebugMonitor.logStuckItem(item);
-            await updateItemInCache(item.localId, {
-              status: QueueItemStatus.PENDING,
-              lastError: "Reset at launch - incomplete services",
-              lastAttempt: undefined,
-              // Reset service states while preserving completed ones
-              directus: item.directus?.status === ServiceStatus.COMPLETED ? 
-                item.directus : 
-                { ...item.directus, status: ServiceStatus.INCOMPLETE, error: undefined },
-              eas: item.eas?.status === ServiceStatus.COMPLETED ? 
-                item.eas : 
-                { ...item.eas, status: ServiceStatus.INCOMPLETE, error: undefined },
-              linking: item.linking?.status === ServiceStatus.COMPLETED ? 
-                item.linking : 
-                { ...item.linking, status: ServiceStatus.INCOMPLETE, error: undefined }
-            });
-            queueDebugMonitor.logItemStateChange(item, { status: QueueItemStatus.PENDING });
-            } else {
-            queueDebugMonitor.logProcessingComplete(item, true);
-          }
-        }
-      }
-
-      // Load the queue after initialization
-      await loadQueueItems();
-      setIsInitialized(true);
-      queueDebugMonitor.logQueueMetrics(await getActiveQueue());
-    } catch (error) {
-      if (error instanceof Error) {
-        queueDebugMonitor.logProcessingComplete({ localId: 'init' } as QueueItem, false, error.message);
-      }
-      // Still mark as initialized to prevent infinite retries
-      setIsInitialized(true);
-    }
-  }, [loadQueueItems, isOnline, network.isInternetReachable]);
-
-  // Run initialization at app launch
-  useEffect(() => {
-    initializeQueue();
-  }, [initializeQueue]);
-
   // Process queue items
   const processQueueItems = useCallback(async (itemsToProcess?: QueueItem[]) => {
     if (!isOnline || isProcessing) return;
@@ -201,12 +136,112 @@ export const QueueProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
       // Set last batch attempt time after all items have finished processing
       await AsyncStorage.setItem('QUEUE_LAST_BATCH_ATTEMPT', new Date().toISOString());
+
+      // Check for new items that were added during processing
+      const updatedQueue = await getActiveQueue();
+      const newItems = updatedQueue.filter(item => 
+        shouldProcessItem(item) && 
+        !itemsNeedingProcessing.some(processedItem => processedItem.localId === item.localId)
+      );
+
+      if (newItems.length > 0) {
+        console.log(`Found ${newItems.length} new items to process`);
+        // Process new items immediately
+        await processQueueItems(newItems);
+      }
     } catch (error) {
       console.error("Error processing queue items:", error);
     } finally {
       setIsProcessing(false);
     }
   }, [isOnline, isProcessing, queueItems, wallet, loadQueueItems]);
+
+  // Initialize queue state
+  const initializeQueue = useCallback(async () => {
+    try {
+      queueDebugMonitor.logQueueMetrics([]);  // Initialize metrics
+      queueDebugMonitor.logNetworkStatus(
+        network.isConnected ?? false,
+        network.isInternetReachable ?? false
+      );
+      
+      const activeQueue = await getActiveQueue();
+      
+      // Check for any items in PROCESSING state at launch
+      const processingItems = activeQueue.filter(item => item.status === QueueItemStatus.PROCESSING);
+      
+      if (processingItems.length > 0) {
+        queueDebugMonitor.logQueueMetrics(processingItems);
+        
+        for (const item of processingItems) {
+          const allServicesCompleted = 
+            item.directus?.status === ServiceStatus.COMPLETED &&
+            item.eas?.status === ServiceStatus.COMPLETED &&
+            item.linking?.status === ServiceStatus.COMPLETED;
+
+          if (allServicesCompleted) {
+            queueDebugMonitor.logProcessingComplete(item, true);
+            // First update the item's status to COMPLETED
+            await updateItemInCache(item.localId, {
+              status: QueueItemStatus.COMPLETED
+            });
+            // Then move it to completed queue
+            await addToCompletedQueue(item);
+            await removeFromActiveQueue(item.localId);
+          } else {
+            queueDebugMonitor.logStuckItem(item);
+            await updateItemInCache(item.localId, {
+              status: QueueItemStatus.PENDING,
+              lastError: "Reset at launch - incomplete services",
+              lastAttempt: undefined,
+              // Reset service states while preserving completed ones
+              directus: item.directus?.status === ServiceStatus.COMPLETED ? 
+                item.directus : 
+                { ...item.directus, status: ServiceStatus.INCOMPLETE, error: undefined },
+              eas: item.eas?.status === ServiceStatus.COMPLETED ? 
+                item.eas : 
+                { ...item.eas, status: ServiceStatus.INCOMPLETE, error: undefined },
+              linking: item.linking?.status === ServiceStatus.COMPLETED ? 
+                item.linking : 
+                { ...item.linking, status: ServiceStatus.INCOMPLETE, error: undefined }
+            });
+            queueDebugMonitor.logItemStateChange(item, { status: QueueItemStatus.PENDING });
+          }
+        }
+      }
+
+      // Load the queue after initialization
+      await loadQueueItems();
+      setIsInitialized(true);
+      queueDebugMonitor.logQueueMetrics(await getActiveQueue());
+
+      // Process pending items if online
+      if (isOnline) {
+        const pendingItems = activeQueue.filter(item => 
+          item.status === QueueItemStatus.PENDING || 
+          item.status === QueueItemStatus.FAILED
+        );
+        
+        if (pendingItems.length > 0) {
+          queueDebugMonitor.logQueueMetrics(pendingItems);
+          await processQueueItems(pendingItems);
+        }
+      }
+    } catch (error) {
+      if (error instanceof Error) {
+        queueDebugMonitor.logProcessingComplete({ localId: 'init' } as QueueItem, false, error.message);
+      }
+      // Still mark as initialized to prevent infinite retries
+      setIsInitialized(true);
+    }
+  }, [loadQueueItems, isOnline, network.isInternetReachable, processQueueItems]);
+
+  // Run initialization at app launch
+  useEffect(() => {
+    if (!isInitialized) {
+      initializeQueue();
+    }
+  }, [initializeQueue, isInitialized]);
 
   // Update queue item
   const updateQueueItem = useCallback(async (itemId: string, updates: Partial<QueueItem>) => {
@@ -297,19 +332,23 @@ export const QueueProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   // Listen for queue updates
   useEffect(() => {
     const handleQueueUpdate = () => {
-      loadQueueItems();
+      if (isInitialized) {
+        loadQueueItems();
+      }
     };
 
     queueEventEmitter.addListener(QueueEvents.UPDATED, handleQueueUpdate);
     return () => {
       queueEventEmitter.removeListener(QueueEvents.UPDATED, handleQueueUpdate);
     };
-  }, [loadQueueItems]);
+  }, [loadQueueItems, isInitialized]);
 
   // Initial load
   useEffect(() => {
-    loadQueueItems();
-  }, [loadQueueItems]);
+    if (isInitialized) {
+      loadQueueItems();
+    }
+  }, [loadQueueItems, isInitialized]);
 
   // Retry multiple items
   const retryItems = useCallback(async (items: QueueItem[]) => {
