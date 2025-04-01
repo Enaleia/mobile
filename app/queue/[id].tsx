@@ -156,25 +156,25 @@ export default function QueueItemDetails() {
   const getStatusSummary = () => {
     if (!item) return "";
     
-    const hasDirectusFailed = item.directus?.status === ServiceStatus.FAILED;
-    const hasEasFailed = item.eas?.status === ServiceStatus.FAILED;
-    const hasLinkingFailed = item.directus?.status === ServiceStatus.COMPLETED && !item.directus?.linked;
+    const hasDirectusIncomplete = item.directus?.status === ServiceStatus.INCOMPLETE;
+    const hasEasIncomplete = item.eas?.status === ServiceStatus.INCOMPLETE;
+    const hasLinkingIncomplete = item.linking?.status === ServiceStatus.INCOMPLETE;
     
-    if (hasDirectusFailed || hasEasFailed || hasLinkingFailed) {
-      const failures = [];
-      if (hasDirectusFailed) failures.push("Database failed");
-      if (hasEasFailed) failures.push("Blockchain failed");
-      if (hasLinkingFailed) failures.push("Linking failed");
-      return `: ${failures.join(", ")}`;
+    if (hasDirectusIncomplete || hasEasIncomplete || hasLinkingIncomplete) {
+      const incompleteServices = [];
+      if (hasDirectusIncomplete) incompleteServices.push("Database incomplete");
+      if (hasEasIncomplete) incompleteServices.push("Blockchain incomplete");
+      if (hasLinkingIncomplete) incompleteServices.push("Linking incomplete");
+      return `: ${incompleteServices.join(", ")}`;
     }
     
     if (item.directus?.status === ServiceStatus.COMPLETED && 
         item.eas?.status === ServiceStatus.COMPLETED && 
-        item.directus?.linked) {
-      return ": Completed successfully";
+        item.linking?.status === ServiceStatus.COMPLETED) {
+      return ": All services completed";
     }
     
-    return "";
+    return ": Processing";
   };
 
   const getStatusEmoji = (status: ServiceStatus | undefined, isLinked?: boolean) => {
@@ -190,9 +190,9 @@ export default function QueueItemDetails() {
     const sections = [
       `Action Type: ${currentAction.name}`,
       `Status Summary:
-  Database: ${item.directus?.status || "N/A"} ${getStatusEmoji(item.directus?.status)}
-  Blockchain: ${item.eas?.status || "N/A"} ${getStatusEmoji(item.eas?.status)}
-  Linking: ${item.directus?.linked ? "Completed" : "Pending"} ${getStatusEmoji(item.directus?.status, item.directus?.linked)}`,
+  Database: ${item.directus?.status || "INCOMPLETE"} ${getStatusEmoji(item.directus?.status)}
+  Blockchain: ${item.eas?.status || "INCOMPLETE"} ${getStatusEmoji(item.eas?.status)}
+  Linking: ${item.linking?.status || "INCOMPLETE"} ${getStatusEmoji(item.linking?.status)}`,
       item.collectorId ? `
 Collector Information:
   - ID: ${item.collectorId}
