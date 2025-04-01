@@ -218,51 +218,6 @@ export default function QueueTestScreen() {
             </Text>
           </Pressable>
 
-          <Pressable
-            onPress={() => handleSubmitTestForms(5)}
-            disabled={isSubmitting}
-            className={`w-full flex-row items-center justify-center p-3 h-[60px] rounded-full ${
-              isSubmitting ? "bg-primary-dark-blue opacity-50" : "bg-blue-ocean"
-            }`}
-          >
-            {isSubmitting ? (
-              <ActivityIndicator color="white" className="mr-2" />
-            ) : null}
-            <Text className="text-lg font-dm-medium text-slate-50 tracking-tight">
-              {isSubmitting ? "Preparing..." : "Submit 5 Test Forms"}
-            </Text>
-          </Pressable>
-
-          <Pressable
-            onPress={() => handleSubmitTestForms(10)}
-            disabled={isSubmitting}
-            className={`w-full flex-row items-center justify-center p-3 h-[60px] rounded-full ${
-              isSubmitting ? "bg-primary-dark-blue opacity-50" : "bg-blue-ocean"
-            }`}
-          >
-            {isSubmitting ? (
-              <ActivityIndicator color="white" className="mr-2" />
-            ) : null}
-            <Text className="text-lg font-dm-medium text-slate-50 tracking-tight">
-              {isSubmitting ? "Preparing..." : "Submit 10 Test Forms"}
-            </Text>
-          </Pressable>
-
-          <Pressable
-            onPress={() => handleSubmitTestForms(1, true)}
-            disabled={isSubmitting}
-            className={`w-full flex-row items-center justify-center p-3 h-[60px] rounded-full ${
-              isSubmitting ? "bg-primary-dark-blue opacity-50" : "bg-rose-500"
-            }`}
-          >
-            {isSubmitting ? (
-              <ActivityIndicator color="white" className="mr-2" />
-            ) : null}
-            <Text className="text-lg font-dm-medium text-slate-50 tracking-tight">
-              {isSubmitting ? "Preparing..." : "Submit 1 Failed Test Form"}
-            </Text>
-          </Pressable>
-
           <View className="mt-8 pt-4 border-t border-gray-200">
             <Text className="text-base font-dm-bold text-gray-900 mb-2">
               Health Check URLs

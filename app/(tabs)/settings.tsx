@@ -96,7 +96,7 @@ const SettingsScreen = () => {
       <SafeAreaContent>
         <ScrollView
           className="flex-1"
-          contentContainerStyle={{ paddingBottom: 20 }}
+          contentContainerStyle={{ flexGrow: 1, paddingBottom: 100 }}
           showsVerticalScrollIndicator={false}
         >
           <View className="mt-2">
@@ -147,7 +147,7 @@ const SettingsScreen = () => {
                 Preferences
               </Text>
             </View>
-            <Ionicons name="chevron-forward" size={24} color="#8E8E93" />
+            <Ionicons name="chevron-forward-outline" size={16} color="#0D0D0D" />
           </Pressable>
 
           <Pressable

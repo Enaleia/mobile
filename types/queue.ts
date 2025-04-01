@@ -51,6 +51,7 @@ export interface QueueItem {
   directus?: {
     status: ServiceStatus;
     error?: string;
+    eventId?: number;
     linked?: boolean;
   };
   eas?: {
@@ -117,7 +118,8 @@ export const isPendingItem = (item: QueueItem): boolean =>
 
 export function shouldProcessItem(item: QueueItem): boolean {
   // Don't process if already completed or deleted
-  if (item.status === QueueItemStatus.COMPLETED || item.deleted) {
+  if (item.status === QueueItemStatus.COMPLETED || 
+    item.status === QueueItemStatus.FAILED || item.deleted) {
     return false;
   }
 
@@ -127,8 +129,7 @@ export function shouldProcessItem(item: QueueItem): boolean {
   }
 
   // Process if item is pending or failed
-  return item.status === QueueItemStatus.PENDING || 
-         item.status === QueueItemStatus.FAILED;
+  return item.status === QueueItemStatus.PENDING;
 }
 
 export function determineItemStatus(item: QueueItem): QueueItemStatus {

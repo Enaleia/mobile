@@ -126,7 +126,7 @@ const QueueScreen = () => {
     <SafeAreaContent>
       <ScrollView
         className="flex-1"
-        contentContainerStyle={{ paddingBottom: 20 }}
+        contentContainerStyle={{ flexGrow: 1, paddingBottom: 100 }}
         showsVerticalScrollIndicator={false}
       >
         <View className="mt-2">

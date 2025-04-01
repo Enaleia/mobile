@@ -944,19 +944,54 @@ async function processItem(
     // Wait for all services to complete
     await Promise.all(servicePromises);
 
-    // Update final status
-    const finalItem = await getItemFromCache(item.localId);
-    if (finalItem) {
-      const allServicesCompleted = 
-        finalItem.directus?.status === ServiceStatus.COMPLETED &&
-        finalItem.eas?.status === ServiceStatus.COMPLETED &&
-        finalItem.linking?.status === ServiceStatus.COMPLETED;
+    // Get current item state to check if we can link
+    const activeQueue = await getActiveQueue();
+    const currentItem = activeQueue.find(i => i.localId === item.localId);
+    
+    if (currentItem) {
+      // Check if both Directus and EAS are completed
+      if (currentItem.directus?.status === ServiceStatus.COMPLETED && 
+          currentItem.eas?.status === ServiceStatus.COMPLETED &&
+          currentItem.directus?.eventId && 
+          currentItem.eas?.txHash) {
+        
+        try {
+          // Link EAS to Directus
+          await linkEAStoDirectus(currentItem.directus.eventId, currentItem.eas.txHash);
+          
+          // Update linking status
+          await updateItemInCache(item.localId, {
+            linking: {
+              status: ServiceStatus.COMPLETED
+            }
+          });
 
-      if (allServicesCompleted) {
-        await updateItemInCache(item.localId, {
-          status: QueueItemStatus.COMPLETED,
-          lastAttempt: new Date().toISOString()
-        });
+          // Check if all services are completed after linking
+          const updatedQueue = await getActiveQueue();
+          const updatedItem = updatedQueue.find(i => i.localId === item.localId);
+          
+          if (updatedItem && 
+              updatedItem.directus?.status === ServiceStatus.COMPLETED &&
+              updatedItem.eas?.status === ServiceStatus.COMPLETED &&
+              updatedItem.linking?.status === ServiceStatus.COMPLETED) {
+            
+            // All services completed, update item status to COMPLETED
+            await updateItemInCache(item.localId, {
+              status: QueueItemStatus.COMPLETED,
+              lastAttempt: new Date().toISOString()
+            });
+          }
+        } catch (error) {
+          const errorMessage = error instanceof Error ? error.message : "Unknown error";
+          queueDebugMonitor.error(`Linking failed for item ${item.localId}:`, errorMessage);
+          
+          await updateItemInCache(item.localId, {
+            linking: {
+              status: ServiceStatus.INCOMPLETE,
+              error: errorMessage
+            }
+          });
+        }
       }
     }
   } catch (error) {
@@ -970,12 +1005,23 @@ async function processItem(
                           errorMessage.toLowerCase().includes('timeout') ||
                           errorMessage.toLowerCase().includes('connection');
     
+    // Get current retry count from the item passed to processItem
+    const currentRetryCount = item.totalRetryCount || 0;
+    
+    // Only set to FAILED if max retries reached
+    const status = currentRetryCount >= MAX_RETRIES ? 
+      QueueItemStatus.FAILED : 
+      QueueItemStatus.PENDING;
+
     // Update item status based on error
     await updateItemInCache(item.localId, {
-      status: QueueItemStatus.FAILED,
+      status,
       lastError: errorMessage,
       lastAttempt: new Date().toISOString(),
-      skipRetryIncrement: isNetworkError // Skip retry increment for network errors
+      skipRetryIncrement: isNetworkError, // Skip retry increment for network errors
+      totalRetryCount: !isNetworkError && status === QueueItemStatus.PENDING ? 
+        currentRetryCount + 1 : 
+        currentRetryCount
     });
   } finally {
     // Clean up
