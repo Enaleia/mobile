@@ -60,14 +60,7 @@ const SettingsScreen = () => {
   };
 
   const handleBackgroundTap = () => {
-    setTapCount(prev => {
-      const newCount = prev + 1;
-      if (newCount === 10) {
-        toggleDevMode();
-        return 0;
-      }
-      return newCount;
-    });
+    setTapCount(prev => prev + 1);
   };
 
   // Reset tap count after 3 seconds of inactivity
@@ -85,16 +78,20 @@ const SettingsScreen = () => {
     };
   }, [tapCount]);
 
+  // Handle dev mode toggle when tap count reaches 10
+  useEffect(() => {
+    if (tapCount === 10) {
+      toggleDevMode();
+      setTapCount(0);
+    }
+  }, [tapCount, toggleDevMode]);
+
   return (
     <Pressable 
       onPress={handleBackgroundTap}
       className="flex-1 bg-sand-beige"
     >
       <SafeAreaContent>
-        <View>
-          <UserProfile />
-        </View>
-
         <ScrollView
           className="flex-1"
           contentContainerStyle={{ paddingBottom: 20 }}
@@ -113,12 +110,9 @@ const SettingsScreen = () => {
                   Account information
                 </Text>
               </View>
-              {/* <View className="flex-row items-center gap-2 mb-2">
-                <Ionicons name="id-card-outline" size={24} color="#0D0D0D" />
-                <Text className="text-lg font-dm-bold text-gray-900">
-                  {user?.first_name} {user?.last_name}
-                </Text>
-              </View> */}
+              <View className="mb-4">
+                <UserProfile />
+              </View>
 
               <View className="space-y-2">
                 <View className="flex-row items-center gap-2">

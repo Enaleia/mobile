@@ -102,18 +102,13 @@ function Home() {
         isAuthError={isAuthError}
       />
 
-      {/* Header - Fixed at top */}
-      <View>
-        <UserProfile />
-      </View>
-
       {/* Scrollable Content */}
       <ScrollView
         className="flex-1"
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ flexGrow: 1 }}
+        contentContainerStyle={{ flexGrow: 1, paddingBottom: 200 }}
       >
-        <View className="mt-4">
+        <View className="mt-3">
           <Text
             className="text-[33px] font-dm-bold tracking-[-1.5px] text-enaleia-black pt-1"
             style={{ marginBottom: 12, lineHeight: 33 }}

@@ -5,7 +5,6 @@ const HEALTH_CHECK_TIMEOUT =10 * 1000; // 10 seconds timeout
 export async function checkDirectusHealth(): Promise<boolean> {
   const apiUrl = process.env.EXPO_PUBLIC_API_URL;
   if (!apiUrl) {
-    console.error('Directus API URL not configured');
     return false;
   }
 
@@ -21,7 +20,6 @@ export async function checkDirectusHealth(): Promise<boolean> {
     clearTimeout(timeoutId);
     return response.status === 200;
   } catch (error) {
-    console.error('Directus health check failed:', error);
     return false;
   }
 }
@@ -31,7 +29,6 @@ export async function checkEASHealth(checkSchema: boolean = false): Promise<bool
   const providerUrl = process.env.EXPO_PUBLIC_NETWORK_PROVIDER;
   
   if (!scanUrl || !providerUrl) {
-    console.error('EAS Network URLs not configured');
     return false;
   }
 
@@ -63,18 +60,8 @@ export async function checkEASHealth(checkSchema: boolean = false): Promise<bool
     clearTimeout(timeoutId);
 
     // Both services need to be healthy
-    const isHealthy = scanResponse.status === 200 && providerResponse.status === 200;
-
-    if (!isHealthy) {
-      console.error('EAS health check failed:', {
-        scanStatus: scanResponse.status,
-        providerStatus: providerResponse.status
-      });
-    }
-
-    return isHealthy;
+    return scanResponse.status === 200 && providerResponse.status === 200;
   } catch (error) {
-    console.error('EAS health check failed:', error);
     return false;
   }
 }

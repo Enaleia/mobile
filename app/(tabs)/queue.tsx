@@ -124,7 +124,6 @@ const QueueScreen = () => {
 
   return (
     <SafeAreaContent>
-      <UserProfile />
       <ScrollView
         className="flex-1"
         contentContainerStyle={{ paddingBottom: 20 }}
