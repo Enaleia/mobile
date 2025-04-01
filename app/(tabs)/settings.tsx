@@ -1,4 +1,4 @@
-import { View, Text, Image, Pressable, Linking, Platform, Alert } from "react-native";
+import { View, Text, Image, Pressable, Linking, Platform, Alert, Switch } from "react-native";
 import React, { useState, useEffect } from "react";
 import SafeAreaContent from "@/components/shared/SafeAreaContent";
 import { Ionicons } from "@expo/vector-icons";
@@ -7,6 +7,7 @@ import { ScrollView } from "moti";
 import SignOutModal from "@/components/features/auth/SignOutModal";
 import { useAuth } from "@/contexts/AuthContext";
 import { useDevMode } from "@/contexts/DevModeContext";
+import { usePreferences } from "@/contexts/PreferencesContext";
 // import NetworkStatus from "@/components/shared/NetworkStatus";
 import { Company } from "@/types/company";
 import Constants from "expo-constants";
@@ -18,6 +19,7 @@ const SettingsScreen = () => {
   const { user, logout } = useAuth();
   const { toggleDevMode } = useDevMode();
   const [tapCount, setTapCount] = useState(0);
+  const { autoScanQR, autoJumpToWeight, setAutoScanQR, setAutoJumpToWeight } = usePreferences();
 
   const version = Constants.expoConfig?.version ?? "0.0.0";
   const buildNumber = Platform.select({
@@ -97,7 +99,7 @@ const SettingsScreen = () => {
           contentContainerStyle={{ paddingBottom: 20 }}
           showsVerticalScrollIndicator={false}
         >
-          <View className="mt-4">
+          <View className="mt-2">
             <Text className="text-3xl font-dm-bold text-enaleia-black tracking-[-1px] mb-2">
               Settings
             </Text>
@@ -134,9 +136,23 @@ const SettingsScreen = () => {
             </View>
           </View>
 
+          {/* Preferences Link */}
+          <Pressable
+            onPress={() => router.push("/settings/preferences")}
+            className="flex-row items-center justify-between px-4 py-4 border-b border-neutral-200 bg-white rounded-t-2xl"
+          >
+            <View className="flex-row items-center gap-2">
+              <Ionicons name="settings-outline" size={24} color="#0D0D0D" />
+              <Text className="text-base font-dm-bold text-slate-800 tracking-tighter">
+                Preferences
+              </Text>
+            </View>
+            <Ionicons name="chevron-forward" size={24} color="#8E8E93" />
+          </Pressable>
+
           <Pressable
             onPress={() => router.push("/settings/wallet")}
-            className="flex-row items-center justify-between px-4 py-4 border-b border-neutral-200 bg-white rounded-t-2xl"
+            className="flex-row items-center justify-between px-4 py-4 border-b border-neutral-200 bg-white"
           >
             <View className="flex-row items-center gap-2">
               <Ionicons name="wallet-outline" size={24} color="#0D0D0D" />

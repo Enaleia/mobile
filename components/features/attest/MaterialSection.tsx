@@ -5,6 +5,7 @@ import { Camera } from "expo-camera";
 import QRTextInput, { QRTextInputRef } from "@/components/features/scanning/QRTextInput";
 import { MaterialDetail, MaterialsData } from "@/types/material";
 import AddMaterialModal from "@/components/features/attest/AddMaterialModal";
+import { usePreferences } from "@/contexts/PreferencesContext";
 
 interface MaterialSectionProps {
   materials: MaterialsData | undefined;
@@ -29,6 +30,7 @@ const MaterialSection = ({
 }: MaterialSectionProps) => {
   const title = category === "incoming" ? "Incoming" : "Outgoing";
   const icon = category === "incoming" ? "arrow-down" : "arrow-up";
+  const { autoScanQR, autoJumpToWeight } = usePreferences();
 
   // Create refs array for weight inputs
   const weightInputRefs = useRef<Array<TextInput | null>>([]);
@@ -48,7 +50,7 @@ const MaterialSection = ({
   useEffect(() => {
     const handleAutoLaunchScanner = async () => {
       // Only proceed if we're in the material section and have materials
-      if (selectedMaterials.length > 0 && !hideCodeInput) {
+      if (selectedMaterials.length > 0 && !hideCodeInput && autoScanQR) {
         const lastIndex = selectedMaterials.length - 1;
         const lastMaterial = selectedMaterials[lastIndex];
         
@@ -73,12 +75,12 @@ const MaterialSection = ({
 
     // Call the function when materials change
     handleAutoLaunchScanner();
-  }, [selectedMaterials.length, hideCodeInput]);
+  }, [selectedMaterials.length, hideCodeInput, autoScanQR]);
 
   // Function to focus weight input after QR scan
   const handleQRScanComplete = (index: number) => {
-    // Focus the corresponding weight input
-    if (weightInputRefs.current[index]) {
+    // Focus the corresponding weight input if auto-jump is enabled
+    if (autoJumpToWeight && weightInputRefs.current[index]) {
       weightInputRefs.current[index]?.focus();
     }
   };

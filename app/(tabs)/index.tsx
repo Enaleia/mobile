@@ -106,9 +106,9 @@ function Home() {
       <ScrollView
         className="flex-1"
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ flexGrow: 1, paddingBottom: 200 }}
+        contentContainerStyle={{ flexGrow: 1, paddingBottom: 100 }}
       >
-        <View className="mt-3">
+        <View className="mt-2">
           <Text
             className="text-[33px] font-dm-bold tracking-[-1.5px] text-enaleia-black pt-1"
             style={{ marginBottom: 12, lineHeight: 33 }}

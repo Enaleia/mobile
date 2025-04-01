@@ -129,8 +129,8 @@ const QueueScreen = () => {
         contentContainerStyle={{ paddingBottom: 20 }}
         showsVerticalScrollIndicator={false}
       >
-        <View className="mt-4">
-          <Text className="text-3xl font-dm-bold text-enaleia-black tracking-[-1px] mb-2">
+        <View className="mt-2">
+          <Text className="text-3xl font-dm-bold text-enaleia-black tracking-[-1px] mb-1">
             Queue
           </Text>
         </View>

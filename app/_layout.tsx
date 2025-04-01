@@ -19,6 +19,7 @@ import { Asset } from "expo-asset";
 import { ACTION_ICONS } from "@/constants/action";
 import { WalletProvider, useWallet } from "@/contexts/WalletContext";
 import { DevModeProvider } from "@/contexts/DevModeContext";
+import { PreferencesProvider } from "@/contexts/PreferencesContext";
 
 SplashScreen.preventAutoHideAsync();
 
@@ -100,51 +101,53 @@ export default function RootLayout() {
         <WalletProvider>
           <AuthProvider>
             <QueueProvider>
-              <Stack
-                screenOptions={{
-                  headerShown: false,
-                  contentStyle: { backgroundColor: "white" },
-                  navigationBarHidden: true,
-                }}
-              >
-                <Stack.Screen
-                  name="(tabs)"
-                  options={{
+              <PreferencesProvider>
+                <Stack
+                  screenOptions={{
                     headerShown: false,
+                    contentStyle: { backgroundColor: "white" },
+                    navigationBarHidden: true,
                   }}
-                />
-                <Stack.Screen
-                  name="(auth)/login"
-                  options={{
-                    headerShown: false,
-                  }}
-                />
-                <Stack.Screen
-                  name="attest/new/[slug]"
-                  options={{
-                    headerShown: false,
-                  }}
-                />
-                <Stack.Screen
-                  name="queue/[id]"
-                  options={{
-                    headerShown: false,
-                  }}
-                />
-                <Stack.Screen
-                  name="settings/wallet"
-                  options={{
-                    headerShown: false,
-                  }}
-                />
-                <Stack.Screen
-                  name="settings/queue-test"
-                  options={{
-                    headerShown: false,
-                  }}
-                />
-              </Stack>
-              <StatusBar barStyle="dark-content" />
+                >
+                  <Stack.Screen
+                    name="(tabs)"
+                    options={{
+                      headerShown: false,
+                    }}
+                  />
+                  <Stack.Screen
+                    name="(auth)/login"
+                    options={{
+                      headerShown: false,
+                    }}
+                  />
+                  <Stack.Screen
+                    name="attest/new/[slug]"
+                    options={{
+                      headerShown: false,
+                    }}
+                  />
+                  <Stack.Screen
+                    name="queue/[id]"
+                    options={{
+                      headerShown: false,
+                    }}
+                  />
+                  <Stack.Screen
+                    name="settings/wallet"
+                    options={{
+                      headerShown: false,
+                    }}
+                  />
+                  <Stack.Screen
+                    name="settings/queue-test"
+                    options={{
+                      headerShown: false,
+                    }}
+                  />
+                </Stack>
+                <StatusBar barStyle="dark-content" />
+              </PreferencesProvider>
             </QueueProvider>
           </AuthProvider>
         </WalletProvider>
