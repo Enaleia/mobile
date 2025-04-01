@@ -668,9 +668,9 @@ export async function processQueueItems(
       const lastHealthCheck = await AsyncStorage.getItem('LAST_HEALTH_CHECK');
       const healthCheckResult = lastHealthCheck ? JSON.parse(lastHealthCheck) : null;
       
+      // Log service status but don't skip processing
       if (!healthCheckResult?.result?.directus || !healthCheckResult?.result?.eas) {
-        queueDebugMonitor.log("Services are unreachable, skipping processing");
-        return;
+        queueDebugMonitor.log("Services are unreachable, proceeding with partial processing");
       }
 
       // Process items sequentially

@@ -275,7 +275,7 @@ const QueueSection = ({
               {items.length > 0 && showRetryButton && (
                 <Pressable
                   onPress={handleRetryPress}
-                  className="px-3 py-2 rounded-full bg-blue-ocean flex-row items-center"
+                  className="px-3 py-2 rounded-full bg-blue-ocean flex-row items-center active:bg-[#6C9EC6]"
                 >
                   <Ionicons name="refresh" size={16} color="white" style={{ marginRight: 4 }} />
                   <Text className="text-white text-sm font-dm-medium">

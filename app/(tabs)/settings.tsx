@@ -117,7 +117,7 @@ const SettingsScreen = () => {
               <View className="space-y-2">
                 <View className="flex-row items-center gap-2">
                   <Ionicons name="mail-outline" size={24} color="#0D0D0D" />
-                  <Text className="text-base font-dm-medium text-gray-900">
+                  <Text className="text-base font-dm-bold text-slate-800 tracking-tighter">
                     {user?.email}
                   </Text>
                 </View>
@@ -125,7 +125,7 @@ const SettingsScreen = () => {
                 {getCompanyName() && (
                   <View className="flex-row items-center gap-2">
                     <Ionicons name="business-outline" size={24} color="#0D0D0D" />
-                    <Text className="text-base font-dm-medium text-gray-900">
+                    <Text className="text-base font-dm-bold text-slate-800 tracking-tighter">
                       {getCompanyName()}
                     </Text>
                   </View>
