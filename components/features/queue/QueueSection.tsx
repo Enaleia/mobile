@@ -354,18 +354,18 @@ const QueueSection = ({
           <View className="space-y-2 mb-2">
             {/* Network Status Message */}
             {!isConnected && (
-              <View className="py-2 px-4 rounded-2xl bg-blue-50 border border-blue-ocean">
+              <View className="py-2 px-4 rounded-2xl bg-sand-beige border border-blue-ocean">
                 <View className="flex-row">
                   <View className="flex-col justify-start mr-1">
-                    <View className="w-6 h-6 items-center justify-center">
+                    <View className="items-center justify-center">
                       <Ionicons 
                         name="cloud-offline" 
                         size={20} 
-                        color="#0EA5E9"
+                        color="#2985D0"
                       />
                     </View>
                   </View>
-                  <Text className="text-sm font-dm-medium text-blue-ocean flex-1 flex-wrap">
+                  <Text className="text-sm font-dm-regular text-grey-7 flex-1 flex-wrap">
                     {`Network: Unavailable. Processing will resume once connected.`.split('**').map((part, index) => 
                       index % 2 === 1 ? (
                         <Text key={index} className="font-dm-bold">{part}</Text>
@@ -380,18 +380,18 @@ const QueueSection = ({
 
             {/* Database Status Message */}
             {lastHealthCheck && shouldShowServiceError('directus') && (
-              <View className="py-2 px-4 rounded-2xl bg-blue-50 border border-blue-ocean">
+              <View className="py-2 px-4 rounded-2xl bg-sand-beige border border-blue-ocean">
                 <View className="flex-row">
                   <View className="flex-col justify-start mr-1">
-                    <View className="w-6 h-6 items-center justify-center">
+                    <View className="items-center justify-center">
                       <Ionicons 
                         name="server" 
                         size={20} 
-                        color="#0EA5E9"
+                        color="#2985D0"
                       />
                     </View>
                   </View>
-                  <Text className="text-sm font-dm-medium text-blue-ocean flex-1 flex-wrap">
+                  <Text className="text-sm font-dm-regular text-grey-7 flex-1 flex-wrap">
                     {`Database: Unreachable`.split('**').map((part, index) => 
                       index % 2 === 1 ? (
                         <Text key={index} className="font-dm-bold">{part}</Text>
@@ -406,18 +406,18 @@ const QueueSection = ({
 
             {/* Blockchain Status Message */}
             {lastHealthCheck && shouldShowServiceError('eas') && (
-              <View className="py-2 px-4 rounded-2xl bg-blue-50 border border-blue-ocean">
+              <View className="py-2 px-4 rounded-2xl bg-sand-beige border border-blue-ocean">
                 <View className="flex-row">
                   <View className="flex-col justify-start mr-1">
-                    <View className="w-6 h-6 items-center justify-center">
+                    <View className="items-center justify-center">
                       <Ionicons 
                         name="cube" 
                         size={20} 
-                        color="#0EA5E9"
+                        color="#2985D0"
                       />
                     </View>
                   </View>
-                  <Text className="text-sm font-dm-medium text-blue-ocean flex-1 flex-wrap">
+                  <Text className="text-sm font-dm-regular text-grey-7 flex-1">
                     {`Blockchain: Unreachable`.split('**').map((part, index) => 
                       index % 2 === 1 ? (
                         <Text key={index} className="font-dm-bold">{part}</Text>
@@ -440,13 +440,13 @@ const QueueSection = ({
                 <View className="items-center justify-center">
                   <Ionicons 
                     name="help-buoy" 
-                    size={18} 
+                    size={20} 
                     color="#ef4444"
                   />
                 </View>
               </View>
-              <Text className="text-sm font-dm-regular text-grey-7 flex-1 flex-wrap">
-                Failed items require your help to be rescued. Tap item and email your data to  Enaleia.
+              <Text className="text-sm font-dm-regular text-grey-7 flex-1">
+                Failed items require your attention to be rescued. Tap the item and email your data to Enaleia.
               </Text>
             </View>
           </View>
