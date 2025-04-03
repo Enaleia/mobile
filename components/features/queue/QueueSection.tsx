@@ -1,5 +1,5 @@
 import { QueueItem, ServiceStatus, MAX_RETRIES, LIST_RETRY_INTERVAL, QueueItemStatus } from "@/types/queue";
-import { View, Text, Pressable, ActivityIndicator } from "react-native";
+import { View, Text, Pressable, ActivityIndicator, Platform } from "react-native";
 import QueueAction from "@/components/features/queue/QueueAction";
 import { useState, useMemo, useEffect } from "react";
 import { useNetwork } from "@/contexts/NetworkContext";
@@ -246,11 +246,31 @@ const QueueSection = ({
             <Text className="text-lg font-dm-bold">{title}</Text>
             {showBadge && (
               <View
-                className={`${getBadgeColor(
-                  title
-                )} rounded-full min-w-[20px] h-[20px] ml-2 flex items-center justify-center px-1.5`}
+                style={{
+                  backgroundColor: Platform.select({
+                    ios: title.toLowerCase() === "active" ? "#2985D0" : // blue-ocean
+                          title.toLowerCase() === "failed" ? "#ef4444" : // rose-500
+                          title.toLowerCase() === "completed" ? "#059669" : // emerald-600
+                          "#6B7280", // grey-3
+                    android: title.toLowerCase() === "active" ? "#2985D0" : // blue-ocean
+                            title.toLowerCase() === "failed" ? "#ef4444" : // rose-500
+                            title.toLowerCase() === "completed" ? "#059669" : // emerald-600
+                            "#6B7280", // grey-3
+                  }),
+                  borderRadius: 10,
+                  minWidth: 20,
+                  height: 20,
+                  marginLeft: 8,
+                  justifyContent: 'center',
+                  alignItems: 'center',
+                  paddingHorizontal: 6,
+                }}
               >
-                <Text className="text-white text-xs font-dm-medium">
+                <Text style={{
+                  color: '#FFFFFF',
+                  fontSize: 12,
+                  fontWeight: '600',
+                }}>
                   {uniqueItems.length}
                 </Text>
               </View>
