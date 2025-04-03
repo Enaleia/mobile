@@ -42,8 +42,8 @@ const PreferencesScreen = () => {
                 <Switch
                   value={autoScanQR}
                   onValueChange={setAutoScanQR}
-                  trackColor={{ false: "#F3F4F6", true: "#81b0ff" }}
-                  thumbColor={autoScanQR ? "#2985D0" : "#f4f3f4"}
+                  trackColor={{ false: "#F3F4F6", true: "#F3F4F6" }}
+                  thumbColor={autoScanQR ? "#2985D0" : "#2985D0"}
                 />
               </View>
               <Text className="text-sm text-gray-500">
@@ -67,8 +67,8 @@ const PreferencesScreen = () => {
                 <Switch
                   value={autoJumpToWeight}
                   onValueChange={setAutoJumpToWeight}
-                  trackColor={{ false: "#F3F4F6", true: "#81b0ff" }}
-                  thumbColor={autoJumpToWeight ? "#2985D0" : "#f4f3f4"}
+                  trackColor={{ false: "#F3F4F6", true: "#F3F4F6" }}
+                  thumbColor={autoJumpToWeight ? "#2985D0" : "#2985D0"}
                 />
               </View>
               <Text className="text-sm text-gray-500">

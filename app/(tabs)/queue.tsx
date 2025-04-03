@@ -1,7 +1,6 @@
 import QueueSection from "@/components/features/queue/QueueSection";
 // import NetworkStatus from "@/components/shared/NetworkStatus";
 import SafeAreaContent from "@/components/shared/SafeAreaContent";
-import { UserProfile } from "@/components/shared/UserProfile";
 import { useAuth } from "@/contexts/AuthContext";
 import { useQueue } from "@/contexts/QueueContext";
 import { QueueEvents, queueEventEmitter } from "@/services/events";

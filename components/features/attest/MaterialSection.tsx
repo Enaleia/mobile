@@ -217,10 +217,12 @@ const MaterialSection = ({
                         className="flex-1 h-[28px] py-0 font-dm-bold tracking-tighter text-enaleia-black text-xl text-left"
                         onChangeText={(text) => {
                           if (disabled) return;
+                          // Only allow digits
+                          const numericValue = text.replace(/[^0-9]/g, "");
                           const newMaterials = [...selectedMaterials];
                           newMaterials[index] = {
                             ...material,
-                            weight: text === "" ? null : Number(text),
+                            weight: numericValue === "" ? null : parseInt(numericValue, 10),
                           };
                           setSelectedMaterials(newMaterials);
                         }}

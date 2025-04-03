@@ -1,9 +1,9 @@
 import { EventFormType } from "@/app/attest/new/[slug]";
 import { MaterialDetail } from "@/types/material";
 
-export const PROCESSING_TIMEOUT = 15 * 1000;  // 15 seconds per attempt
+export const PROCESSING_TIMEOUT = 30 * 1000;  // 15 seconds per attempt
 export const MAX_RETRIES = 5; // Maximum total retries before completely failing
-export const LIST_RETRY_INTERVAL = 1 * 30 * 1000; // 1 minute in milliseconds
+export const LIST_RETRY_INTERVAL = 1 * 60 * 1000; // 1 minute in milliseconds
 
 export enum ServiceStatus {
   "COMPLETED" = "COMPLETED",

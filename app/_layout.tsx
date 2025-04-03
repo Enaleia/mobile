@@ -4,22 +4,22 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import NetInfo from "@react-native-community/netinfo";
 import { Stack } from "expo-router";
 import { useFonts } from "expo-font";
-import * as SplashScreen from "expo-splash-screen";
+import { SplashScreen } from "expo-router";
 import React, { useEffect, useState } from "react";
-import { StatusBar } from "react-native";
+import { StatusBar, useColorScheme } from "react-native";
 
 import * as Localization from "expo-localization";
 
 import { NetworkProvider } from "@/contexts/NetworkContext";
-import { QueueProvider, useQueue } from "@/contexts/QueueContext";
+import { QueueProvider } from "@/contexts/QueueContext";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { defaultLocale, dynamicActivate } from "@/lib/i18n";
-import { BackgroundTaskManager } from "@/services/backgroundTaskManager";
 import { Asset } from "expo-asset";
 import { ACTION_ICONS } from "@/constants/action";
-import { WalletProvider, useWallet } from "@/contexts/WalletContext";
+import { WalletProvider } from "@/contexts/WalletContext";
 import { DevModeProvider } from "@/contexts/DevModeContext";
 import { PreferencesProvider } from "@/contexts/PreferencesContext";
+import { QueueNetworkHandler } from "@/components/QueueNetworkHandler";
 
 SplashScreen.preventAutoHideAsync();
 
@@ -33,27 +33,6 @@ const preloadedFonts = {
 const preloadedActionIcons = Object.values(ACTION_ICONS).map(
   (icon) => icon as number
 );
-
-const QueueNetworkHandler = () => {
-  const backgroundManager = BackgroundTaskManager.getInstance();
-  const { wallet } = useWallet();
-  const { loadQueueItems } = useQueue();
-
-  useEffect(() => {
-    return NetInfo.addEventListener((state) => {
-      const isOnline = !!state.isConnected;
-
-      if (isOnline) {
-        // Just load queue items, let QueueContext handle processing
-        loadQueueItems().catch((error) => {
-          console.error("Failed to load queue items:", error);
-        });
-      }
-    });
-  }, [wallet]);
-
-  return null;
-};
 
 export default function RootLayout() {
   const [appIsReady, setAppIsReady] = useState(false);

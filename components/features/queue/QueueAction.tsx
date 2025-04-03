@@ -21,7 +21,7 @@ const QueueAction = ({ item, isLastItem = false, isProcessing = false }: QueueAc
   const { actions } = useBatchData();
   const { showTimers } = useDevMode();
   const action = actions?.find((a: Action) => a.id === item.actionId);
-  const timestamp = item.lastAttempt || item.date;
+  const timestamp = item.date;
   const formattedTime = new Intl.DateTimeFormat("en-US", {
     month: "long",
     day: "numeric",

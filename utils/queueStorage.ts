@@ -87,20 +87,6 @@ export async function addToCompletedQueue(item: QueueItem): Promise<void> {
   await AsyncStorage.setItem(key, JSON.stringify(completed));
 }
 
-export async function cleanupExpiredItems(): Promise<void> {
-  const key = getCompletedQueueCacheKey();
-  const completed = await getCompletedQueue();
-  const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
-
-  const validItems = completed.filter(
-    (item) => new Date(item.completedAt) > thirtyDaysAgo
-  );
-
-  if (validItems.length !== completed.length) {
-    await AsyncStorage.setItem(key, JSON.stringify(validItems));
-  }
-}
-
 export async function removeFromActiveQueue(localId: string): Promise<void> {
   const active = await getActiveQueue();
   const filtered = active.filter((item) => item.localId !== localId);

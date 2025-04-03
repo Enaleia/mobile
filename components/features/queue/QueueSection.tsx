@@ -248,9 +248,9 @@ const QueueSection = ({
               <View
                 className={`${getBadgeColor(
                   title
-                )} rounded-full w-5 h-5 ml-2 flex items-center justify-center`}
+                )} rounded-full min-w-[20px] h-[20px] ml-2 flex items-center justify-center px-1.5`}
               >
-                <Text className="text-white text-sm font-dm-medium">
+                <Text className="text-white text-xs font-dm-medium">
                   {uniqueItems.length}
                 </Text>
               </View>
@@ -293,7 +293,7 @@ const QueueSection = ({
                 <View className="flex-row items-center gap-1.5">
                   <Pressable
                     onPress={() => setShowClearOptions(false)}
-                    className="px-2 py-1.5 rounded-full bg-white flex-row items-center"
+                    className="px-3 py-1.5 rounded-full bg-white flex-row items-center border border-gray-300"
                   >
                     <Text className="text-sm font-dm-light text-enaleia-black mr-1">Cancel</Text>
                     <View className="w-4 h-4">
@@ -307,9 +307,9 @@ const QueueSection = ({
                         setShowClearOptions(false);
                       }
                     }}
-                    className="px-2 py-1.5 rounded-full bg-rose-500 flex-row items-center"
+                    className="px-3 py-1.5 rounded-full bg-rose-500 flex-row items-center"
                   >
-                    <Text className="text-sm font-dm-light text-white mr-1">Clear</Text>
+                    <Text className="text-sm font-dm-light text-white mr-1 px-1">Clear</Text>
                     <View className="w-4 h-4">
                       <Ionicons name="trash-outline" size={16} color="white" />
                     </View>

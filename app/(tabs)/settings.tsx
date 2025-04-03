@@ -11,7 +11,6 @@ import { usePreferences } from "@/contexts/PreferencesContext";
 // import NetworkStatus from "@/components/shared/NetworkStatus";
 import { Company } from "@/types/company";
 import Constants from "expo-constants";
-import { UserProfile } from "@/components/shared/UserProfile";
 
 const SettingsScreen = () => {
   const { showTimers } = useDevMode();
@@ -113,13 +112,18 @@ const SettingsScreen = () => {
                 </Text>
               </View>
               <View className="mb-4">
-                <UserProfile />
+                <View className="flex-row items-center gap-2">
+                  <Ionicons name="person-circle-outline" size={24} color="#0D0D0D" />
+                  <Text className="text-base font-dm text-slate-800 tracking-tighter">
+                    {user?.first_name || "User"}
+                  </Text>
+                </View>
               </View>
 
               <View className="space-y-2">
                 <View className="flex-row items-center gap-2">
                   <Ionicons name="mail-outline" size={24} color="#0D0D0D" />
-                  <Text className="text-base font-dm-bold text-slate-800 tracking-tighter">
+                  <Text className="text-base font-dm text-slate-800 tracking-tighter">
                     {user?.email}
                   </Text>
                 </View>
@@ -127,7 +131,7 @@ const SettingsScreen = () => {
                 {getCompanyName() && (
                   <View className="flex-row items-center gap-2">
                     <Ionicons name="business-outline" size={24} color="#0D0D0D" />
-                    <Text className="text-base font-dm-bold text-slate-800 tracking-tighter">
+                    <Text className="text-base font-dm text-slate-800 tracking-tighter">
                       {getCompanyName()}
                     </Text>
                   </View>
@@ -162,6 +166,27 @@ const SettingsScreen = () => {
             </View>
             <Ionicons name="chevron-forward-outline" size={16} color="#0D0D0D" />
           </Pressable>
+
+                    {/* Queue Testing Section - Only visible in dev mode */}
+                    {showTimers && (
+            <Pressable
+              onPress={() => router.push("/settings/queue-test")}
+              className="flex-row items-center justify-between px-4 py-4 border-b border-neutral-200 bg-white"
+            >
+              <View className="flex-row items-center gap-2">
+                <Ionicons
+                  name="bug-outline"
+                  size={24}
+                  color="#0D0D0D"
+                />
+                <Text className="text-base font-dm-bold text-slate-800 tracking-tighter">
+                  Queue Testing
+                </Text>
+              </View>
+              <Ionicons name="chevron-forward-outline" size={16} color="#0D0D0D" />
+            </Pressable>
+          )}
+          
           <Pressable
             onPress={openGuides}
             className="flex-row items-center justify-between px-4 py-4 border-b border-neutral-200 bg-white"
@@ -191,25 +216,7 @@ const SettingsScreen = () => {
             <Ionicons name="mail-open-outline" size={16} color="#0D0D0D" />
           </Pressable>
 
-          {/* Queue Testing Section - Only visible in dev mode */}
-          {showTimers && (
-            <Pressable
-              onPress={() => router.push("/settings/queue-test")}
-              className="flex-row items-center justify-between px-4 py-4 border-b border-neutral-200 bg-white"
-            >
-              <View className="flex-row items-center gap-2">
-                <Ionicons
-                  name="bug-outline"
-                  size={24}
-                  color="#0D0D0D"
-                />
-                <Text className="text-base font-dm-bold text-slate-800 tracking-tighter">
-                  Queue Testing
-                </Text>
-              </View>
-              <Ionicons name="chevron-forward-outline" size={16} color="#0D0D0D" />
-            </Pressable>
-          )}
+
 
           <Pressable
             onPress={() => setIsSignOutModalVisible(true)}

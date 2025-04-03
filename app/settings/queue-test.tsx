@@ -5,6 +5,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
 import { useQueue } from "@/contexts/QueueContext";
 import { QueueItem, QueueItemStatus, ServiceStatus, MAX_RETRIES } from "@/types/queue";
+import { getActiveQueue, updateActiveQueue } from "@/utils/queueStorage"; // Import storage functions
 
 const TEST_ACTIONS = [
   {
@@ -58,10 +59,14 @@ const TEST_ACTIONS = [
 export default function QueueTestScreen() {
   const { updateQueueItems } = useQueue();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isClearingActive, setIsClearingActive] = useState(false);
+  const [isClearingFailed, setIsClearingFailed] = useState(false);
   const [result, setResult] = useState<{
     success: boolean;
     message: string;
   } | null>(null);
+  const [testFormCount, setTestFormCount] = useState(0);
+  const [failedItemCount, setFailedItemCount] = useState(0);
 
   const handleSubmitTestForms = async (count: number, shouldBeFailed: boolean = false) => {
     setIsSubmitting(true);
@@ -162,6 +167,12 @@ export default function QueueTestScreen() {
 
       await updateQueueItems(submissions);
 
+      if (shouldBeFailed) {
+        setFailedItemCount(prev => prev + count);
+      } else {
+        setTestFormCount(prev => prev + count);
+      }
+
       setResult({
         success: true,
         message: `Successfully added ${submissions.length} test form${submissions.length === 1 ? '' : 's'} to the queue`,
@@ -173,6 +184,38 @@ export default function QueueTestScreen() {
       });
     } finally {
       setIsSubmitting(false);
+    }
+  };
+
+  const handleClearActive = async () => {
+    setIsClearingActive(true);
+    setResult(null);
+    try {
+      const activeQueue = await getActiveQueue();
+      const itemsToKeep = activeQueue.filter(
+        item => item.status !== QueueItemStatus.PENDING && item.status !== QueueItemStatus.PROCESSING
+      );
+      await updateActiveQueue(itemsToKeep);
+      setResult({ success: true, message: "Cleared all PENDING and PROCESSING items from the active queue." });
+    } catch (error) {
+      setResult({ success: false, message: error instanceof Error ? error.message : "Failed to clear active items" });
+    } finally {
+      setIsClearingActive(false);
+    }
+  };
+
+  const handleClearFailed = async () => {
+    setIsClearingFailed(true);
+    setResult(null);
+    try {
+      const activeQueue = await getActiveQueue();
+      const itemsToKeep = activeQueue.filter(item => item.status !== QueueItemStatus.FAILED);
+      await updateActiveQueue(itemsToKeep);
+      setResult({ success: true, message: "Cleared all FAILED items from the active queue." });
+    } catch (error) {
+      setResult({ success: false, message: error instanceof Error ? error.message : "Failed to clear failed items" });
+    } finally {
+      setIsClearingFailed(false);
     }
   };
 
@@ -205,18 +248,93 @@ export default function QueueTestScreen() {
         <View className="space-y-3">
           <Pressable
             onPress={() => handleSubmitTestForms(1)}
-            disabled={isSubmitting}
-            className={`w-full flex-row items-center justify-center p-3 h-[60px] rounded-full ${
-              isSubmitting ? "bg-primary-dark-blue opacity-50" : "bg-blue-ocean"
-            }`}
+            className="bg-blue-500 p-4 rounded-full"
           >
-            {isSubmitting ? (
-              <ActivityIndicator color="white" className="mr-2" />
-            ) : null}
-            <Text className="text-lg font-dm-medium text-slate-50 tracking-tight">
-              {isSubmitting ? "Preparing..." : "Submit 1 Test Form"}
+            <Text className="text-white text-center font-dm-bold">
+              Submit Test Form ({testFormCount})
             </Text>
           </Pressable>
+
+          <Pressable
+            onPress={() => {
+              const submissions: QueueItem[] = [{
+                localId: `test-${Date.now()}-0-${Math.random().toString(36).substr(2, 9)}`,
+                status: QueueItemStatus.FAILED,
+                totalRetryCount: MAX_RETRIES + 1,
+                date: new Date().toISOString(),
+                actionId: TEST_ACTIONS[0].actionId,
+                incomingMaterials: TEST_ACTIONS[0].incomingMaterials.map(material => ({
+                  ...material,
+                  weight: 100,
+                  code: "TEST123",
+                })),
+                outgoingMaterials: TEST_ACTIONS[0].outgoingMaterials.map(material => ({
+                  ...material,
+                  weight: 100,
+                  code: "TEST123",
+                })),
+                directus: {
+                  status: ServiceStatus.INCOMPLETE,
+                  error: "Max retries exceeded"
+                },
+                eas: {
+                  status: ServiceStatus.INCOMPLETE,
+                  error: "Max retries exceeded"
+                },
+                linking: {
+                  status: ServiceStatus.INCOMPLETE,
+                  error: "Max retries exceeded"
+                }
+              }];
+              updateQueueItems(submissions);
+              setFailedItemCount(prev => prev + 1);
+              setResult({
+                success: true,
+                message: "Successfully added 1 failed item to the queue",
+              });
+            }}
+            className="bg-red-500 p-4 rounded-full"
+          >
+            <Text className="text-white text-center font-dm-bold">
+              Generate Failed Item ({failedItemCount})
+            </Text>
+          </Pressable>
+
+          <Pressable
+            onPress={handleClearActive}
+            disabled={isClearingActive || isSubmitting || isClearingFailed}
+            className={`p-4 rounded-xl ${isClearingActive ? 'bg-yellow-300' : 'bg-yellow-500'} ${ (isClearingActive || isSubmitting || isClearingFailed) ? 'opacity-50' : ''}`}
+          >
+            {isClearingActive ? (
+              <ActivityIndicator color="#ffffff" />
+            ) : (
+              <Text className="text-white text-center font-dm-bold">
+                Clear Active (Pending/Processing)
+              </Text>
+            )}
+          </Pressable>
+
+          <Pressable
+            onPress={handleClearFailed}
+            disabled={isClearingFailed || isSubmitting || isClearingActive}
+            className={`p-4 rounded-xl ${isClearingFailed ? 'bg-red-300' : 'bg-red-500'} ${(isClearingFailed || isSubmitting || isClearingActive) ? 'opacity-50' : ''}`}
+          >
+            {isClearingFailed ? (
+              <ActivityIndicator color="#ffffff" />
+            ) : (
+              <Text className="text-white text-center font-dm-bold">
+                Clear Failed Items
+              </Text>
+            )}
+          </Pressable>
+
+          {result && (
+            <View className={`p-4 rounded-full ${result.success ? 'bg-green-100' : 'bg-red-100'}`}>
+              <Text className={`text-center ${result.success ? 'text-green-800' : 'text-red-800'}`}>
+                {result.message}
+              </Text>
+            </View>
+          )}
 
           <View className="mt-8 pt-4 border-t border-gray-200">
             <Text className="text-base font-dm-bold text-gray-900 mb-2">

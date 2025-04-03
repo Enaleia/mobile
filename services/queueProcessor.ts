@@ -663,19 +663,34 @@ export async function processQueueItems(
       const requiredData = await fetchRequiredData();
       const collectors = await directusCollectors();
       const networkInfo = await NetInfo.fetch();
-
-      // Check health check results before processing
+      // Fetch the last health check result
       const lastHealthCheck = await AsyncStorage.getItem('LAST_HEALTH_CHECK');
       const healthCheckResult = lastHealthCheck ? JSON.parse(lastHealthCheck) : null;
-      
-      // Log service status but don't skip processing
-      if (!healthCheckResult?.result?.directus || !healthCheckResult?.result?.eas) {
-        queueDebugMonitor.log("Services are unreachable, proceeding with partial processing");
+      const servicesHealthy = healthCheckResult?.result?.directus && healthCheckResult?.result?.eas;
+
+      // Check network state before starting
+      if (!networkInfo.isConnected || !networkInfo.isInternetReachable) {
+        queueDebugMonitor.log("Network is offline, skipping queue processing");
+        return;
+      }
+
+      // Check if wallet is needed but not available
+      const requiresEAS = itemsToProcessFiltered.some(item => shouldProcessService(item.eas));
+      if (requiresEAS && !wallet) {
+        queueDebugMonitor.log("Wallet not ready, delaying queue processing requiring EAS.");
+        return; // Don't process if EAS is needed but wallet is missing
       }
 
       // Process items sequentially
       for (const item of itemsToProcessFiltered) {
         try {
+          // Check network state before processing each item
+          const currentNetworkState = await NetInfo.fetch();
+          if (!currentNetworkState.isConnected || !currentNetworkState.isInternetReachable) {
+            queueDebugMonitor.log("Network is offline, stopping batch processing");
+            break; // Exit the loop if network is offline
+          }
+
           // Start processing timer
           currentProcessingItemId = item.localId;
           
@@ -773,8 +788,8 @@ export async function processQueueItems(
               finalItem.eas?.status === ServiceStatus.COMPLETED &&
               finalItem.linking?.status === ServiceStatus.COMPLETED;
 
-            // Only increment retry count if services are not completed and not unreachable
-            if (!allServicesCompleted && !item.skipRetryIncrement && healthCheckResult?.result?.directus && healthCheckResult?.result?.eas) {
+            // Only increment retry count if services are not completed, not skipped, AND services were healthy
+            if (!allServicesCompleted && !item.skipRetryIncrement && servicesHealthy) {
               await updateItemInCache(item.localId, {
                 totalRetryCount: (finalItem.totalRetryCount || 0) + 1
               });
@@ -792,14 +807,19 @@ export async function processQueueItems(
           }
         } catch (error) {
           queueDebugMonitor.error(`Error processing item ${item.localId}:`, error);
-          // Update item with error and respect skipRetryIncrement flag
-          await updateItemInCache(item.localId, {
-            lastError: error instanceof Error ? error.message : "Unknown error",
-            totalRetryCount: item.skipRetryIncrement || !healthCheckResult?.result?.directus || !healthCheckResult?.result?.eas ? 
-              (item.totalRetryCount || 0) : 
-              (item.totalRetryCount || 0) + 1
-          });
-          // Emit queue update event to refresh UI
+          try {
+            // Update item with error and respect skipRetryIncrement flag AND service health
+            await updateItemInCache(item.localId, {
+              lastError: error instanceof Error ? error.message : "Unknown error",
+              totalRetryCount: (!item.skipRetryIncrement && servicesHealthy) ?
+                (item.totalRetryCount || 0) + 1 :
+                (item.totalRetryCount || 0) // Keep current count if skipped or services unhealthy
+            });
+          } catch (cacheError) {
+            queueDebugMonitor.error(`!!! Failed to update cache for item ${item.localId} after processing error:`, cacheError);
+            // Even if cache update fails, we should try the next item
+          }
+          // Emit queue update event to refresh UI (might be slightly delayed if cache update failed)
           queueEventEmitter.emit(QueueEvents.UPDATED);
         } finally {
           currentProcessingItemId = null;
@@ -836,13 +856,20 @@ async function processItem(
     easTxHash: item.eas?.txHash
   });
 
+  // Check network state immediately
+  const currentNetworkState = await NetInfo.fetch();
+  if (!currentNetworkState.isConnected || !currentNetworkState.isInternetReachable) {
+    queueDebugMonitor.log(`Network is offline, aborting processing of item ${item.localId}`);
+    throw new Error('NETWORK_OFFLINE');
+  }
+
   // Create an abort controller for the entire processing
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), PROCESSING_TIMEOUT);
 
   // Set up network state monitoring
   const unsubscribe = NetInfo.addEventListener((state) => {
-    if (!state.isConnected) {
+    if (!state.isConnected || !state.isInternetReachable) {
       queueDebugMonitor.log(`Network disconnected during processing of item ${item.localId}`);
       controller.abort();
     }
@@ -856,7 +883,7 @@ async function processItem(
     if (shouldProcessService(item.directus)) {
       const directusPromise = (async () => {
         try {
-          const eventId = await processDirectusService(item, requiredData, collectors);
+          const eventId = await createDirectusEvent(item, requiredData, collectors);
           await updateItemInCache(item.localId, {
             directus: { 
               status: ServiceStatus.COMPLETED,
@@ -997,31 +1024,40 @@ async function processItem(
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : "Unknown error";
     queueDebugMonitor.error(`Processing failed for item ${item.localId}:`, errorMessage);
-    
+
     // Check if error is network-related
     const isNetworkError = errorMessage === 'BLOCKCHAIN_OFFLINE' || 
                           errorMessage.toLowerCase().includes('network') ||
                           errorMessage.toLowerCase().includes('offline') ||
                           errorMessage.toLowerCase().includes('timeout') ||
                           errorMessage.toLowerCase().includes('connection');
-    
-    // Get current retry count from the item passed to processItem
+
+    // Get current retry count
     const currentRetryCount = item.totalRetryCount || 0;
     
-    // Only set to FAILED if max retries reached
-    const status = currentRetryCount >= MAX_RETRIES ? 
+    // Fetch the latest health check result to decide on retry increment
+    const lastHealthCheck = await AsyncStorage.getItem('LAST_HEALTH_CHECK');
+    const healthCheckResult = lastHealthCheck ? JSON.parse(lastHealthCheck) : null;
+    const servicesHealthy = healthCheckResult?.result?.directus && healthCheckResult?.result?.eas;
+    
+    // Determine if retry count should be incremented
+    const shouldIncrementRetry = !isNetworkError && servicesHealthy && !item.skipRetryIncrement;
+    
+    // Calculate the new retry count
+    const newRetryCount = shouldIncrementRetry ? currentRetryCount + 1 : currentRetryCount;
+    
+    // Determine the final status based on the NEW retry count
+    const newStatus = newRetryCount >= MAX_RETRIES ? 
       QueueItemStatus.FAILED : 
       QueueItemStatus.PENDING;
 
     // Update item status based on error
     await updateItemInCache(item.localId, {
-      status,
+      status: newStatus,
       lastError: errorMessage,
       lastAttempt: new Date().toISOString(),
-      skipRetryIncrement: isNetworkError, // Skip retry increment for network errors
-      totalRetryCount: !isNetworkError && status === QueueItemStatus.PENDING ? 
-        currentRetryCount + 1 : 
-        currentRetryCount
+      skipRetryIncrement: isNetworkError, // Still useful for debugging/tracking
+      totalRetryCount: newRetryCount
     });
   } finally {
     // Clean up
@@ -1030,76 +1066,75 @@ async function processItem(
   }
 }
 
-// Helper function to process Directus service
-async function processDirectusService(
+async function createDirectusEvent(
   item: QueueItem,
   requiredData: RequiredData,
   collectors: Pick<DirectusCollector, "collector_id" | "collector_name" | "collector_identity">[]
 ): Promise<number> {
-                // Format location
-                const locationString = item.location?.coords
-                  ? `${item.location.coords.latitude},${item.location.coords.longitude}`
-                  : undefined;
+  // Format location
+  const locationString = item.location?.coords
+    ? `${item.location.coords.latitude},${item.location.coords.longitude}`
+    : undefined;
 
-                // Find collector
-                let collectorName: string | undefined;
-                if (item.collectorId && collectors) {
-                  const collector = collectors.find(
-                    (c) => c.collector_identity === item.collectorId
-                  );
-                  collectorName = collector?.collector_id?.toString();
-                }
+  // Find collector
+  let collectorName: string | undefined;
+  if (item.collectorId && collectors) {
+    const collector = collectors.find(
+      (c) => c.collector_identity === item.collectorId
+    );
+    collectorName = collector?.collector_id?.toString();
+  }
 
   // Create event
-                const productId = item.manufacturing?.product ? parseInt(item.manufacturing.product, 10) : undefined;
-                const eventData: Omit<MaterialTrackingEvent, 'event_id'> = {
-                  status: "draft",
-                  action: item.actionId,
-                  event_timestamp: new Date(item.date).toISOString(),
-                  event_location: locationString,
-                  collector_name: collectorName ? parseInt(collectorName, 10) : undefined,
+  const productId = item.manufacturing?.product ? parseInt(item.manufacturing.product, 10) : undefined;
+  const eventData: Omit<MaterialTrackingEvent, 'event_id'> = {
+    status: "draft",
+    action: item.actionId,
+    event_timestamp: new Date(item.date).toISOString(),
+    event_location: locationString,
+    collector_name: collectorName ? parseInt(collectorName, 10) : undefined,
     company: typeof requiredData.userData?.Company === 'number' ? requiredData.userData.Company : requiredData.userData?.Company?.id,
-                  manufactured_products: productId,
-                  Batch_quantity: item.manufacturing?.quantity ?? undefined,
-                  weight_per_item: item.manufacturing?.weightInKg?.toString() ?? undefined,
-                  event_input_id: [],
-                  event_output_id: [],
-                  EAS_UID: item.eas?.txHash,
-                };
+    manufactured_products: productId,
+    Batch_quantity: item.manufacturing?.quantity ?? undefined,
+    weight_per_item: item.manufacturing?.weightInKg?.toString() ?? undefined,
+    event_input_id: [],
+    event_output_id: [],
+    EAS_UID: item.eas?.txHash,
+  };
 
-                const createdEvent = await createEvent(eventData);
-                if (!createdEvent?.event_id) {
-                  throw new Error("No event ID returned from API");
-                }
+  const createdEvent = await createEvent(eventData);
+  if (!createdEvent?.event_id) {
+    throw new Error("No event ID returned from API");
+  }
 
   // Process materials
-                if (item.incomingMaterials?.length) {
+  if (item.incomingMaterials?.length) {
     await Promise.all(item.incomingMaterials.map(async (material) => {
       if (!material || !createdEvent.event_id) return;
-                    const result = await createMaterialInput({
-                      input_Material: material.id,
-                      input_code: item.collectorId || material.code || "",
-                      input_weight: material.weight || 0,
+      const result = await createMaterialInput({
+        input_Material: material.id,
+        input_code: item.collectorId || material.code || "",
+        input_weight: material.weight || 0,
         event_id: createdEvent.event_id,
-                    } as MaterialTrackingEventInput);
+      } as MaterialTrackingEventInput);
 
-                    if (!result) {
+      if (!result) {
         throw new Error(`Failed to create input material for ${material.id}`);
-                    }
+      }
     }));
-                }
+  }
 
-                if (item.outgoingMaterials?.length) {
+  if (item.outgoingMaterials?.length) {
     await Promise.all(item.outgoingMaterials.map(async (material) => {
       if (!material || !createdEvent.event_id) return;
-                          const result = await createMaterialOutput({
-                            output_material: material.id,
-                            output_code: material.code || "",
-                            output_weight: material.weight || 0,
+      const result = await createMaterialOutput({
+        output_material: material.id,
+        output_code: material.code || "",
+        output_weight: material.weight || 0,
         event_id: createdEvent.event_id,
-                          } as MaterialTrackingEventOutput);
+      } as MaterialTrackingEventOutput);
 
-                          if (!result) {
+      if (!result) {
         throw new Error(`Failed to create output material for ${material.id}`);
       }
     }));
@@ -1108,51 +1143,160 @@ async function processDirectusService(
   return createdEvent.event_id;
 }
 
+async function processDirectusService(
+  item: QueueItem,
+  requiredData: RequiredData,
+  collectors: Pick<DirectusCollector, "collector_id" | "collector_name" | "collector_identity">[]
+): Promise<{
+  status: ServiceStatus;
+  error?: string;
+  eventId?: number;
+  linked?: boolean;
+}> {
+  try {
+    const eventId = await createDirectusEvent(item, requiredData, collectors);
+    return {
+      status: ServiceStatus.COMPLETED,
+      eventId,
+      linked: true
+    };
+  } catch (error) {
+    return {
+      status: ServiceStatus.INCOMPLETE,
+      error: error instanceof Error ? error.message : 'Unknown error'
+    };
+  }
+}
+
+async function processEASService(
+  item: QueueItem,
+  requiredData: RequiredData,
+  wallet: WalletInfo
+): Promise<{
+  status: ServiceStatus;
+  error?: string;
+  txHash?: string;
+}> {
+  try {
+    const result = await processEASAttestation(item, requiredData, wallet);
+    return {
+      status: ServiceStatus.COMPLETED,
+      txHash: result.uid
+    };
+  } catch (error) {
+    return {
+      status: ServiceStatus.INCOMPLETE,
+      error: error instanceof Error ? error.message : 'Unknown error'
+    };
+  }
+}
+
+async function processLinkingService(
+  item: QueueItem,
+  eventId: number,
+  easUid: string
+): Promise<{
+  status: ServiceStatus;
+  error?: string;
+}> {
+  try {
+    await linkEAStoDirectus(eventId, easUid);
+    return {
+      status: ServiceStatus.COMPLETED
+    };
+  } catch (error) {
+    return {
+      status: ServiceStatus.INCOMPLETE,
+      error: error instanceof Error ? error.message : 'Unknown error'
+    };
+  }
+}
+
+export async function processQueueItemsService(
+  itemsToProcess: QueueItem[],
+  wallet?: WalletInfo | null
+) {
+  if (!itemsToProcess?.length) {
+    return;
+  }
+
+  // Check network state before starting
+  const networkState = await NetInfo.fetch();
+  if (!networkState.isConnected || !networkState.isInternetReachable) {
+    queueDebugMonitor.log("Network is offline, skipping queue processing");
+    return;
+  }
+
+  // Process each item sequentially to maintain nonce order
+  for (const item of itemsToProcess) {
+    try {
+      // Check network state before processing each item
+      const currentNetworkState = await NetInfo.fetch();
+      if (!currentNetworkState.isConnected || !currentNetworkState.isInternetReachable) {
+        queueDebugMonitor.log("Network is offline, stopping batch processing");
+        break; // Exit the loop if network is offline
+      }
+
+      // Fetch required data once for all services
+      const requiredData = await fetchRequiredData();
+      const collectors = await directusCollectors();
+      const networkInfo = await NetInfo.fetch();
+
+      // Process directus and eas services in parallel
+      const [directusResult, easResult] = await Promise.all([
+        processDirectusService(item, requiredData, collectors),
+        processEASService(item, requiredData, wallet!)
+      ]);
+
+      // Update item with results from parallel processing
+      await updateItemInCache(item.localId, {
+        directus: directusResult,
+        eas: easResult,
+        lastAttempt: new Date().toISOString()
+      });
+
+      // Process linking service sequentially after parallel services complete
+      if (directusResult.eventId && easResult.txHash) {
+        const linkingResult = await processLinkingService(
+          item,
+          directusResult.eventId,
+          easResult.txHash
+        );
+
+        // Update item with linking result
+        await updateItemInCache(item.localId, {
+          linking: linkingResult,
+          lastAttempt: new Date().toISOString()
+        });
+      }
+
+      // Emit queue update event to refresh UI
+      queueEventEmitter.emit(QueueEvents.UPDATED);
+    } catch (error) {
+      console.error(`Error processing item ${item.localId}:`, error);
+      // Continue with next item even if this one fails
+      continue;
+    }
+  }
+}
+
 // Helper function to link EAS to Directus
 async function linkEAStoDirectus(eventId: number, easUid: string): Promise<void> {
   try {
     const directusUpdatedEvent = await updateEvent(eventId, {
       EAS_UID: easUid,
-                      });
+    });
 
-                      if (!directusUpdatedEvent || !directusUpdatedEvent.event_id) {
+    if (!directusUpdatedEvent || !directusUpdatedEvent.event_id) {
       throw new Error('Failed to update EAS_UID in Directus');
     }
 
-                        // Verify the linking was successful
+    // Verify the linking was successful
     const verifyEvent = await getEvent(eventId);
     if (!verifyEvent || verifyEvent[0]?.EAS_UID !== easUid) {
       throw new Error('Failed to verify EAS UID linking');
-                      }
-                    } catch (error) {
+    }
+  } catch (error) {
     throw new Error(`Failed to link EAS UID with Directus event: ${error instanceof Error ? error.message : 'Unknown error'}`);
   }
-}
-
-function shouldComplete(item: QueueItem): boolean {
-  // Check if all services are completed
-  const allServicesCompleted = 
-    item.directus?.status === ServiceStatus.COMPLETED &&
-    item.eas?.status === ServiceStatus.COMPLETED &&
-    item.linking?.status === ServiceStatus.COMPLETED;
-
-  // Or if we've exceeded max retries
-  const exceededMaxRetries = item.totalRetryCount >= MAX_RETRIES;
-
-  queueDebugMonitor.log('Checking if item should complete:', {
-    itemId: item.localId,
-    allServicesCompleted,
-    exceededMaxRetries,
-    serviceStatuses: {
-      directus: item.directus?.status,
-      eas: item.eas?.status,
-      linking: item.linking?.status
-    },
-    totalRetryCount: item.totalRetryCount,
-    directusEventId: item.directus?.eventId,
-    easTxHash: item.eas?.txHash,
-    linkingStatus: item.linking?.status
-  });
-
-  return allServicesCompleted || exceededMaxRetries;
 }

@@ -12,7 +12,6 @@ import { MAX_RETRIES, QueueItem, QueueItemStatus, ServiceStatus, getOverallStatu
 import { processQueueItems as processQueueItemsService } from "@/services/queueProcessor";
 import { QueueEvents, queueEventEmitter } from "@/services/events";
 import { useNetwork } from "./NetworkContext";
-import { BackgroundTaskManager } from "@/services/backgroundTaskManager";
 import { AppState } from "react-native";
 import * as SecureStore from "expo-secure-store";
 import { directus } from "@/utils/directus";
@@ -21,7 +20,6 @@ import {
   getCompletedQueue,
   updateActiveQueue,
   addToCompletedQueue,
-  cleanupExpiredItems,
   removeFromActiveQueue,
   CompletedQueueItem,
 } from "@/utils/queueStorage";
@@ -67,6 +65,7 @@ export const QueueProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const network = useNetwork();
   const isOnline = network.isConnected && network.isInternetReachable;
   const { wallet } = useWallet();
+  const isProcessingRef = useRef<boolean>(false);
 
   // Load queue items
   const loadQueueItems = useCallback(async () => {
@@ -76,15 +75,8 @@ export const QueueProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         getCompletedQueue()
       ]);
 
-      // Clean up expired items
-      const now = Date.now();
-      const cleanedActive = active.filter(item => {
-        const itemDate = new Date(item.date).getTime();
-        return now - itemDate < 24 * 60 * 60 * 1000; // 24 hours
-      });
-
       // Ensure unique items by localId
-      const uniqueActive = cleanedActive.reduce((acc, item) => {
+      const uniqueActive = active.reduce((acc, item) => {
         if (!acc.find(i => i.localId === item.localId)) {
           acc.push(item);
         }
@@ -99,62 +91,66 @@ export const QueueProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   }, []);
 
   // Process queue items
-  const processQueueItems = useCallback(async (itemsToProcess?: QueueItem[]) => {
-    if (!isOnline || isProcessing) return;
+  const processQueueItems = useCallback(async (itemsToTrigger?: QueueItem[]) => {
+    // Check if offline or already processing using a ref
+    if (!isOnline || isProcessingRef.current) {
+      return;
+    }
+
+    let processedItemIds = new Set<string>(); // Keep track of processed item IDs
 
     try {
-      setIsProcessing(true);
+      isProcessingRef.current = true;
+      setIsProcessing(true); // Update state for UI
 
-      // Get items to process
-      const items = itemsToProcess || queueItems;
-      const itemsNeedingProcessing = items.filter(shouldProcessItem);
-
-      if (!itemsNeedingProcessing.length) {
-        return;
-      }
-
-      // Process items sequentially
-      for (const item of itemsNeedingProcessing) {
-        try {
-          // Set item to processing state
-          await updateQueueItem(item.localId, {
-            status: QueueItemStatus.PROCESSING,
-            lastAttempt: new Date().toISOString()
-          });
-
-          // Process the item
-          await processQueueItemsService([item], wallet);
-
-          // Reload queue items to get updated state
-          await loadQueueItems();
-        } catch (error) {
-          console.error(`Error processing item ${item.localId}:`, error);
-          // Continue with next item even if this one fails
-          continue;
-        }
-      }
-
-      // Set last batch attempt time after all items have finished processing
-      await AsyncStorage.setItem('QUEUE_LAST_BATCH_ATTEMPT', new Date().toISOString());
-
-      // Check for new items that were added during processing
-      const updatedQueue = await getActiveQueue();
-      const newItems = updatedQueue.filter(item => 
-        shouldProcessItem(item) && 
-        !itemsNeedingProcessing.some(processedItem => processedItem.localId === item.localId)
+      // Determine items to process: either the triggered subset or all pending/failed
+      const allActiveItems = await getActiveQueue(); 
+      const itemsToConsider = itemsToTrigger || allActiveItems;
+      
+      // Filter for items that actually need processing (Pending/Failed & not max retries)
+      const itemsNeedingProcessing = itemsToConsider.filter(item => 
+        (item.status === QueueItemStatus.PENDING || item.status === QueueItemStatus.FAILED) &&
+        item.totalRetryCount < MAX_RETRIES &&
+        !item.deleted
       );
 
-      if (newItems.length > 0) {
-        console.log(`Found ${newItems.length} new items to process`);
-        // Process new items immediately
-        await processQueueItems(newItems);
+      if (!itemsNeedingProcessing.length) {
+        return; // Exit early if nothing to do
       }
+      
+      // Store the IDs of the items being processed in this batch
+      processedItemIds = new Set(itemsNeedingProcessing.map(item => item.localId));
+
+      // Call the main service function ONCE with the filtered list
+      await processQueueItemsService(itemsNeedingProcessing, wallet);
+      
+      // Reload queue items once after the entire batch finishes (might be slightly early)
+      await loadQueueItems(); 
+
     } catch (error) {
-      console.error("Error processing queue items:", error);
+      // Log errors using console as a fallback
+      console.error("[QueueContext] Error during batch processing trigger:", error); 
     } finally {
-      setIsProcessing(false);
+      isProcessingRef.current = false;
+      setIsProcessing(false); // Update state for UI
+
+      // Check if new items were added during processing
+      const currentActiveQueue = await getActiveQueue();
+      const newlyEligibleItems = currentActiveQueue.filter(item => 
+        (item.status === QueueItemStatus.PENDING || item.status === QueueItemStatus.FAILED) &&
+        item.totalRetryCount < MAX_RETRIES &&
+        !item.deleted &&
+        !processedItemIds.has(item.localId) // Check if it wasn't in the processed batch
+      );
+
+      if (newlyEligibleItems.length > 0) {
+        console.log(`[QueueContext] ${newlyEligibleItems.length} new eligible item(s) detected after batch, re-triggering processing.`);
+        // Use setTimeout to avoid potential deep recursion / stack issues
+        // and allow the current function context to fully unwind.
+        setTimeout(() => processQueueItems(), 0); 
+      }
     }
-  }, [isOnline, isProcessing, queueItems, wallet, loadQueueItems]);
+  }, [isOnline, wallet, loadQueueItems]);
 
   // Initialize queue state
   const initializeQueue = useCallback(async () => {
@@ -281,15 +277,18 @@ export const QueueProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       // Reload queue items to get updated state
       await loadQueueItems();
 
-      // If no items are currently processing, process new items
-      if (isOnline && !isProcessing) {
-        await processQueueItems(items);
-      }
+      // Emit UPDATED event after potentially adding new items
+      queueEventEmitter.emit(QueueEvents.UPDATED);
+
+      // REMOVED: Explicit trigger after adding items - rely on event listener instead
+      // if (isOnline && !isProcessing) {
+      //   await processQueueItems(items);
+      // }
     } catch (error) {
       console.error("Error updating queue items:", error);
       throw error;
     }
-  }, [isOnline, isProcessing, updateQueueItem, loadQueueItems, processQueueItems]);
+  }, [isOnline, updateQueueItem, loadQueueItems, processQueueItems]);
 
   // Retry item
   const retryItem = useCallback(async (itemId: string) => {
@@ -331,9 +330,14 @@ export const QueueProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
   // Listen for queue updates
   useEffect(() => {
-    const handleQueueUpdate = () => {
+    const handleQueueUpdate = async () => {
       if (isInitialized) {
-        loadQueueItems();
+        await loadQueueItems();
+        // If the queue is idle after an update, check if processing is needed
+        if (isOnline && !isProcessingRef.current) {
+          // Use setTimeout to avoid potential race conditions / deep calls
+          setTimeout(() => processQueueItems(), 0);
+        }
       }
     };
 
@@ -341,7 +345,62 @@ export const QueueProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     return () => {
       queueEventEmitter.removeListener(QueueEvents.UPDATED, handleQueueUpdate);
     };
-  }, [loadQueueItems, isInitialized]);
+  }, [loadQueueItems, isInitialized, isOnline, processQueueItems]);
+
+  // Handle app state changes
+  useEffect(() => {
+    const subscription = AppState.addEventListener('change', async (nextAppState) => {
+      if (nextAppState === 'active') {
+        // When app becomes active, refresh network state and queue
+        try {
+          const netInfo = await NetInfo.fetch();
+          if (netInfo.isConnected && netInfo.isInternetReachable) {
+            await loadQueueItems();
+            // Process any pending items
+            const activeQueue = await getActiveQueue();
+            const pendingItems = activeQueue.filter(item => 
+              item.status === QueueItemStatus.PENDING || 
+              item.status === QueueItemStatus.FAILED
+            );
+            if (pendingItems.length > 0) {
+              await processQueueItems(pendingItems);
+            }
+          }
+        } catch (error) {
+          console.error('Error handling app state change:', error);
+        }
+      }
+    });
+
+    return () => {
+      subscription.remove();
+    };
+  }, [loadQueueItems, processQueueItems]);
+
+  // Add network state change listener
+  useEffect(() => {
+    const unsubscribe = NetInfo.addEventListener(async (state) => {
+      if (state.isConnected && state.isInternetReachable) {
+        // Network is back online, process pending items
+        try {
+          const activeQueue = await getActiveQueue();
+          const pendingItems = activeQueue.filter(item => 
+            item.status === QueueItemStatus.PENDING || 
+            item.status === QueueItemStatus.FAILED
+          );
+          if (pendingItems.length > 0) {
+            await processQueueItems(pendingItems);
+          }
+        } catch (error) {
+          console.error('Error handling network state change:', error);
+        }
+      }
+    });
+
+    return () => {
+      unsubscribe();
+    };
+  }, [processQueueItems]);
 
   // Initial load
   useEffect(() => {
