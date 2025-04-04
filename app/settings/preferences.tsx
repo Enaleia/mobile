@@ -21,60 +21,59 @@ const PreferencesScreen = () => {
           </Text>
         </Pressable>
       </View>
-      <Text className="text-3xl font-dm-bold text-enaleia-black tracking-[-1px] mb-2">
+      <Text className="text-3xl font-dm-bold text-enaleia-black tracking-[-1px] mb-4">
         Preferences
       </Text>
 
       <View className="flex-1">
-        <View className="space-y-2">
-          <View className="bg-white rounded-2xl p-4 border border-gray-200">
-            <Text className="text-base font-dm-bold text-gray-900 mb-4">
-              QR Scanner
-            </Text>
+        <Text className="text-base font-dm-bold text-gray-900 mb-2">
+          Event creation
+        </Text>
+        <View className="space-y-4">
+          <View className="bg-white rounded-2xl p-4">
+            
             <View className="space-y-4">
               <View className="flex-row items-center justify-between">
                 <View className="flex-row items-center gap-2">
                   <Ionicons name="qr-code-outline" size={24} color="#0D0D0D" />
                   <Text className="text-base font-dm-bold text-slate-800 tracking-tighter">
-                    Auto-scan QR code
+                    Auto launch camera
                   </Text>
                 </View>
                 <Switch
                   value={autoScanQR}
                   onValueChange={setAutoScanQR}
                   trackColor={{ false: "#F3F4F6", true: "#F3F4F6" }}
-                  thumbColor={autoScanQR ? "#2985D0" : "#2985D0"}
+                  thumbColor={autoScanQR ? "#2985D0" : "#0D0D0D"}
                 />
               </View>
-              <Text className="text-sm text-gray-500">
+              <Text className="text-base text-gray-500">
                 Automatically open the QR scanner when adding a new material
-              </Text>
+            </Text>
             </View>
           </View>
 
-          <View className="bg-white rounded-2xl p-4 border border-gray-200">
-            <Text className="text-base font-dm-bold text-gray-900 mb-4">
-              Weight Field
-            </Text>
+          <View className="bg-white rounded-2xl p-4">
+            
             <View className="space-y-4">
               <View className="flex-row items-center justify-between">
                 <View className="flex-row items-center gap-2">
                   <Ionicons name="scale-outline" size={24} color="#0D0D0D" />
                   <Text className="text-base font-dm-bold text-slate-800 tracking-tighter">
-                    Auto-jump to weight field
+                    Auto-focus weight field
                   </Text>
                 </View>
                 <Switch
                   value={autoJumpToWeight}
                   onValueChange={setAutoJumpToWeight}
                   trackColor={{ false: "#F3F4F6", true: "#F3F4F6" }}
-                  thumbColor={autoJumpToWeight ? "#2985D0" : "#2985D0"}
+                  thumbColor={autoJumpToWeight ? "#2985D0" : "#0D0D0D"}
                 />
               </View>
-              <Text className="text-sm text-gray-500">
-                Automatically focus the weight field after scanning a QR code
-              </Text>
-            </View>
+
+              <Text className="text-base text-gray-500">
+                Automatically focus on the weight field after scanning a QR code
+            </Text>            </View>
           </View>
         </View>
       </View>

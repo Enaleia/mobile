@@ -1,20 +1,45 @@
-import { View, Text, Image, Pressable } from "react-native";
+import { View, Text, Image, Pressable, Linking, Alert } from "react-native";
 import React, { useState } from "react";
 import SafeAreaContent from "@/components/shared/SafeAreaContent";
 import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
 import { useWallet } from "@/contexts/WalletContext";
+import { useAuth } from "@/contexts/AuthContext";
 import * as Clipboard from "expo-clipboard";
 
 const WalletScreen = () => {
   const { wallet } = useWallet();
+  const { user } = useAuth();
   const [showCopied, setShowCopied] = useState(false);
 
+  const userWalletAddress = user?.wallet_address;
+
   const copyAddress = async () => {
-    if (wallet?.address) {
-      await Clipboard.setStringAsync(wallet.address);
+    if (userWalletAddress) {
+      await Clipboard.setStringAsync(userWalletAddress);
       setShowCopied(true);
       setTimeout(() => setShowCopied(false), 2000);
+    } else {
+        Alert.alert("Error", "No wallet address found to copy.");
+    }
+  };
+
+  const handleOpenExplorer = async () => {
+    if (!userWalletAddress) {
+      Alert.alert("Error", "No wallet address available.");
+      return;
+    }
+    const url = `https://optimistic.etherscan.io/address/${userWalletAddress}`;
+    try {
+      const canOpen = await Linking.canOpenURL(url);
+      if (canOpen) {
+        await Linking.openURL(url);
+      } else {
+        Alert.alert("Error", "Unable to open block explorer.");
+      }
+    } catch (error) {
+      console.error("Failed to open block explorer:", error);
+      Alert.alert("Error", "An error occurred while trying to open the block explorer.");
     }
   };
 
@@ -39,14 +64,14 @@ const WalletScreen = () => {
           </Text>
         </Pressable>
       </View>
-      <Text className="text-3xl font-dm-bold text-enaleia-black tracking-[-1px] mb-2">
+      <Text className="text-3xl font-dm-bold text-enaleia-black tracking-[-1px] mb-4">
         Wallet address
       </Text>
       <View className="flex-1">
         <Text className="font-dm-regular text-base mb-4 leading-5">
-         This blockchain wallet address will be used by this account to submit data to the Ethereum Attestation Service.
+         This wallet will be used to submit data to the Ethereum Attestation Service on Optimism, a layer-two blockchain.
         </Text>
-        <View className="bg-white rounded-2xl p-4 mb-2">
+        <View className="bg-sand-beige rounded-2xl p-4 mb-2">
           <Pressable
             onPress={copyAddress}
             className="flex-row items-center justify-between"
@@ -63,9 +88,18 @@ const WalletScreen = () => {
             </View>
           </Pressable>
         </View>
-        <Text className="font-dm-light text-sm text-grey-6">
-          Network: Data will be attestaed on the Optimismn, a layer-two blockchain on top of Ethereum.
-        </Text>
+        {userWalletAddress ? (
+          <Pressable onPress={handleOpenExplorer} className="flex-row items-center gap-1 mt-1">
+             <Text className="font-dm text-sm text-enaleia-blue">
+               View this wallet on block explorer
+             </Text>
+             <Ionicons name="open-outline" size={14} color="#0D0D0D" />
+          </Pressable>
+        ) : (
+          <Text className="font-dm text-sm text-grey-8 mt-1">
+            No wallet address found to view on explorer.
+          </Text>
+        )}
       </View>
     </SafeAreaContent>
   );
