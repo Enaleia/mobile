@@ -59,7 +59,7 @@ export default function QueueStatusIndicator({ status, item, className = "" }: Q
 
   return (
     <View className={`flex-row items-center gap-1 ${className}`}>
-      <Text className="text-sm font-dm-regular text-grey-6">
+      <Text className="text-sm font-dm-regular text-grey-8">
         {config.text}
       </Text>
       {status === QueueItemStatus.PROCESSING ? (

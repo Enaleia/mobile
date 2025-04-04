@@ -26,8 +26,8 @@ const PreferencesScreen = () => {
       </Text>
 
       <View className="flex-1">
-        <View className="space-y-6">
-          <View className="bg-white rounded-2xl p-4">
+        <View className="space-y-2">
+          <View className="bg-white rounded-2xl p-4 border border-gray-200">
             <Text className="text-base font-dm-bold text-gray-900 mb-4">
               QR Scanner
             </Text>
@@ -52,7 +52,7 @@ const PreferencesScreen = () => {
             </View>
           </View>
 
-          <View className="bg-white rounded-2xl p-4">
+          <View className="bg-white rounded-2xl p-4 border border-gray-200">
             <Text className="text-base font-dm-bold text-gray-900 mb-4">
               Weight Field
             </Text>

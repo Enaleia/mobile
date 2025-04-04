@@ -94,12 +94,12 @@ function Home() {
 
   return (
     <SafeAreaContent>
-      <InitializationModal
+      {/* <InitializationModal
         isVisible={showInitModal}
         progress={progress}
         error={error instanceof Error ? error : null}
         isAuthError={isAuthError}
-      />
+      /> */}
 
       {/* Scrollable Content */}
       <ScrollView

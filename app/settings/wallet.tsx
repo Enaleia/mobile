@@ -51,14 +51,14 @@ const WalletScreen = () => {
             onPress={copyAddress}
             className="flex-row items-center justify-between"
           >
-            <Text className="font-dm-regular text-base text-grey-6 flex-1 mr-2">
+            <Text className="font-dm-regular text-base flex-1 mr-2">
               {wallet?.address || "No wallet found"}
             </Text>
-            <View className="w-8 h-8 items-center justify-center">
+            <View className="w-8 h-8 items-center justify-top">
               {showCopied ? (
-                <Ionicons name="checkmark" size={20} color="#4CAF50" />
+                <Ionicons name="checkmark" size={24} color="#667" />
               ) : (
-                <Ionicons name="copy-outline" size={20} color="#666" />
+                <Ionicons name="copy-outline" size={24} color="#667" />
               )}
             </View>
           </Pressable>

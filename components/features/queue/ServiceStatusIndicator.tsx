@@ -27,7 +27,7 @@ export const ServiceStatusIndicator = ({
       case ServiceStatus.COMPLETED:
         return "#059669"; // emerald-600
       case ServiceStatus.INCOMPLETE:
-        return "#6B7280"; // gray-500
+        return "#8E8E93"; // gray-500
     }
   };
 
@@ -43,8 +43,8 @@ export const ServiceStatusIndicator = ({
   };
 
   return (
-    <View className={`flex-row items-center justify-left gap-1 ${extraClasses}`}>
-      <Ionicons name={getStatusIcon()} size={20} color={getStatusColor()} />
+    <View className={`flex-row items-center justify-left gap-0.5 ${extraClasses}`}>
+      <Ionicons name={getStatusIcon()} size={16} color={getStatusColor()} />
       <Text className="text-xs text-grey-6">
         {getLabel()}
       </Text>

@@ -104,7 +104,7 @@ const SettingsScreen = () => {
             </Text>
           </View>
 
-          <View className="mb-4 rounded-2xl bg-white">
+          <View className="mb-4 rounded-2xl bg-white border border-gray-200">
             <View className="p-4">
               <View className="pb-4">
                 <Text className="text-base font-dm-bold text-gray-900">

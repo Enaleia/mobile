@@ -62,7 +62,7 @@ const QueueAction = ({ item, isLastItem = false, isProcessing = false }: QueueAc
 
       // Update immediately and then every second
       updateProgress();
-      intervalId = setInterval(updateProgress, 1000);
+      intervalId = setInterval(updateProgress, 250);
     } else if (item.status === QueueItemStatus.COMPLETED) {
       setProgress(100);
       setTimeRemaining('');
@@ -78,39 +78,39 @@ const QueueAction = ({ item, isLastItem = false, isProcessing = false }: QueueAc
     };
   }, [item.status, item.lastAttempt]);
 
-  const styles = StyleSheet.create({
-    retryInfo: {
-      marginTop: 8,
-    },
-    retryText: {
-      fontSize: 12,
-      color: "#666",
-      marginBottom: 4,
-    },
-    progressContainer: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: 8,
-      marginTop: 4,
-    },
-    progressBar: {
-      flex: 1,
-      height: 4,
-      backgroundColor: "#EEEAE7", // sand beige color
-      borderRadius: 2,
-      overflow: 'hidden',
-    },
-    progressFill: {
-      height: '100%',
-      backgroundColor: '#007AFF',
-    },
-    timerText: {
-      fontSize: 12,
-      color: '#666',
-      minWidth: 40,
-      textAlign: 'right',
-    },
-  });
+  // const styles = StyleSheet.create({
+  //   retryInfo: {
+  //     marginTop: 8,
+  //   },
+  //   retryText: {
+  //     fontSize: 12,
+  //     color: "#666",
+  //     marginBottom: 4,
+  //   },
+  //   progressContainer: {
+  //     flexDirection: 'row',
+  //     alignItems: 'center',
+  //     gap: 8,
+  //     marginTop: 4,
+  //   },
+  //   progressBar: {
+  //     flex: 1,
+  //     height: 4,
+  //     backgroundColor: "#EEEAE7", // sand beige color
+  //     borderRadius: 2,
+  //     overflow: 'hidden',
+  //   },
+  //   progressFill: {
+  //     height: '100%',
+  //     backgroundColor: '#007AFF',
+  //   },
+  //   timerText: {
+  //     fontSize: 12,
+  //     color: '#666',
+  //     minWidth: 40,
+  //     textAlign: 'right',
+  //   },
+  // });
 
   if (!action) return null;
 
@@ -120,10 +120,10 @@ const QueueAction = ({ item, isLastItem = false, isProcessing = false }: QueueAc
         console.log("Navigating to queue detail with id:", item.localId);
         router.push(`/queue/${item.localId}`);
       }}
-      className={`relative ${!isLastItem ? 'border-b border-grey-3' : ''}`}
+      className={`relative ${!isLastItem ? 'border-b border-gray-200' : ''}`}
     >
       <View className="w-full bg-white">
-        <View className="p-5 flex-col gap-2">
+        <View className="p-5 flex-col gap-0.5">
           {/* Title and Status Container */}
           <View className="flex-row justify-between items-center">
             <Text className="text-xl font-dm-bold text-enaleia-black" numberOfLines={1}>
@@ -133,8 +133,8 @@ const QueueAction = ({ item, isLastItem = false, isProcessing = false }: QueueAc
           </View>
 
           {/* Date and Retry Counter Container */}
-          <View className="flex-row justify-between items-center">
-            <Text className="text-sm font-dm-medium text-grey-7">
+          <View className="flex-row justify-between items-center pb-2">
+            <Text className="text-sm font-dm-medium text-grey-8">
               {formattedTime}
             </Text>
             {showTimers && (
