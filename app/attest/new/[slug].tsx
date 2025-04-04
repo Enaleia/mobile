@@ -472,7 +472,7 @@ const NewActionScreen = () => {
             >
               <Ionicons name="chevron-back" size={24} color={isSubmitting ? "#8E8E93" : "#0D0D0D"} />
               <Text className={`text-base font-dm-regular tracking-tighter ${isSubmitting ? 'text-grey-6' : 'text-enaleia-black'}`}>
-                Back
+                Home
               </Text>
             </Pressable>
           )}
@@ -650,39 +650,37 @@ const NewActionScreen = () => {
                     }}
                   </form.Field>
 
-                  <View className="flex-row gap-2 mb-4">
-                    <View className="flex-1 ">
-                      <form.Field name="manufacturing.quantity">
-                        {(field) => {
-                          const QuantityField = () => (
-                            <DecimalInput
-                              field={field}
-                              label="Batch Quantity"
-                              placeholder=""
-                              allowDecimals={false}
-                              suffix="Unit"
-                            />
-                          );
-                          return <QuantityField />;
-                        }}
-                      </form.Field>
-                    </View>
+                  <View className="space-y-2">
+                    <form.Field name="manufacturing.quantity">
+                      {(field) => {
+                        const QuantityField = () => (
+                          <DecimalInput
+                            field={field}
+                            label="Batch Quantity"
+                            placeholder=""
+                            allowDecimals={false}
+                            suffix="Unit"
+                          />
+                        );
+                        return <QuantityField />;
+                      }}
+                    </form.Field>
+                  </View>
 
-                    <View className="flex-1">
-                      <form.Field name="manufacturing.weightInKg">
-                        {(field) => {
-                          const WeightField = () => (
-                            <DecimalInput
-                              field={field}
-                              label="Weight per item"
-                              placeholder=""
-                              suffix="kg"
-                            />
-                          );
-                          return <WeightField />;
-                        }}
-                      </form.Field>
-                    </View>
+                  <View className="mb-4">
+                    <form.Field name="manufacturing.weightInKg">
+                      {(field) => {
+                        const WeightField = () => (
+                          <DecimalInput
+                            field={field}
+                            label="Weight per item"
+                            placeholder=""
+                            suffix="kg"
+                          />
+                        );
+                        return <WeightField />;
+                      }}
+                    </form.Field>
                   </View>
                 </View>
               </View>

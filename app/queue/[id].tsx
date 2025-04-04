@@ -488,32 +488,32 @@ ${[
                       {productsData?.find(p => p.product_id === item.manufacturing?.product)?.product_name || "No product selected"}
                     </Text>
                   </View>
-                  <View className="flex-row">
-                    <View className="flex-1 p-4 py-3 border-r border-grey-3">
-                      <Text className="text-sm font-dm-bold text-grey-6">
-                        Batch Quantity
+
+                  <View className="p-4 py-3 border-b border-grey-3">
+                    <Text className="text-sm font-dm-bold text-grey-6">
+                      Batch Quantity
+                    </Text>
+                    <View className="flex-row items-baseline">
+                      <Text className="text-xl font-dm-bold text-enaleia-black flex-1">
+                        {item.manufacturing?.quantity || "0"}
                       </Text>
-                      <View className="flex-row items-baseline">
-                        <Text className="text-xl font-dm-bold text-enaleia-black flex-1">
-                          {item.manufacturing?.quantity || "0"}
-                        </Text>
-                        <Text className="text-sm text-right font-dm-bold text-grey-6 ml-2">
-                          Unit
-                        </Text>
-                      </View>
+                      <Text className="text-sm text-right font-dm-bold text-grey-6 ml-2">
+                        Unit
+                      </Text>
                     </View>
-                    <View className="flex-1 p-4 py-3">
-                      <Text className="text-sm font-dm-bold text-grey-6">
-                        Weight per item
+                  </View>
+
+                  <View className="p-4 py-3">
+                    <Text className="text-sm font-dm-bold text-grey-6">
+                      Weight per item
+                    </Text>
+                    <View className="flex-row items-baseline">
+                      <Text className="text-xl font-dm-bold text-enaleia-black flex-1">
+                        {item.manufacturing?.weightInKg || "0"}
                       </Text>
-                      <View className="flex-row items-baseline">
-                        <Text className="text-xl font-dm-bold text-enaleia-black flex-1">
-                          {item.manufacturing?.weightInKg || "0"}
-                        </Text>
-                        <Text className="text-sm text-right font-dm-bold text-grey-6 ml-2">
-                          Kg
-                        </Text>
-                      </View>
+                      <Text className="text-sm text-right font-dm-bold text-grey-6 ml-2">
+                        Kg
+                      </Text>
                     </View>
                   </View>
                 </View>

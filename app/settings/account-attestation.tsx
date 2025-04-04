@@ -108,7 +108,7 @@ const AccountAttestationScreen = () => {
           </View>
 
         {/* Restore Absolutely positioned image container */}
-        <View className="absolute bottom-3 right-0 pointer-events-none z-[-1]">
+        <View className="absolute bottom-1 right-0 pointer-events-none z-[-1]">
             <Image
                source={require("@/assets/images/Coast.png")} 
                className="max-w-[353px] max-h-[234px]" 

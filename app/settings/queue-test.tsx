@@ -1,4 +1,4 @@
-import { View, Text, Pressable, ActivityIndicator } from "react-native";
+import { View, Text, Pressable, ActivityIndicator, Image, ScrollView } from "react-native";
 import React, { useState, useEffect } from "react";
 import SafeAreaContent from "@/components/shared/SafeAreaContent";
 import { Ionicons } from "@expo/vector-icons";
@@ -236,152 +236,168 @@ export default function QueueTestScreen() {
   };
 
   return (
-    <SafeAreaContent>
-      <View className="flex-row items-center justify-start pb-4">
-        <Pressable
-          onPress={() => router.back()}
-          className="flex-row items-center space-x-1"
-        >
-          <Ionicons name="chevron-back" size={24} color="#0D0D0D" />
-          <Text className="text-base font-dm-regular text-enaleia-black tracking-tighter">
-            Settings
-          </Text>
-        </Pressable>
-      </View>
-
-      <Text className="text-3xl font-dm-bold text-enaleia-black tracking-[-1px] mb-2">
-        Queue Testing
-      </Text>
-
-      {/* Submit Test Forms Section */}
-      <View className="mt-6 mb-8">
-        <Text className="text-base font-dm-bold text-gray-900 mb-2">
-          Submit Test Forms
-        </Text>
-        <Text className="text-sm text-grey-6 mb-4">
-          Submit test forms with different actions to the queue for testing purposes. Do not use these while on mainnet.
-        </Text>
-
-        <View className="space-y-3">
+    <SafeAreaContent className="bg-white-sand flex-1">
+      <ScrollView 
+        className="flex-1" 
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={{ paddingBottom: 0 }}
+      >
+        <View className="flex-row items-center justify-start pb-4">
           <Pressable
-            onPress={() => handleSubmitTestForms(1)}
-            className="bg-blue-ocean p-4 rounded-full"
+            onPress={() => router.back()}
+            className="flex-row items-center space-x-1"
           >
-            <Text className="text-white text-center font-dm-bold">
-              Submit Test Form ({testFormCount})
-            </Text>
-          </Pressable>
-
-          <Pressable
-            onPress={() => {
-              const submissions: QueueItem[] = [{
-                localId: `test-${Date.now()}-0-${Math.random().toString(36).substr(2, 9)}`,
-                status: QueueItemStatus.FAILED,
-                totalRetryCount: MAX_RETRIES + 1,
-                date: new Date().toISOString(),
-                actionId: TEST_ACTIONS[0].actionId,
-                incomingMaterials: TEST_ACTIONS[0].incomingMaterials.map(material => ({
-                  ...material,
-                  weight: 100,
-                  code: "TEST123",
-                })),
-                outgoingMaterials: TEST_ACTIONS[0].outgoingMaterials.map(material => ({
-                  ...material,
-                  weight: 100,
-                  code: "TEST123",
-                })),
-                directus: {
-                  status: ServiceStatus.INCOMPLETE,
-                  error: "Max retries exceeded"
-                },
-                eas: {
-                  status: ServiceStatus.INCOMPLETE,
-                  error: "Max retries exceeded"
-                },
-                linking: {
-                  status: ServiceStatus.INCOMPLETE,
-                  error: "Max retries exceeded"
-                }
-              }];
-              updateQueueItems(submissions);
-              setFailedItemCount(prev => prev + 1);
-              setResult({
-                success: true,
-                message: "Successfully added 1 failed item to the queue",
-              });
-            }}
-            className="bg-red-500 p-4 rounded-full"
-          >
-            <Text className="text-white text-center font-dm-bold">
-              Generate Failed Item ({failedItemCount})
+            <Ionicons name="chevron-back" size={24} color="#0D0D0D" />
+            <Text className="text-base font-dm-regular text-enaleia-black tracking-tighter">
+              Settings
             </Text>
           </Pressable>
         </View>
-      </View>
 
-      {/* Clear Lists Section */}
-      <View className="mb-8">
-        <Text className="text-base font-dm-bold text-gray-900 mb-2">
-          Clear Lists
-        </Text>
-        <Text className="text-sm text-grey-6 mb-4">
-          Clear items from the queue lists.
+        <Text className="text-3xl font-dm-bold text-enaleia-black tracking-[-1px] mb-2">
+          Queue Testing
         </Text>
 
-        <View className="space-y-3">
-          <Pressable
-            onPress={handleClearActive}
-            disabled={isClearingActive || isSubmitting || isClearingFailed}
-            className={`p-4 rounded-full ${isClearingActive ? 'bg-blue-ocean' : 'bg-blue-ocean'} ${ (isClearingActive || isSubmitting || isClearingFailed) ? 'opacity-50' : ''}`}
-          >
-            {isClearingActive ? (
-              <ActivityIndicator color="#ffffff" />
-            ) : (
+        {/* Submit Test Forms Section */}
+        <View className="mt-6 mb-8">
+          <Text className="text-base font-dm-bold text-gray-900 mb-2">
+            Submit Test Forms
+          </Text>
+          <Text className="text-sm text-grey-6 mb-4">
+            Submit test forms with different actions to the queue for testing purposes. Do not use these while on mainnet.
+          </Text>
+
+          <View className="space-y-3">
+            <Pressable
+              onPress={() => handleSubmitTestForms(1)}
+              className="bg-blue-ocean p-4 rounded-full"
+            >
               <Text className="text-white text-center font-dm-bold">
-                Clear Active (Pending/Processing)
+                Submit Test Form ({testFormCount})
               </Text>
-            )}
-          </Pressable>
+            </Pressable>
 
-          <Pressable
-            onPress={handleClearFailed}
-            disabled={isClearingFailed || isSubmitting || isClearingActive}
-            className={`p-4 rounded-full ${isClearingFailed ? 'bg-red-300' : 'bg-red-500'} ${(isClearingFailed || isSubmitting || isClearingActive) ? 'opacity-50' : ''}`}
-          >
-            {isClearingFailed ? (
-              <ActivityIndicator color="#ffffff" />
-            ) : (
+            <Pressable
+              onPress={() => {
+                const submissions: QueueItem[] = [{
+                  localId: `test-${Date.now()}-0-${Math.random().toString(36).substr(2, 9)}`,
+                  status: QueueItemStatus.FAILED,
+                  totalRetryCount: MAX_RETRIES + 1,
+                  date: new Date().toISOString(),
+                  actionId: TEST_ACTIONS[0].actionId,
+                  incomingMaterials: TEST_ACTIONS[0].incomingMaterials.map(material => ({
+                    ...material,
+                    weight: 100,
+                    code: "TEST123",
+                  })),
+                  outgoingMaterials: TEST_ACTIONS[0].outgoingMaterials.map(material => ({
+                    ...material,
+                    weight: 100,
+                    code: "TEST123",
+                  })),
+                  directus: {
+                    status: ServiceStatus.INCOMPLETE,
+                    error: "Max retries exceeded"
+                  },
+                  eas: {
+                    status: ServiceStatus.INCOMPLETE,
+                    error: "Max retries exceeded"
+                  },
+                  linking: {
+                    status: ServiceStatus.INCOMPLETE,
+                    error: "Max retries exceeded"
+                  }
+                }];
+                updateQueueItems(submissions);
+                setFailedItemCount(prev => prev + 1);
+                setResult({
+                  success: true,
+                  message: "Successfully added 1 failed item to the queue",
+                });
+              }}
+              className="bg-red-500 p-4 rounded-full"
+            >
               <Text className="text-white text-center font-dm-bold">
-                Clear Failed Items
+                Generate Failed Item ({failedItemCount})
               </Text>
-            )}
-          </Pressable>
+            </Pressable>
+          </View>
         </View>
-      </View>
 
-      {/* Result Message */}
-      {result && (
-        <View className={`p-4 rounded-full ${result.success ? 'bg-green-100' : 'bg-red-100'} mb-8`}>
-          <Text className={`text-center ${result.success ? 'text-green-800' : 'text-red-800'}`}>
-            {result.message}
+        {/* Clear Lists Section */}
+        <View className="mb-8">
+          <Text className="text-base font-dm-bold text-gray-900 mb-2">
+            Clear Lists
           </Text>
-        </View>
-      )}
+          <Text className="text-sm text-grey-6 mb-4">
+            Clear items from the queue lists.
+          </Text>
 
-      {/* Health Check URLs */}
-      <View className="mt-4 pt-4 border-t border-gray-200">
-        <Text className="text-base font-dm-bold text-gray-900 mb-2">
-          Health Check URLs
-        </Text>
-        <View className="space-y-2">
-          <Text className="text-sm text-grey-6">
-            Directus: {process.env.EXPO_PUBLIC_API_URL}/server/health
-          </Text>
-          <Text className="text-sm text-grey-6">
-            EAS: {process.env.EXPO_PUBLIC_NETWORK_SCAN || "Not configured"}
-          </Text>
+          <View className="space-y-3">
+            <Pressable
+              onPress={handleClearActive}
+              disabled={isClearingActive || isSubmitting || isClearingFailed}
+              className={`p-4 rounded-full ${isClearingActive ? 'bg-blue-ocean' : 'bg-blue-ocean'} ${ (isClearingActive || isSubmitting || isClearingFailed) ? 'opacity-50' : ''}`}
+            >
+              {isClearingActive ? (
+                <ActivityIndicator color="#ffffff" />
+              ) : (
+                <Text className="text-white text-center font-dm-bold">
+                  Clear Active (Pending/Processing)
+                </Text>
+              )}
+            </Pressable>
+
+            <Pressable
+              onPress={handleClearFailed}
+              disabled={isClearingFailed || isSubmitting || isClearingActive}
+              className={`p-4 rounded-full ${isClearingFailed ? 'bg-red-300' : 'bg-red-500'} ${(isClearingFailed || isSubmitting || isClearingActive) ? 'opacity-50' : ''}`}
+            >
+              {isClearingFailed ? (
+                <ActivityIndicator color="#ffffff" />
+              ) : (
+                <Text className="text-white text-center font-dm-bold">
+                  Clear Failed Items
+                </Text>
+              )}
+            </Pressable>
+          </View>
         </View>
-      </View>
+
+        {/* Result Message */}
+        {result && (
+          <View className={`p-4 rounded-full ${result.success ? 'bg-green-100' : 'bg-red-100'} mb-8`}>
+            <Text className={`text-center ${result.success ? 'text-green-800' : 'text-red-800'}`}>
+              {result.message}
+            </Text>
+          </View>
+        )}
+
+        {/* Health Check URLs */}
+        <View className="mt-4 pt-4 border-t border-gray-200 mb-8">
+          <Text className="text-base font-dm-bold text-gray-900 mb-2">
+            Health Check URLs
+          </Text>
+          <View className="space-y-2">
+            <Text className="text-sm text-grey-6">
+              Directus: {process.env.EXPO_PUBLIC_API_URL}/server/health
+            </Text>
+            <Text className="text-sm text-grey-6">
+              EAS: {process.env.EXPO_PUBLIC_NETWORK_SCAN || "Not configured"}
+            </Text>
+          </View>
+        </View>
+
+        {/* Crab Image at the bottom of scrollable content */}
+        <View className="items-center">
+          <Image
+            source={require("@/assets/images/animals/Crab.png")}
+            className="w-full h-auto max-w-[241px] max-h-[172px]"
+            resizeMode="contain"
+            accessibilityLabel="Decorative queue testing illustration"
+          />
+        </View>
+      </ScrollView>
 
       <QueueTestWarningModal 
         isVisible={showWarningModal}

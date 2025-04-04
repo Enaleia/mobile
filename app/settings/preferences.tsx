@@ -1,4 +1,4 @@
-import { View, Text, Switch, Pressable } from "react-native";
+import { View, Text, Switch, Pressable, Image } from "react-native";
 import React from "react";
 import { Ionicons } from "@expo/vector-icons";
 import { usePreferences } from "@/contexts/PreferencesContext";
@@ -9,7 +9,7 @@ const PreferencesScreen = () => {
   const { autoScanQR, autoJumpToWeight, setAutoScanQR, setAutoJumpToWeight } = usePreferences();
 
   return (
-    <SafeAreaContent>
+    <SafeAreaContent className="bg-white-sand flex-1 relative">
       <View className="flex-row items-center justify-start pb-4">
         <Pressable
           onPress={() => router.back()}
@@ -76,6 +76,15 @@ const PreferencesScreen = () => {
             </Text>            </View>
           </View>
         </View>
+      </View>
+
+      <View className="absolute bottom-5 left-0 right-0 items-center pointer-events-none">
+          <Image
+            source={require("@/assets/images/animals/SeaHorse.png")}
+            className="w-full h-auto max-w-[241px] max-h-[172px]"
+            resizeMode="contain"
+            accessibilityLabel="Decorative preferences illustration"
+          />
       </View>
     </SafeAreaContent>
   );

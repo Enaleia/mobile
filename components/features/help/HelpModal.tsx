@@ -40,8 +40,19 @@ export const HelpModal: React.FC<HelpModalProps> = ({
       className="m-0 mt-auto bg-transparent rounded-t-[32px] overflow-hidden"
     >
       <View className="flex-1 bg-white rounded-t-[32px] overflow-hidden">
+        {/* Swipe Handle */}
+        <View style={{
+          alignSelf: 'center',
+          width: 36,
+          height: 5,
+          borderRadius: 3,
+          backgroundColor: '#DDDDDD',
+          marginTop: 16,
+          marginBottom: 4,
+        }} />
+        
         {/* Header */}
-        <View className="px-5 pt-7 pb-5 flex-row justify-between items-center">
+        <View className="px-5 pt-3 pb-5 flex-row justify-between items-center">
           <Text className="text-3xl font-dm-bold text-enaleia-black">
             {title}
           </Text>

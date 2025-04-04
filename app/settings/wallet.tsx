@@ -155,7 +155,7 @@ const WalletScreen = () => {
         </View>
       </View>
 
-      <View className="absolute bottom-16 left-0 right-0 items-center pointer-events-none">
+      <View className="absolute bottom-3 left-0 right-0 items-center pointer-events-none">
           <Image
             source={require("@/assets/images/animals/JellyFish.png")}
             className="w-full h-auto max-w-[241px] max-h-[172px]"

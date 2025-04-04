@@ -1,4 +1,4 @@
-import { useMemo, useRef, useEffect } from "react";
+import { useMemo, useRef, useEffect, useState } from "react";
 import { Alert, Linking, Pressable, Text, TextInput, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { Camera } from "expo-camera";
@@ -31,6 +31,8 @@ const MaterialSection = ({
   const title = category === "incoming" ? "Incoming" : "Outgoing";
   const icon = category === "incoming" ? "arrow-down" : "arrow-up";
   const { autoScanQR, autoJumpToWeight } = usePreferences();
+  const [prevModalVisible, setPrevModalVisible] = useState(isModalVisible);
+  const [prevMaterialsLength, setPrevMaterialsLength] = useState(selectedMaterials.length);
 
   // Create refs array for weight inputs
   const weightInputRefs = useRef<Array<TextInput | null>>([]);
@@ -46,36 +48,46 @@ const MaterialSection = ({
     };
   }, [selectedMaterials]);
 
-  // Effect to auto-launch QR scanner when material is added
+  // Effect to detect when modal closes and materials length increases
   useEffect(() => {
-    const handleAutoLaunchScanner = async () => {
-      // Only proceed if we're in the material section and have materials
-      if (selectedMaterials.length > 0 && !hideCodeInput && autoScanQR) {
-        const lastIndex = selectedMaterials.length - 1;
-        const lastMaterial = selectedMaterials[lastIndex];
-        
-        // Only launch scanner if the code field is empty
-        if (!lastMaterial.code) {
+    // Check if modal just closed (was visible and now is not)
+    const modalJustClosed = prevModalVisible && !isModalVisible;
+    // Check if materials were added (length increased)
+    const materialsAdded = selectedMaterials.length > prevMaterialsLength;
+    
+    // If modal just closed AND materials were added, trigger QR scanner
+    if (modalJustClosed && materialsAdded && !hideCodeInput && autoScanQR) {
+      const lastIndex = selectedMaterials.length - 1;
+      const lastMaterial = selectedMaterials[lastIndex];
+      
+      // Only launch scanner if the code field is empty
+      if (!lastMaterial.code) {
+        const triggerScanner = async () => {
           try {
             const { status } = await Camera.requestCameraPermissionsAsync();
             if (status === 'granted') {
               // Get the QR input ref for the last added material
               const qrInputRef = codeInputRefs.current[lastIndex];
               if (qrInputRef) {
-                // Trigger the QR scanner
-                qrInputRef.openScanner();
+                // Short timeout to ensure refs are properly set
+                setTimeout(() => {
+                  qrInputRef.openScanner();
+                }, 100);
               }
             }
           } catch (error) {
             console.error("Error checking camera permissions:", error);
           }
-        }
+        };
+        
+        triggerScanner();
       }
-    };
-
-    // Call the function when materials change
-    handleAutoLaunchScanner();
-  }, [selectedMaterials.length, hideCodeInput, autoScanQR]);
+    }
+    
+    // Update previous state for next comparison
+    setPrevModalVisible(isModalVisible);
+    setPrevMaterialsLength(selectedMaterials.length);
+  }, [isModalVisible, selectedMaterials.length, hideCodeInput, autoScanQR]);
 
   // Function to focus weight input after QR scan
   const handleQRScanComplete = (index: number) => {
