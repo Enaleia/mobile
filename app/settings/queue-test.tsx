@@ -303,7 +303,7 @@ export default function QueueTestScreen() {
           <Pressable
             onPress={handleClearActive}
             disabled={isClearingActive || isSubmitting || isClearingFailed}
-            className={`p-4 rounded-full ${isClearingActive ? 'bg-yellow-300' : 'bg-yellow-500'} ${ (isClearingActive || isSubmitting || isClearingFailed) ? 'opacity-50' : ''}`}
+            className={`p-4 rounded-xl ${isClearingActive ? 'bg-yellow-300' : 'bg-yellow-500'} ${ (isClearingActive || isSubmitting || isClearingFailed) ? 'opacity-50' : ''}`}
           >
             {isClearingActive ? (
               <ActivityIndicator color="#ffffff" />
@@ -317,7 +317,7 @@ export default function QueueTestScreen() {
           <Pressable
             onPress={handleClearFailed}
             disabled={isClearingFailed || isSubmitting || isClearingActive}
-            className={`p-4 rounded-full ${isClearingFailed ? 'bg-red-300' : 'bg-red-500'} ${(isClearingFailed || isSubmitting || isClearingActive) ? 'opacity-50' : ''}`}
+            className={`p-4 rounded-xl ${isClearingFailed ? 'bg-red-300' : 'bg-red-500'} ${(isClearingFailed || isSubmitting || isClearingActive) ? 'opacity-50' : ''}`}
           >
             {isClearingFailed ? (
               <ActivityIndicator color="#ffffff" />
@@ -345,10 +345,7 @@ export default function QueueTestScreen() {
                 Directus: {process.env.EXPO_PUBLIC_API_URL}/server/health
               </Text>
               <Text className="text-sm text-grey-6">
-                EAS Provider (RPC): {process.env.EXPO_PUBLIC_NETWORK_PROVIDER}
-              </Text>
-              <Text className="text-sm text-grey-6">
-                EAS Scan Service: {process.env.EXPO_PUBLIC_NETWORK_SCAN}
+                EAS: {process.env.EXPO_PUBLIC_NETWORK_PROVIDER_URL}
               </Text>
             </View>
           </View>

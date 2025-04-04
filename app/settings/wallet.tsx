@@ -11,8 +11,10 @@ const WalletScreen = () => {
   const { wallet } = useWallet();
   const { user } = useAuth();
   const [showCopied, setShowCopied] = useState(false);
+  const [showUserIdCopied, setShowUserIdCopied] = useState(false);
 
   const userWalletAddress = user?.wallet_address;
+  const userId = user?.id;
 
   const copyAddress = async () => {
     if (userWalletAddress) {
@@ -21,6 +23,16 @@ const WalletScreen = () => {
       setTimeout(() => setShowCopied(false), 2000);
     } else {
         Alert.alert("Error", "No wallet address found to copy.");
+    }
+  };
+
+  const copyUserId = async () => {
+    if (userId) {
+      await Clipboard.setStringAsync(userId);
+      setShowUserIdCopied(true);
+      setTimeout(() => setShowUserIdCopied(false), 2000);
+    } else {
+      Alert.alert("Error", "No User ID found to copy.");
     }
   };
 
@@ -43,63 +55,113 @@ const WalletScreen = () => {
     }
   };
 
+  const handleViewAttestations = async () => {
+    const scanUrlPrefix = process.env.EXPO_PUBLIC_NETWORK_SCAN;
+
+    if (!scanUrlPrefix) {
+      console.error("EXPO_PUBLIC_NETWORK_SCAN environment variable is not set.");
+      Alert.alert("Configuration Error", "The network scan URL is not configured. Please contact support.");
+      return;
+    }
+
+    if (!userWalletAddress) {
+      Alert.alert("Error", "No wallet address available to view attestations.");
+      return;
+    }
+
+    const url = `${scanUrlPrefix}/address/${userWalletAddress}`;
+
+    try {
+      const canOpen = await Linking.canOpenURL(url);
+      if (canOpen) {
+        await Linking.openURL(url);
+      } else {
+        Alert.alert("Error", `Unable to open URL: ${url}`);
+      }
+    } catch (error) {
+      console.error("Failed to open attestation viewer:", error);
+      Alert.alert("Error", "An error occurred while trying to open the attestation viewer.");
+    }
+  };
+
   return (
-    <SafeAreaContent>
-      <View className="absolute bottom-20 right-[10px] bg-white-sand">
-        <Image
-          source={require("@/assets/images/animals/JellyFish.png")}
-          className="w-[223px] h-[228px]"
-          accessibilityLabel="Decorative jellyfish illustration"
-          accessibilityRole="image"
-        />
-      </View>
+    <SafeAreaContent className="bg-white-sand flex-1 relative">
       <View className="flex-row items-center justify-start pb-4">
         <Pressable
           onPress={() => router.back()}
           className="flex-row items-center space-x-1"
         >
           <Ionicons name="chevron-back" size={24} color="#0D0D0D" />
-          <Text className="text-base font-dm-regular text-enaleia-black tracking-tighter">
+          <Text className="text-base font-dm-regular text-enaleia-black tracking-tight">
             Settings
           </Text>
         </Pressable>
       </View>
-      <Text className="text-3xl font-dm-bold text-enaleia-black tracking-[-1px] mb-4">
-        Wallet address
-      </Text>
       <View className="flex-1">
-        <Text className="font-dm-regular text-base mb-4 leading-5">
-         This wallet will be used to submit data to the Ethereum Attestation Service on Optimism, a layer-two blockchain.
+        <Text className="text-3xl font-dm-bold text-enaleia-black tracking-[-1px] mb-4">
+        Attestation
         </Text>
-        <View className="bg-sand-beige rounded-2xl p-4 mb-2">
-          <Pressable
-            onPress={copyAddress}
-            className="flex-row items-center justify-between"
-          >
-            <Text className="font-dm-regular text-base flex-1 mr-2">
-              {wallet?.address || "No wallet found"}
+        <Text className="text-sm font-dm-regular text-[#0d0d0d] leading-[16.80px] mb-6">
+         This public key will be used to attest data to the Ethereum Attestation Services.
+        </Text>
+        <View className="p-4 bg-[#fbfbfb] rounded-[14px] border border-[#e5e5ea] mb-6">
+          <View>
+            <Text className="text-[#75757b] text-sm font-dm-medium leading-[16.80px] mb-1">
+              Public Key
             </Text>
-            <View className="w-8 h-8 items-center justify-top">
-              {showCopied ? (
-                <Ionicons name="checkmark" size={24} color="#667" />
-              ) : (
-                <Ionicons name="copy-outline" size={24} color="#667" />
-              )}
-            </View>
-          </Pressable>
+            <Pressable
+              onPress={copyAddress}
+              className="flex-row items-start justify-between"
+            >
+              <Text className="flex-1 text-[#0d0d0d] text-lg font-dm-bold leading-snug mr-4">
+                {userWalletAddress || "No wallet found"}
+              </Text>
+              <View className="w-6 h-6 items-center justify-center">
+                {showCopied ? (
+                  <Ionicons name="checkmark" size={24} color="#0d0d0d" />
+                ) : (
+                  <Ionicons name="copy-outline" size={24} color="#0d0d0d" />
+                )}
+              </View>
+            </Pressable>
+          </View>
         </View>
-        {userWalletAddress ? (
-          <Pressable onPress={handleOpenExplorer} className="flex-row items-center gap-1 mt-1">
-             <Text className="font-dm text-sm text-enaleia-blue">
-               View this wallet on block explorer
+        <View className="gap-4">
+          <Pressable
+              onPress={handleViewAttestations}
+              className="p-4 rounded-[37px] border border-[#2884cf] flex-row justify-center items-center">
+             <Text className="text-[#2884cf] text-sm font-dm-medium leading-[16.80px] mr-2">
+               View device attestations
              </Text>
-             <Ionicons name="open-outline" size={14} color="#0D0D0D" />
+             <Ionicons name="open-outline" size={16} color="#2884cf" />
           </Pressable>
-        ) : (
-          <Text className="font-dm text-sm text-grey-8 mt-1">
-            No wallet address found to view on explorer.
-          </Text>
-        )}
+          {userWalletAddress ? (
+            <Pressable
+              onPress={handleOpenExplorer}
+              className="p-4 rounded-[37px] border border-[#2884cf] flex-row justify-center items-center">
+               <Text className="text-[#2884cf] text-sm font-dm-medium leading-[16.80px] mr-2">
+                 View device wallet
+               </Text>
+               <Ionicons name="open-outline" size={16} color="#2884cf" />
+            </Pressable>
+           ) : (
+             <View className="p-4 rounded-[37px] border border-gray-400 flex-row justify-center items-center bg-gray-100 opacity-60">
+                <Text className="text-gray-500 text-sm font-dm-medium leading-[16.80px] mr-2">
+                  View wallet on block explorer
+                </Text>
+                <Ionicons name="open-outline" size={16} color="gray" />
+             </View>
+           )}
+        </View>
+      </View>
+
+      <View className="absolute bottom-16 left-0 right-0 items-center pointer-events-none">
+          <Image
+            source={require("@/assets/images/animals/JellyFish.png")}
+            className="w-full h-auto max-w-[241px] max-h-[172px]"
+            resizeMode="contain"
+            accessibilityLabel="Decorative wallet illustration"
+          />
       </View>
     </SafeAreaContent>
   );

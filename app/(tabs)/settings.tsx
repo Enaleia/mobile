@@ -136,9 +136,9 @@ const SettingsScreen = () => {
              </SettingsListItem>
              <SettingsListItem onPress={() => router.push("/settings/wallet")}>
                <View className="flex-row items-center gap-2">
-                 <Ionicons name="wallet-outline" size={24} color="#0D0D0D" />
+                 <Ionicons name="key-outline" size={24} color="#0D0D0D" />
                  <Text className="text-base font-dm-bold text-slate-800 tracking-tighter">
-                   Wallet address
+                 Attestation
                  </Text>
                </View>
                <Ionicons name="chevron-forward-outline" size={16} color="#0D0D0D" />
@@ -197,7 +197,7 @@ const SettingsScreen = () => {
           )}
           
           {/* Sign Out Section */}
-           <CategoryHeader title="Sign Out" />
+           <CategoryHeader title="Session" />
            <View className="mt-0 mb-6 rounded-2xl overflow-hidden">
               <SettingsListItem onPress={() => setIsSignOutModalVisible(true)} isFirst={true} isLast={true}>
                 <View className="flex-row items-center gap-2">

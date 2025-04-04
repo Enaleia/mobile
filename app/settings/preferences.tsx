@@ -27,7 +27,7 @@ const PreferencesScreen = () => {
 
       <View className="flex-1">
         <Text className="text-base font-dm-bold text-gray-900 mb-2">
-          Event creation
+          Ease of use
         </Text>
         <View className="space-y-4">
           <View className="bg-white rounded-2xl p-4">
@@ -43,8 +43,8 @@ const PreferencesScreen = () => {
                 <Switch
                   value={autoScanQR}
                   onValueChange={setAutoScanQR}
-                  trackColor={{ false: "#F3F4F6", true: "#F3F4F6" }}
-                  thumbColor={autoScanQR ? "#2985D0" : "#0D0D0D"}
+                  trackColor={{ false: "#F3F4F6", true: "#2985D0" }}
+                  thumbColor={autoScanQR ? "#FCFCFC" : "#FFCFCFC"}
                 />
               </View>
               <Text className="text-base text-gray-500">
@@ -66,8 +66,8 @@ const PreferencesScreen = () => {
                 <Switch
                   value={autoJumpToWeight}
                   onValueChange={setAutoJumpToWeight}
-                  trackColor={{ false: "#F3F4F6", true: "#F3F4F6" }}
-                  thumbColor={autoJumpToWeight ? "#2985D0" : "#0D0D0D"}
+                  trackColor={{ false: "#F3F4F6", true: "#2985D0" }}
+                  thumbColor={autoScanQR ? "#FCFCFC" : "#FFCFCFC"}
                 />
               </View>
 

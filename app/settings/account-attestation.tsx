@@ -1,4 +1,4 @@
-import { View, Text, Pressable } from "react-native";
+import { View, Text, Pressable, Image } from "react-native";
 import React from "react";
 import SafeAreaContent from "@/components/shared/SafeAreaContent";
 import { Ionicons } from "@expo/vector-icons";
@@ -7,20 +7,21 @@ import { ScrollView } from "moti";
 import { Company } from "@/types/company";
 import { router } from "expo-router";
 
-// Define props type for InfoBox
-interface InfoBoxProps {
+// Define props type for DataItem - remove className
+interface DataItemProps {
   label: string;
   value: string | null | undefined;
-  className?: string;
+  // Removed className prop
 }
 
-// Helper component for info boxes with types
-const InfoBox: React.FC<InfoBoxProps> = ({ label, value, className }) => (
-  <View className={`bg-sand-beige p-4 rounded-2xl mb-2 ${className || ''}`}>
-    <Text className="text-sm font-dm-bold text-grey-6">
+// Reusable component for displaying label-value pairs according to the new design
+// Removed className prop from function signature and usage
+const DataItem: React.FC<DataItemProps> = ({ label, value }) => (
+  <View className="self-stretch flex flex-col justify-start items-start gap-1">
+    <Text className="text-grey-6 text-sm font-dm-medium leading-[16.80px]">
       {label}
     </Text>
-    <Text className="text-xl font-dm-bold text-enaleia-black">
+    <Text className="self-stretch text-enaleia-black text-lg font-dm-bold leading-snug">
       {value || "N/A"} {/* Display N/A if value is missing */}
     </Text>
   </View>
@@ -60,57 +61,63 @@ const AccountAttestationScreen = () => {
     return null;
   };
 
+  // Format User ID to remove hyphens
+  const formattedUserId = user?.id
+
   return (
     <SafeAreaContent>
-      <ScrollView
-        className="flex-1"
-        contentContainerStyle={{ flexGrow: 1, paddingBottom: 100 }}
-        showsVerticalScrollIndicator={false}
-      >
-        {/* Header with Back Button */}
+        {/* Header with Back Button - No horizontal padding as per user edit */}
         <View className="flex-row items-center justify-start pb-4">
             <Pressable
             onPress={() => router.back()}
             className="flex-row items-center space-x-1"
             >
             <Ionicons name="chevron-back" size={24} color="#0D0D0D" />
-            <Text className="text-base font-dm-regular text-enaleia-black tracking-tighter">
+            {/* Use bold font as per HTML */}
+            <Text className="text-base font-dm-regular text-enaleia-black tracking-tight">
                 Settings
             </Text>
-            </Pressable>  
+            </Pressable>
           </View>
-          <Text className="text-3xl font-dm-bold text-enaleia-black tracking-[-1px] mb-4">
+        {/* Title */}
+        <Text className="text-3xl font-dm-bold text-enaleia-black tracking-[-1px] mb-4">
               Account
             </Text>
-        {/* Restructured Info Section */}
-        <View className=""> 
-          {/* Basic Info Section */}
-          <View className="mb-1">
-            {/* <Text className="text-base font-dm-bold text-gray-900 mb-1">
-              Basic
-            </Text> */}
-            <Text className="text-base font-dm-bold text-gray-900 mb-2">
-             Basic information
+            {/* Description */}
+            <Text className="text-sm font-dm-regular text-enaleia-black leading-[16.80px] mb-6">
+              The informations associated with this account
             </Text>
-          </View>
-          <InfoBox label="First name" value={user?.first_name} />
-          <InfoBox label="Email" value={obscureEmail(user?.email)} />
+            <View className="flex-1">
+            {/* Using border instead of outline */}
+            <View className="p-4 bg-[#fbfbfb] rounded-[14px] border border-[#e5e5ea] flex flex-col justify-start items-start mb-6">
+                {/* Wrap each DataItem (except last) in a View with mb-6 */}
+                <View className="mb-6 w-full">
+                  <DataItem label="User's ID" value={formattedUserId} />
+                </View>
+                <View className="mb-6 w-full">
+                  <DataItem label="Company name" value={getCompanyName()} />
+                </View>
+                {/* <View className="mb-6 w-full">
+                  <DataItem label="First name" value={user?.first_name} />
+                </View> */}
+                {/* Assuming user.role exists, otherwise might need adjustment */}
+                {/* <View className="mb-6 w-full">
+                  <DataItem label="Email" value={obscureEmail(user?.email)} />
+                </View> */}
+                {/* No wrapper/margin on the last item */}
 
-          {/* Attestation Info Section */}
-          <View className="mb-2 mt-4">
-            {/* <Text className="text-base font-dm-bold text-gray-900 mb-1">
-              Attest
-            </Text> */}
-            <Text className="font-dm-regular text-base mb-2 leading-5">
-              All attestation would include your user ID and company name, we will not post personal information on the blockchain.
-            </Text>
+            </View>
           </View>
-          <InfoBox label="User's ID" value={user?.id} />
-          <InfoBox label="Company" value={getCompanyName()} />
 
-         
+        {/* Restore Absolutely positioned image container */}
+        <View className="absolute bottom-3 right-0 pointer-events-none z-[-1]">
+            <Image
+               source={require("@/assets/images/Coast.png")} 
+               className="max-w-[353px] max-h-[234px]" 
+               resizeMode="contain"
+               accessibilityLabel="Decorative account illustration"
+            />
         </View>
-      </ScrollView>
     </SafeAreaContent>
   );
 };
