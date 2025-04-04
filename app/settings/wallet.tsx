@@ -129,8 +129,8 @@ const WalletScreen = () => {
         <View className="gap-4">
           <Pressable
               onPress={handleViewAttestations}
-              className="p-4 rounded-full border border-med-ocean flex-row justify-center items-center">
-             <Text className="text-med-ocean text-sm font-dm-medium  mr-2">
+              className="p-4 rounded-full border border-blue-ocean flex-row justify-center items-center">
+             <Text className="text-blue-ocean text-sm font-dm-medium  mr-2">
                View all my attestations
              </Text>
              <Ionicons name="open-outline" size={16} color="#2884cf" />
@@ -138,15 +138,15 @@ const WalletScreen = () => {
           {userWalletAddress ? (
             <Pressable
               onPress={handleOpenExplorer}
-              className="p-4 rounded-full border border-med-ocean flex-row justify-center items-center">
-               <Text className="text-med-ocean text-sm font-dm-medium  mr-2">
+              className="p-4 rounded-full border border-blue-ocean flex-row justify-center items-center">
+               <Text className="text-blue-ocean text-sm font-dm-medium  mr-2">
                  View my address on block explorer
                </Text>
                <Ionicons name="open-outline" size={16} color="#2884cf" />
             </Pressable>
            ) : (
-             <View className="p-4 rounded-[37px] border border-gray-400 flex-row justify-center items-center bg-gray-100 opacity-60">
-                <Text className="text-gray-500 text-sm font-dm-medium leading-[16.80px] mr-2">
+             <View className="p-4 rounded-full border border-blue-ocean flex-row justify-center items-center bg-gray-100 opacity-60">
+                <Text className="text-blue-ocean text-sm font-dm-medium leading-[16.80px] mr-2">
                   View wallet on block explorer
                 </Text>
                 <Ionicons name="open-outline" size={16} color="gray" />
