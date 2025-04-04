@@ -99,21 +99,21 @@ const WalletScreen = () => {
       </View>
       <View className="flex-1">
         <Text className="text-3xl font-dm-bold text-enaleia-black tracking-[-1px] mb-4">
-        Attestation
+        Blockchain address
         </Text>
-        <Text className="text-sm font-dm-regular text-[#0d0d0d] leading-[16.80px] mb-6">
-         This public key will be used to attest data to the Ethereum Attestation Services.
+        <Text className="text-base font-dm-regular text-enaleia-black tracking-tight mb-6">
+         The following address & it's public key will be used to attest data to the Ethereum Attestation Services, on Optimism, a layer-2 blockchain on Ethereum.
         </Text>
-        <View className="p-4 bg-[#fbfbfb] rounded-[14px] border border-[#e5e5ea] mb-6">
+        <View className="p-4 bg-white rounded-2xl border border-grey-3 mb-6">
           <View>
-            <Text className="text-[#75757b] text-sm font-dm-medium leading-[16.80px] mb-1">
+            <Text className="text-grey-6 text-sm font-bold  mb-1">
               Public Key
             </Text>
             <Pressable
               onPress={copyAddress}
               className="flex-row items-start justify-between"
             >
-              <Text className="flex-1 text-[#0d0d0d] text-lg font-dm-bold leading-snug mr-4">
+              <Text className="flex-1 text-enaleia-black text-lg font-dm-bold leading-snug mr-4">
                 {userWalletAddress || "No wallet found"}
               </Text>
               <View className="w-6 h-6 items-center justify-center">
@@ -129,24 +129,24 @@ const WalletScreen = () => {
         <View className="gap-4">
           <Pressable
               onPress={handleViewAttestations}
-              className="p-4 rounded-[37px] border border-[#2884cf] flex-row justify-center items-center">
-             <Text className="text-[#2884cf] text-sm font-dm-medium leading-[16.80px] mr-2">
-               View device attestations
+              className="p-4 rounded-full border border-blue-ocean flex-row justify-center items-center">
+             <Text className="text-blue-ocean text-sm font-dm-medium  mr-2">
+               View all my attestations
              </Text>
              <Ionicons name="open-outline" size={16} color="#2884cf" />
           </Pressable>
           {userWalletAddress ? (
             <Pressable
               onPress={handleOpenExplorer}
-              className="p-4 rounded-[37px] border border-[#2884cf] flex-row justify-center items-center">
-               <Text className="text-[#2884cf] text-sm font-dm-medium leading-[16.80px] mr-2">
-                 View device wallet
+              className="p-4 rounded-full border border-blue-ocean flex-row justify-center items-center">
+               <Text className="text-blue-ocean text-sm font-dm-medium  mr-2">
+                 View my address on block explorer
                </Text>
                <Ionicons name="open-outline" size={16} color="#2884cf" />
             </Pressable>
            ) : (
-             <View className="p-4 rounded-[37px] border border-gray-400 flex-row justify-center items-center bg-gray-100 opacity-60">
-                <Text className="text-gray-500 text-sm font-dm-medium leading-[16.80px] mr-2">
+             <View className="p-4 rounded-full border border-blue-ocean flex-row justify-center items-center bg-gray-100 opacity-60">
+                <Text className="text-blue-ocean text-sm font-dm-medium leading-[16.80px] mr-2">
                   View wallet on block explorer
                 </Text>
                 <Ionicons name="open-outline" size={16} color="gray" />

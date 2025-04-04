@@ -18,10 +18,10 @@ interface DataItemProps {
 // Removed className prop from function signature and usage
 const DataItem: React.FC<DataItemProps> = ({ label, value }) => (
   <View className="self-stretch flex flex-col justify-start items-start gap-1">
-    <Text className="text-grey-6 text-sm font-dm-medium leading-[16.80px]">
+    <Text className="text-grey-6 text-sm font-dm-bold">
       {label}
     </Text>
-    <Text className="self-stretch text-enaleia-black text-lg font-dm-bold leading-snug">
+    <Text className="self-stretch text-enaleia-black text-lg font-dm-bold ">
       {value || "N/A"} {/* Display N/A if value is missing */}
     </Text>
   </View>
@@ -84,17 +84,17 @@ const AccountAttestationScreen = () => {
               Account
             </Text>
             {/* Description */}
-            <Text className="text-sm font-dm-regular text-enaleia-black leading-[16.80px] mb-6">
+            <Text className="text-base font-dm-regular text-enaleia-black mb-6">
               The informations associated with this account
             </Text>
             <View className="flex-1">
             {/* Using border instead of outline */}
-            <View className="p-4 bg-[#fbfbfb] rounded-[14px] border border-[#e5e5ea] flex flex-col justify-start items-start mb-6">
-                {/* Wrap each DataItem (except last) in a View with mb-6 */}
-                <View className="mb-6 w-full">
-                  <DataItem label="User's ID" value={formattedUserId} />
+            <View className="bg-white rounded-2xl border border-grey-3 flex flex-col justify-start items-start mb-6">
+                {/* Add border-b and padding-b to all but the last item's wrapper */}
+                <View className="p-4 w-full border-b border-grey-3">
+                  <DataItem label="User ID" value={formattedUserId} />
                 </View>
-                <View className="mb-6 w-full">
+                <View className="p-4 w-full">
                   <DataItem label="Company name" value={getCompanyName()} />
                 </View>
                 {/* <View className="mb-6 w-full">
@@ -104,8 +104,6 @@ const AccountAttestationScreen = () => {
                 {/* <View className="mb-6 w-full">
                   <DataItem label="Email" value={obscureEmail(user?.email)} />
                 </View> */}
-                {/* No wrapper/margin on the last item */}
-
             </View>
           </View>
 
