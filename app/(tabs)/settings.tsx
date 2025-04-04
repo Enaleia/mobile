@@ -91,7 +91,7 @@ const SettingsScreen = () => {
   const SettingsListItem: React.FC<SettingsListItemProps> = ({ children, isFirst = false, isLast = false, onPress, ...props }) => (
     <Pressable
       onPress={onPress}
-      className={`flex-row items-center justify-between px-4 py-4 bg-white ${!isLast ? 'border-b border-neutral-200' : ''}`}
+      className={`flex-row items-center justify-between px-4 py-4 bg-white ${!isLast ? 'border-b border-grey-3' : ''}`}
       {...props}
     >
       {children}
@@ -124,7 +124,7 @@ const SettingsScreen = () => {
 
           {/* General Section */}
           <CategoryHeader title="General" />
-          <View className="rounded-2xl overflow-hidden">
+          <View className="rounded-2xl overflow-hidden border border-grey-3">
              <SettingsListItem onPress={() => router.push("/settings/account-attestation")} isFirst={true}>
                <View className="flex-row items-center gap-2">
                  <Ionicons name="person-circle-outline" size={24} color="#0D0D0D" />
@@ -156,7 +156,7 @@ const SettingsScreen = () => {
 
           {/* Support Section */}
           <CategoryHeader title="Support" />
-           <View className="rounded-2xl overflow-hidden">
+           <View className="rounded-2xl overflow-hidden border border-grey-3">
               <SettingsListItem onPress={openGuides} isFirst={true}>
                 <View className="flex-row items-center gap-2">
                   <Ionicons name="book-outline" size={24} color="#0D0D0D" />
@@ -182,7 +182,7 @@ const SettingsScreen = () => {
           {showTimers && (
             <>
               <CategoryHeader title="Dev only" />
-               <View className="rounded-2xl overflow-hidden">
+               <View className="rounded-2xl overflow-hidden border border-grey-3">
                  <SettingsListItem onPress={() => router.push("/settings/queue-test")} isFirst={true} isLast={true}>
                    <View className="flex-row items-center gap-2">
                      <Ionicons name="bug-outline" size={24} color="#0D0D0D" />
@@ -198,7 +198,7 @@ const SettingsScreen = () => {
           
           {/* Sign Out Section */}
            <CategoryHeader title="Session" />
-           <View className="mt-0 mb-6 rounded-2xl overflow-hidden">
+           <View className="mt-0 mb-6 rounded-2xl overflow-hidden border border-grey-3">
               <SettingsListItem onPress={() => setIsSignOutModalVisible(true)} isFirst={true} isLast={true}>
                 <View className="flex-row items-center gap-2">
                   <Ionicons name="log-out-outline" size={24} color="#DC2626" />

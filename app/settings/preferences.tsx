@@ -30,7 +30,7 @@ const PreferencesScreen = () => {
           Ease of use
         </Text>
         <View className="space-y-4">
-          <View className="bg-white rounded-2xl p-4">
+          <View className="bg-white rounded-2xl p-4 border border-grey-3">
             
             <View className="space-y-4">
               <View className="flex-row items-center justify-between">
@@ -53,7 +53,7 @@ const PreferencesScreen = () => {
             </View>
           </View>
 
-          <View className="bg-white rounded-2xl p-4">
+          <View className="bg-white rounded-2xl p-4 border border-grey-3">
             
             <View className="space-y-4">
               <View className="flex-row items-center justify-between">

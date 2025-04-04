@@ -452,7 +452,7 @@ const QueueSection = ({
           </View>
         )}
 
-        <View className="rounded-2xl overflow-hidden border border-gray-200 mt-1">
+        <View className="rounded-2xl overflow-hidden border border-grey-3 mt-1">
           {hasItems ? (
             uniqueItems.map((item, index) => (
               <QueueAction 

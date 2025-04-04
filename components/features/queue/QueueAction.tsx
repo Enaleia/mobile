@@ -120,7 +120,7 @@ const QueueAction = ({ item, isLastItem = false, isProcessing = false }: QueueAc
         console.log("Navigating to queue detail with id:", item.localId);
         router.push(`/queue/${item.localId}`);
       }}
-      className={`relative ${!isLastItem ? 'border-b border-gray-200' : ''}`}
+      className={`relative ${!isLastItem ? 'border-b border-grey-3' : ''}`}
     >
       <View className="w-full bg-white">
         <View className="p-5 flex-col gap-0.5">
@@ -166,7 +166,7 @@ const QueueAction = ({ item, isLastItem = false, isProcessing = false }: QueueAc
             {/* Progress bar and timer */}
             {item.status === QueueItemStatus.PROCESSING && (
               <View className="flex-row items-center gap-2 mt-1">
-                <View className="flex-1 h-2 bg-gray-200 rounded-full overflow-hidden">
+                <View className="flex-1 h-2 bg-sand-beige rounded-full overflow-hidden">
                   <View
                     className="h-full bg-blue-ocean"
                     style={{

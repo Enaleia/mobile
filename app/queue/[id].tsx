@@ -300,7 +300,7 @@ ${[
 
         {item && (
           <View className="flex-1">
-            <View className="flex-row items-center justify-between pt-2 pb-4">
+            <View className="flex-row items-center justify-between pb-4">
               <Pressable
               onPress={() => router.back()}
               className="flex-row items-center space-x-1"
@@ -313,7 +313,7 @@ ${[
               </Pressable>
             </View>
 
-            <Text className="text-3xl font-dm-bold text-enaleia-black tracking-[-1px] mb-4 mt-4">
+            <Text className="text-3xl font-dm-bold text-enaleia-black tracking-tighter mb-4">
               {currentAction?.name || 'Unknown Action'}
             </Text>
 
