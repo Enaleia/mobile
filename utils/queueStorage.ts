@@ -9,6 +9,8 @@ interface CompletedQueueItem extends QueueItem {
   completedAt: string; // ISO string
 }
 
+const RESCUED_ITEMS_KEY = 'RESCUED_ITEMS';
+
 export async function clearOldCache(): Promise<void> {
   const oldKey = process.env.EXPO_PUBLIC_QUEUE_CACHE_KEY;
   if (oldKey) {
@@ -103,6 +105,38 @@ export async function removeFromAllQueues(localId: string): Promise<void> {
   const completed = await getCompletedQueue();
   const filteredCompleted = completed.filter((item) => item.localId !== localId);
   await AsyncStorage.setItem(getCompletedQueueCacheKey(), JSON.stringify(filteredCompleted));
+}
+
+export async function markItemAsRescued(localId: string): Promise<void> {
+  try {
+    const rescuedItems = await getRescuedItems();
+    if (!rescuedItems.includes(localId)) {
+      rescuedItems.push(localId);
+      await AsyncStorage.setItem(RESCUED_ITEMS_KEY, JSON.stringify(rescuedItems));
+    }
+  } catch (error) {
+    console.error('Error marking item as rescued:', error);
+  }
+}
+
+export async function getRescuedItems(): Promise<string[]> {
+  try {
+    const data = await AsyncStorage.getItem(RESCUED_ITEMS_KEY);
+    return data ? JSON.parse(data) : [];
+  } catch (error) {
+    console.error('Error getting rescued items:', error);
+    return [];
+  }
+}
+
+export async function removeFromRescuedItems(localId: string): Promise<void> {
+  try {
+    const rescuedItems = await getRescuedItems();
+    const updatedItems = rescuedItems.filter(id => id !== localId);
+    await AsyncStorage.setItem(RESCUED_ITEMS_KEY, JSON.stringify(updatedItems));
+  } catch (error) {
+    console.error('Error removing from rescued items:', error);
+  }
 }
 
 export type { CompletedQueueItem };

@@ -106,130 +106,134 @@ const SettingsScreen = () => {
   );
 
   return (
-    <Pressable 
-      onPress={handleBackgroundTap}
-      className="flex-1 bg-sand-beige"
-    >
+    <View className="flex-1 bg-sand-beige">
       <SafeAreaContent>
         <ScrollView
           className="flex-1"
           contentContainerStyle={{ flexGrow: 1, paddingBottom: 100 }}
           showsVerticalScrollIndicator={false}
         >
-          <View className="mt-2">
-            <Text className="text-3xl font-dm-bold text-enaleia-black tracking-[-1px] mb-2">
-              Settings
-            </Text>
-          </View>
+          <Pressable 
+            onPress={handleBackgroundTap}
+            className="flex-1"
+          >
+            <View className="mt-2">
+              <Text className="text-3xl font-dm-bold text-enaleia-black tracking-[-1px] mb-2">
+                Settings
+              </Text>
+            </View>
 
-          {/* General Section */}
-          <CategoryHeader title="General" />
-          <View className="rounded-2xl overflow-hidden">
-             <SettingsListItem onPress={() => router.push("/settings/account-attestation")} isFirst={true}>
-               <View className="flex-row items-center gap-2">
-                 <Ionicons name="person-circle-outline" size={24} color="#0D0D0D" />
-                 <Text className="text-base font-dm-bold text-slate-800 tracking-tighter">
-                   Account
-                 </Text>
-               </View>
-               <Ionicons name="chevron-forward-outline" size={16} color="#0D0D0D" />
-             </SettingsListItem>
-             <SettingsListItem onPress={() => router.push("/settings/wallet")}>
-               <View className="flex-row items-center gap-2">
-                 <Ionicons name="key-outline" size={24} color="#0D0D0D" />
-                 <Text className="text-base font-dm-bold text-slate-800 tracking-tighter">
-                 Attestation
-                 </Text>
-               </View>
-               <Ionicons name="chevron-forward-outline" size={16} color="#0D0D0D" />
-             </SettingsListItem>
-             <SettingsListItem onPress={() => router.push("/settings/preferences")} isLast={true}>
-               <View className="flex-row items-center gap-2">
-                 <Ionicons name="options-outline" size={24} color="#0D0D0D" />
-                 <Text className="text-base font-dm-bold text-slate-800 tracking-tighter">
-                   Preferences
-                 </Text>
-               </View>
-               <Ionicons name="chevron-forward-outline" size={16} color="#0D0D0D" />
-             </SettingsListItem>
-          </View>
+            {/* General Section */}
+            <CategoryHeader title="General" />
+            <View className="rounded-2xl overflow-hidden">
+               <SettingsListItem onPress={() => router.push("/settings/account-attestation")} isFirst={true}>
+                 <View className="flex-row items-center gap-2">
+                   <Ionicons name="person-circle-outline" size={24} color="#0D0D0D" />
+                   <Text className="text-base font-dm-bold text-slate-800 tracking-tighter">
+                     Account
+                   </Text>
+                 </View>
+                 <Ionicons name="chevron-forward-outline" size={16} color="#0D0D0D" />
+               </SettingsListItem>
+               <SettingsListItem onPress={() => router.push("/settings/wallet")}>
+                 <View className="flex-row items-center gap-2">
+                   <Ionicons name="key-outline" size={24} color="#0D0D0D" />
+                   <Text className="text-base font-dm-bold text-slate-800 tracking-tighter">
+                   Attestation
+                   </Text>
+                 </View>
+                 <Ionicons name="chevron-forward-outline" size={16} color="#0D0D0D" />
+               </SettingsListItem>
+               <SettingsListItem onPress={() => router.push("/settings/preferences")} isLast={true}>
+                 <View className="flex-row items-center gap-2">
+                   <Ionicons name="options-outline" size={24} color="#0D0D0D" />
+                   <Text className="text-base font-dm-bold text-slate-800 tracking-tighter">
+                     Preferences
+                   </Text>
+                 </View>
+                 <Ionicons name="chevron-forward-outline" size={16} color="#0D0D0D" />
+               </SettingsListItem>
+            </View>
 
-          {/* Support Section */}
-          <CategoryHeader title="Support" />
-           <View className="rounded-2xl overflow-hidden">
-              <SettingsListItem onPress={openGuides} isFirst={true}>
-                <View className="flex-row items-center gap-2">
-                  <Ionicons name="book-outline" size={24} color="#0D0D0D" />
-                  <Text className="text-base font-dm-bold text-slate-800 tracking-tighter">
-                    Guides
-                  </Text>
-                </View>
-                <Ionicons name="open-outline" size={16} color="#0D0D0D" />
-              </SettingsListItem>
-              <SettingsListItem onPress={contactSupport} isLast={true}>
-                <View className="flex-row items-center gap-2">
-                  <Ionicons name="chatbox-ellipses-outline" size={24} color="#0D0D0D" />
-                  <Text className="text-base font-dm-bold text-slate-800 tracking-tighter">
-                    Contact support
-                  </Text>
-                </View>
-                <Ionicons name="mail-open-outline" size={16} color="#0D0D0D" />
-              </SettingsListItem>
-           </View>
+            {/* Support Section */}
+            <CategoryHeader title="Support" />
+             <View className="rounded-2xl overflow-hidden">
+                <SettingsListItem onPress={openGuides} isFirst={true}>
+                  <View className="flex-row items-center gap-2">
+                    <Ionicons name="book-outline" size={24} color="#0D0D0D" />
+                    <Text className="text-base font-dm-bold text-slate-800 tracking-tighter">
+                      Guides
+                    </Text>
+                  </View>
+                  <Ionicons name="open-outline" size={16} color="#0D0D0D" />
+                </SettingsListItem>
+                <SettingsListItem onPress={contactSupport} isLast={true}>
+                  <View className="flex-row items-center gap-2">
+                    <Ionicons name="chatbox-ellipses-outline" size={24} color="#0D0D0D" />
+                    <Text className="text-base font-dm-bold text-slate-800 tracking-tighter">
+                      Contact support
+                    </Text>
+                  </View>
+                  <Ionicons name="mail-open-outline" size={16} color="#0D0D0D" />
+                </SettingsListItem>
+             </View>
 
 
-          {/* Dev Only Section */}
-          {showTimers && (
-            <>
-              <CategoryHeader title="Dev only" />
-               <View className="rounded-2xl overflow-hidden">
-                 <SettingsListItem onPress={() => router.push("/settings/queue-test")} isFirst={true} isLast={true}>
-                   <View className="flex-row items-center gap-2">
-                     <Ionicons name="bug-outline" size={24} color="#0D0D0D" />
-                     <Text className="text-base font-dm-bold text-slate-800 tracking-tighter">
-                       Queue Testing
-                     </Text>
-                   </View>
-                   <Ionicons name="chevron-forward-outline" size={16} color="#0D0D0D" />
-                 </SettingsListItem>
-               </View>
-            </>
-          )}
-          
-          {/* Sign Out Section */}
-           <CategoryHeader title="Session" />
-           <View className="mt-0 mb-6 rounded-2xl overflow-hidden">
-              <SettingsListItem onPress={() => setIsSignOutModalVisible(true)} isFirst={true} isLast={true}>
-                <View className="flex-row items-center gap-2">
-                  <Ionicons name="log-out-outline" size={24} color="#DC2626" />
-                  <Text className="text-base font-dm-bold text-rose-600 tracking-tighter">
-                    Sign Out
-                  </Text>
-                </View>
-              </SettingsListItem>
-           </View>
+            {/* Dev Only Section */}
+            {showTimers && (
+              <>
+                <CategoryHeader title="Developer" />
+                 <View className="rounded-2xl overflow-hidden">
+                   <SettingsListItem onPress={() => router.push("/settings/queue-test")} isFirst={true} isLast={true}>
+                     <View className="flex-row items-center gap-2">
+                       <Ionicons name="bug-outline" size={24} color="#0D0D0D" />
+                       <Text className="text-base font-dm-bold text-slate-800 tracking-tighter">
+                         Queue Testing
+                       </Text>
+                     </View>
+                     <Ionicons name="chevron-forward-outline" size={16} color="#0D0D0D" />
+                   </SettingsListItem>
+                 </View>
+              </>
+            )}
+            
+            {/* Sign Out Section */}
+             <CategoryHeader title="Session" />
+             <View className="mt-0 mb-6 rounded-2xl overflow-hidden">
+                <SettingsListItem onPress={() => setIsSignOutModalVisible(true)} isFirst={true} isLast={true}>
+                  <View className="flex-row items-center gap-2">
+                    <Ionicons name="log-out-outline" size={24} color="#DC2626" />
+                    <Text className="text-base font-dm-bold text-rose-600 tracking-tighter">
+                      Sign Out
+                    </Text>
+                  </View>
+                </SettingsListItem>
+             </View>
 
-          <View className="items-center mt-8 px-4">
-            <Text className="text-sm font-dm-regular text-gray-500">
-              Version {version} ({buildNumber})
-            </Text>
-          </View>
 
-          <View className="mt-10 items-end opacity-100 left-[10px]">
-            <Image
-              source={require("@/assets/images/animals/TurtleCollab.png")}
-              className="w-[390px] h-[198px]"
-              accessibilityLabel="Decorative turtle illustration"
-              accessibilityRole="image"
-            />
-          </View>
+
+            <View className="mt-10 items-end opacity-100 left-[10px]">
+              <Image
+                source={require("@/assets/images/animals/TurtleCollab.png")}
+                className="w-[390px] h-[198px]"
+                accessibilityLabel="Decorative turtle illustration"
+                accessibilityRole="image"
+              />
+            </View>
+
+            <View className="items-center mt-8 px-4">
+              <Text className="text-sm font-dm-regular text-gray-500">
+                Version {version} ({buildNumber})
+              </Text>
+            </View>
+          </Pressable>
         </ScrollView>
       </SafeAreaContent>
       <SignOutModal
         isVisible={isSignOutModalVisible}
         onClose={() => setIsSignOutModalVisible(false)}
       />
-    </Pressable>
+    </View>
   );
 };
 

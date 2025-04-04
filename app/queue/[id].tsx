@@ -8,7 +8,7 @@ import { QueueItem, ServiceStatus, QueueItemStatus, MAX_RETRIES, LIST_RETRY_INTE
 import { useBatchData } from "@/hooks/data/useBatchData";
 import { MaterialDetail } from "@/types/material";
 import { EAS_CONSTANTS } from "@/services/eas";
-import { removeFromActiveQueue, removeFromAllQueues, getCompletedQueue } from "@/utils/queueStorage";
+import { removeFromActiveQueue, removeFromAllQueues, getCompletedQueue, markItemAsRescued, getRescuedItems, removeFromRescuedItems } from "@/utils/queueStorage";
 import { useMemo } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { ClearConfirmationModal } from "@/components/features/queue/ClearConfirmationModal";
@@ -17,6 +17,8 @@ import { LeaveAttestationModal } from "@/components/features/attest/LeaveAttesta
 import { ServiceStatusIndicator } from "@/components/features/queue/ServiceStatusIndicator";
 import QueueStatusIndicator from "@/components/features/queue/QueueStatusIndicator";
 import { formatDate } from "@/utils/date";
+import { EmailConfirmationModal } from "@/components/features/queue/EmailConfirmationModal";
+import { ClearItemConfirmationModal } from "@/components/features/queue/ClearItemConfirmationModal";
 
 export default function QueueItemDetails() {
   const { id } = useLocalSearchParams();
@@ -29,6 +31,7 @@ export default function QueueItemDetails() {
   const [hasEmailedSupport, setHasEmailedSupport] = useState(false);
   const [showClearButton, setShowClearButton] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [showEmailModal, setShowEmailModal] = useState(false);
 
   // Find collector info if available
   const collectorInfo = useMemo(() => {
@@ -36,20 +39,19 @@ export default function QueueItemDetails() {
     return collectors.find(c => c.collector_identity === item.collectorId);
   }, [item?.collectorId, collectors]);
 
-  // Effect to handle delayed showing of clear button after email
+  // Check if item was previously rescued
   useEffect(() => {
-    let timeoutId: NodeJS.Timeout;
-    if (hasEmailedSupport) {
-      timeoutId = setTimeout(() => {
-        setShowClearButton(true);
-      }, 300);
-    }
-    return () => {
-      if (timeoutId) {
-        clearTimeout(timeoutId);
+    const checkRescuedStatus = async () => {
+      if (item) {
+        const rescuedItems = await getRescuedItems();
+        if (rescuedItems.includes(item.localId)) {
+          setHasEmailedSupport(true);
+          setShowClearButton(true);
+        }
       }
     };
-  }, [hasEmailedSupport]);
+    checkRescuedStatus();
+  }, [item]);
 
   useEffect(() => {
     const loadQueueItemDetails = async () => {
@@ -226,7 +228,8 @@ Manufacturing Details:
 Other Details:
   - Created Date: ${formattedTime}
   - Location: ${item.location?.coords ? `${item.location.coords.latitude}, ${item.location.coords.longitude}` : "N/A"}
-  - Attestation UID: ${item.eas?.txHash || "N/A"}`,
+  - Attestation UID: ${item.eas?.txHash || "N/A"}
+  - Event ID: ${item.directus?.eventId || "N/A"}`,
       (item.directus?.error || item.eas?.error || (item.directus?.status === ServiceStatus.FAILED && !item.directus?.linked)) ? `
 Error:
 ${[
@@ -249,6 +252,9 @@ ${[
       if (canOpen) {
         await Linking.openURL(url);
         setHasEmailedSupport(true);
+        if (item) {
+          await markItemAsRescued(item.localId);
+        }
       } else {
         Alert.alert(
           "Error", 
@@ -264,14 +270,25 @@ ${[
     }
   };
 
-  const handleClear = async () => {
+  const handleEmailPress = () => {
+    setShowEmailModal(true);
+  };
+
+  const handleEmailProceed = () => {
+    setShowEmailModal(false);
+    handleEmail();
+  };
+
+  const handleClear = () => {
     setShowClearModal(true);
   };
 
   const confirmClear = async () => {
+    if (!item) return;
     try {
       await removeFromAllQueues(item.localId);
-      await loadQueueItems(); // Refresh the queue items
+      await removeFromRescuedItems(item.localId);
+      await loadQueueItems();
       setShowClearModal(false);
       router.back();
     } catch (error) {
@@ -283,9 +300,9 @@ ${[
     }
   };
 
-  const canClear = item.status === QueueItemStatus.FAILED && 
-                   item.directus?.status === ServiceStatus.FAILED && 
-                   item.eas?.status === ServiceStatus.FAILED;
+  // const canClear = item.status === QueueItemStatus.FAILED && 
+  //                  item.directus?.status === ServiceStatus.FAILED && 
+  //                  item.eas?.status === ServiceStatus.FAILED;
 
   const isCompleted = item.status === QueueItemStatus.COMPLETED;
   const hasFailed = item.status === QueueItemStatus.FAILED || item.totalRetryCount >= MAX_RETRIES;
@@ -656,73 +673,41 @@ ${[
 
             {/* Action Buttons */}
             <View className="mt-6 space-y-3">
-              <Pressable
-                onPress={() => {
-                  Alert.alert(
-                    "Delete item",
-                    "Are you sure you want to delete this item? This action cannot be undone.",
-                    [
-                      {
-                        text: "Cancel",
-                        style: "cancel"
-                      },
-                      {
-                        text: "Delete",
-                        style: "destructive",
-                        onPress: async () => {
-                          try {
-                            // Directly remove from all queues without marking as deleted
-                            await removeFromAllQueues(item.localId);
-                            await loadQueueItems();
-                            router.back();
-                          } catch (error) {
-                            console.error("Error deleting item:", error);
-                            Alert.alert(
-                              "Error",
-                              "Failed to delete the item. Please try again."
-                            );
-                          }
-                        }
-                      }
-                    ]
-                  );
-                }}
-                className="border border-red-500 py-4 rounded-full"
-              >
-                <Text className="text-red-500 text-center font-dm-bold">
-                  Delete item
-                </Text>
-              </Pressable>
 
-              <Pressable
-                onPress={handleEmail}
-                className="border border-grey-3 py-4 rounded-full"
-              >
-                <Text className="text-enaleia-black text-center font-dm-bold">
-                  Email to Enaleia
-                </Text>
-              </Pressable>
-
-              {canClear && hasEmailedSupport && showClearButton && (
+            {canRetry && (
                 <Pressable
-                  onPress={handleClear}
-                  className="border border-grey-3 py-4 rounded-full"
+                  onPress={handleRetry}
+                  className="border border-grey-3 py-4 rounded-full flex-row items-center justify-center"
                 >
-                  <Text className="text-enaleia-black text-center font-dm-bold">
-                    Clear it from device
+                  <Ionicons name="refresh" size={20} color="#0D0D0D" />
+                  <Text className="text-enaleia-black text-center font-dm-bold ml-2">
+                    Retry
                   </Text>
                 </Pressable>
               )}
 
-              {canRetry && (
-                <Pressable
-                  onPress={handleRetry}
-                  className="border border-grey-3 py-4 rounded-full"
-                >
-                  <Text className="text-enaleia-black text-center font-dm-bold">
-                    Retry Item
-                  </Text>
-                </Pressable>
+              <Pressable
+                onPress={handleEmailPress}
+                className="border border-grey-3 py-4 rounded-full flex-row items-center justify-center"
+              >
+                <Ionicons name="help-buoy" size={20} color="#0D0D0D" />
+                <Text className="text-enaleia-black text-center font-dm-bold ml-2">
+                  Rescue Data
+                </Text>
+              </Pressable>
+
+              {showClearButton && (
+                <View className="mt-4">
+                  <Pressable
+                    onPress={handleClear}
+                    className="flex-row items-center justify-center px-4 py-3 rounded-full bg-rose-500 border border-rose-500"
+                  >
+                    <Ionicons name="trash-outline" size={20} color="#fcfcfc" />
+                    <Text className="text-base font-dm-medium text-white ml-2">
+                      Clear it from device
+                    </Text>
+                  </Pressable>
+                </View>
               )}
 
               {hasFailed && (
@@ -740,7 +725,13 @@ ${[
         )}
       </ScrollView>
 
-      <ClearConfirmationModal
+      <EmailConfirmationModal
+        isVisible={showEmailModal}
+        onClose={() => setShowEmailModal(false)}
+        onProceed={handleEmail}
+      />
+
+      <ClearItemConfirmationModal
         isVisible={showClearModal}
         onClose={() => setShowClearModal(false)}
         onConfirm={confirmClear}

@@ -20,6 +20,7 @@ interface QRTextInputProps {
   error?: string;
   editable?: boolean;
   onScanComplete?: () => void;
+  keyboardType?: "default" | "numeric";
 }
 
 export interface QRTextInputRef {
@@ -64,6 +65,7 @@ const QRTextInput = forwardRef<QRTextInputRef, QRTextInputProps>(
       error,
       editable = true,
       onScanComplete,
+      keyboardType = variant === "embedded" ? "numeric" : "default",
     },
     ref
   ) => {
@@ -193,6 +195,7 @@ const QRTextInput = forwardRef<QRTextInputRef, QRTextInputProps>(
                 paddingVertical: 0, // Removes default iOS padding
                 lineHeight: 26, // Ensures proper line height consistency
               }}
+              keyboardType={keyboardType}
               editable={editable}
             />
           </View>

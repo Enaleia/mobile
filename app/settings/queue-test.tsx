@@ -1,11 +1,12 @@
 import { View, Text, Pressable, ActivityIndicator } from "react-native";
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import SafeAreaContent from "@/components/shared/SafeAreaContent";
 import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
 import { useQueue } from "@/contexts/QueueContext";
 import { QueueItem, QueueItemStatus, ServiceStatus, MAX_RETRIES } from "@/types/queue";
 import { getActiveQueue, updateActiveQueue } from "@/utils/queueStorage"; // Import storage functions
+import { QueueTestWarningModal } from "@/components/features/queue/QueueTestWarningModal";
 
 const TEST_ACTIONS = [
   {
@@ -67,6 +68,21 @@ export default function QueueTestScreen() {
   } | null>(null);
   const [testFormCount, setTestFormCount] = useState(0);
   const [failedItemCount, setFailedItemCount] = useState(0);
+  const [showWarningModal, setShowWarningModal] = useState(false);
+
+  useEffect(() => {
+    // Show the warning modal every time the page is accessed
+    setShowWarningModal(true);
+  }, []);
+
+  const handleCloseWarning = () => {
+    setShowWarningModal(false);
+    router.back();
+  };
+
+  const handleProceedWarning = () => {
+    setShowWarningModal(false);
+  };
 
   const handleSubmitTestForms = async (count: number, shouldBeFailed: boolean = false) => {
     setIsSubmitting(true);
@@ -237,18 +253,19 @@ export default function QueueTestScreen() {
         Queue Testing
       </Text>
 
-      <View className="mt-6">
+      {/* Submit Test Forms Section */}
+      <View className="mt-6 mb-8">
         <Text className="text-base font-dm-bold text-gray-900 mb-2">
-          Test Actions
+          Submit Test Forms
         </Text>
         <Text className="text-sm text-grey-6 mb-4">
-          Submit test forms with different actions to the queue for testing purposes.
+          Submit test forms with different actions to the queue for testing purposes. Do not use these while on mainnet.
         </Text>
 
         <View className="space-y-3">
           <Pressable
             onPress={() => handleSubmitTestForms(1)}
-            className="bg-blue-500 p-4 rounded-full"
+            className="bg-blue-ocean p-4 rounded-full"
           >
             <Text className="text-white text-center font-dm-bold">
               Submit Test Form ({testFormCount})
@@ -299,11 +316,23 @@ export default function QueueTestScreen() {
               Generate Failed Item ({failedItemCount})
             </Text>
           </Pressable>
+        </View>
+      </View>
 
+      {/* Clear Lists Section */}
+      <View className="mb-8">
+        <Text className="text-base font-dm-bold text-gray-900 mb-2">
+          Clear Lists
+        </Text>
+        <Text className="text-sm text-grey-6 mb-4">
+          Clear items from the queue lists.
+        </Text>
+
+        <View className="space-y-3">
           <Pressable
             onPress={handleClearActive}
             disabled={isClearingActive || isSubmitting || isClearingFailed}
-            className={`p-4 rounded-xl ${isClearingActive ? 'bg-yellow-300' : 'bg-yellow-500'} ${ (isClearingActive || isSubmitting || isClearingFailed) ? 'opacity-50' : ''}`}
+            className={`p-4 rounded-full ${isClearingActive ? 'bg-blue-ocean' : 'bg-blue-ocean'} ${ (isClearingActive || isSubmitting || isClearingFailed) ? 'opacity-50' : ''}`}
           >
             {isClearingActive ? (
               <ActivityIndicator color="#ffffff" />
@@ -317,7 +346,7 @@ export default function QueueTestScreen() {
           <Pressable
             onPress={handleClearFailed}
             disabled={isClearingFailed || isSubmitting || isClearingActive}
-            className={`p-4 rounded-xl ${isClearingFailed ? 'bg-red-300' : 'bg-red-500'} ${(isClearingFailed || isSubmitting || isClearingActive) ? 'opacity-50' : ''}`}
+            className={`p-4 rounded-full ${isClearingFailed ? 'bg-red-300' : 'bg-red-500'} ${(isClearingFailed || isSubmitting || isClearingActive) ? 'opacity-50' : ''}`}
           >
             {isClearingFailed ? (
               <ActivityIndicator color="#ffffff" />
@@ -327,30 +356,38 @@ export default function QueueTestScreen() {
               </Text>
             )}
           </Pressable>
-
-          {result && (
-            <View className={`p-4 rounded-full ${result.success ? 'bg-green-100' : 'bg-red-100'}`}>
-              <Text className={`text-center ${result.success ? 'text-green-800' : 'text-red-800'}`}>
-                {result.message}
-              </Text>
-            </View>
-          )}
-
-          <View className="mt-8 pt-4 border-t border-gray-200">
-            <Text className="text-base font-dm-bold text-gray-900 mb-2">
-              Health Check URLs
-            </Text>
-            <View className="space-y-2">
-              <Text className="text-sm text-grey-6">
-                Directus: {process.env.EXPO_PUBLIC_API_URL}/server/health
-              </Text>
-              <Text className="text-sm text-grey-6">
-                EAS: {process.env.EXPO_PUBLIC_NETWORK_PROVIDER_URL}
-              </Text>
-            </View>
-          </View>
         </View>
       </View>
+
+      {/* Result Message */}
+      {result && (
+        <View className={`p-4 rounded-full ${result.success ? 'bg-green-100' : 'bg-red-100'} mb-8`}>
+          <Text className={`text-center ${result.success ? 'text-green-800' : 'text-red-800'}`}>
+            {result.message}
+          </Text>
+        </View>
+      )}
+
+      {/* Health Check URLs */}
+      <View className="mt-4 pt-4 border-t border-gray-200">
+        <Text className="text-base font-dm-bold text-gray-900 mb-2">
+          Health Check URLs
+        </Text>
+        <View className="space-y-2">
+          <Text className="text-sm text-grey-6">
+            Directus: {process.env.EXPO_PUBLIC_API_URL}/server/health
+          </Text>
+          <Text className="text-sm text-grey-6">
+            EAS: {process.env.EXPO_PUBLIC_NETWORK_SCAN || "Not configured"}
+          </Text>
+        </View>
+      </View>
+
+      <QueueTestWarningModal 
+        isVisible={showWarningModal}
+        onClose={handleCloseWarning}
+        onProceed={handleProceedWarning}
+      />
     </SafeAreaContent>
   );
 }

@@ -295,12 +295,13 @@ const QueueSection = ({
               {items.length > 0 && showRetryButton && (
                 <Pressable
                   onPress={handleRetryPress}
-                  className="px-3 py-2 rounded-full bg-blue-ocean flex-row items-center active:bg-[#6C9EC6]"
+                  className="px-3 py-1.5 rounded-full bg-blue-ocean flex-row items-center active:bg-[#6C9EC6]"
                 >
-                  <Ionicons name="refresh" size={16} color="white" style={{ marginRight: 4 }} />
-                  <Text className="text-white text-sm font-dm-medium">
+                  <Text className="text-white text-sm font-dm-medium mr-1">
                     Retry 
                   </Text>
+                  <Ionicons name="refresh" size={16} color="white"/>
+
                 </Pressable>
               )}
             </View>
@@ -354,7 +355,7 @@ const QueueSection = ({
           <View className="space-y-2 mb-2">
             {/* Network Status Message */}
             {!isConnected && (
-              <View className="py-2 px-4 rounded-2xl bg-sand-beige border border-blue-ocean">
+              <View className="py-2 px-4 rounded-2xl bg-sand-beige border border-grey-3">
                 <View className="flex-row">
                   <View className="flex-col justify-start mr-1">
                     <View className="items-center justify-center">
@@ -380,7 +381,7 @@ const QueueSection = ({
 
             {/* Database Status Message */}
             {lastHealthCheck && shouldShowServiceError('directus') && (
-              <View className="py-2 px-4 rounded-2xl bg-sand-beige border border-blue-ocean">
+              <View className="py-2 px-4 rounded-2xl bg-sand-beige border border-grey-3">
                 <View className="flex-row">
                   <View className="flex-col justify-start mr-1">
                     <View className="items-center justify-center">
@@ -406,7 +407,7 @@ const QueueSection = ({
 
             {/* Blockchain Status Message */}
             {lastHealthCheck && shouldShowServiceError('eas') && (
-              <View className="py-2 px-4 rounded-2xl bg-sand-beige border border-blue-ocean">
+              <View className="py-2 px-4 rounded-2xl bg-sand-beige border border-grey-3">
                 <View className="flex-row">
                   <View className="flex-col justify-start mr-1">
                     <View className="items-center justify-center">
@@ -434,7 +435,7 @@ const QueueSection = ({
 
         {/* Failed Section Message */}
         {title.toLowerCase() === 'failed' && items.length > 0 && (
-          <View className="mb-2 py-2 px-4 rounded-2xl bg-sand-beige border border-rose-500">
+          <View className="mb-2 py-2 px-4 rounded-2xl bg-sand-beige border border-grey-3">
             <View className="flex-row">
               <View className="flex-col justify-start mr-1">
                 <View className="items-center justify-center">
@@ -452,7 +453,7 @@ const QueueSection = ({
           </View>
         )}
 
-        <View className="rounded-2xl overflow-hidden border border-gray-200 mt-1">
+        <View className="rounded-2xl overflow-hidden border border-grey-3 mt-1">
           {hasItems ? (
             uniqueItems.map((item, index) => (
               <QueueAction 
