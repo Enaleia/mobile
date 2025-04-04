@@ -6,12 +6,16 @@ interface ServiceStatusIndicatorProps {
   status: ServiceStatus;
   type: "directus" | "eas" | "linking";
   extraClasses?: string;
+  textClassName?: string;
+  iconSize?: number;
 }
 
 export const ServiceStatusIndicator = ({
   status,
   type,
   extraClasses,
+  textClassName,
+  iconSize = 16,
 }: ServiceStatusIndicatorProps) => {
   const getStatusIcon = () => {
     switch (status) {
@@ -43,9 +47,9 @@ export const ServiceStatusIndicator = ({
   };
 
   return (
-    <View className={`flex-row items-center justify-left gap-0.5 ${extraClasses}`}>
-      <Ionicons name={getStatusIcon()} size={16} color={getStatusColor()} />
-      <Text className="text-xs text-grey-6">
+    <View className={`flex-row items-center justify-left gap-0.5 ${extraClasses || ''}`}>
+      <Ionicons name={getStatusIcon()} size={iconSize} color={getStatusColor()} />
+      <Text className={`text-xs text-grey-6 ${textClassName || ''}`}>
         {getLabel()}
       </Text>
     </View>

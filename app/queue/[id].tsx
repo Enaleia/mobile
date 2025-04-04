@@ -299,16 +299,17 @@ ${[
       >
 
         {item && (
-          <View className="flex-1 py-2">
+          <View className="flex-1">
             <View className="flex-row items-center justify-between pt-2 pb-4">
-              <Pressable className="flex-row items-center space-x-1"
-                onPress={() => router.back()}
-                hitSlop={8}
+              <Pressable
+              onPress={() => router.back()}
+              className="flex-row items-center space-x-1"
               >
-                <Ionicons name="close" size={24} color="#0D0D0D" />
-                <Text className="text-base font-dm-regular text-enaleia-black">
-                  Attestation detail
-                </Text>
+              <Ionicons name="chevron-back" size={24} color="#0D0D0D" />
+              {/* Use bold font as per HTML */}
+              <Text className="text-base font-dm-regular text-enaleia-black tracking-tight">
+                  Queue
+              </Text>
               </Pressable>
             </View>
 
@@ -366,7 +367,7 @@ ${[
                       <Text className="text-xl font-dm-bold text-enaleia-black mb-2">
                         {materialData?.material_name || "Unknown Material"}
                       </Text>
-                      <View className="border border-grey-3 rounded-2xl">
+                      <View className="border bg-white border-grey-3 rounded-2xl">
                         <View className="flex-row">
                           <View className="flex-1 p-4 py-3 border-r border-grey-3">
                             <Text className="text-sm font-dm-bold text-grey-6">
@@ -420,7 +421,7 @@ ${[
                       <Text className="text-xl font-dm-bold text-enaleia-black mb-2">
                         {materialData?.material_name || "Unknown Material"}
                       </Text>
-                      <View className="border border-grey-3 rounded-2xl">
+                      <View className="border bg-white border-grey-3 rounded-2xl">
                         <View className="flex-row">
                           <View className="flex-1 p-4 py-3 border-r border-grey-3">
                             <Text className="text-sm font-dm-bold text-grey-6">
@@ -461,7 +462,7 @@ ${[
                   <Ionicons name="cube-outline" size={24} color="#8E8E93" />
                 </View>
                 
-                <View className="border border-grey-3 rounded-2xl">
+                <View className="border bg-white border-grey-3 rounded-2xl">
                   <View className="p-4 py-3 border-b border-grey-3">
                     <Text className="text-sm font-dm-bold text-grey-6">
                       Product
@@ -507,7 +508,7 @@ ${[
               <Text className="text-xl font-dm-light text-enaleia-black tracking-tighter mb-2">
                     Other details
                   </Text>
-              <View className="border border-grey-3 rounded-2xl">
+              <View className="border bg-white border-grey-3 rounded-2xl">
                 <View className="p-4 py-3 border-b border-grey-3">
                   <Text className="text-sm font-dm-bold text-grey-6">
                     Attested by
@@ -579,24 +580,30 @@ ${[
               <Text className="text-xl font-dm-light text-enaleia-black tracking-tighter mb-2">
                 Attestation status
               </Text>
-              <View className="border border-grey-3 rounded-2xl">
+              <View className="border bg-white border-grey-3 rounded-2xl">
                 <View className="flex-row justify-between">
                   <View className="flex-1 p-4 py-3 border-r border-grey-3">
                     <ServiceStatusIndicator 
                       status={item.directus?.status || ServiceStatus.PENDING}
                       type="directus"
+                      textClassName="text-sm font-dm-medium text-enaleia-black"
+                      iconSize={20} 
                     />
                   </View>
                   <View className="flex-1 p-4 py-3 border-r border-grey-3">
                     <ServiceStatusIndicator
                       status={item.eas?.status || ServiceStatus.PENDING}
                       type="eas"
+                      textClassName="text-sm font-dm-medium text-enaleia-black"
+                      iconSize={20} 
                     />
                   </View>
                   <View className="flex-1 p-4 py-3">
                     <ServiceStatusIndicator
                       status={item.linking?.status || ServiceStatus.PENDING}
                       type="linking"
+                      textClassName="text-sm font-dm-medium text-enaleia-black"
+                      iconSize={20} 
                     />
                   </View>
                 </View>
