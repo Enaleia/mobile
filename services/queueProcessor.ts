@@ -878,268 +878,191 @@ async function processItem(
   try {
     // Create promises for both services to run in parallel
     const servicePromises = [];
-    let directusResult: { eventId?: number; error?: any } = {};
-    let easResult: { txHash?: string; error?: any } = {};
 
     // Process Directus if needed
     if (shouldProcessService(item.directus)) {
       const directusPromise = (async () => {
         try {
           const eventId = await createDirectusEvent(item, requiredData, collectors);
-          // Store result, don't update cache here immediately
-          directusResult = { eventId };
+          await updateItemInCache(item.localId, {
+            directus: { 
+              status: ServiceStatus.COMPLETED,
+              eventId: eventId
+            }
+          });
           return { eventId };
         } catch (error) {
           const errorMessage = error instanceof Error ? error.message : "Unknown error";
           queueDebugMonitor.error(`Directus processing failed for item ${item.localId}:`, errorMessage);
           
+          // Check if error is network-related
           const isNetworkError = errorMessage.toLowerCase().includes('network') || 
                                errorMessage.toLowerCase().includes('offline') ||
                                errorMessage.toLowerCase().includes('timeout') ||
                                errorMessage.toLowerCase().includes('connection');
-
-          // Store error and network status
-          directusResult = { error: { message: errorMessage, isNetworkError } };
-          throw error; // Re-throw
+          
+          await updateItemInCache(item.localId, {
+            directus: { 
+              status: ServiceStatus.INCOMPLETE,
+              error: errorMessage
+            },
+            skipRetryIncrement: isNetworkError // Skip retry increment for network errors
+          });
+          throw error;
         }
       })();
       servicePromises.push(directusPromise);
     }
-    // No else needed, if not processed, directusResult remains {}
 
     // Process EAS if needed
     if (shouldProcessService(item.eas)) {
       const easPromise = (async () => {
         if (!wallet) {
-           easResult = { error: { message: "Wallet not initialized", isNetworkError: false } };
-           throw new Error("Wallet not initialized");
+          await updateItemInCache(item.localId, {
+            eas: { 
+              status: ServiceStatus.INCOMPLETE,
+              error: "Wallet not initialized"
+            }
+          });
+          throw new Error("Wallet not initialized");
         }
 
         try {
-          const easAttestationResult = await processEASAttestation(item, requiredData, wallet);
-          // Store result, don't update cache here immediately
-          easResult = { txHash: easAttestationResult.uid };
-          return { txHash: easAttestationResult.uid };
+          const easResult = await processEASAttestation(item, requiredData, wallet);
+          await updateItemInCache(item.localId, {
+            eas: { 
+              status: ServiceStatus.COMPLETED,
+              txHash: easResult.uid
+            }
+          });
+          return { txHash: easResult.uid };
         } catch (error) {
           const errorMessage = error instanceof Error ? error.message : "Unknown error";
-          queueDebugMonitor.error(`EAS processing failed for item ${item.localId}:`, errorMessage);
-
+          
+          // Check if error is network-related
           const isNetworkError = errorMessage === 'BLOCKCHAIN_OFFLINE' || 
                                errorMessage.toLowerCase().includes('network') ||
                                errorMessage.toLowerCase().includes('offline') ||
                                errorMessage.toLowerCase().includes('timeout') ||
                                errorMessage.toLowerCase().includes('connection');
-
-          // Store error and network status
-          easResult = { error: { message: errorMessage, isNetworkError } };
-          throw error; // Re-throw
+          
+          if (isNetworkError) {
+            await updateItemInCache(item.localId, {
+              eas: {
+                status: ServiceStatus.INCOMPLETE,
+                error: "Blockchain network is offline"
+              },
+              skipRetryIncrement: true // Skip retry increment for network errors
+            });
+          } else {
+            await updateItemInCache(item.localId, {
+              eas: { 
+                status: ServiceStatus.INCOMPLETE,
+                error: errorMessage
+              }
+            });
+          }
+          throw error;
         }
       })();
       servicePromises.push(easPromise);
     }
-    // No else needed, if not processed, easResult remains {}
 
-    // Wait for all services to settle
-    await Promise.allSettled(servicePromises);
+    // Wait for all services to complete
+    await Promise.all(servicePromises);
 
-    // Now, construct the update payload based on results and initial state
-    let updatePayload: Partial<QueueItem> = {};
-    let skipRetryIncrementUpdate = item.skipRetryIncrement || false; // Start with existing value
-
-    // Determine Directus Update state
-    if (shouldProcessService(item.directus)) { // Only construct update if it was processed
-      if (directusResult.error) {
-        updatePayload.directus = {
-          ...(item.directus || {}), // Keep existing fields
-          status: ServiceStatus.INCOMPLETE,
-          error: directusResult.error.message
-        };
-        if (directusResult.error.isNetworkError) skipRetryIncrementUpdate = true;
-      } else if (directusResult.eventId !== undefined) {
-        updatePayload.directus = {
-          ...(item.directus || {}), // Keep existing fields
-          status: ServiceStatus.COMPLETED,
-          eventId: directusResult.eventId,
-          error: undefined // Clear previous error on success
-        };
-      }
-       // If processing was attempted but result is empty (shouldn't happen?), retain old state?
-       // For now, we assume error or eventId will be set if processed.
-    } else {
-       // If not processed, keep the original directus state (if any)
-       updatePayload.directus = item.directus; 
-    }
-
-    // Determine EAS Update state
-    if (shouldProcessService(item.eas)) { // Only construct update if it was processed
-      if (easResult.error) {
-        updatePayload.eas = {
-          ...(item.eas || {}), // Keep existing fields
-          status: ServiceStatus.INCOMPLETE,
-          error: easResult.error.message
-        };
-        if (easResult.error.isNetworkError) skipRetryIncrementUpdate = true;
-      } else if (easResult.txHash !== undefined) {
-        updatePayload.eas = {
-          ...(item.eas || {}), // Keep existing fields
-          status: ServiceStatus.COMPLETED,
-          txHash: easResult.txHash,
-          error: undefined // Clear previous error on success
-        };
-      }
-       // If processing was attempted but result is empty, retain old state?
-    } else {
-        // If not processed, keep the original eas state (if any)
-        updatePayload.eas = item.eas;
-    }
-
-    // Add skipRetryIncrement to the payload
-    updatePayload.skipRetryIncrement = skipRetryIncrementUpdate;
-
-    // Only call update if there are actual changes to service states or skip flag
-    if (Object.keys(updatePayload).length > 0) {
-         await updateItemInCache(item.localId, updatePayload);
-    }
-
-    // Get current item state AFTER the potential combined update to check if we can link
+    // Get current item state to check if we can link
     const activeQueue = await getActiveQueue();
     const currentItem = activeQueue.find(i => i.localId === item.localId);
     
     if (currentItem) {
-      // Check if both Directus and EAS are completed AFTER the potential combined update
+      // Check if both Directus and EAS are completed
       if (currentItem.directus?.status === ServiceStatus.COMPLETED && 
           currentItem.eas?.status === ServiceStatus.COMPLETED &&
           currentItem.directus?.eventId && 
           currentItem.eas?.txHash) {
         
-        // Only process linking if it's currently incomplete
-        if (shouldProcessService(currentItem.linking)) {
-            queueDebugMonitor.log(`Attempting linking for item ${item.localId}`);
-            try {
-            // Link EAS to Directus
-            await linkEAStoDirectus(currentItem.directus.eventId, currentItem.eas.txHash);
-            
-            // Update linking status and potentially overall status to COMPLETED
-            await updateItemInCache(item.localId, {
-                linking: {
-                 ...(currentItem.linking || {}), // Keep existing fields
-                 status: ServiceStatus.COMPLETED,
-                 error: undefined // Clear error on success
-                },
-                // Let updateItemInCache recalculate overall status
-                lastAttempt: new Date().toISOString() // Update last attempt on final success step
-            });
-
-             // Re-fetch item to check final status after update
-             const finalQueue = await getActiveQueue();
-             const finalItem = finalQueue.find(i => i.localId === item.localId);
-             // If after linking update, all are complete, move to completed queue
-             if (finalItem && 
-                 finalItem.directus?.status === ServiceStatus.COMPLETED &&
-                 finalItem.eas?.status === ServiceStatus.COMPLETED &&
-                 finalItem.linking?.status === ServiceStatus.COMPLETED) {
-                await updateItemInCache(item.localId, {
-                    status: QueueItemStatus.COMPLETED
-                });
-             }
-
-            queueDebugMonitor.log(`Linking successful for item ${item.localId}`);
-            } catch (error) {
-            const errorMessage = error instanceof Error ? error.message : "Unknown error";
-            queueDebugMonitor.error(`Linking failed for item ${item.localId}:`, errorMessage);
-            
-            await updateItemInCache(item.localId, {
-                linking: {
-                 ...(currentItem.linking || {}), // Keep existing fields
-                 status: ServiceStatus.INCOMPLETE,
-                 error: errorMessage
-                }
-                // Overall status will be recalculated by updateItemInCache
-            });
-            // Do not throw error here, let the main error handler decide retry logic
+        try {
+          // Link EAS to Directus
+          await linkEAStoDirectus(currentItem.directus.eventId, currentItem.eas.txHash);
+          
+          // Update linking status
+          await updateItemInCache(item.localId, {
+            linking: {
+              status: ServiceStatus.COMPLETED
             }
-        } else {
-             queueDebugMonitor.log(`Linking already completed for item ${item.localId}, skipping.`);
-             // If linking was already done, ensure the item is marked COMPLETED if not already
-             // This check might be redundant if getOverallStatus works correctly
-             if (currentItem.status !== QueueItemStatus.COMPLETED && 
-                 currentItem.directus?.status === ServiceStatus.COMPLETED &&
-                 currentItem.eas?.status === ServiceStatus.COMPLETED &&
-                 currentItem.linking?.status === ServiceStatus.COMPLETED) {
-                 await updateItemInCache(item.localId, {
-                    status: QueueItemStatus.COMPLETED,
-                    lastAttempt: new Date().toISOString() 
-                 });
-             }
+          });
+
+          // Check if all services are completed after linking
+          const updatedQueue = await getActiveQueue();
+          const updatedItem = updatedQueue.find(i => i.localId === item.localId);
+          
+          if (updatedItem && 
+              updatedItem.directus?.status === ServiceStatus.COMPLETED &&
+              updatedItem.eas?.status === ServiceStatus.COMPLETED &&
+              updatedItem.linking?.status === ServiceStatus.COMPLETED) {
+            
+            // All services completed, update item status to COMPLETED
+            await updateItemInCache(item.localId, {
+              status: QueueItemStatus.COMPLETED,
+              lastAttempt: new Date().toISOString()
+            });
+          }
+        } catch (error) {
+          const errorMessage = error instanceof Error ? error.message : "Unknown error";
+          queueDebugMonitor.error(`Linking failed for item ${item.localId}:`, errorMessage);
+          
+          await updateItemInCache(item.localId, {
+            linking: {
+              status: ServiceStatus.INCOMPLETE,
+              error: errorMessage
+            }
+          });
         }
-      } else {
-         queueDebugMonitor.log(`Cannot link item ${item.localId} yet. Directus: ${currentItem.directus?.status}, EAS: ${currentItem.eas?.status}`);
       }
-    } else {
-        // Item might have been completed and moved by the updateItemInCache call after services finished
-        queueDebugMonitor.log(`Item ${item.localId} not found in active queue after service processing, likely completed.`);
     }
-
   } catch (error) {
-    // This catch block now primarily catches errors from the setup (like network checks),
-    // wallet initialization, or unhandled rejections from promises.
     const errorMessage = error instanceof Error ? error.message : "Unknown error";
-    queueDebugMonitor.error(`Overall processing failed for item ${item.localId}:`, errorMessage);
+    queueDebugMonitor.error(`Processing failed for item ${item.localId}:`, errorMessage);
 
-    const isNetworkError = errorMessage === 'NETWORK_OFFLINE' || 
-                          errorMessage === 'BLOCKCHAIN_OFFLINE' || 
+    // Check if error is network-related
+    const isNetworkError = errorMessage === 'BLOCKCHAIN_OFFLINE' || 
                           errorMessage.toLowerCase().includes('network') ||
                           errorMessage.toLowerCase().includes('offline') ||
                           errorMessage.toLowerCase().includes('timeout') ||
                           errorMessage.toLowerCase().includes('connection');
 
-    // Fetch the latest item state before deciding on failure status/retries
-    // as some parts might have succeeded before the overall failure
-    const latestQueue = await getActiveQueue();
-    const latestItemState = latestQueue.find(i => i.localId === item.localId) || item; // Fallback to initial item if not found
-
-    const currentRetryCount = latestItemState.totalRetryCount || 0;
+    // Get current retry count
+    const currentRetryCount = item.totalRetryCount || 0;
     
+    // Fetch the latest health check result to decide on retry increment
     const lastHealthCheck = await AsyncStorage.getItem('LAST_HEALTH_CHECK');
     const healthCheckResult = lastHealthCheck ? JSON.parse(lastHealthCheck) : null;
     const servicesHealthy = healthCheckResult?.result?.directus && healthCheckResult?.result?.eas;
     
-    // Use the skipRetryIncrement flag determined during the main processing logic
-    const shouldIncrementRetry = !latestItemState.skipRetryIncrement && !isNetworkError && servicesHealthy;
+    // Determine if retry count should be incremented
+    const shouldIncrementRetry = !isNetworkError && servicesHealthy && !item.skipRetryIncrement;
     
+    // Calculate the new retry count
     const newRetryCount = shouldIncrementRetry ? currentRetryCount + 1 : currentRetryCount;
     
+    // Determine the final status based on the NEW retry count
     const newStatus = newRetryCount >= MAX_RETRIES ? 
       QueueItemStatus.FAILED : 
-      QueueItemStatus.PENDING; // Reset to PENDING for retry unless max retries hit
+      QueueItemStatus.PENDING;
 
     // Update item status based on error
     await updateItemInCache(item.localId, {
       status: newStatus,
       lastError: errorMessage,
-      lastAttempt: new Date().toISOString(), // Record the time of this failed attempt
-      // Preserve latest known service states
-      directus: latestItemState.directus, 
-      eas: latestItemState.eas,
-      linking: latestItemState.linking,
-      skipRetryIncrement: isNetworkError || latestItemState.skipRetryIncrement, 
+      lastAttempt: new Date().toISOString(),
+      skipRetryIncrement: isNetworkError, // Still useful for debugging/tracking
       totalRetryCount: newRetryCount
     });
   } finally {
-    // Clean up network listener and timeout
+    // Clean up
     clearTimeout(timeoutId);
     unsubscribe();
-    // Reset processing state ONLY if this was the item being tracked
-     if (currentProcessingItemId === item.localId) {
-       currentProcessingItemId = null; 
-       // Clear the shared timeout variable ONLY if it belongs to this item
-       // This assumes PROCESSING_TIMEOUT is relatively short and overlaps are unlikely
-       // A more robust solution might involve storing timeouts per-item
-       if (currentProcessingTimeout) { 
-          clearTimeout(currentProcessingTimeout);
-          currentProcessingTimeout = null;
-       }
-     }
   }
 }
 
