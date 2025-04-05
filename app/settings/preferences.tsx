@@ -31,7 +31,6 @@ const PreferencesScreen = () => {
         </Text>
         <View className="space-y-4">
           <View className="bg-white rounded-2xl p-4 border border-grey-3">
-            
             <View className="space-y-4">
               <View className="flex-row items-center justify-between">
                 <View className="flex-row items-center gap-2">
@@ -49,12 +48,11 @@ const PreferencesScreen = () => {
               </View>
               <Text className="text-base text-gray-500">
                 Automatically open the QR scanner when adding a new material
-            </Text>
+              </Text>
             </View>
           </View>
 
           <View className="bg-white rounded-2xl p-4 border border-grey-3">
-            
             <View className="space-y-4">
               <View className="flex-row items-center justify-between">
                 <View className="flex-row items-center gap-2">
@@ -73,7 +71,8 @@ const PreferencesScreen = () => {
 
               <Text className="text-base text-gray-500">
                 Automatically focus on the weight field after scanning a QR code
-            </Text>            </View>
+              </Text>
+            </View>
           </View>
         </View>
       </View>

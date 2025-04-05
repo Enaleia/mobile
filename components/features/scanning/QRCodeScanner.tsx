@@ -1,5 +1,5 @@
 import { CameraView } from "expo-camera";
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import {
   Pressable,
   View,
@@ -17,17 +17,6 @@ interface QRCodeScannerProps {
 const QRCodeScanner: React.FC<QRCodeScannerProps> = ({ onScan, onClose }) => {
   const [isReady, setIsReady] = useState(false);
   const [flash, setFlash] = useState<"on" | "off">("off");
-
-  useEffect(() => {
-    // Set a timeout to show loading state if camera isn't ready quickly
-    const timeout = setTimeout(() => {
-      if (!isReady) {
-        setIsReady(false); // Force a re-render with loading state
-      }
-    }, 200);
-
-    return () => clearTimeout(timeout);
-  }, []);
 
   const onCameraReady = () => {
     setIsReady(true);

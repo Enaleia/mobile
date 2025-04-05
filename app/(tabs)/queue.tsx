@@ -139,7 +139,7 @@ const QueueScreen = () => {
             <View className="flex-1 items-center justify-center mt-4">
               <Image
                 source={require("@/assets/images/animals/CrabBubble.png")}
-                className="w-[294px] h-[250px] mt-4"
+                className="w-[294px] h-[250px] mt-4 self-center"
                 accessibilityLabel="Decorative crab illustration"
                 accessibilityRole="image"
               />
@@ -154,7 +154,6 @@ const QueueScreen = () => {
                 title="Active"
                 items={activeItems}
                 onRetry={retryItems}
-                showRetry={true}
                 alwaysShow={true}
               />
 
@@ -163,7 +162,6 @@ const QueueScreen = () => {
                 title="Failed"
                 items={failedItems}
                 onRetry={retryItems}
-                showRetry={false}
               />
 
               {/* Completed Items Section */}
@@ -171,7 +169,6 @@ const QueueScreen = () => {
                 title="Completed"
                 items={completedItems}
                 onRetry={retryItems}
-                showRetry={false}
                 onClearAll={handleClearAllCompleted}
               />
             </View>
