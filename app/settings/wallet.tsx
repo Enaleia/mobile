@@ -130,7 +130,7 @@ const WalletScreen = () => {
           <Pressable
               onPress={handleViewAttestations}
               className="p-4 rounded-full border border-grey-3 flex-row justify-center items-center">
-             <Text className="text-enaleia-black text-sm font-dm-medium  mr-2">
+             <Text className="text-enaleia-black text-center font-dm-bold mr-2">
                View all my attestations
              </Text>
              <Ionicons name="open-outline" size={16} color="#0D0D0D" />
@@ -139,14 +139,14 @@ const WalletScreen = () => {
             <Pressable
               onPress={handleOpenExplorer}
               className="p-4 rounded-full border border-grey-3 flex-row justify-center items-center">
-               <Text className="text-enaleia-black text-sm font-dm-medium  mr-2">
+               <Text className="text-enaleia-black text-center font-dm-bold mr-2">
                  View my address on block explorer
                </Text>
                <Ionicons name="open-outline" size={16} color="#0D0D0D" />
             </Pressable>
            ) : (
              <View className="p-4 rounded-full border border-grey-3 flex-row justify-center items-center bg-gray-100 opacity-60">
-                <Text className="text-enaleia-black text-sm font-dm-medium leading-[16.80px] mr-2">
+                <Text className="text-enaleia-black text-center font-dm-bold mr-2">
                   View wallet on block explorer
                 </Text>
                 <Ionicons name="open-outline" size={16} color="#0D0D0D" />

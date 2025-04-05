@@ -707,7 +707,7 @@ ${[
               >
                 <Ionicons name={isCompleted ? "mail-outline" : "help-buoy"} size={20} color="#0D0D0D" />
                 <Text className="text-enaleia-black text-center font-dm-bold ml-2">
-                  {isCompleted ? "Email data to Enaleia" : "Rescue Data"}
+                  {isCompleted ? "Email data to Enaleia" : "Rescue data"}
                 </Text>
               </Pressable>
 
