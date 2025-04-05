@@ -264,19 +264,9 @@ export default function AddMaterialModal({
           
           {/* Fixed Header */}
           <View style={styles.headerContainer}>
-            <Text className="text-xl font-dm-bold text-enaleia-black tracking-tighter">
+            <Text className="text-3xl font-dm-bold text-enaleia-black text-center w-full">
               Select Material
             </Text>
-            <Pressable
-              onPress={handleBackdropPress}
-              className="w-10 h-10 items-center justify-center"
-              accessibilityRole="button"
-              accessibilityLabel="Close material selection"
-              accessibilityHint="Double tap to close material selection"
-              hitSlop={{ top: 10, right: 10, bottom: 10, left: 10 }}
-            >
-              <Ionicons name="close" size={24} color="#0D0D0D" />
-            </Pressable>
           </View>
           
           <KeyboardAvoidingView
@@ -333,7 +323,7 @@ const styles = StyleSheet.create({
   },
   headerContainer: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
+    justifyContent: 'center',
     alignItems: 'center',
     paddingHorizontal: 8,
     paddingVertical: 4,

@@ -242,13 +242,17 @@ const QRTextInput = forwardRef<QRTextInputRef, QRTextInputProps>(
 
         <Modal
           visible={currentState.isVisible}
-          animationType="slide"
+          animationType="fade"
           onRequestClose={() => setScanner(false)}
+          presentationStyle="overFullScreen"
+          statusBarTranslucent={true}
         >
-          <QRCodeScanner
-            onScan={handleQRScan}
-            onClose={() => setScanner(false)}
-          />
+          <View style={{ flex: 1, backgroundColor: 'black' }}>
+            <QRCodeScanner
+              onScan={handleQRScan}
+              onClose={() => setScanner(false)}
+            />
+          </View>
         </Modal>
       </View>
     );

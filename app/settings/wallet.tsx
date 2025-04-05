@@ -99,7 +99,7 @@ const WalletScreen = () => {
       </View>
       <View className="flex-1">
         <Text className="text-3xl font-dm-bold text-enaleia-black tracking-[-1px] mb-4">
-        Blockchain address
+        Blockchain
         </Text>
         <Text className="text-base font-dm-regular text-enaleia-black tracking-tight mb-6">
          The following address & it's public key will be used to attest data to the Ethereum Attestation Services, on Optimism, a layer-2 blockchain on Ethereum.
@@ -129,8 +129,8 @@ const WalletScreen = () => {
         <View className="gap-4">
           <Pressable
               onPress={handleViewAttestations}
-              className="p-4 rounded-full border border-blue-ocean flex-row justify-center items-center">
-             <Text className="text-blue-ocean text-sm font-dm-medium  mr-2">
+              className="p-4 rounded-full border border-grey-9 flex-row justify-center items-center">
+             <Text className="text-grey-9 text-sm font-dm-medium  mr-2">
                View all my attestations
              </Text>
              <Ionicons name="open-outline" size={16} color="#2884cf" />
@@ -138,8 +138,8 @@ const WalletScreen = () => {
           {userWalletAddress ? (
             <Pressable
               onPress={handleOpenExplorer}
-              className="p-4 rounded-full border border-blue-ocean flex-row justify-center items-center">
-               <Text className="text-blue-ocean text-sm font-dm-medium  mr-2">
+              className="p-4 rounded-full border border-grey-9 flex-row justify-center items-center">
+               <Text className="text-grey-9 text-sm font-dm-medium  mr-2">
                  View my address on block explorer
                </Text>
                <Ionicons name="open-outline" size={16} color="#2884cf" />

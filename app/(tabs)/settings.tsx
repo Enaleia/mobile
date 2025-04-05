@@ -101,7 +101,7 @@ const SettingsScreen = () => {
   // Helper component for category headers - updated to accept classNames
   const CategoryHeader: React.FC<CategoryHeaderProps> = ({ title, viewClassName, textClassName }) => (
     <View className={`mt-6 mb-2 ${viewClassName || ''}`}> 
-       <Text className={`text-base font-dm-bold text-grey-6 ${textClassName || ''}`}>{title}</Text>
+       <Text className={`text-base font-dm-bold text-grey-9 ${textClassName || ''}`}>{title}</Text>
     </View>
   );
 
@@ -139,7 +139,7 @@ const SettingsScreen = () => {
                <View className="flex-row items-center gap-2">
                  <Ionicons name="key-outline" size={24} color="#0D0D0D" />
                  <Text className="text-base font-dm-bold text-slate-800 tracking-tighter">
-                    Blockchain address
+                    Blockchain
                  </Text>
                </View>
                <Ionicons name="chevron-forward-outline" size={16} color="#0D0D0D" />
@@ -171,7 +171,7 @@ const SettingsScreen = () => {
                 <View className="flex-row items-center gap-2">
                   <Ionicons name="chatbox-ellipses-outline" size={24} color="#0D0D0D" />
                   <Text className="text-base font-dm-bold text-slate-800 tracking-tighter">
-                    Contact support
+                    Send feedback
                   </Text>
                 </View>
                 <Ionicons name="mail-open-outline" size={16} color="#0D0D0D" />
@@ -210,11 +210,7 @@ const SettingsScreen = () => {
               </SettingsListItem>
            </View>
 
-          <View className="items-center mt-2 px-4">
-            <Text className="text-sm font-dm-regular text-gray-500">
-              Version {version} 
-            </Text>
-          </View>
+
 
             <View className="mt-10 items-end opacity-100 left-[10px]">
               <Image
@@ -225,11 +221,17 @@ const SettingsScreen = () => {
               />
             </View>
 
-            <View className="items-center mt-8 px-4">
+            <View className="items-center mt-2 mb-4 px-4">
+            <Text className="text-sm font-dm-regular text-gray-500">
+              Version {version} 
+            </Text>
+          </View>
+
+            {/* <View className="items-center mt-8 px-4">
               <Text className="text-sm font-dm-regular text-gray-500">
                 Version {version} ({buildNumber})
               </Text>
-            </View>
+            </View> */}
           </Pressable>
         </ScrollView>
       </SafeAreaContent>

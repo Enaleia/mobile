@@ -267,6 +267,9 @@ ${[
         "Error",
         "Failed to open email client. Please try again later."
       );
+    } finally {
+      // Ensure the modal closes after the email operation
+      setShowEmailModal(false);
     }
   };
 
@@ -306,7 +309,7 @@ ${[
 
   const isCompleted = item.status === QueueItemStatus.COMPLETED;
   const hasFailed = item.status === QueueItemStatus.FAILED || item.totalRetryCount >= MAX_RETRIES;
-  const canRetry = !isCompleted && !hasFailed;
+  const canRetry = !isCompleted;
 
   return (
     <SafeAreaContent>
@@ -674,7 +677,21 @@ ${[
             {/* Action Buttons */}
             <View className="mt-6 space-y-3">
 
-            {canRetry && (
+              {showClearButton && (
+                <View className="mt-4">
+                  <Pressable
+                    onPress={handleClear}
+                    className="flex-row items-center justify-center px-4 py-3 rounded-full bg-rose-500 border border-rose-500"
+                  >
+                    <Ionicons name="trash-outline" size={20} color="#fcfcfc" />
+                    <Text className="text-base font-dm-medium text-white ml-2">
+                      Clear it from device
+                    </Text>
+                  </Pressable>
+                </View>
+              )}
+
+              {canRetry && (
                 <Pressable
                   onPress={handleRetry}
                   className="border border-grey-3 py-4 rounded-full flex-row items-center justify-center"
@@ -695,20 +712,6 @@ ${[
                   Rescue Data
                 </Text>
               </Pressable>
-
-              {showClearButton && (
-                <View className="mt-4">
-                  <Pressable
-                    onPress={handleClear}
-                    className="flex-row items-center justify-center px-4 py-3 rounded-full bg-rose-500 border border-rose-500"
-                  >
-                    <Ionicons name="trash-outline" size={20} color="#fcfcfc" />
-                    <Text className="text-base font-dm-medium text-white ml-2">
-                      Clear it from device
-                    </Text>
-                  </Pressable>
-                </View>
-              )}
 
               {hasFailed && (
                 <Pressable

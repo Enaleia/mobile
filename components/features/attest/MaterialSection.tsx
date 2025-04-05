@@ -6,6 +6,7 @@ import QRTextInput, { QRTextInputRef } from "@/components/features/scanning/QRTe
 import { MaterialDetail, MaterialsData } from "@/types/material";
 import AddMaterialModal from "@/components/features/attest/AddMaterialModal";
 import { usePreferences } from "@/contexts/PreferencesContext";
+import { Modal } from "@/components/shared/Modal";
 
 interface MaterialSectionProps {
   materials: MaterialsData | undefined;
@@ -17,6 +18,54 @@ interface MaterialSectionProps {
   hideCodeInput?: boolean;
   disabled?: boolean;
 }
+
+// Add DeleteMaterialModal component
+const DeleteMaterialModal = ({
+  isVisible,
+  onClose,
+  onConfirm,
+  materialName,
+}: {
+  isVisible: boolean;
+  onClose: () => void;
+  onConfirm: () => void;
+  materialName: string;
+}) => {
+  return (
+    <Modal
+      isVisible={isVisible}
+      onClose={onClose}
+      className="p-6 bg-white rounded-3xl mx-4"
+    >
+      <View className="items-center">
+        <Text className="text-xl font-dm-bold text-enaleia-black text-center mb-4">
+          Delete Material
+        </Text>
+        <Text className="text-base font-dm-regular text-enaleia-black text-center mb-6">
+          Are you sure you want to delete {materialName}?
+        </Text>
+        <View className="flex-row space-x-3 w-full">
+          <Pressable
+            onPress={onClose}
+            className="flex-1 py-3 bg-white border-[1.5px] border-grey-3 rounded-full"
+          >
+            <Text className="text-base font-dm-bold text-enaleia-black text-center">
+              Cancel
+            </Text>
+          </Pressable>
+          <Pressable
+            onPress={onConfirm}
+            className="flex-1 py-3 bg-red-500 rounded-full"
+          >
+            <Text className="text-base font-dm-bold text-white text-center">
+              Delete
+            </Text>
+          </Pressable>
+        </View>
+      </View>
+    </Modal>
+  );
+};
 
 const MaterialSection = ({
   materials,
@@ -33,6 +82,8 @@ const MaterialSection = ({
   const { autoScanQR, autoJumpToWeight } = usePreferences();
   const [prevModalVisible, setPrevModalVisible] = useState(isModalVisible);
   const [prevMaterialsLength, setPrevMaterialsLength] = useState(selectedMaterials.length);
+  const [deleteModalVisible, setDeleteModalVisible] = useState(false);
+  const [materialToDelete, setMaterialToDelete] = useState<{ index: number; name: string } | null>(null);
 
   // Create refs array for weight inputs
   const weightInputRefs = useRef<Array<TextInput | null>>([]);
@@ -69,10 +120,7 @@ const MaterialSection = ({
               // Get the QR input ref for the last added material
               const qrInputRef = codeInputRefs.current[lastIndex];
               if (qrInputRef) {
-                // Short timeout to ensure refs are properly set
-                setTimeout(() => {
-                  qrInputRef.openScanner();
-                }, 100);
+                qrInputRef.openScanner();
               }
             }
           } catch (error) {
@@ -95,6 +143,13 @@ const MaterialSection = ({
     if (autoJumpToWeight && weightInputRefs.current[index]) {
       weightInputRefs.current[index]?.focus();
     }
+  };
+
+  const handleDeleteMaterial = (index: number) => {
+    const newMaterials = [...selectedMaterials];
+    newMaterials.splice(index, 1);
+    setSelectedMaterials(newMaterials);
+    setMaterialToDelete(null);
   };
 
   if (!materials) {
@@ -125,16 +180,37 @@ const MaterialSection = ({
                     </Text>
                   </Text>
                   {!disabled && (
-                    <Pressable
-                      onPress={() => {
-                        const newMaterials = [...selectedMaterials];
-                        newMaterials.splice(index, 1);
-                        setSelectedMaterials(newMaterials);
-                      }}
-                      className="active:opacity-70"
-                    >
-                      <Ionicons name="trash-outline" size={24} color="#8E8E93" />
-                    </Pressable>
+                    materialToDelete?.index === index ? (
+                      <View className="flex-row items-center gap-1.5">
+                        <Pressable
+                          onPress={() => setMaterialToDelete(null)}
+                          className="px-3 py-1.5 rounded-full bg-white flex-row items-center border border-gray-300"
+                        >
+                          <Text className="text-sm font-dm-light text-enaleia-black mr-1">Cancel</Text>
+                          <View className="w-4 h-4">
+                            <Ionicons name="close" size={16} color="#0D0D0D" />
+                          </View>
+                        </Pressable>
+                        <Pressable
+                          onPress={() => handleDeleteMaterial(index)}
+                          className="px-3 py-1.5 rounded-full bg-rose-500 flex-row items-center"
+                        >
+                          <Text className="text-sm font-dm-light text-white mr-1 px-1">Delete</Text>
+                          <View className="w-4 h-4">
+                            <Ionicons name="trash-outline" size={16} color="white" />
+                          </View>
+                        </Pressable>
+                      </View>
+                    ) : (
+                      <Pressable
+                        onPress={() => setMaterialToDelete({ index, name: materials?.idToName?.[material.id] ?? "Unknown Material" })}
+                        className="h-10 w-10 rounded-full flex-row items-center justify-center"
+                      >
+                        <View className="w-5 h-5">
+                          <Ionicons name="trash-outline" size={20} color="#8E8E93" />
+                        </View>
+                      </Pressable>
+                    )
                   )}
                 </View>
                 <View
@@ -254,7 +330,7 @@ const MaterialSection = ({
       </View>
       {!disabled && (
         <Pressable
-          className={`flex-row items-center justify-center mt-2 bg-white-sand px-3 py-1 rounded-full border-[1.5px] border-grey-3 ${disabled ? 'opacity-50' : ''}`}
+          className={`flex-row items-center justify-center mt-2 bg-white px-3 py-1 rounded-full border-[1.5px] border-grey-3 ${disabled ? 'opacity-50' : ''}`}
           onPress={() => {
             if (disabled) return;
             setModalVisible(true);
@@ -262,10 +338,27 @@ const MaterialSection = ({
         >
           <Ionicons name="add-outline" size={24} color="grey-8" />
           <Text className="text-sm font-dm-bold text-slate-600 tracking-tight color-grey-8">
-            Add 
+            Add material
           </Text>
         </Pressable>
       )}
+      <DeleteMaterialModal
+        isVisible={deleteModalVisible}
+        onClose={() => {
+          setDeleteModalVisible(false);
+          setMaterialToDelete(null);
+        }}
+        onConfirm={() => {
+          if (materialToDelete !== null) {
+            const newMaterials = [...selectedMaterials];
+            newMaterials.splice(materialToDelete.index, 1);
+            setSelectedMaterials(newMaterials);
+          }
+          setDeleteModalVisible(false);
+          setMaterialToDelete(null);
+        }}
+        materialName={materialToDelete?.name ?? ""}
+      />
       <AddMaterialModal
         materials={materials?.options ?? []}
         isVisible={isModalVisible}

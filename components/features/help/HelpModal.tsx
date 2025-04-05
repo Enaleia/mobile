@@ -52,18 +52,10 @@ export const HelpModal: React.FC<HelpModalProps> = ({
         }} />
         
         {/* Header */}
-        <View className="px-5 pt-3 pb-5 flex-row justify-between items-center">
-          <Text className="text-3xl font-dm-bold text-enaleia-black">
+        <View className="px-5 pt-3 pb-5 flex-row justify-center items-center">
+          <Text className="text-3xl font-dm-bold text-enaleia-black text-center w-full">
             {title}
           </Text>
-          <Pressable
-            onPress={onClose}
-            className="w-12 h-12 items-center justify-center rounded-full"
-            accessibilityLabel="Close help modal"
-            accessibilityHint="Closes the help information modal"
-          >
-            <Icon name="close" size={24} color="#0D0D0D" />
-          </Pressable>
         </View>
 
         <ScrollView 

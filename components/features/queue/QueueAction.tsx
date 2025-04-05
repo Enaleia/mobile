@@ -62,7 +62,7 @@ const QueueAction = ({ item, isLastItem = false, isProcessing = false }: QueueAc
 
       // Update immediately and then every second
       updateProgress();
-      intervalId = setInterval(updateProgress, 250);
+      intervalId = setInterval(updateProgress, 1);
     } else if (item.status === QueueItemStatus.COMPLETED) {
       setProgress(100);
       setTimeRemaining('');

@@ -1,7 +1,7 @@
 import { EventFormType } from "@/app/attest/new/[slug]";
 import { MaterialDetail } from "@/types/material";
 
-export const PROCESSING_TIMEOUT = 5 * 1000;  // 15 seconds per attempt
+export const PROCESSING_TIMEOUT = 45 * 1000;  // 15 seconds per attempt
 export const MAX_RETRIES = 5; // Maximum total retries before completely failing
 export const LIST_RETRY_INTERVAL = 5 * 60 * 1000; // 1 minute in milliseconds
 

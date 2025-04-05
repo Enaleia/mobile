@@ -243,7 +243,7 @@ const QueueSection = ({
         <View className="flex-row justify-between items-center mb-2">
           {/* Left: Title and badge */}
           <View className="flex-row items-center">
-            <Text className="text-lg font-dm-bold">{title}</Text>
+            <Text className="text-lg font-dm-bold text-grey-9">{title}</Text>
             {showBadge && (
               <View
                 style={{
