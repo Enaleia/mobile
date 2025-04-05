@@ -37,7 +37,7 @@ export default function QueueStatusIndicator({ status, item, className = "" }: Q
       case QueueItemStatus.FAILED:
         return {
           icon: "alert-circle",
-          color: "#f59e0b",
+          color: "#ef4444",
           text: "Retry",
         };
       case QueueItemStatus.COMPLETED:

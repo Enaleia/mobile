@@ -125,7 +125,7 @@ export const TestFormSubmission = () => {
       {result && (
         <Text
           className={`mt-2 text-sm ${
-            result.success ? "text-emerald-600" : "text-rose-500"
+            result.success ? "text-emerald-600" : "text-red-500"
           }`}
         >
           {result.message}

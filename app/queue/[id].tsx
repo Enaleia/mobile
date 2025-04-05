@@ -313,6 +313,17 @@ ${[
 
   return (
     <SafeAreaContent>
+      <View className="flex-row items-center justify-between pb-4">
+              <Pressable
+              onPress={() => router.back()}
+              className="flex-row items-center space-x-1"
+              >
+              <Ionicons name="chevron-back" size={24} color="#0D0D0D" />
+              <Text className="text-base font-dm-regular text-enaleia-black tracking-tight">
+                  Queue
+              </Text>
+              </Pressable>
+      </View>
       <ScrollView
         className="flex-1 mb-10"
         showsVerticalScrollIndicator={false}
@@ -320,18 +331,7 @@ ${[
 
         {item && (
           <View className="flex-1">
-            <View className="flex-row items-center justify-between pb-4">
-              <Pressable
-              onPress={() => router.back()}
-              className="flex-row items-center space-x-1"
-              >
-              <Ionicons name="chevron-back" size={24} color="#0D0D0D" />
-              {/* Use bold font as per HTML */}
-              <Text className="text-base font-dm-regular text-enaleia-black tracking-tight">
-                  Queue
-              </Text>
-              </Pressable>
-            </View>
+
 
             <Text className="text-3xl font-dm-bold text-enaleia-black tracking-tighter mb-4">
               {currentAction?.name || 'Unknown Action'}
@@ -632,21 +632,21 @@ ${[
                   <View className="border-t border-grey-3 p-4">
                     {(item.directus?.error || item.eas?.error || (item.directus?.status === ServiceStatus.FAILED && !item.directus?.linked)) && (
                       <>
-                        <Text className="text-base font-dm-bold text-rose-500 mb-2">
+                        <Text className="text-base font-dm-bold text-red-500 mb-2">
                           Error:
                         </Text>
                         {item.directus?.error && (
-                          <Text className="text-sm text-rose-500 font-dm-regular mb-1">
+                          <Text className="text-sm text-red-500 font-dm-regular mb-1">
                             Database: {item.directus.error}
                           </Text>
                         )}
                         {item.eas?.error && (
-                          <Text className="text-sm text-rose-500 font-dm-regular mb-1">
+                          <Text className="text-sm text-red-500 font-dm-regular mb-1">
                             Blockchain: {item.eas.error}
                           </Text>
                         )}
                         {item.directus?.status === ServiceStatus.FAILED && !item.directus?.linked && (
-                          <Text className="text-sm text-rose-500 font-dm-regular">
+                          <Text className="text-sm text-red-500 font-dm-regular">
                             Linking: Failed to link attestation with database
                           </Text>
                         )}
@@ -676,21 +676,19 @@ ${[
 
             {/* Action Buttons */}
             <View className="mt-6 space-y-3">
-
-              {showClearButton && (
+            {(isCompleted || (hasFailed && hasEmailedSupport)) && (
                 <View className="mt-4">
                   <Pressable
                     onPress={handleClear}
-                    className="flex-row items-center justify-center px-4 py-3 rounded-full bg-rose-500 border border-rose-500"
+                    className="flex-row items-center justify-center px-4 py-3 rounded-full border border-red-500"
                   >
-                    <Ionicons name="trash-outline" size={20} color="#fcfcfc" />
-                    <Text className="text-base font-dm-medium text-white ml-2">
+                    <Ionicons name="trash-outline" size={20} color="#ef4444" />
+                    <Text className="text-center font-dm-bold text-red-500 ml-2">
                       Clear it from device
                     </Text>
                   </Pressable>
                 </View>
-              )}
-
+              )} 
               {canRetry && (
                 <Pressable
                   onPress={handleRetry}
@@ -704,25 +702,16 @@ ${[
               )}
 
               <Pressable
-                onPress={handleEmailPress}
+                onPress={isCompleted ? handleEmail : handleEmailPress}
                 className="border border-grey-3 py-4 rounded-full flex-row items-center justify-center"
               >
-                <Ionicons name="help-buoy" size={20} color="#0D0D0D" />
+                <Ionicons name={isCompleted ? "mail-outline" : "help-buoy"} size={20} color="#0D0D0D" />
                 <Text className="text-enaleia-black text-center font-dm-bold ml-2">
-                  Rescue Data
+                  {isCompleted ? "Email data to Enaleia" : "Rescue Data"}
                 </Text>
               </Pressable>
 
-              {hasFailed && (
-                <Pressable
-                  onPress={handleContactSupport}
-                  className="border border-grey-3 py-4 rounded-full"
-                >
-                  <Text className="text-enaleia-black text-center font-dm-bold">
-                    Contact Support
-                  </Text>
-                </Pressable>
-              )}
+            
             </View>
           </View>
         )}

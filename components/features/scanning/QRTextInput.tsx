@@ -189,7 +189,7 @@ const QRTextInput = forwardRef<QRTextInputRef, QRTextInputProps>(
                 disabled: !editable,
               }}
               accessibilityHint="Enter text or tap QR code button to scan"
-              className={`${inputClass} ${className} ${error ? 'border-rose-500' : 'border-gray-300'}`}
+              className={`${inputClass} ${className} ${error ? 'border-red-500' : 'border-gray-300'}`}
               style={{
                 textAlignVertical: "center", // Ensures text is vertically centered (Android)
                 paddingVertical: 0, // Removes default iOS padding
@@ -235,7 +235,7 @@ const QRTextInput = forwardRef<QRTextInputRef, QRTextInputProps>(
         </View>
 
         {currentState.error && (
-          <Text className="text-rose-500 text-sm mt-1">
+          <Text className="text-red-500 text-sm mt-1">
             {currentState.error}
           </Text>
         )}

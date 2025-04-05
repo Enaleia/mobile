@@ -193,7 +193,7 @@ const MaterialSection = ({
                         </Pressable>
                         <Pressable
                           onPress={() => handleDeleteMaterial(index)}
-                          className="px-3 py-1.5 rounded-full bg-rose-500 flex-row items-center"
+                          className="px-3 py-1.5 rounded-full bg-red-500 flex-row items-center"
                         >
                           <Text className="text-sm font-dm-light text-white mr-1 px-1">Delete</Text>
                           <View className="w-4 h-4">

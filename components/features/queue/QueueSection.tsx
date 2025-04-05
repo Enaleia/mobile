@@ -214,7 +214,7 @@ const QueueSection = ({
       case "active":
         return "bg-blue-ocean";
       case "failed":
-        return "bg-rose-500";
+        return "bg-red-500";
       case "completed":
         return "bg-emerald-600";
       default:
@@ -249,11 +249,11 @@ const QueueSection = ({
                 style={{
                   backgroundColor: Platform.select({
                     ios: title.toLowerCase() === "active" ? "#2985D0" : // blue-ocean
-                          title.toLowerCase() === "failed" ? "#ef4444" : // rose-500
+                          title.toLowerCase() === "failed" ? "#ef4444" : // red-500
                           title.toLowerCase() === "completed" ? "#059669" : // emerald-600
                           "#6B7280", // grey-3
                     android: title.toLowerCase() === "active" ? "#2985D0" : // blue-ocean
-                            title.toLowerCase() === "failed" ? "#ef4444" : // rose-500
+                            title.toLowerCase() === "failed" ? "#ef4444" : // red-500
                             title.toLowerCase() === "completed" ? "#059669" : // emerald-600
                             "#6B7280", // grey-3
                   }),
@@ -328,7 +328,7 @@ const QueueSection = ({
                         setShowClearOptions(false);
                       }
                     }}
-                    className="px-3 py-1.5 rounded-full bg-rose-500 flex-row items-center"
+                    className="px-3 py-1.5 rounded-full bg-red-500 flex-row items-center"
                   >
                     <Text className="text-sm font-dm-light text-white mr-1 px-1">Clear</Text>
                     <View className="w-4 h-4">

@@ -27,7 +27,7 @@ export const EmailConfirmationModal = ({
           Important
         </Text>
         <Text className="text-base font-dm-regular text-enaleia-black mb-6 tracking-tight text-center">
-          After sending the data to Enaleia, make sure to tap the "clear it from device" button to avoid duplication.
+        After you’ve sent the data to Enaleia via email, return to this page and tap ‘Clear it from device’ to avoid duplicates.
         </Text>
         <View className="flex-row items-center gap-2 justify-center">
           <Pressable
@@ -43,7 +43,7 @@ export const EmailConfirmationModal = ({
             className="px-5 py-4 rounded-full bg-blue-ocean flex-1"
           >
             <Text className="text-base font-dm-medium text-white text-center">
-              Rescue
+              Open Email
             </Text>
           </Pressable>
         </View>

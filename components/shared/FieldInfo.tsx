@@ -12,7 +12,7 @@ export default function FieldInfo({
     <View>
       {(field.state.meta.isTouched || showErrors) &&
       field.state.meta.errors.length ? (
-        <Text className="text-rose-500 text-sm mt-1">
+        <Text className="text-red-500 text-sm mt-1">
           {field.state.meta.errors.join(",")}
         </Text>
       ) : null}

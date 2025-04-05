@@ -30,7 +30,7 @@ export const ClearConfirmationModal = ({
           </Pressable>
           <Pressable
             onPress={onConfirm}
-            className="flex-1 p-3 rounded-full bg-rose-500"
+            className="flex-1 p-3 rounded-full bg-red-500"
           >
             <Text className="text-white text-center font-dm-medium">Clear</Text>
           </Pressable>

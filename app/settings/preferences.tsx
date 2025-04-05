@@ -26,7 +26,7 @@ const PreferencesScreen = () => {
       </Text>
 
       <View className="flex-1">
-        <Text className="text-base font-dm-bold text-grey-6 mb-2">
+        <Text className="text-base font-dm-bold text-enaleia-black mb-2">
           Become a pro
         </Text>
         <View className="space-y-4">

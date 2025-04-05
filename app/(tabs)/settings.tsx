@@ -202,7 +202,7 @@ const SettingsScreen = () => {
            <View className="mt-0 mb-6 rounded-2xl overflow-hidden border border-grey-3">
               <SettingsListItem onPress={() => setIsSignOutModalVisible(true)} isFirst={true} isLast={true}>
                 <View className="flex-row items-center gap-2">
-                  <Ionicons name="log-out-outline" size={24} color="#DC2626" />
+                  <Ionicons name="log-out-outline" size={24} color="#ef4444" />
                   <Text className="text-base font-dm-bold text-rose-600 tracking-tighter">
                     Sign Out
                   </Text>
