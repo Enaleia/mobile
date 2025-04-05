@@ -1,5 +1,6 @@
 import { router } from "expo-router";
 import { Image, ImageSourcePropType, Pressable, Text } from "react-native";
+import { useState } from "react";
 
 const buttonClassName = "items-center justify-center px-4 rounded-[19px] h-[138px]";
 
@@ -19,6 +20,8 @@ const ActionButton = ({
   slug: string;
   presentation?: "button" | "banner";
 }) => {
+  const [isIconLoaded, setIsIconLoaded] = useState(false);
+
   return (
     <Pressable
       className={presentation === "button" ? buttonClasses : bannerClasses}
@@ -27,10 +30,16 @@ const ActionButton = ({
         presentation === "button" ? router.push(`/attest/new/${slug}`) : null
       }
     >
-      <Image source={icon} className="w-[84px] h-[84px]" />
-      <Text className="pt-1 text-sm font-dm-regular tracking-[-0.25px] text-enaleia-black text-center w-full">
-        {name}
-      </Text>
+      <Image 
+        source={icon} 
+        className="w-[84px] h-[84px]" 
+        onLoad={() => setIsIconLoaded(true)}
+      />
+      {isIconLoaded && (
+        <Text className="pt-1 text-sm font-dm-regular tracking-[-0.25px] text-enaleia-black text-center w-full">
+          {name}
+        </Text>
+      )}
     </Pressable>
   );
 };
