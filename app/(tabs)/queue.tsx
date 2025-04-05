@@ -125,7 +125,7 @@ const QueueScreen = () => {
     <SafeAreaContent>
       <ScrollView
         className="flex-1"
-        contentContainerStyle={{ flexGrow: 1, paddingBottom: 100 }}
+        contentContainerStyle={{ flexGrow: 1, paddingBottom: 100, }}
         showsVerticalScrollIndicator={false}
       >
         <View className="mt-2">
@@ -134,9 +134,9 @@ const QueueScreen = () => {
           </Text>
         </View>
 
-        <View>
+        <View className="flex-1">
           {hasNoItems ? (
-            <View className="flex-1 items-center justify-center mt-4">
+            <View className="absolute left-12 inset-0 items-center justify-center">
               <Image
                 source={require("@/assets/images/animals/CrabBubble.png")}
                 className="w-[294px] h-[250px] mt-4 self-center"
@@ -148,7 +148,7 @@ const QueueScreen = () => {
               </Text>
             </View>
           ) : (
-            <View className="flex-1 py-4">
+            <View className="py-4">
               {/* Active Items Section */}
               <QueueSection
                 title="Active"
