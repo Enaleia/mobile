@@ -410,18 +410,13 @@ const NewActionScreen = () => {
   };
 
   const hasAnyMaterials = (values: EventFormType | boolean | null | undefined) => {
+    // Initial check for invalid input types (related to linter errors)
     if (!values || typeof values === 'boolean') return false;
 
     const incomingMaterials = values.incomingMaterials || [];
     const outgoingMaterials = values.outgoingMaterials || [];
 
-    // For manufacturing, we need both materials and a product selected
-    if (currentAction?.name === "Manufacturing") {
-      const hasValidMaterials = incomingMaterials.length > 0 || outgoingMaterials.length > 0;
-      const hasProductSelected = values.manufacturing?.product !== undefined;
-      return hasValidMaterials && hasProductSelected;
-    }
-
+    // Logic for all actions (including Manufacturing): check if any materials are present
     return incomingMaterials.length > 0 || outgoingMaterials.length > 0;
   };
 

@@ -676,7 +676,7 @@ ${[
 
             {/* Action Buttons */}
             <View className="mt-6 space-y-3">
-            {(isCompleted || (hasFailed && hasEmailedSupport)) && (
+            {(isCompleted || hasEmailedSupport) && (
                 <View className="mt-4">
                   <Pressable
                     onPress={handleClear}
