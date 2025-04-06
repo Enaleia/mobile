@@ -581,7 +581,7 @@ const NewActionScreen = () => {
             )}
             <form.Field name="incomingMaterials">
               {(field) => (
-                <View className="mb-8 flex-1">
+                <View className="mb-8">
                   <MaterialSection
                     materials={processedMaterials}
                     category="incoming"

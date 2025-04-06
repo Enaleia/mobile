@@ -180,43 +180,43 @@ const MaterialSection = ({
                     </Text>
                   </Text>
                   {!disabled && (
-                    materialToDelete?.index === index ? (
-                      <View className="flex-row items-center gap-1.5">
-                        <Pressable
-                          onPress={() => setMaterialToDelete(null)}
-                          className="px-3 py-1.5 rounded-full bg-white flex-row items-center border border-gray-300"
-                        >
-                          <Text className="text-sm font-dm-light text-enaleia-black mr-1">Cancel</Text>
-                          <View className="w-4 h-4">
-                            <Ionicons name="close" size={16} color="#0D0D0D" />
-                          </View>
-                        </Pressable>
-                        <Pressable
-                          onPress={() => handleDeleteMaterial(index)}
-                          className="px-3 py-1.5 rounded-full bg-red-500 flex-row items-center"
-                        >
-                          <Text className="text-sm font-dm-light text-white mr-1 px-1">Delete</Text>
-                          <View className="w-4 h-4">
-                            <Ionicons name="trash-outline" size={16} color="white" />
-                          </View>
-                        </Pressable>
-                      </View>
-                    ) : (
-                      <Pressable
-                        onPress={() => setMaterialToDelete({ index, name: materials?.idToName?.[material.id] ?? "Unknown Material" })}
-                        className="h-10 w-10 rounded-full flex-row items-center justify-center"
-                      >
-                        <View className="w-5 h-5">
-                          <Ionicons name="trash-outline" size={20} color="#8E8E93" />
+                    <View className="h-10 flex-row items-center justify-end">
+                      {materialToDelete?.index === index ? (
+                        <View className="flex-row items-center gap-1.5">
+                          <Pressable
+                            onPress={() => setMaterialToDelete(null)}
+                            className="px-3 py-1.5 rounded-full bg-white flex-row items-center border border-gray-300"
+                          >
+                            <Text className="text-sm font-dm-light text-enaleia-black mr-1">Cancel</Text>
+                            <View className="w-4 h-4">
+                              <Ionicons name="close" size={16} color="#0D0D0D" />
+                            </View>
+                          </Pressable>
+                          <Pressable
+                            onPress={() => handleDeleteMaterial(index)}
+                            className="px-3 py-1.5 rounded-full bg-red-500 flex-row items-center"
+                          >
+                            <Text className="text-sm font-dm-light text-white mr-1 px-1">Delete</Text>
+                            <View className="w-4 h-4">
+                              <Ionicons name="trash-outline" size={16} color="white" />
+                            </View>
+                          </Pressable>
                         </View>
-                      </Pressable>
-                    )
+                      ) : (
+                        <Pressable
+                          onPress={() => setMaterialToDelete({ index, name: materials?.idToName?.[material.id] ?? "Unknown Material" })}
+                          className="h-10 w-10 rounded-full flex-row items-center justify-center"
+                        >
+                          <View className="w-5 h-5">
+                            <Ionicons name="trash-outline" size={20} color="#8E8E93" />
+                          </View>
+                        </Pressable>
+                      )}
+                    </View>
                   )}
                 </View>
                 <View
-                  className={`flex-row items-center justify-between w-full rounded-lg ${
-                    hideCodeInput ? "flex-1" : ""
-                  }`}
+                  className={`flex-row items-center justify-between w-full rounded-lg`}
                 >
                   {!hideCodeInput && (
                     <Pressable

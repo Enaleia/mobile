@@ -136,7 +136,7 @@ const QueueScreen = () => {
 
         <View className="flex-1">
           {hasNoItems ? (
-            <View className="absolute left-12 inset-0 items-center justify-center">
+            <View className="items-center justify-center">
               <Image
                 source={require("@/assets/images/animals/CrabBubble.png")}
                 className="w-[294px] h-[250px] mt-4 self-center"
