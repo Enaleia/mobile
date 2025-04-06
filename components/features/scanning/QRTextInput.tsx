@@ -20,7 +20,7 @@ interface QRTextInputProps {
   error?: string;
   editable?: boolean;
   onScanComplete?: () => void;
-  keyboardType?: "default" | "numeric";
+  keyboardType?: "default" | "numeric" | "number-pad";
 }
 
 export interface QRTextInputRef {

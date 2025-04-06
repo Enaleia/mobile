@@ -85,6 +85,9 @@ const MaterialSection = ({
   const [deleteModalVisible, setDeleteModalVisible] = useState(false);
   const [materialToDelete, setMaterialToDelete] = useState<{ index: number; name: string } | null>(null);
 
+  // Local state to manage raw weight input values
+  const [localWeightValues, setLocalWeightValues] = useState<{ [key: number]: string }>({});
+
   // Create refs array for weight inputs
   const weightInputRefs = useRef<Array<TextInput | null>>([]);
   // Create refs array for QR code inputs
@@ -98,6 +101,21 @@ const MaterialSection = ({
       return count > 0 ? `(${count + 1})` : "";
     };
   }, [selectedMaterials]);
+
+  // Sync localWeightValues when selectedMaterials change externally
+  useEffect(() => {
+    const initialWeights: { [key: number]: string } = {};
+    selectedMaterials.forEach((material, index) => {
+      // Initialize local state only if it doesn't exist or differs
+      // Avoid overwriting during active typing
+      if (localWeightValues[index] === undefined || 
+          parseFloat(localWeightValues[index]) !== material.weight) { 
+        initialWeights[index] = material.weight?.toString() || "";
+      }
+    });
+    // Merge with existing local values to preserve inputs being typed
+    setLocalWeightValues(prev => ({ ...prev, ...initialWeights }));
+  }, [selectedMaterials]); 
 
   // Effect to detect when modal closes and materials length increases
   useEffect(() => {
@@ -149,6 +167,23 @@ const MaterialSection = ({
     const newMaterials = [...selectedMaterials];
     newMaterials.splice(index, 1);
     setSelectedMaterials(newMaterials);
+    // Also remove the corresponding local weight state
+    setLocalWeightValues(prev => {
+      const newState = { ...prev };
+      delete newState[index];
+      // Adjust keys for subsequent items if needed (or rebuild state)
+      const rebuiltState: { [key: number]: string } = {};
+      newMaterials.forEach((_, newIndex) => {
+         if (newState[newIndex] !== undefined) { // Check if old state exists for this new index
+             rebuiltState[newIndex] = newState[newIndex];
+         } else if (newState[newIndex + 1] !== undefined) { // Check if old state existed for the *next* index (item shifted)
+             rebuiltState[newIndex] = newState[newIndex + 1];
+         } else {
+             rebuiltState[newIndex] = newMaterials[newIndex].weight?.toString() || ""; // Fallback
+         }
+      });
+      return rebuiltState;
+    });
     setMaterialToDelete(null);
   };
 
@@ -258,11 +293,14 @@ const MaterialSection = ({
                         value={material.code || ""}
                         onChangeText={(text) => {
                           if (disabled) return;
+                          // Remove any decimal points (dots or commas)
+                          const cleanedText = text.replace(/[.,]/g, "");
                           const newMaterials = [...selectedMaterials];
-                          newMaterials[index] = { ...material, code: text };
+                          newMaterials[index] = { ...material, code: cleanedText };
                           setSelectedMaterials(newMaterials);
                         }}
                         onScanComplete={() => handleQRScanComplete(index)}
+                        keyboardType="number-pad"
                         editable={!disabled}
                       />
                     </Pressable>
@@ -297,7 +335,7 @@ const MaterialSection = ({
                             weightInputRefs.current[index] = ref;
                           }
                         }}
-                        value={material.weight?.toString() || ""}
+                        value={localWeightValues[index] ?? ""} // Use local state for value
                         style={{
                           textAlign: "left",
                           direction: "ltr",
@@ -305,16 +343,47 @@ const MaterialSection = ({
                         className="flex-1 h-[28px] py-0 font-dm-bold tracking-tighter text-enaleia-black text-xl text-left"
                         onChangeText={(text) => {
                           if (disabled) return;
-                          // Only allow digits
-                          const numericValue = text.replace(/[^0-9]/g, "");
-                          const newMaterials = [...selectedMaterials];
-                          newMaterials[index] = {
-                            ...material,
-                            weight: numericValue === "" ? null : parseInt(numericValue, 10),
-                          };
-                          setSelectedMaterials(newMaterials);
+                          // Allow digits and potentially a single decimal point
+                          const cleanedValue = text.replace(/[^0-9.]/g, "");
+
+                          // Prevent multiple decimal points
+                          if ((cleanedValue.match(/\\./g) || []).length > 1) {
+                            return; // Don't update if more than one decimal point
+                          }
+
+                          // Update only the local state for this specific input
+                          setLocalWeightValues(prev => ({ ...prev, [index]: cleanedValue }));
                         }}
-                        keyboardType="number-pad"
+                        onBlur={() => {
+                          // Get the raw value from local state
+                          const rawValue = localWeightValues[index];
+                          let finalWeight: number | null = null;
+
+                          if (rawValue && rawValue !== ".") {
+                            const parsedValue = parseFloat(rawValue);
+                            if (!isNaN(parsedValue)) {
+                              finalWeight = Math.round(parsedValue); // Round the value
+                            }
+                          }
+
+                          // Update the main selectedMaterials state
+                          const newMaterials = [...selectedMaterials];
+                          // Ensure the material at the index still exists
+                          if (newMaterials[index]) {
+                              newMaterials[index] = {
+                                ...newMaterials[index],
+                                weight: finalWeight,
+                              };
+                              setSelectedMaterials(newMaterials);
+                          }
+                          
+                          // Optional: Update local state to reflect rounded value? 
+                          // It might cause a flicker, let's rely on the useEffect sync for now.
+                          // if (finalWeight !== null) {
+                          //   setLocalWeightValues(prev => ({ ...prev, [index]: finalWeight.toString() }));
+                          // }
+                        }}
+                        keyboardType="decimal-pad"
                         editable={!disabled}
                       />
                       <Text className="text-sm font-dm-bold text-grey-6 tracking-tighter text-right self-end pl-1">

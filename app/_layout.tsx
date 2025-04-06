@@ -86,6 +86,7 @@ export default function RootLayout() {
                     headerShown: false,
                     contentStyle: { backgroundColor: "white" },
                     navigationBarHidden: true,
+                    animation: "slide_from_right",
                   }}
                 >
                   <Stack.Screen

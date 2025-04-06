@@ -282,7 +282,7 @@ export default function QueueTestScreen() {
                 const submissions: QueueItem[] = [{
                   localId: `test-${Date.now()}-0-${Math.random().toString(36).substr(2, 9)}`,
                   status: QueueItemStatus.FAILED,
-                  totalRetryCount: MAX_RETRIES + 1,
+                  totalRetryCount: MAX_RETRIES,
                   date: new Date().toISOString(),
                   actionId: TEST_ACTIONS[0].actionId,
                   incomingMaterials: TEST_ACTIONS[0].incomingMaterials.map(material => ({

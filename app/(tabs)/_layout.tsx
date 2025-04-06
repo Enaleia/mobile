@@ -4,7 +4,7 @@ import React from "react";
 import { useQueue } from "@/contexts/QueueContext";
 import { QueueItemStatus } from "@/types/queue";
 import { Icon } from "../../components/shared/Icon";
-import { Platform } from "react-native";
+import { Platform, Pressable } from "react-native";
 
 const TabsLayout = () => {
   const { queueItems } = useQueue();
@@ -40,6 +40,8 @@ const TabsLayout = () => {
             shadowRadius: 24,
             borderWidth: 2,
             borderColor: '#E5E5E5',
+            rippleEnabled: false,
+            pressOpacity: 1,
           },
           android: {
             position: 'absolute',
@@ -62,6 +64,8 @@ const TabsLayout = () => {
             shadowRadius: 24,
             borderWidth: 2,
             borderColor: '#E5E5E5',
+            rippleEnabled: false,
+            pressOpacity: 1,
           },
         }),
       }}
@@ -77,7 +81,9 @@ const TabsLayout = () => {
               color={focused ? "#0D0D0D" : "#8E8E93"} 
             />
           ),
-          href: "/",
+          tabBarButton: (props) => (
+            <Pressable {...props} android_ripple={null} />
+          ),
         }}
       />
       <Tabs.Screen
@@ -92,7 +98,9 @@ const TabsLayout = () => {
               color={focused ? "#0D0D0D" : "#8E8E93"} 
             />
           ),
-          href: "/queue",
+          tabBarButton: (props) => (
+            <Pressable {...props} android_ripple={null} />
+          ),
         }}
       />
       <Tabs.Screen
@@ -106,7 +114,9 @@ const TabsLayout = () => {
               color={focused ? "#0D0D0D" : "#8E8E93"} 
             />
           ),
-          href: "/settings",
+          tabBarButton: (props) => (
+            <Pressable {...props} android_ripple={null} />
+          ),
         }}
       />
     </Tabs>

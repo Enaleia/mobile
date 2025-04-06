@@ -25,6 +25,16 @@ export default function DecimalInput({
     field.state.value?.toString() || ""
   );
 
+  // Sync localValue when the external field value changes
+  React.useEffect(() => {
+    // Only update if the external value is different from the local raw value
+    // to avoid disrupting typing. Check for both number and string representations.
+    const fieldValueStr = field.state.value?.toString() ?? "";
+    if (field.state.value !== parseFloat(localValue) && fieldValueStr !== localValue) {
+       setLocalValue(fieldValueStr);
+    }
+  }, [field.state.value]);
+
   // Use numeric for Android regardless of allowDecimals, but respect the setting for iOS
   const inputMode = Platform.select<"numeric" | "decimal">({
     android: "numeric",
@@ -42,26 +52,41 @@ export default function DecimalInput({
           <TextInput
             value={localValue}
             onChangeText={(text) => {
-              const regex = allowDecimals ? /[^0-9.]/g : /[^0-9]/g;
-              const numericValue = text.replace(regex, "");
-              if (allowDecimals) {
-                if (numericValue.match(/^\d*\.?\d*$/)) {
-                  setLocalValue(numericValue);
-                }
-              } else {
-                setLocalValue(numericValue);
+              // Allow digits and potentially a single decimal point
+              const cleanedValue = text.replace(/[^0-9.]/g, "");
+
+              // Prevent multiple decimal points
+              if ((cleanedValue.match(/\./g) || []).length > 1) {
+                return; // Don't update if more than one decimal point
               }
+
+              // Update the local state with the cleaned value
+              // Allows intermediate states like "7." or ".5"
+              setLocalValue(cleanedValue);
             }}
             onBlur={() => {
-              field.handleBlur();
-              if (localValue === "" || localValue === ".") {
-                field.handleChange(undefined);
-              } else {
-                const numericValue = allowDecimals ? parseFloat(localValue) : parseInt(localValue);
+              field.handleBlur(); // Notify form lib that field lost focus
+
+              let finalValue: number | undefined = undefined;
+
+              // Try parsing the localValue
+              if (localValue && localValue !== ".") {
+                const numericValue = parseFloat(localValue);
                 if (!isNaN(numericValue)) {
-                  field.handleChange(numericValue);
+                  // Process the value based on allowDecimals
+                  if (allowDecimals) {
+                    finalValue = numericValue; // Keep decimals
+                  } else {
+                    finalValue = Math.round(numericValue); // Round if not allowed
+                  }
                 }
               }
+
+              // Update the actual form state via field.handleChange
+              field.handleChange(finalValue);
+
+              // Optional: Sync localValue back? Let's not for now.
+              // If the field value updates externally, useEffect will handle it.
             }}
             className="flex-1 h-[32px] py-0 font-dm-bold tracking-tighter text-enaleia-black text-xl"
             placeholder={placeholder}

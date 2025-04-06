@@ -572,6 +572,7 @@ const NewActionScreen = () => {
                         onChangeText={field.handleChange}
                         variant="standalone"
                         label="Collector ID Card"
+                        keyboardType="default"
                         error={field.state.meta.errors?.[0] || undefined}
                       />
                     </>

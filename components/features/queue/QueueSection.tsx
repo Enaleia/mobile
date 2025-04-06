@@ -291,8 +291,8 @@ const QueueSection = ({
                   </Text>
                 </View>
               )}
-              {/* Show retry button based on showRetryButton state */}
-              {items.length > 0 && showRetryButton && (
+              {/* Show retry button based on showRetryButton state AND network connection */}
+              {items.length > 0 && showRetryButton && isConnected && (
                 <Pressable
                   onPress={handleRetryPress}
                   className="px-3 py-1.5 rounded-full bg-blue-ocean flex-row items-center active:bg-[#6C9EC6]"
