@@ -3,7 +3,7 @@
     "name": "Enaleia",
     "slug": "enaleia",
     "version": "0.1.0",
-    "newArchEnabled": false,
+    "newArchEnabled": true,
     "owner": "pollen-labs",
     "orientation": "portrait",
     "icon": "./assets/images/splash-icon.png",
