@@ -155,11 +155,42 @@ const MaterialSection = ({
     setPrevMaterialsLength(selectedMaterials.length);
   }, [isModalVisible, selectedMaterials.length, hideCodeInput, autoScanQR]);
 
-  // Function to focus weight input after QR scan
-  const handleQRScanComplete = (index: number) => {
-    // Focus the corresponding weight input if auto-jump is enabled
-    if (autoJumpToWeight && weightInputRefs.current[index]) {
-      weightInputRefs.current[index]?.focus();
+  // Validation function for QR Code
+  const validateQRCode = (code: string | undefined): boolean => {
+    if (!code) return false; // Cannot be empty
+    return /^\d{6}$/.test(code); // Regex for exactly 6 digits
+  };
+
+  // Function to handle actions after QR scan completes
+  // Now accepts the scanned data directly
+  const handleQRScanComplete = (index: number, scannedCode: string) => { 
+    // Validate the scannedCode directly
+    if (!validateQRCode(scannedCode)) { 
+      // Invalid code after scan
+      Alert.alert(
+        "Invalid Input",
+        "QR field accepts 6 digits number only, please review your input.",
+        [{ text: "OK" }]
+      );
+      codeInputRefs.current[index]?.focus(); // Focus QR field
+    } else {
+      // Valid code, proceed with jump preference
+      console.log(`[MaterialSection] Scan valid for index ${index}. Checking autoJumpToWeight: ${autoJumpToWeight}`); // Log preference
+      const weightRef = weightInputRefs.current[index];
+      console.log(`[MaterialSection] Weight ref for index ${index}:`, weightRef ? 'Exists' : 'MISSING'); // Log ref existence
+      
+      if (autoJumpToWeight && weightRef) {
+        console.log(`[MaterialSection] Attempting to focus weight field for index ${index}`);
+        // Add a short delay before focusing
+        setTimeout(() => {
+            weightRef.focus(); // Focus weight field
+            console.log(`[MaterialSection] focus() called for index ${index} after delay`);
+        }, 100); // 100ms delay
+      } else {
+        // If preference off, or ref missing, focus QR field
+        console.log(`[MaterialSection] Preference off or ref missing, focusing QR field for index ${index}`);
+        codeInputRefs.current[index]?.focus(); 
+      }
     }
   };
 
@@ -293,15 +324,35 @@ const MaterialSection = ({
                         value={material.code || ""}
                         onChangeText={(text) => {
                           if (disabled) return;
-                          // Remove any decimal points (dots or commas)
-                          const cleanedText = text.replace(/[.,]/g, "");
+                          // Remove any decimal points (dots or commas) - Keep this?
+                          // User wants 6 digits only validation on blur/scan, maybe allow typing non-digits temporarily?
+                          // Let's allow typing anything, validation happens on blur/scan.
+                          // const cleanedText = text.replace(/[.,]/g, ""); 
                           const newMaterials = [...selectedMaterials];
-                          newMaterials[index] = { ...material, code: cleanedText };
+                          newMaterials[index] = { ...material, code: text }; // Use raw text
                           setSelectedMaterials(newMaterials);
                         }}
-                        onScanComplete={() => handleQRScanComplete(index)}
-                        keyboardType="number-pad"
+                        onScanComplete={(scannedData) => handleQRScanComplete(index, scannedData)}
+                        onBlur={() => {
+                           // Validate on blur
+                          const codeValue = selectedMaterials[index]?.code;
+                          // Validate, converting null to undefined
+                          if (!validateQRCode(codeValue ?? undefined)) {
+                            // Don't alert if field is empty on blur
+                            if (codeValue && codeValue.length > 0) { 
+                                Alert.alert(
+                                  "Invalid Input",
+                                  "QR field accepts 6 digits number only, please review your input.",
+                                  [{ text: "OK" }]
+                                );
+                                codeInputRefs.current[index]?.focus(); // Focus QR field
+                            }
+                          } 
+                          // No need to clear field or do anything on valid blur
+                        }}
+                        keyboardType="number-pad" // Keep as number-pad
                         editable={!disabled}
+                        id={`material-${category}-${index}`}
                       />
                     </Pressable>
                   )}
@@ -343,47 +394,35 @@ const MaterialSection = ({
                         className="flex-1 h-[28px] py-0 font-dm-bold tracking-tighter text-enaleia-black text-xl text-left"
                         onChangeText={(text) => {
                           if (disabled) return;
-                          // Allow digits and potentially a single decimal point
-                          const cleanedValue = text.replace(/[^0-9.]/g, "");
-
-                          // Prevent multiple decimal points
-                          if ((cleanedValue.match(/\\./g) || []).length > 1) {
-                            return; // Don't update if more than one decimal point
-                          }
-
-                          // Update only the local state for this specific input
+                          // Clean input (only digits since it's number-pad)
+                          const cleanedValue = text.replace(/[^0-9]/g, "");
+                          
+                          // Update local state immediately for display
                           setLocalWeightValues(prev => ({ ...prev, [index]: cleanedValue }));
-                        }}
-                        onBlur={() => {
-                          // Get the raw value from local state
-                          const rawValue = localWeightValues[index];
+
+                          // Also parse and update the main state immediately
                           let finalWeight: number | null = null;
-
-                          if (rawValue && rawValue !== ".") {
-                            const parsedValue = parseFloat(rawValue);
-                            if (!isNaN(parsedValue)) {
-                              finalWeight = Math.round(parsedValue); // Round the value
-                            }
-                          }
-
-                          // Update the main selectedMaterials state
-                          const newMaterials = [...selectedMaterials];
-                          // Ensure the material at the index still exists
-                          if (newMaterials[index]) {
-                              newMaterials[index] = {
-                                ...newMaterials[index],
-                                weight: finalWeight,
-                              };
-                              setSelectedMaterials(newMaterials);
+                          if (cleanedValue) {
+                              const parsedValue = parseInt(cleanedValue, 10);
+                              if (!isNaN(parsedValue)) {
+                                finalWeight = parsedValue;
+                              }
                           }
                           
-                          // Optional: Update local state to reflect rounded value? 
-                          // It might cause a flicker, let's rely on the useEffect sync for now.
-                          // if (finalWeight !== null) {
-                          //   setLocalWeightValues(prev => ({ ...prev, [index]: finalWeight.toString() }));
-                          // }
+                          // Avoid unnecessary state updates if value hasn't effectively changed
+                          if (selectedMaterials[index]?.weight !== finalWeight) {
+                              const newMaterials = [...selectedMaterials];
+                              if (newMaterials[index]) {
+                                  newMaterials[index] = {
+                                    ...newMaterials[index],
+                                    weight: finalWeight,
+                                  };
+                                  setSelectedMaterials(newMaterials);
+                                  console.log(`[MaterialSection] Updated weight in main state for index ${index} onChange`);
+                              }
+                          }
                         }}
-                        keyboardType="decimal-pad"
+                        keyboardType="number-pad"
                         editable={!disabled}
                       />
                       <Text className="text-sm font-dm-bold text-grey-6 tracking-tighter text-right self-end pl-1">

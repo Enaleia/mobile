@@ -1,5 +1,5 @@
 import { CameraView } from "expo-camera";
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   Pressable,
   View,
@@ -17,15 +17,29 @@ interface QRCodeScannerProps {
 const QRCodeScanner: React.FC<QRCodeScannerProps> = ({ onScan, onClose }) => {
   const [isReady, setIsReady] = useState(false);
   const [flash, setFlash] = useState<"on" | "off">("off");
+  const [scanned, setScanned] = useState(false);
+  const [canRenderCamera, setCanRenderCamera] = useState(false);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setCanRenderCamera(true);
+    }, 50);
+
+    return () => clearTimeout(timer);
+  }, []);
 
   const onCameraReady = () => {
+    console.log(`[QRCodeScanner] Camera ready for ${onClose.toString().substring(0, 20)}...`);
     setIsReady(true);
+    setScanned(false);
   };
 
   const handleBarCodeScanned = ({ data }: { data: string }) => {
-    if (data) {
+    console.log(`[QRCodeScanner] Barcode scanned (${data}) - scanned state: ${scanned}`);
+    if (!scanned && data) {
+      console.log('[QRCodeScanner] Processing scan...');
+      setScanned(true);
       onScan(data);
-      onClose();
     }
   };
 
@@ -41,20 +55,26 @@ const QRCodeScanner: React.FC<QRCodeScannerProps> = ({ onScan, onClose }) => {
         accessibilityRole="image"
         accessibilityLabel="Camera view for QR scanning"
       >
-        <CameraView
-          style={StyleSheet.absoluteFill}
-          facing="back"
-          enableTorch={flash === "on"}
-          onCameraReady={onCameraReady}
-          barcodeScannerSettings={{
-            barcodeTypes: ["qr"],
-          }}
-          onBarcodeScanned={isReady ? handleBarCodeScanned : undefined}
-          accessibilityLabel="QR code camera view"
-          accessibilityHint="Point camera at QR code to scan"
-        />
-        {!isReady && (
-          <View className="absolute inset-0 items-center justify-center bg-black">
+        {canRenderCamera ? (
+          <CameraView
+            style={StyleSheet.absoluteFill}
+            facing="back"
+            enableTorch={flash === "on"}
+            onCameraReady={onCameraReady}
+            barcodeScannerSettings={{
+              barcodeTypes: ["qr"],
+            }}
+            onBarcodeScanned={isReady && !scanned ? handleBarCodeScanned : undefined}
+            accessibilityLabel="QR code camera view"
+            accessibilityHint="Point camera at QR code to scan"
+          />
+        ) : (
+          <View className="absolute inset-0 items-center justify-center">
+            <ActivityIndicator size="large" color="white" />
+          </View>
+        )}
+        {canRenderCamera && !isReady && (
+          <View className="absolute inset-0 items-center justify-center">
             <ActivityIndicator size="large" color="white" />
           </View>
         )}

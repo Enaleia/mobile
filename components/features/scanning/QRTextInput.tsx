@@ -6,6 +6,7 @@ import React, {
   useReducer,
   forwardRef,
   useImperativeHandle,
+  useEffect,
 } from "react";
 import { Alert, Linking, Modal, Pressable, Text, TextInput, View } from "react-native";
 
@@ -19,8 +20,9 @@ interface QRTextInputProps {
   label?: string;
   error?: string;
   editable?: boolean;
-  onScanComplete?: () => void;
+  onScanComplete?: (scannedData: string) => void;
   keyboardType?: "default" | "numeric" | "number-pad";
+  onBlur?: () => void;
 }
 
 export interface QRTextInputRef {
@@ -66,6 +68,7 @@ const QRTextInput = forwardRef<QRTextInputRef, QRTextInputProps>(
       editable = true,
       onScanComplete,
       keyboardType = variant === "embedded" ? "numeric" : "default",
+      onBlur,
     },
     ref
   ) => {
@@ -93,8 +96,10 @@ const QRTextInput = forwardRef<QRTextInputRef, QRTextInputProps>(
     }));
 
     const currentState = scannerStates[id] || { isVisible: false, error: null };
+    console.log(`[QRTextInput ${id}] Render - isVisible: ${currentState.isVisible}`);
 
     const setScanner = (isVisible: boolean) => {
+      console.log(`[QRTextInput ${id}] setScanner called with: ${isVisible}`);
       dispatch({
         type: "SET_SCANNER",
         payload: {
@@ -138,7 +143,7 @@ const QRTextInput = forwardRef<QRTextInputRef, QRTextInputProps>(
           onChangeText(textValue.trim());
           setError(null);
           setScanner(false);
-          onScanComplete?.();
+          onScanComplete?.(textValue.trim());
         } catch (error) {
           dispatch({
             type: "SET_ERROR",
@@ -155,6 +160,11 @@ const QRTextInput = forwardRef<QRTextInputRef, QRTextInputProps>(
       [id, onChangeText, onScanComplete]
     );
 
+    // Log when the modal visibility *actually* changes based on state
+    useEffect(() => {
+      console.log(`[QRTextInput ${id}] Modal visibility state changed to: ${currentState.isVisible}`);
+    }, [currentState.isVisible, id]);
+
     const containerClass =
       variant === "standalone"
         ? "h-[65px] border-[1.5px] border-grey-3 rounded-2xl px-4 py-2 bg-white"
@@ -167,6 +177,8 @@ const QRTextInput = forwardRef<QRTextInputRef, QRTextInputProps>(
 
     return (
       <View className={containerClass}>
+        {/* Log props to see if value updates correctly */}
+        {/* console.log(`[QRTextInput ${id}] Value prop: ${value}`) */}
         {variant === "standalone" && label && (
           <Text className="text-sm font-dm-bold text-grey-6 tracking-tighter">
             {label}
@@ -197,6 +209,7 @@ const QRTextInput = forwardRef<QRTextInputRef, QRTextInputProps>(
               }}
               keyboardType={keyboardType}
               editable={editable}
+              onBlur={onBlur}
             />
           </View>
           <View className="w-6 h-6 justify-center items-center">
@@ -206,8 +219,9 @@ const QRTextInput = forwardRef<QRTextInputRef, QRTextInputProps>(
                 if (!editable) return;
                 try {
                   const { status } = await Camera.requestCameraPermissionsAsync();
- 
+   
                   if (status === 'granted') {
+                    console.log(`[QRTextInput ${id}] Permission granted, calling setScanner(true)`);
                     setScanner(true); // Open QR scanner
                   } else {
                     console.warn("Camera permission denied.");
@@ -243,6 +257,7 @@ const QRTextInput = forwardRef<QRTextInputRef, QRTextInputProps>(
         <Modal
           visible={currentState.isVisible}
           animationType="fade"
+          onShow={() => console.log(`[QRTextInput ${id}] Modal onShow event fired`)}
           onRequestClose={() => setScanner(false)}
           presentationStyle="overFullScreen"
           statusBarTranslucent={true}
