@@ -47,7 +47,6 @@ import {
 import { getBatchCacheKey } from "@/utils/storage";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import NetInfo, { NetInfoState } from "@react-native-community/netinfo";
-import * as Notifications from "expo-notifications";
 import { Company } from "@/types/company";
 import { JsonRpcProvider } from "ethers";
 import { queueDebugMonitor } from "@/utils/queueDebugMonitor";
@@ -146,39 +145,6 @@ export async function updateItemInCache(itemId: string, updates: Partial<QueueIt
     throw error;
   }
 }
-
-async function notifyUser(title: string, body: string) {
-  try {
-    const { status: existingStatus } =
-      await Notifications.getPermissionsAsync();
-    let finalStatus = existingStatus;
-
-    if (existingStatus !== "granted") {
-      const { status } = await Notifications.requestPermissionsAsync();
-      finalStatus = status;
-    }
-
-    if (finalStatus !== "granted") {
-      queueDebugMonitor.log("Failed to get push token for push notification!");
-      return;
-    }
-
-    await Notifications.scheduleNotificationAsync({
-      content: {
-        title,
-        body,
-        sound: true,
-        priority: Notifications.AndroidNotificationPriority.HIGH,
-      },
-      trigger: null,
-    });
-  } catch (error) {
-    queueDebugMonitor.error("Error sending notification:", error);
-  }
-}
-
-let lastNotificationTime = 0;
-const NOTIFICATION_COOLDOWN = 5 * 60 * 1000; // 5 minutes
 
 interface RequiredData {
   userData: EnaleiaUser | null;

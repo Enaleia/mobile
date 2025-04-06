@@ -19,8 +19,6 @@
       "infoPlist": {
         "UIViewControllerBasedStatusBarAppearance": false,
         "UIBackgroundModes": [
-          "remote-notification",
-          "remote-notification"
         ],
         "NSCameraUsageDescription": "The app need access to your camera to scan QR codes.",
         "ITSAppUsesNonExemptEncryption": false
@@ -37,8 +35,7 @@
         "android.permission.ACCESS_COARSE_LOCATION",
         "android.permission.ACCESS_FINE_LOCATION",
         "android.permission.CAMERA",
-        "android.permission.RECORD_AUDIO",
-        "android.permission.POST_NOTIFICATIONS"
+        "android.permission.RECORD_AUDIO"
       ],
       "package": "com.anonymous.enaleia",
       "userInterfaceStyle": "light"
@@ -67,16 +64,6 @@
       [
         "expo-camera",
         {
-        }
-      ],
-      [
-        "expo-notifications",
-        {
-          "icon": "./assets/images/splash-icon.png",
-          "color": "#24548b",
-          "sounds": [
-            "./assets/sounds/notification.wav"
-          ]
         }
       ],
       "expo-font",
