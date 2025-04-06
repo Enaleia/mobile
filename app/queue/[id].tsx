@@ -628,7 +628,7 @@ ${[
                   </View>
                 </View>
                 {((item.directus?.error || item.eas?.error || (item.directus?.status === ServiceStatus.FAILED && !item.directus?.linked)) || 
-                  (item.retryCount > 0 || (item.slowRetryCount ?? 0) > 0)) && (
+                  item.totalRetryCount > 0) && (
                   <View className="border-t border-grey-3 p-4">
                     {(item.directus?.error || item.eas?.error || (item.directus?.status === ServiceStatus.FAILED && !item.directus?.linked)) && (
                       <>
@@ -652,21 +652,14 @@ ${[
                         )}
                       </>
                     )}
-                    {(item.retryCount > 0 || (item.slowRetryCount ?? 0) > 0) && (
+                    {item.totalRetryCount > 0 && (
                       <View className={`${(item.directus?.error || item.eas?.error || (item.directus?.status === ServiceStatus.FAILED && !item.directus?.linked)) ? "mt-4" : ""}`}>
                         <Text className="text-base font-dm-bold text-grey-6 mb-2">
                           Retry Information:
                         </Text>
-                        {item.retryCount > 0 && (
-                          <Text className="text-sm text-grey-6 font-dm-regular mb-1">
-                            Initial Retries: {item.retryCount} of {MAX_RETRIES}
-                          </Text>
-                        )}
-                        {(item.slowRetryCount ?? 0) > 0 && (
-                          <Text className="text-sm text-grey-6 font-dm-regular">
-                            Slow Mode Retries: {item.slowRetryCount}
-                          </Text>
-                        )}
+                        <Text className="text-sm text-grey-6 font-dm-regular mb-1">
+                          Total Retries: {item.totalRetryCount} of {MAX_RETRIES}
+                        </Text>
                       </View>
                     )}
                   </View>
