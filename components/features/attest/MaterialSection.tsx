@@ -438,6 +438,16 @@ const MaterialSection = ({
                           // Clean input (only digits since it's number-pad)
                           const cleanedValue = text.replace(/[^0-9]/g, "");
                           
+                          // Check if the value exceeds 16-bit (65535)
+                          if (cleanedValue && parseInt(cleanedValue, 10) > 65535) {
+                            Alert.alert(
+                              "Invalid Input",
+                              "Warning: Weight cannot be above 65536, please review your input.",
+                              [{ text: "OK" }]
+                            );
+                            return;
+                          }
+                          
                           // Update local state immediately for display
                           setLocalWeightValues(prev => ({ ...prev, [index]: cleanedValue }));
 

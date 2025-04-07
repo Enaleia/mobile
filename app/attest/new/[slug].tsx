@@ -48,6 +48,7 @@ import {
   ScrollView,
   Text,
   View,
+  Alert,
 } from "react-native";
 import uuid from "react-native-uuid";
 import { z } from "zod";
@@ -355,13 +356,29 @@ const NewActionScreen = () => {
     return null;
   }
 
-  const validateMaterials = (materials: MaterialDetail[]) => {
+  const validateMaterials = (materials: MaterialDetail[], isManufacturing: boolean = false, manufacturingData?: { quantity?: number | undefined; weightInKg?: number | undefined }) => {
+    // First check materials array
     if (materials.length === 0) return false;
-    return materials.some(
+    
+    // Check if any material has missing details
+    const hasMissingMaterialDetails = materials.some(
       (material) =>
-        (material.code && material.code.trim() !== "") ||
-        (material.weight && material.weight > 0)
+        !material.code || material.code.trim() === "" ||
+        !material.weight || material.weight <= 0
     );
+    
+    if (hasMissingMaterialDetails) return false;
+    
+    // For manufacturing actions, also check batch quantity and weight per item
+    if (isManufacturing) {
+      const hasMissingManufacturingDetails = !manufacturingData?.quantity || 
+                                           manufacturingData.quantity <= 0 ||
+                                           !manufacturingData?.weightInKg || 
+                                           manufacturingData.weightInKg <= 0;
+      if (hasMissingManufacturingDetails) return false;
+    }
+    
+    return true;
   };
 
   const addItemToQueue = async (queueItem: QueueItem) => {
@@ -391,6 +408,12 @@ const NewActionScreen = () => {
 
     // Logic for all actions (including Manufacturing): check if any materials are present
     return incomingMaterials.length > 0 || outgoingMaterials.length > 0;
+  };
+
+  // Add validation for manufacturing form
+  const isManufacturingFormValid = (values: EventFormType | boolean | null | undefined): boolean => {
+    if (!values || typeof values === 'boolean') return false;
+    return Boolean(values.manufacturing?.product && values.manufacturing.product > 0);
   };
 
   const handleProceedWithSubmission = async () => {
@@ -671,19 +694,37 @@ const NewActionScreen = () => {
               >
                 {([canSubmit, isSubmitting, values]) => {
                   const handleSubmitClick = (e: GestureResponderEvent) => {
+                    // Prevent submission if button is disabled
+                    if (isSubmitDisabled) return;
+
                     setSubmitError(null);
                     e.preventDefault();
                     e.stopPropagation();
                     
-                    // First validate the form
-                    const hasValidIncoming = validateMaterials(
-                      values.incomingMaterials || []
-                    );
-                    const hasValidOutgoing = validateMaterials(
-                      values.outgoingMaterials || []
-                    );
+                    const incomingMaterials = values.incomingMaterials || [];
+                    const outgoingMaterials = values.outgoingMaterials || [];
+                    const allMaterials = [...incomingMaterials, ...outgoingMaterials];
+                    const isManufacturing = currentAction?.name === "Manufacturing";
+                    
+                    // Check if manufacturing form is valid when needed
+                    if (isManufacturing && !isManufacturingFormValid(values)) {
+                      Alert.alert(
+                        "Product Required",
+                        "Please select a product before submitting the manufacturing attestation.",
+                        [{ text: "OK" }]
+                      );
+                      return;
+                    }
 
-                    if (!hasValidIncoming && !hasValidOutgoing) {
+                    // Show incomplete modal if any material has missing details
+                    // For manufacturing, also validate batch quantity and weight per item
+                    const isValid = validateMaterials(
+                      allMaterials,
+                      isManufacturing,
+                      isManufacturing ? values.manufacturing : undefined
+                    );
+                    
+                    if (!isValid) {
                       setShowIncompleteModal(true);
                       return;
                     }
@@ -692,13 +733,19 @@ const NewActionScreen = () => {
                     setShowSubmitConfirmation(true);
                   };
 
+                  // Update the submit button disabled state
+                  const isSubmitDisabled = !canSubmit || 
+                    isSubmitting || 
+                    !hasAnyMaterials(values) || 
+                    (currentAction?.name === "Manufacturing" && !isManufacturingFormValid(values));
+
                   return (
                     <>
                       <Pressable
                         onPress={handleSubmitClick}
-                        disabled={!canSubmit || isSubmitting || !hasAnyMaterials(values)}
+                        disabled={isSubmitDisabled}
                         className={`w-full flex-row items-center justify-center p-0 h-[60px] rounded-full ${
-                          !canSubmit || isSubmitting || !hasAnyMaterials(values)
+                          isSubmitDisabled
                             ? "bg-primary-dark-blue opacity-50"
                             : "bg-blue-ocean"
                         }`}
