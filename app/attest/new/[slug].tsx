@@ -42,6 +42,7 @@ import {
   GestureResponderEvent,
   Image,
   Keyboard,
+  KeyboardAvoidingView,
   Platform,
   Pressable,
   ScrollView,
@@ -305,34 +306,6 @@ const NewActionScreen = () => {
     }
   }, [locationData]);
 
-  // Add keyboard handling effect
-  useEffect(() => {
-    const keyboardDidShowListener = Keyboard.addListener(
-      "keyboardDidShow",
-      (e) => {
-        if (Platform.OS === "ios") {
-          setTimeout(() => {
-            scrollViewRef.current?.scrollTo({ y: 100, animated: true });
-          }, 100);
-        }
-      }
-    );
-
-    const keyboardDidHideListener = Keyboard.addListener(
-      "keyboardDidHide",
-      () => {
-        if (Platform.OS === "ios") {
-          scrollViewRef.current?.scrollTo({ y: 0, animated: true });
-        }
-      }
-    );
-
-    return () => {
-      keyboardDidShowListener.remove();
-      keyboardDidHideListener.remove();
-    };
-  }, []);
-
   useEffect(() => {
     const unsubscribe = navigation.addListener("focus", () => {
       navigation.setOptions({
@@ -440,320 +413,327 @@ const NewActionScreen = () => {
 
   return (
     <SafeAreaContent>
-      <View className="absolute top-20 right-[-30px] bg-white-sand opacity-60">
-        <Image
-          source={require("@/assets/images/animals/Turtle.png")}
-          className="w-[223px] h-[228px]"
-          accessibilityLabel="Decorative turtle illustration"
-          accessibilityRole="image"
-        />
-      </View>
-      <View className="flex-row items-center justify-between pb-4">
-        <form.Subscribe selector={(state) => state.values}>
-          {(values) => (
-            <Pressable
-              onPress={() => {
-                if (hasAnyMaterials(values)) {
-                  setShowLeaveModal(true);
-                } else {
-                  if (saveTimeoutRef?.current) {
-                    clearTimeout(saveTimeoutRef.current);
-                  }
-                  deleteFormState();
-                  router.back();
-                }
-              }}
-              className="flex-row items-center space-x-1"
-            >
-              <Ionicons name="chevron-back" size={24} color={isSubmitting ? "#8E8E93" : "#0D0D0D"} />
-              <Text className={`text-base font-dm-regular tracking-tighter ${isSubmitting ? 'text-grey-6' : 'text-enaleia-black'}`}>
-                Home
-              </Text>
-            </Pressable>
-          )}
-        </form.Subscribe>
-
-        <Pressable onPress={() => setIsTypeInformationModalVisible(true)}>
-          <Ionicons
-            name="information-circle-outline"
-            size={24}
-            color="#0D0D0D"
+      <KeyboardAvoidingView
+        behavior={Platform.OS === "ios" ? "padding" : "undefined"}
+        style={{ flex: 1 }}
+        contentContainerStyle={{ flex: 1 }}
+        keyboardVerticalOffset={Platform.OS === "ios" ? 0 : 0} // Account for header + status bar
+      >
+        <View className="absolute top-20 right-[-30px] bg-white-sand opacity-60">
+          <Image
+            source={require("@/assets/images/animals/Turtle.png")}
+            className="w-[223px] h-[228px]"
+            accessibilityLabel="Decorative turtle illustration"
+            accessibilityRole="image"
           />
-        </Pressable>
-      </View>
-      {currentAction?.name === "Batch" ? (
-        <BatchHelpModal
-          isVisible={isTypeInformationModalVisible}
-          onClose={() => setIsTypeInformationModalVisible(false)}
-        />
-      ) : currentAction?.name === "Fishing for litter" ||
-        currentAction?.name === "Prevention" ||
-        currentAction?.name === "Beach cleanup" ||
-        currentAction?.name === "Ad-hoc" ? (
-        <CollectionHelpModal
-          isVisible={isTypeInformationModalVisible}
-          onClose={() => setIsTypeInformationModalVisible(false)}
-        />
-      ) : currentAction?.name === "Manufacturing" ? (
-        <ManufacturingHelpModal
-          isVisible={isTypeInformationModalVisible}
-          onClose={() => setIsTypeInformationModalVisible(false)}
-        />
-      ) : currentAction?.name === "Pelletizing" ? (
-        <PelletizingHelpModal
-          isVisible={isTypeInformationModalVisible}
-          onClose={() => setIsTypeInformationModalVisible(false)}
-        />
-      ) : currentAction?.name === "Shredding" ? (
-        <ShreddingHelpModal
-          isVisible={isTypeInformationModalVisible}
-          onClose={() => setIsTypeInformationModalVisible(false)}
-        />
-      ) : currentAction?.name === "Sorting" ? (
-        <SortingHelpModal
-          isVisible={isTypeInformationModalVisible}
-          onClose={() => setIsTypeInformationModalVisible(false)}
-        />
-      ) : currentAction?.name === "Washing" ? (
-        <WashingHelpModal
-          isVisible={isTypeInformationModalVisible}
-          onClose={() => setIsTypeInformationModalVisible(false)}
-        />
-      ) : null}
-
-      <View className="flex-1">
-        <ScrollView
-          ref={scrollViewRef}
-          showsVerticalScrollIndicator={false}
-          keyboardShouldPersistTaps="handled"
-          keyboardDismissMode="on-drag"
-          contentContainerStyle={{
-            flexGrow: 0,
-            paddingBottom: 100,
-          }}
-        >
-          <Text className="text-3xl font-dm-bold text-enaleia-black tracking-[-1px] mb-2">
-            {currentAction?.name}
-          </Text>
-          <View className="flex-1">
-            <form.Subscribe selector={(state) => state.values}>
-              {(values) => (
-                <View className="mb-2 mt-4">
-                  <LocationPermissionHandler
-                    onPermissionGranted={() => {
-                      // Location will be automatically updated via the effect
-                    }}
-                    onPermissionDenied={() => {
-                      // Alert.alert(
-                      //   "Location Access",
-                      //   "Location helps verify where events take place. You can still use saved locations or change this later in settings."
-                      // );
-                    }}
-                  />
-                </View>
-              )}
-            </form.Subscribe>
-
-            {currentAction?.category === "Collection" && (
-              <View className="mb-12">
-                <Text className="text-[18px] font-dm-regular text-enaleia-black tracking-tighter mb-2">
-                  Collector
-                </Text>
-                <form.Field name="collectorId">
-                  {(field) => (
-                    <>
-                      <QRTextInput
-                        value={field.state.value || ""}
-                        onChangeText={field.handleChange}
-                        variant="standalone"
-                        label="Collector ID Card"
-                        keyboardType="default"
-                        error={field.state.meta.errors?.[0] || undefined}
-                      />
-                    </>
-                  )}
-                </form.Field>
-              </View>
-            )}
-            <form.Field name="incomingMaterials">
-              {(field) => (
-                <View className="mb-8">
-                  <MaterialSection
-                    materials={processedMaterials}
-                    category="incoming"
-                    isModalVisible={isIncomingMaterialsPickerVisible}
-                    setModalVisible={setIsIncomingMaterialsPickerVisible}
-                    selectedMaterials={field.state.value as MaterialDetail[]}
-                    setSelectedMaterials={(materials: MaterialDetail[]) =>
-                      field.handleChange(materials)
+        </View>
+        <View className="flex-row items-center justify-between pb-4">
+          <form.Subscribe selector={(state) => state.values}>
+            {(values) => (
+              <Pressable
+                onPress={() => {
+                  if (hasAnyMaterials(values)) {
+                    setShowLeaveModal(true);
+                  } else {
+                    if (saveTimeoutRef?.current) {
+                      clearTimeout(saveTimeoutRef.current);
                     }
-                    hideCodeInput={currentAction?.category === "Collection"}
-                  />
+                    deleteFormState();
+                    router.back();
+                  }
+                }}
+                className="flex-row items-center space-x-1"
+              >
+                <Ionicons name="chevron-back" size={24} color={isSubmitting ? "#8E8E93" : "#0D0D0D"} />
+                <Text className={`text-base font-dm-regular tracking-tighter ${isSubmitting ? 'text-grey-6' : 'text-enaleia-black'}`}>
+                  Home
+                </Text>
+              </Pressable>
+            )}
+          </form.Subscribe>
+
+          <Pressable onPress={() => setIsTypeInformationModalVisible(true)}>
+            <Ionicons
+              name="information-circle-outline"
+              size={24}
+              color="#0D0D0D"
+            />
+          </Pressable>
+        </View>
+        {currentAction?.name === "Batch" ? (
+          <BatchHelpModal
+            isVisible={isTypeInformationModalVisible}
+            onClose={() => setIsTypeInformationModalVisible(false)}
+          />
+        ) : currentAction?.name === "Fishing for litter" ||
+          currentAction?.name === "Prevention" ||
+          currentAction?.name === "Beach cleanup" ||
+          currentAction?.name === "Ad-hoc" ? (
+          <CollectionHelpModal
+            isVisible={isTypeInformationModalVisible}
+            onClose={() => setIsTypeInformationModalVisible(false)}
+          />
+        ) : currentAction?.name === "Manufacturing" ? (
+          <ManufacturingHelpModal
+            isVisible={isTypeInformationModalVisible}
+            onClose={() => setIsTypeInformationModalVisible(false)}
+          />
+        ) : currentAction?.name === "Pelletizing" ? (
+          <PelletizingHelpModal
+            isVisible={isTypeInformationModalVisible}
+            onClose={() => setIsTypeInformationModalVisible(false)}
+          />
+        ) : currentAction?.name === "Shredding" ? (
+          <ShreddingHelpModal
+            isVisible={isTypeInformationModalVisible}
+            onClose={() => setIsTypeInformationModalVisible(false)}
+          />
+        ) : currentAction?.name === "Sorting" ? (
+          <SortingHelpModal
+            isVisible={isTypeInformationModalVisible}
+            onClose={() => setIsTypeInformationModalVisible(false)}
+          />
+        ) : currentAction?.name === "Washing" ? (
+          <WashingHelpModal
+            isVisible={isTypeInformationModalVisible}
+            onClose={() => setIsTypeInformationModalVisible(false)}
+          />
+        ) : null}
+
+        <View className="flex-1">
+          <ScrollView
+            ref={scrollViewRef}
+            showsVerticalScrollIndicator={false}
+            keyboardShouldPersistTaps="handled"
+            keyboardDismissMode="on-drag"
+            contentContainerStyle={{
+              flexGrow: 0,
+              paddingBottom: 100,
+            }}
+          >
+            <Text className="text-3xl font-dm-bold text-enaleia-black tracking-[-1px] mb-2">
+              {currentAction?.name}
+            </Text>
+            <View className="flex-1">
+              <form.Subscribe selector={(state) => state.values}>
+                {(values) => (
+                  <View className="mb-2 mt-4">
+                    <LocationPermissionHandler
+                      onPermissionGranted={() => {
+                        // Location will be automatically updated via the effect
+                      }}
+                      onPermissionDenied={() => {
+                        // Alert.alert(
+                        //   "Location Access",
+                        //   "Location helps verify where events take place. You can still use saved locations or change this later in settings."
+                        // );
+                      }}
+                    />
+                  </View>
+                )}
+              </form.Subscribe>
+
+              {currentAction?.category === "Collection" && (
+                <View className="mb-12">
+                  <Text className="text-[18px] font-dm-regular text-enaleia-black tracking-tighter mb-2">
+                    Collector
+                  </Text>
+                  <form.Field name="collectorId">
+                    {(field) => (
+                      <>
+                        <QRTextInput
+                          value={field.state.value || ""}
+                          onChangeText={field.handleChange}
+                          variant="standalone"
+                          label="Collector ID Card"
+                          keyboardType="default"
+                          error={field.state.meta.errors?.[0] || undefined}
+                        />
+                      </>
+                    )}
+                  </form.Field>
                 </View>
               )}
-            </form.Field>
-            {currentAction?.name !== "Manufacturing" && (
-              <form.Field name="outgoingMaterials">
+              <form.Field name="incomingMaterials">
                 {(field) => (
-                  <View className="mb-8 mt-8">
+                  <View className="mb-8">
                     <MaterialSection
                       materials={processedMaterials}
-                      category="outgoing"
-                      isModalVisible={isOutgoingMaterialsPickerVisible}
-                      setModalVisible={setIsOutgoingMaterialsPickerVisible}
+                      category="incoming"
+                      isModalVisible={isIncomingMaterialsPickerVisible}
+                      setModalVisible={setIsIncomingMaterialsPickerVisible}
                       selectedMaterials={field.state.value as MaterialDetail[]}
                       setSelectedMaterials={(materials: MaterialDetail[]) =>
                         field.handleChange(materials)
                       }
-                      hideCodeInput={false}
+                      hideCodeInput={currentAction?.category === "Collection"}
                     />
                   </View>
                 )}
               </form.Field>
-            )}
+              {currentAction?.name !== "Manufacturing" && (
+                <form.Field name="outgoingMaterials">
+                  {(field) => (
+                    <View className="mb-8 mt-8">
+                      <MaterialSection
+                        materials={processedMaterials}
+                        category="outgoing"
+                        isModalVisible={isOutgoingMaterialsPickerVisible}
+                        setModalVisible={setIsOutgoingMaterialsPickerVisible}
+                        selectedMaterials={field.state.value as MaterialDetail[]}
+                        setSelectedMaterials={(materials: MaterialDetail[]) =>
+                          field.handleChange(materials)
+                        }
+                        hideCodeInput={false}
+                      />
+                    </View>
+                  )}
+                </form.Field>
+              )}
 
-            {currentAction?.name === "Manufacturing" && (
-              <View className="mt-4">
-                <View className="flex-row items-center mb-4">
-                  <Text className="text-xl font-dm-regular text-enaleia-black tracking-tighter">
-                    Manufacturing information
-                  </Text>
-                  <View className="ml-2">
-                    <Ionicons name="cube-outline" size={24} color="#0D0D0D" />
+              {currentAction?.name === "Manufacturing" && (
+                <View className="mt-4">
+                  <View className="flex-row items-center mb-4">
+                    <Text className="text-xl font-dm-regular text-enaleia-black tracking-tighter">
+                      Manufacturing information
+                    </Text>
+                    <View className="ml-2">
+                      <Ionicons name="cube-outline" size={24} color="#0D0D0D" />
+                    </View>
                   </View>
-                </View>
-
-                <View className="space-y-2">
-                  <form.Field name="manufacturing.product">
-                    {(field) => {
-                      const ProductField = () => (
-                        <SelectField
-                          value={field.state.value}
-                          onChange={(value) => field.handleChange(value)}
-                          options={
-                            productsData?.map((product) => ({
-                              label: product.product_name || "Unknown Product",
-                              value: product.product_id,
-                              type: product.manufactured_by?.name || "Other"
-                            })) || []
-                          }
-                          placeholder="Product"
-                          isLoading={!productsData}
-                          disabled={!productsData}
-                        />
-                      );
-                      return <ProductField />;
-                    }}
-                  </form.Field>
 
                   <View className="space-y-2">
-                    <form.Field name="manufacturing.quantity">
+                    <form.Field name="manufacturing.product">
                       {(field) => {
-                        const QuantityField = () => (
-                          <DecimalInput
-                            field={field}
-                            label="Batch Quantity"
-                            placeholder=""
-                            allowDecimals={false}
-                            suffix="Unit"
+                        const ProductField = () => (
+                          <SelectField
+                            value={field.state.value}
+                            onChange={(value) => field.handleChange(value)}
+                            options={
+                              productsData?.map((product) => ({
+                                label: product.product_name || "Unknown Product",
+                                value: product.product_id,
+                                type: product.manufactured_by?.name || "Other"
+                              })) || []
+                            }
+                            placeholder="Product"
+                            isLoading={!productsData}
+                            disabled={!productsData}
                           />
                         );
-                        return <QuantityField />;
+                        return <ProductField />;
                       }}
                     </form.Field>
-                  </View>
 
-                  <View className="mb-4">
-                    <form.Field name="manufacturing.weightInKg">
-                      {(field) => {
-                        const WeightField = () => (
-                          <DecimalInput
-                            field={field}
-                            label="Weight per item"
-                            placeholder=""
-                            suffix="kg"
-                          />
-                        );
-                        return <WeightField />;
-                      }}
-                    </form.Field>
+                    <View className="space-y-2">
+                      <form.Field name="manufacturing.quantity">
+                        {(field) => {
+                          const QuantityField = () => (
+                            <DecimalInput
+                              field={field}
+                              label="Batch Quantity"
+                              placeholder=""
+                              allowDecimals={false}
+                              suffix="Unit"
+                            />
+                          );
+                          return <QuantityField />;
+                        }}
+                      </form.Field>
+                    </View>
+
+                    <View className="mb-4">
+                      <form.Field name="manufacturing.weightInKg">
+                        {(field) => {
+                          const WeightField = () => (
+                            <DecimalInput
+                              field={field}
+                              label="Weight per item"
+                              placeholder=""
+                              suffix="kg"
+                            />
+                          );
+                          return <WeightField />;
+                        }}
+                      </form.Field>
+                    </View>
                   </View>
                 </View>
-              </View>
-            )}
-          </View>
-          <View className="pt-3">
-            <form.Subscribe
-              selector={(state) => [
-                state.canSubmit,
-                state.isSubmitting,
-                state.values as EventFormType,
-              ]}
-            >
-              {([canSubmit, isSubmitting, values]) => {
-                const handleSubmitClick = (e: GestureResponderEvent) => {
-                  setSubmitError(null);
-                  e.preventDefault();
-                  e.stopPropagation();
-                  
-                  // First validate the form
-                  const hasValidIncoming = validateMaterials(
-                    values.incomingMaterials || []
+              )}
+            </View>
+            <View className="pt-3">
+              <form.Subscribe
+                selector={(state) => [
+                  state.canSubmit,
+                  state.isSubmitting,
+                  state.values as EventFormType,
+                ]}
+              >
+                {([canSubmit, isSubmitting, values]) => {
+                  const handleSubmitClick = (e: GestureResponderEvent) => {
+                    setSubmitError(null);
+                    e.preventDefault();
+                    e.stopPropagation();
+                    
+                    // First validate the form
+                    const hasValidIncoming = validateMaterials(
+                      values.incomingMaterials || []
+                    );
+                    const hasValidOutgoing = validateMaterials(
+                      values.outgoingMaterials || []
+                    );
+
+                    if (!hasValidIncoming && !hasValidOutgoing) {
+                      setShowIncompleteModal(true);
+                      return;
+                    }
+
+                    // If validation passes, show the confirmation modal
+                    setShowSubmitConfirmation(true);
+                  };
+
+                  return (
+                    <>
+                      <Pressable
+                        onPress={handleSubmitClick}
+                        disabled={!canSubmit || isSubmitting || !hasAnyMaterials(values)}
+                        className={`w-full flex-row items-center justify-center p-0 h-[60px] rounded-full ${
+                          !canSubmit || isSubmitting || !hasAnyMaterials(values)
+                            ? "bg-primary-dark-blue opacity-50"
+                            : "bg-blue-ocean"
+                        }`}
+                      >
+                        {isSubmitting ? (
+                          <ActivityIndicator color="white" className="mr-2" />
+                        ) : null}
+                        <Text className="text-lg font-dm-medium text-slate-50 tracking-tight">
+                          {isSubmitting ? "Preparing..." : "Submit Attestation"}
+                        </Text>
+                      </Pressable>
+
+                      <SubmitConfirmationModal
+                        isVisible={showSubmitConfirmation}
+                        onClose={() => setShowSubmitConfirmation(false)}
+                        onProceed={handleProceedWithSubmission}
+                        isSubmitting={isSubmitting}
+                      />
+
+                      <IncompleteAttestationModal
+                        isVisible={showIncompleteModal}
+                        onClose={() => setShowIncompleteModal(false)}
+                        onSubmitAnyway={() => {
+                          setShowIncompleteModal(false);
+                          setShowSubmitConfirmation(true);
+                        }}
+                      />
+                    </>
                   );
-                  const hasValidOutgoing = validateMaterials(
-                    values.outgoingMaterials || []
-                  );
-
-                  if (!hasValidIncoming && !hasValidOutgoing) {
-                    setShowIncompleteModal(true);
-                    return;
-                  }
-
-                  // If validation passes, show the confirmation modal
-                  setShowSubmitConfirmation(true);
-                };
-
-                return (
-                  <>
-                    <Pressable
-                      onPress={handleSubmitClick}
-                      disabled={!canSubmit || isSubmitting || !hasAnyMaterials(values)}
-                      className={`w-full flex-row items-center justify-center p-3 h-[60px] rounded-full ${
-                        !canSubmit || isSubmitting || !hasAnyMaterials(values)
-                          ? "bg-primary-dark-blue opacity-50"
-                          : "bg-blue-ocean"
-                      }`}
-                    >
-                      {isSubmitting ? (
-                        <ActivityIndicator color="white" className="mr-2" />
-                      ) : null}
-                      <Text className="text-lg font-dm-medium text-slate-50 tracking-tight">
-                        {isSubmitting ? "Preparing..." : "Submit Attestation"}
-                      </Text>
-                    </Pressable>
-
-                    <SubmitConfirmationModal
-                      isVisible={showSubmitConfirmation}
-                      onClose={() => setShowSubmitConfirmation(false)}
-                      onProceed={handleProceedWithSubmission}
-                      isSubmitting={isSubmitting}
-                    />
-
-                    <IncompleteAttestationModal
-                      isVisible={showIncompleteModal}
-                      onClose={() => setShowIncompleteModal(false)}
-                      onSubmitAnyway={() => {
-                        setShowIncompleteModal(false);
-                        setShowSubmitConfirmation(true);
-                      }}
-                    />
-                  </>
-                );
-              }}
-            </form.Subscribe>
-          </View>
-        </ScrollView>
-      </View>
+                }}
+              </form.Subscribe>
+            </View>
+          </ScrollView>
+        </View>
+      </KeyboardAvoidingView>
 
       <LeaveAttestationModal
         isVisible={showLeaveModal}
