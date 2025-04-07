@@ -1,5 +1,5 @@
 import { useMemo, useRef, useEffect, useState } from "react";
-import { Alert, Linking, Pressable, Text, TextInput, View } from "react-native";
+import { Alert, Linking, Pressable, Text, TextInput, View, Platform, Keyboard } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { Camera } from "expo-camera";
 import QRTextInput, { QRTextInputRef } from "@/components/features/scanning/QRTextInput";
@@ -181,11 +181,29 @@ const MaterialSection = ({
       
       if (autoJumpToWeight && weightRef) {
         console.log(`[MaterialSection] Attempting to focus weight field for index ${index}`);
-        // Add a short delay before focusing
+        // Use a longer delay for Android to ensure the keyboard appears
+        const delay = Platform.OS === 'android' ? 300 : 100;
+        
         setTimeout(() => {
-            weightRef.focus(); // Focus weight field
-            console.log(`[MaterialSection] focus() called for index ${index} after delay`);
-        }, 100); // 100ms delay
+          // First focus the input
+          weightRef.focus();
+          
+          if (Platform.OS === 'android') {
+            // On Android, use multiple techniques to ensure keyboard appears
+            // 1. Set selection to trigger keyboard
+            weightRef.setNativeProps({ selection: { start: 0, end: 0 } });
+            
+            // 2. Force keyboard to appear by simulating a tap
+            // This is a common workaround for Android keyboard issues
+            const currentValue = localWeightValues[index] || '';
+            weightRef.setNativeProps({ text: currentValue + ' ' });
+            setTimeout(() => {
+              weightRef.setNativeProps({ text: currentValue });
+            }, 50);
+          }
+          
+          console.log(`[MaterialSection] focus() called for index ${index} after delay`);
+        }, delay);
       } else {
         // If preference off, or ref missing, focus QR field
         console.log(`[MaterialSection] Preference off or ref missing, focusing QR field for index ${index}`);
@@ -290,10 +308,14 @@ const MaterialSection = ({
                       onPress={async () => {
                         if (disabled) return;
                         try {
-                          const { status } = await Camera.requestCameraPermissionsAsync();
+                          // First check the current permission status
+                          const { status } = await Camera.getCameraPermissionsAsync();
+                          
                           if (status === 'granted') {
-                            setModalVisible(true); // Open scanner modal
-                          } else {
+                            // Permission already granted, open scanner directly
+                            setModalVisible(true);
+                          } else if (status === 'denied') {
+                            // Permission denied, show settings alert
                             console.warn("Camera permission denied.");
                             Alert.alert(
                               "Camera Permission Required",
@@ -303,9 +325,28 @@ const MaterialSection = ({
                                 { text: "Settings", onPress: () => Linking.openSettings() }
                               ]
                             );
+                          } else if (status === 'undetermined') {
+                            // Permission not determined yet, show alert with option to request
+                            Alert.alert(
+                              "Camera Permission Required",
+                              "This app needs camera access to scan QR codes.",
+                              [
+                                { text: "Cancel", style: "cancel" },
+                                { 
+                                  text: "OK", 
+                                  onPress: async () => {
+                                    // User clicked OK, now request permission
+                                    const { status: newStatus } = await Camera.requestCameraPermissionsAsync();
+                                    if (newStatus === 'granted') {
+                                      setModalVisible(true);
+                                    }
+                                  }
+                                }
+                              ]
+                            );
                           }
                         } catch (error) {
-                          console.error("Error requesting camera permissions:", error);
+                          console.error("Error checking camera permissions:", error);
                         }
                       }}
                     >

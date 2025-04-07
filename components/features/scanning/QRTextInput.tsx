@@ -85,12 +85,44 @@ const QRTextInput = forwardRef<QRTextInputRef, QRTextInputProps>(
       },
       openScanner: async () => {
         try {
-          const { status } = await Camera.requestCameraPermissionsAsync();
+          // First check the current permission status
+          const { status } = await Camera.getCameraPermissionsAsync();
+          
           if (status === 'granted') {
+            // Permission already granted, open scanner directly
             setScanner(true);
+          } else if (status === 'denied') {
+            // Permission denied, show settings alert
+            Alert.alert(
+              "Camera Permission Required",
+              "This permission is required to scan QR codes, Please enable it in settings.",
+              [
+                { text: "Cancel", style: "cancel" },
+                { text: "Settings", onPress: () => Linking.openSettings() }
+              ]
+            );
+          } else if (status === 'undetermined') {
+            // Permission not determined yet, show alert with option to request
+            Alert.alert(
+              "Camera Permission Required",
+              "This app needs camera access to scan QR codes.",
+              [
+                { text: "Cancel", style: "cancel" },
+                { 
+                  text: "OK", 
+                  onPress: async () => {
+                    // User clicked OK, now request permission
+                    const { status: newStatus } = await Camera.requestCameraPermissionsAsync();
+                    if (newStatus === 'granted') {
+                      setScanner(true);
+                    }
+                  }
+                }
+              ]
+            );
           }
         } catch (error) {
-          console.error("Error opening scanner:", error);
+          console.error("Error checking camera permissions:", error);
         }
       }
     }));
