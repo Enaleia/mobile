@@ -356,28 +356,60 @@ const NewActionScreen = () => {
     return null;
   }
 
-  const validateMaterials = (materials: MaterialDetail[], isManufacturing: boolean = false, manufacturingData?: { quantity?: number | undefined; weightInKg?: number | undefined }) => {
-    // First check materials array
-    if (materials.length === 0) return false;
-    
-    // Check if any material has missing details
-    const hasMissingMaterialDetails = materials.some(
+  const validateMaterials = (
+    incomingMaterials: MaterialDetail[],
+    outgoingMaterials: MaterialDetail[],
+    currentActionName: string | undefined,
+    isManufacturing: boolean = false,
+    manufacturingData?: { quantity?: number | undefined; weightInKg?: number | undefined }
+  ): boolean => {
+    const collectorActionsWithHiddenQR = [
+      "Fishing for litter",
+      "Prevention",
+      "Ad-hoc",
+      "Beach cleanup",
+    ];
+    const isCollectorAction = currentActionName ? collectorActionsWithHiddenQR.includes(currentActionName) : false;
+
+    // Check if any materials are provided
+    if (incomingMaterials.length === 0 && outgoingMaterials.length === 0) {
+      return false;
+    }
+
+    // --- Incoming Materials Validation ---
+    const hasInvalidIncoming = incomingMaterials.some(material => {
+      const isWeightMissing = !material.weight || material.weight <= 0;
+      // For collector actions without outgoing materials, only check weight
+      if (isCollectorAction && outgoingMaterials.length === 0) {
+        return isWeightMissing;
+      }
+      // Otherwise (or for non-collector actions), check both code and weight
+      const isCodeMissing = !material.code || material.code.trim() === "";
+      return isCodeMissing || isWeightMissing;
+    });
+
+    if (hasInvalidIncoming) return false;
+
+    // --- Outgoing Materials Validation ---
+    const hasInvalidOutgoing = outgoingMaterials.some(
       (material) =>
         !material.code || material.code.trim() === "" ||
         !material.weight || material.weight <= 0
     );
-    
-    if (hasMissingMaterialDetails) return false;
-    
-    // For manufacturing actions, also check batch quantity and weight per item
+
+    if (hasInvalidOutgoing) return false;
+
+    // --- Manufacturing Validation ---
     if (isManufacturing) {
-      const hasMissingManufacturingDetails = !manufacturingData?.quantity || 
-                                           manufacturingData.quantity <= 0 ||
-                                           !manufacturingData?.weightInKg || 
-                                           manufacturingData.weightInKg <= 0;
+      const hasMissingManufacturingDetails =
+        !manufacturingData?.quantity ||
+        manufacturingData.quantity <= 0 ||
+        !manufacturingData?.weightInKg ||
+        manufacturingData.weightInKg <= 0;
       if (hasMissingManufacturingDetails) return false;
     }
-    
+
+    // All checks passed
     return true;
   };
 
@@ -437,7 +469,7 @@ const NewActionScreen = () => {
   return (
     <SafeAreaContent>
       <KeyboardAvoidingView
-        behavior={Platform.OS === "ios" ? "padding" : "undefined"}
+        behavior={Platform.OS === "ios" ? "padding" : undefined}
         style={{ flex: 1 }}
         contentContainerStyle={{ flex: 1 }}
         keyboardVerticalOffset={Platform.OS === "ios" ? 0 : 0} // Account for header + status bar
@@ -621,13 +653,13 @@ const NewActionScreen = () => {
                       Manufacturing information
                     </Text>
                     <View className="ml-2">
-                      <Ionicons name="cube-outline" size={24} color="#0D0D0D" />
+                      <Ionicons name="cube-outline" size={24} color="#8E8E93" />
                     </View>
                   </View>
 
                   <View className="space-y-2">
                     <form.Field name="manufacturing.product">
-                      {(field) => {
+                      {(field: { state: { value: number | undefined }, handleChange: (value: number | undefined) => void }) => {
                         const ProductField = () => (
                           <SelectField
                             value={field.state.value}
@@ -650,7 +682,7 @@ const NewActionScreen = () => {
 
                     <View className="space-y-2">
                       <form.Field name="manufacturing.quantity">
-                        {(field) => {
+                        {(field: { state: { value: number | undefined }, handleChange: (value: number | undefined) => void }) => {
                           const QuantityField = () => (
                             <DecimalInput
                               field={field}
@@ -667,7 +699,7 @@ const NewActionScreen = () => {
 
                     <View className="mb-4">
                       <form.Field name="manufacturing.weightInKg">
-                        {(field) => {
+                        {(field: { state: { value: number | undefined }, handleChange: (value: number | undefined) => void }) => {
                           const WeightField = () => (
                             <DecimalInput
                               field={field}
@@ -700,12 +732,12 @@ const NewActionScreen = () => {
                     setSubmitError(null);
                     e.preventDefault();
                     e.stopPropagation();
-                    
+
                     const incomingMaterials = values.incomingMaterials || [];
                     const outgoingMaterials = values.outgoingMaterials || [];
-                    const allMaterials = [...incomingMaterials, ...outgoingMaterials];
                     const isManufacturing = currentAction?.name === "Manufacturing";
-                    
+                    const currentActionName = currentAction?.name; // Get current action name
+
                     // Check if manufacturing form is valid when needed
                     if (isManufacturing && !isManufacturingFormValid(values)) {
                       Alert.alert(
@@ -716,14 +748,15 @@ const NewActionScreen = () => {
                       return;
                     }
 
-                    // Show incomplete modal if any material has missing details
-                    // For manufacturing, also validate batch quantity and weight per item
+                    // Show incomplete modal if validation fails
                     const isValid = validateMaterials(
-                      allMaterials,
+                      incomingMaterials, // Pass incoming list
+                      outgoingMaterials, // Pass outgoing list
+                      currentActionName, // Pass action name
                       isManufacturing,
                       isManufacturing ? values.manufacturing : undefined
                     );
-                    
+
                     if (!isValid) {
                       setShowIncompleteModal(true);
                       return;
@@ -734,9 +767,9 @@ const NewActionScreen = () => {
                   };
 
                   // Update the submit button disabled state
-                  const isSubmitDisabled = !canSubmit || 
-                    isSubmitting || 
-                    !hasAnyMaterials(values) || 
+                  const isSubmitDisabled = !canSubmit ||
+                    isSubmitting ||
+                    !hasAnyMaterials(values) ||
                     (currentAction?.name === "Manufacturing" && !isManufacturingFormValid(values));
 
                   return (
