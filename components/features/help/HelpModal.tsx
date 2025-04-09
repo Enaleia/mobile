@@ -65,7 +65,7 @@ export const HelpModal: React.FC<HelpModalProps> = ({
           }}
         >
           {/* Icons Section */}
-          <View className="flex-row justify-between px-4 py-2">
+          <View className="flex-row justify-center gap-8 px-4 py-2">
             {categories?.map((category, index) => (
               <View key={index} className="items-center">
                 {category.icon}

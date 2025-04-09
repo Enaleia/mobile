@@ -136,9 +136,23 @@ export const Modal: React.FC<ModalProps> = ({
             borderBottomRightRadius: 0,
             transform: [{ translateY: translateY }],
           }}
-          {...panResponder.panHandlers}
         >
-          {children}
+          {/* Content container with gesture handler at the top */}
+          <View className="flex-1">
+            {/* Gesture handler container - covers header and handle area */}
+            <View 
+              style={{ 
+                height: 80, // Height to cover header + handle
+                position: 'absolute',
+                top: 0,
+                left: 0,
+                right: 0,
+                zIndex: 1,
+              }}
+              {...panResponder.panHandlers}
+            />
+            {children}
+          </View>
         </Animated.View>
       </Animated.View>
     </RNModal>

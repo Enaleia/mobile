@@ -81,7 +81,7 @@ export const BatchHelpModal: React.FC<BatchHelpModalProps> = ({
           name: "Batch",
           icon: <Image 
             source={require('../../../assets/images/action-icons/Batch.webp')}
-            className="w-14 h-14 mb-1"
+            className="w-14 h-14 mb-1 self-center"
             resizeMode="contain"
           />
         }
