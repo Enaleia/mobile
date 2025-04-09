@@ -1,5 +1,5 @@
 import React from "react";
-import { TextInput, Text, View, Pressable, Platform } from "react-native";
+import { TextInput, Text, View, Pressable, Platform, Alert } from "react-native";
 import { FieldApi } from "@tanstack/react-form";
 
 interface DecimalInputProps {
@@ -27,8 +27,6 @@ export default function DecimalInput({
 
   // Sync localValue when the external field value changes
   React.useEffect(() => {
-    // Only update if the external value is different from the local raw value
-    // to avoid disrupting typing. Check for both number and string representations.
     const fieldValueStr = field.state.value?.toString() ?? "";
     if (field.state.value !== parseFloat(localValue) && fieldValueStr !== localValue) {
        setLocalValue(fieldValueStr);
@@ -39,7 +37,7 @@ export default function DecimalInput({
   const inputMode = Platform.select<"numeric" | "decimal">({
     android: "numeric",
     ios: allowDecimals ? "decimal" : "numeric",
-    default: allowDecimals ? "decimal" : "numeric", // fallback for web or other platforms
+    default: allowDecimals ? "decimal" : "numeric",
   });
 
   return (
@@ -52,41 +50,77 @@ export default function DecimalInput({
           <TextInput
             value={localValue}
             onChangeText={(text) => {
-              // Allow digits and potentially a single decimal point
-              const cleanedValue = text.replace(/[^0-9.]/g, "");
+              // For weight per item (allowDecimals=true)
+              if (allowDecimals) {
+                // Convert commas to periods
+                const normalizedText = text.replace(/,/g, ".");
+                // Allow digits and a single decimal point
+                const cleanedValue = normalizedText.replace(/[^0-9.]/g, "");
+                
+                // Prevent multiple decimal points
+                if ((cleanedValue.match(/\./g) || []).length > 1) {
+                  return;
+                }
 
-              // Prevent multiple decimal points
-              if ((cleanedValue.match(/\./g) || []).length > 1) {
-                return; // Don't update if more than one decimal point
+                // Validate format
+                if (cleanedValue && !/^\d*\.?\d*$/.test(cleanedValue)) {
+                  Alert.alert(
+                    "Invalid Input",
+                    "Warning: Weight per item only accept numbers with optional decimal. Please review your input."
+                  );
+                  return;
+                }
+
+                setLocalValue(cleanedValue);
+              } 
+              // For other weight fields and batch quantity (allowDecimals=false)
+              else {
+                // Allow digits and a single decimal point
+                const cleanedValue = text.replace(/[^0-9.]/g, "");
+                
+                // Prevent multiple decimal points
+                if ((cleanedValue.match(/\./g) || []).length > 1) {
+                  return;
+                }
+
+                // Validate format
+                if (cleanedValue && !/^\d*\.?\d*$/.test(cleanedValue)) {
+                  Alert.alert(
+                    "Invalid Input",
+                    "This field only accept numbers, please review your input."
+                  );
+                  return;
+                }
+
+                // Check if the value exceeds 16-bit (65535)
+                if (cleanedValue && parseFloat(cleanedValue) > 65535) {
+                  Alert.alert(
+                    "Invalid Input",
+                    "Warning: Value cannot be above 65536, please review your input."
+                  );
+                  return;
+                }
+
+                setLocalValue(cleanedValue);
               }
-
-              // Update the local state with the cleaned value
-              // Allows intermediate states like "7." or ".5"
-              setLocalValue(cleanedValue);
             }}
             onBlur={() => {
-              field.handleBlur(); // Notify form lib that field lost focus
+              field.handleBlur();
 
               let finalValue: number | undefined = undefined;
 
-              // Try parsing the localValue
               if (localValue && localValue !== ".") {
                 const numericValue = parseFloat(localValue);
                 if (!isNaN(numericValue)) {
-                  // Process the value based on allowDecimals
                   if (allowDecimals) {
-                    finalValue = numericValue; // Keep decimals
+                    finalValue = numericValue;
                   } else {
-                    finalValue = Math.round(numericValue); // Round if not allowed
+                    finalValue = Math.round(numericValue);
                   }
                 }
               }
 
-              // Update the actual form state via field.handleChange
               field.handleChange(finalValue);
-
-              // Optional: Sync localValue back? Let's not for now.
-              // If the field value updates externally, useEffect will handle it.
             }}
             className="flex-1 h-[32px] py-0 font-dm-bold tracking-tighter text-enaleia-black text-xl"
             placeholder={placeholder}

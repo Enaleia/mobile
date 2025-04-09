@@ -222,6 +222,17 @@ const QRTextInput = forwardRef<QRTextInputRef, QRTextInputProps>(
               ref={inputRef}
               value={value}
               onChangeText={(text) => {
+                // For collector ID field (variant === "standalone")
+                if (variant === "standalone") {
+                  // Check for special characters
+                  if (/[^a-zA-Z0-9]/.test(text)) {
+                    Alert.alert(
+                      "Invalid Input",
+                      "Warning: Collector ID Field does not accept special characters, Please review your input."
+                    );
+                    return;
+                  }
+                }
                 onChangeText(text);
               }}
               autoCapitalize="characters"

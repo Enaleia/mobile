@@ -435,15 +435,28 @@ const MaterialSection = ({
                         className="flex-1 h-[28px] py-0 font-dm-bold tracking-tighter text-enaleia-black text-xl text-left"
                         onChangeText={(text) => {
                           if (disabled) return;
-                          // Clean input (only digits since it's number-pad)
-                          const cleanedValue = text.replace(/[^0-9]/g, "");
+                          // Allow digits and a single decimal point
+                          const cleanedValue = text.replace(/[^0-9.]/g, "");
                           
-                          // Check if the value exceeds 16-bit (65535)
-                          if (cleanedValue && parseInt(cleanedValue, 10) > 65535) {
+                          // Prevent multiple decimal points
+                          if ((cleanedValue.match(/\./g) || []).length > 1) {
+                            return;
+                          }
+
+                          // Validate format
+                          if (cleanedValue && !/^\d*\.?\d*$/.test(cleanedValue)) {
                             Alert.alert(
                               "Invalid Input",
-                              "Warning: Weight cannot be above 65536, please review your input.",
-                              [{ text: "OK" }]
+                              "This field only accept numbers, please review your input."
+                            );
+                            return;
+                          }
+
+                          // Check if the value exceeds 16-bit (65535)
+                          if (cleanedValue && parseFloat(cleanedValue) > 65535) {
+                            Alert.alert(
+                              "Invalid Input",
+                              "Warning: Weight cannot be above 65536, please review your input."
                             );
                             return;
                           }
@@ -454,13 +467,12 @@ const MaterialSection = ({
                           // Also parse and update the main state immediately
                           let finalWeight: number | null = null;
                           if (cleanedValue) {
-                              const parsedValue = parseInt(cleanedValue, 10);
+                              const parsedValue = parseFloat(cleanedValue);
                               if (!isNaN(parsedValue)) {
                                 finalWeight = parsedValue;
                               }
                           }
                           
-                          // Avoid unnecessary state updates if value hasn't effectively changed
                           if (selectedMaterials[index]?.weight !== finalWeight) {
                               const newMaterials = [...selectedMaterials];
                               if (newMaterials[index]) {
@@ -469,8 +481,24 @@ const MaterialSection = ({
                                     weight: finalWeight,
                                   };
                                   setSelectedMaterials(newMaterials);
-                                  console.log(`[MaterialSection] Updated weight in main state for index ${index} onChange`);
                               }
+                          }
+                        }}
+                        onBlur={() => {
+                          // Round the value when the field loses focus
+                          const currentValue = localWeightValues[index];
+                          if (currentValue) {
+                            const roundedValue = Math.round(parseFloat(currentValue));
+                            setLocalWeightValues(prev => ({ ...prev, [index]: roundedValue.toString() }));
+                            
+                            const newMaterials = [...selectedMaterials];
+                            if (newMaterials[index]) {
+                              newMaterials[index] = {
+                                ...newMaterials[index],
+                                weight: roundedValue,
+                              };
+                              setSelectedMaterials(newMaterials);
+                            }
                           }
                         }}
                         keyboardType="number-pad"
