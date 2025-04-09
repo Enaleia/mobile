@@ -1,3 +1,4 @@
+import React from 'react';
 import { IncompleteAttestationModal } from "@/components/features/attest/IncompleteAttestationModal";
 import { LeaveAttestationModal } from "@/components/features/attest/LeaveAttestationModal";
 import MaterialSection from "@/components/features/attest/MaterialSection";
@@ -207,6 +208,10 @@ const NewActionScreen = () => {
         quantity: undefined,
         weightInKg: undefined,
       },
+    },
+    onChange: ({ value }) => {
+      // This will help track form changes
+      return value;
     },
     onSubmit: async ({ value }) => {
       setHasAttemptedSubmit(true);
@@ -500,27 +505,37 @@ const NewActionScreen = () => {
         </View>
         <View className="flex-row items-center justify-between pb-4">
           <form.Subscribe selector={(state) => state.values}>
-            {(values) => (
-              <Pressable
-                onPress={() => {
-                  if (hasAnyMaterials(values)) {
-                    setShowLeaveModal(true);
-                  } else {
-                    if (saveTimeoutRef?.current) {
-                      clearTimeout(saveTimeoutRef.current);
+            {(values) => {
+              const hasChanges = 
+                values.incomingMaterials?.length > 0 ||
+                values.outgoingMaterials?.length > 0 ||
+                values.collectorId !== "" ||
+                values.manufacturing?.product !== undefined ||
+                values.manufacturing?.quantity !== undefined ||
+                values.manufacturing?.weightInKg !== undefined;
+              
+              return (
+                <Pressable
+                  onPress={() => {
+                    if (hasChanges) {
+                      setShowLeaveModal(true);
+                    } else {
+                      if (saveTimeoutRef?.current) {
+                        clearTimeout(saveTimeoutRef.current);
+                      }
+                      deleteFormState();
+                      router.back();
                     }
-                    deleteFormState();
-                    router.back();
-                  }
-                }}
-                className="flex-row items-center space-x-1"
-              >
-                <Ionicons name="chevron-back" size={24} color={isSubmitting ? "#8E8E93" : "#0D0D0D"} />
-                <Text className={`text-base font-dm-regular tracking-tighter ${isSubmitting ? 'text-grey-6' : 'text-enaleia-black'}`}>
-                  Home
-                </Text>
-              </Pressable>
-            )}
+                  }}
+                  className="flex-row items-center space-x-1"
+                >
+                  <Ionicons name="chevron-back" size={24} color={isSubmitting ? "#8E8E93" : "#0D0D0D"} />
+                  <Text className={`text-base font-dm-regular tracking-tighter ${isSubmitting ? 'text-grey-6' : 'text-enaleia-black'}`}>
+                    Home
+                  </Text>
+                </Pressable>
+              );
+            }}
           </form.Subscribe>
 
           <Pressable onPress={() => setIsTypeInformationModalVisible(true)}>

@@ -156,3 +156,12 @@ docs/pages/versions/*/react-native/*.diff
 
 # Pods
 /ios/Pods
+
+# Environment files
+.env
+.env.development
+.env.preview
+.env.production
+.env.local
+.env.*.local
+.cursorignore

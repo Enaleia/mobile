@@ -35,7 +35,7 @@ const SelectMaterialChip = React.memo(
       <Pressable
         accessibilityLabel={`Select ${label}`}
         accessibilityRole="button"
-        accessibilityHint={`Double tap to select ${label} material`}
+        accessibilityHint={`Tap to select ${label} material`}
         className="bg-white w-full px-4 py-3 rounded-3xl flex flex-row items-center justify-center border-[1.5px] border-grey-3"
         onPress={handlePress}
       >
@@ -305,8 +305,8 @@ const styles = StyleSheet.create({
   },
   contentContainer: {
     backgroundColor: 'white',
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
+    borderTopLeftRadius: 32,
+    borderTopRightRadius: 32,
     marginTop: 'auto',
     height: '90%',
     maxHeight: '90%',

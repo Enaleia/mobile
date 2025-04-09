@@ -27,13 +27,13 @@ export const LeaveAttestationModal = ({
           className="text-3xl font-dm-bold text-enaleia-black tracking-[-0.5px] mb-3 text-center"
           accessibilityRole="header"
         >
-          Going back to home page?
+          Leaving?
         </Text>
         <Text
           className="text-base font-dm-regular text-enaleia-black mb-6 tracking-tight text-center"
           accessibilityRole="text"
         >
-          You have unsaved changes. Doing so means you will loose all your currently entered data.
+          You have unsaved changes. Leaving this page will discard all the information you’ve entered so far.
         </Text>
         <View className="flex-row items-center gap-2">     
           <Pressable

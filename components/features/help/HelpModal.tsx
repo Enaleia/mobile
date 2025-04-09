@@ -52,7 +52,7 @@ export const HelpModal: React.FC<HelpModalProps> = ({
         }} />
         
         {/* Header */}
-        <View className="px-5 pt-3 pb-5 flex-row justify-center items-center">
+        <View className="px-5 pt-2 pb-2 flex-row justify-center items-center">
           <Text className="text-3xl font-dm-bold text-enaleia-black text-center w-full">
             {title}
           </Text>
