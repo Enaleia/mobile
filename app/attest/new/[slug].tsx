@@ -39,6 +39,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
   AppState,
+  BackHandler,
   GestureResponderEvent,
   Image,
   Keyboard,
@@ -307,6 +308,7 @@ const NewActionScreen = () => {
     }
   }, [locationData]);
 
+  // Reinstate useEffect to disable iOS swipe gesture
   useEffect(() => {
     const unsubscribe = navigation.addListener("focus", () => {
       navigation.setOptions({
@@ -316,6 +318,20 @@ const NewActionScreen = () => {
 
     return unsubscribe;
   }, [navigation]);
+
+  // Add effect to disable Android hardware back button
+  useEffect(() => {
+    const backHandlerSubscription = BackHandler.addEventListener(
+      'hardwareBackPress',
+      () => {
+        // Returning true prevents the default back button action
+        return true;
+      }
+    );
+
+    // Clean up the subscription when the component unmounts
+    return () => backHandlerSubscription.remove();
+  }, []); // Empty dependency array ensures this runs only on mount and unmount
 
   // Remove the auto-save effect to prevent race conditions
   useEffect(() => {
@@ -349,6 +365,23 @@ const NewActionScreen = () => {
       }
     };
   }, [navigation]);
+
+  const hasAnyMaterials = (values: EventFormType | boolean | null | undefined) => {
+    // Initial check for invalid input types (related to linter errors)
+    if (!values || typeof values === 'boolean') return false; // Restored check
+
+    const incomingMaterials = values.incomingMaterials || [];
+    const outgoingMaterials = values.outgoingMaterials || [];
+
+    // Logic for all actions (including Manufacturing): check if any materials are present
+    return incomingMaterials.length > 0 || outgoingMaterials.length > 0;
+  };
+
+  // Add validation for manufacturing form
+  const isManufacturingFormValid = (values: EventFormType | boolean | null | undefined): boolean => {
+    if (!values || typeof values === 'boolean') return false; // Restored check
+    return Boolean(values.manufacturing?.product && values.manufacturing.product > 0);
+  };
 
   if (!actionsData?.length) return null;
   if (!currentAction) {
@@ -429,23 +462,6 @@ const NewActionScreen = () => {
       console.error("Error in addItemToQueue:", error);
       throw error;
     }
-  };
-
-  const hasAnyMaterials = (values: EventFormType | boolean | null | undefined) => {
-    // Initial check for invalid input types (related to linter errors)
-    if (!values || typeof values === 'boolean') return false;
-
-    const incomingMaterials = values.incomingMaterials || [];
-    const outgoingMaterials = values.outgoingMaterials || [];
-
-    // Logic for all actions (including Manufacturing): check if any materials are present
-    return incomingMaterials.length > 0 || outgoingMaterials.length > 0;
-  };
-
-  // Add validation for manufacturing form
-  const isManufacturingFormValid = (values: EventFormType | boolean | null | undefined): boolean => {
-    if (!values || typeof values === 'boolean') return false;
-    return Boolean(values.manufacturing?.product && values.manufacturing.product > 0);
   };
 
   const handleProceedWithSubmission = async () => {
@@ -721,10 +737,16 @@ const NewActionScreen = () => {
                 selector={(state) => [
                   state.canSubmit,
                   state.isSubmitting,
-                  state.values as EventFormType,
+                  state.values,
                 ]}
               >
                 {([canSubmit, isSubmitting, values]) => {
+                  // Type guard to ensure values is the correct shape before proceeding
+                  if (typeof values !== 'object' || values === null || Array.isArray(values)) {
+                    // Render nothing or a placeholder if values is not the expected object
+                    return null; 
+                  }
+
                   const handleSubmitClick = (e: GestureResponderEvent) => {
                     // Prevent submission if button is disabled
                     if (isSubmitDisabled) return;
@@ -767,10 +789,14 @@ const NewActionScreen = () => {
                   };
 
                   // Update the submit button disabled state
+                  const isValidValuesObject = typeof values === 'object' && values !== null && !Array.isArray(values);
+                  const hasMaterials = isValidValuesObject && hasAnyMaterials(values);
+                  const isMfgFormValid = isValidValuesObject && isManufacturingFormValid(values);
+
                   const isSubmitDisabled = !canSubmit ||
                     isSubmitting ||
-                    !hasAnyMaterials(values) ||
-                    (currentAction?.name === "Manufacturing" && !isManufacturingFormValid(values));
+                    !hasMaterials ||
+                    (currentAction?.name === "Manufacturing" && !isMfgFormValid);
 
                   return (
                     <>

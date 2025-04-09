@@ -26,8 +26,10 @@ export interface ServiceState {
 
 export interface QueueItem {
   localId: string;
-  date: string;
   actionId: number;
+  actionName: string;
+  type: string;
+  date: string;
   collectorId?: string;
   location?: {
     coords: {
@@ -36,7 +38,7 @@ export interface QueueItem {
     };
   };
   manufacturing?: {
-    product?: string;
+    product?: number;
     quantity?: number;
     weightInKg?: number;
   };
@@ -53,6 +55,7 @@ export interface QueueItem {
     error?: string;
     eventId?: number;
     linked?: boolean;
+    company?: number;
   };
   eas?: {
     status: ServiceStatus;
@@ -63,6 +66,7 @@ export interface QueueItem {
     status: ServiceStatus;
     error?: string;
   };
+  company?: number;
 }
 
 export function shouldAutoRetry(item: QueueItem): boolean {
