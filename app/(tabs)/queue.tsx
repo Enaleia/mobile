@@ -12,6 +12,7 @@ import { Image, ScrollView, Text, View, Pressable, Linking, Alert } from "react-
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { getCompletedQueueCacheKey } from "@/utils/storage";
 import { getCompletedQueue } from "@/utils/queueStorage";
+import { Ionicons } from "@expo/vector-icons";
 
 const QueueScreen = () => {
   const { queueItems, loadQueueItems, retryItems, refreshQueueStatus } = useQueue();
@@ -136,16 +137,23 @@ const QueueScreen = () => {
 
         <View className="flex-1">
           {hasNoItems ? (
-            <View className="items-center justify-center">
-              <Image
-                source={require("@/assets/images/animals/CrabBubble.png")}
-                className="w-[294px] h-[250px] mt-4 self-center"
-                accessibilityLabel="Decorative crab illustration"
-                accessibilityRole="image"
-              />
-              <Text className="text-base text-center mt-1 font-regular">
-                There are no items here...
-              </Text>
+            <View className="flex-1 items-center justify-top px-4">
+              <View className="w-auto items-center py-4 px-12 rounded-2xl bg-white mt-12 border border-grey-3">
+                <View className="flex-row items-center">
+                  <View className="flex-col items-center mr-2">
+                    <View className="items-center justify-center">
+                      <Ionicons 
+                        name="checkmark-circle" 
+                        size={24} 
+                        color="#059669"
+                      />
+                    </View>
+                  </View>
+                  <Text className="text-base font-dm-regular text-enaleia-black">
+                    Your queue is empty
+                  </Text>
+                </View>
+              </View>
             </View>
           ) : (
             <View className="py-4">
@@ -173,6 +181,14 @@ const QueueScreen = () => {
               />
             </View>
           )}
+        </View>
+        <View className="absolute bottom-32 left-0 right-0 items-center bg-white-sand opacity-60">
+          <Image
+            source={require("@/assets/images/animals/CrabBubble.png")}
+            className="w-[294px] h-[250px]"
+            accessibilityLabel="Decorative crab illustration"
+            accessibilityRole="image"
+          />
         </View>
       </ScrollView>
     </SafeAreaContent>

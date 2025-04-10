@@ -2,7 +2,7 @@ import { router } from "expo-router";
 import { Image, ImageSourcePropType, Pressable, Text } from "react-native";
 import { useState } from "react";
 
-const buttonClassName = "items-center justify-center px-4 rounded-[19px] h-[138px]";
+const buttonClassName = "items-center justify-center px-4 rounded-[24px] h-[138px]";
 
 const buttonClasses = `w-[49%] mb-2 active:opacity-70 transition-opacity duration-200 active:scale-95 ease-out ${buttonClassName}`;
 const bannerClasses = `w-full ${buttonClassName}`;
@@ -36,7 +36,7 @@ const ActionButton = ({
         onLoad={() => setIsIconLoaded(true)}
       />
       {isIconLoaded && (
-        <Text className="pt-1 text-sm font-dm-regular tracking-[-0.25px] text-enaleia-black text-center w-full">
+        <Text className="pt-1 text-sm font-dm-medium tracking-[-0.25px] text-enaleia-black text-center w-full">
           {name}
         </Text>
       )}

@@ -34,9 +34,9 @@ export default function ActionSelection({
         >
           <Pressable
             onPress={() => toggleSection(category)}
-            className="flex-row items-center justify-between mb-3"
+            className="flex-row items-center justify-between mb-4" 
           >
-            <Text className="text-[18px] font-dm-bold text-enaleia-black tracking-tight">
+            <Text className="text-[18px] font-dm-medium text-enaleia-black tracking-tight">
               {category}
             </Text>
             <Ionicons
