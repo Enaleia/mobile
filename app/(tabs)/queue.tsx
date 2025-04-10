@@ -154,6 +154,14 @@ const QueueScreen = () => {
                   </Text>
                 </View>
               </View>
+              <View className="absolute bottom-20 left-0 right-0 items-center">
+                <Image
+                  source={require("@/assets/images/animals/CrabBubble.png")}
+                  className="w-[294px] h-[250px]"
+                  accessibilityLabel="Decorative crab illustration"
+                  accessibilityRole="image"
+                />
+              </View>
             </View>
           ) : (
             <View className="py-4">
@@ -181,14 +189,6 @@ const QueueScreen = () => {
               />
             </View>
           )}
-        </View>
-        <View className="absolute bottom-32 left-0 right-0 items-center bg-white-sand opacity-60">
-          <Image
-            source={require("@/assets/images/animals/CrabBubble.png")}
-            className="w-[294px] h-[250px]"
-            accessibilityLabel="Decorative crab illustration"
-            accessibilityRole="image"
-          />
         </View>
       </ScrollView>
     </SafeAreaContent>
