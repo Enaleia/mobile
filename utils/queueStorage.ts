@@ -9,6 +9,8 @@ interface CompletedQueueItem extends QueueItem {
   completedAt: string; // ISO string
 }
 
+const RESCUED_ITEMS_KEY = 'RESCUED_ITEMS';
+
 export async function clearOldCache(): Promise<void> {
   const oldKey = process.env.EXPO_PUBLIC_QUEUE_CACHE_KEY;
   if (oldKey) {
@@ -17,15 +19,57 @@ export async function clearOldCache(): Promise<void> {
 }
 
 export async function getActiveQueue(): Promise<QueueItem[]> {
-  const key = getActiveQueueCacheKey();
-  const data = await AsyncStorage.getItem(key);
-  return data ? JSON.parse(data) : [];
+  try {
+    const queueData = await AsyncStorage.getItem(getActiveQueueCacheKey());
+    if (!queueData) {
+      return [];
+    }
+    const parsedData = JSON.parse(queueData);
+    // Ensure we have a valid array of queue items
+    if (!Array.isArray(parsedData)) {
+      console.warn('Invalid queue data format, resetting to empty array');
+      await AsyncStorage.setItem(getActiveQueueCacheKey(), JSON.stringify([]));
+      return [];
+    }
+    // Filter out any invalid items
+    return parsedData.filter((item): item is QueueItem => 
+      item && 
+      typeof item === 'object' && 
+      typeof item.localId === 'string' &&
+      typeof item.status === 'string'
+    );
+  } catch (error) {
+    console.error('Error getting active queue:', error);
+    return [];
+  }
 }
 
-export async function getCompletedQueue(): Promise<CompletedQueueItem[]> {
-  const key = getCompletedQueueCacheKey();
-  const data = await AsyncStorage.getItem(key);
-  return data ? JSON.parse(data) : [];
+export async function getCompletedQueue(): Promise<QueueItem[]> {
+  try {
+    const queueData = await AsyncStorage.getItem(getCompletedQueueCacheKey());
+    if (!queueData) {
+      return [];
+    }
+    const parsedData = JSON.parse(queueData);
+    // Ensure we have a valid array of queue items
+    if (!Array.isArray(parsedData)) {
+      console.warn('Invalid completed queue data format, resetting to empty array');
+      await AsyncStorage.setItem(getCompletedQueueCacheKey(), JSON.stringify([]));
+      return [];
+    }
+    // Filter out any invalid items and sort by date in descending order
+    return parsedData
+      .filter((item): item is QueueItem => 
+        item && 
+        typeof item === 'object' && 
+        typeof item.localId === 'string' &&
+        typeof item.status === 'string'
+      )
+      .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+  } catch (error) {
+    console.error('Error getting completed queue:', error);
+    return [];
+  }
 }
 
 export async function updateActiveQueue(items: QueueItem[]): Promise<void> {
@@ -45,20 +89,6 @@ export async function addToCompletedQueue(item: QueueItem): Promise<void> {
   await AsyncStorage.setItem(key, JSON.stringify(completed));
 }
 
-export async function cleanupExpiredItems(): Promise<void> {
-  const key = getCompletedQueueCacheKey();
-  const completed = await getCompletedQueue();
-  const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
-
-  const validItems = completed.filter(
-    (item) => new Date(item.completedAt) > thirtyDaysAgo
-  );
-
-  if (validItems.length !== completed.length) {
-    await AsyncStorage.setItem(key, JSON.stringify(validItems));
-  }
-}
-
 export async function removeFromActiveQueue(localId: string): Promise<void> {
   const active = await getActiveQueue();
   const filtered = active.filter((item) => item.localId !== localId);
@@ -75,6 +105,38 @@ export async function removeFromAllQueues(localId: string): Promise<void> {
   const completed = await getCompletedQueue();
   const filteredCompleted = completed.filter((item) => item.localId !== localId);
   await AsyncStorage.setItem(getCompletedQueueCacheKey(), JSON.stringify(filteredCompleted));
+}
+
+export async function markItemAsRescued(localId: string): Promise<void> {
+  try {
+    const rescuedItems = await getRescuedItems();
+    if (!rescuedItems.includes(localId)) {
+      rescuedItems.push(localId);
+      await AsyncStorage.setItem(RESCUED_ITEMS_KEY, JSON.stringify(rescuedItems));
+    }
+  } catch (error) {
+    console.error('Error marking item as rescued:', error);
+  }
+}
+
+export async function getRescuedItems(): Promise<string[]> {
+  try {
+    const data = await AsyncStorage.getItem(RESCUED_ITEMS_KEY);
+    return data ? JSON.parse(data) : [];
+  } catch (error) {
+    console.error('Error getting rescued items:', error);
+    return [];
+  }
+}
+
+export async function removeFromRescuedItems(localId: string): Promise<void> {
+  try {
+    const rescuedItems = await getRescuedItems();
+    const updatedItems = rescuedItems.filter(id => id !== localId);
+    await AsyncStorage.setItem(RESCUED_ITEMS_KEY, JSON.stringify(updatedItems));
+  } catch (error) {
+    console.error('Error removing from rescued items:', error);
+  }
 }
 
 export type { CompletedQueueItem };

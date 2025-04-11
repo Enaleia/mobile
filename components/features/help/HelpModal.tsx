@@ -40,19 +40,22 @@ export const HelpModal: React.FC<HelpModalProps> = ({
       className="m-0 mt-auto bg-transparent rounded-t-[32px] overflow-hidden"
     >
       <View className="flex-1 bg-white rounded-t-[32px] overflow-hidden">
+        {/* Swipe Handle */}
+        <View style={{
+          alignSelf: 'center',
+          width: 36,
+          height: 5,
+          borderRadius: 3,
+          backgroundColor: '#DDDDDD',
+          marginTop: 16,
+          marginBottom: 4,
+        }} />
+        
         {/* Header */}
-        <View className="px-5 pt-7 pb-5 flex-row justify-between items-center">
-          <Text className="text-3xl font-dm-bold text-enaleia-black">
+        <View className="px-5 pt-2 pb-2 flex-row justify-center items-center">
+          <Text className="text-3xl font-dm-bold text-enaleia-black text-center w-full">
             {title}
           </Text>
-          <Pressable
-            onPress={onClose}
-            className="w-12 h-12 items-center justify-center rounded-full"
-            accessibilityLabel="Close help modal"
-            accessibilityHint="Closes the help information modal"
-          >
-            <Icon name="close" size={24} color="#0D0D0D" />
-          </Pressable>
         </View>
 
         <ScrollView 
@@ -62,7 +65,7 @@ export const HelpModal: React.FC<HelpModalProps> = ({
           }}
         >
           {/* Icons Section */}
-          <View className="flex-row justify-between px-4 py-2">
+          <View className="flex-row justify-center gap-8 px-4 py-2">
             {categories?.map((category, index) => (
               <View key={index} className="items-center">
                 {category.icon}

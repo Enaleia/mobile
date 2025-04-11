@@ -1,36 +1,46 @@
 import { EnaleiaEASSchema } from "@/types/enaleia";
 import { EAS } from "eas-lib";
+import { getEnvironment } from "@/utils/environment";
+
+type Environment = "development" | "production" | "preview";
 
 export const EAS_CONSTANTS = {
   SCHEMA:
     "string userID, string portOrCompanyName, string[] portOrCompanyCoordinates, string actionType, string actionDate, string[] actionCoordinates, string collectorName, string[] incomingMaterials, uint16[] incomingWeightsKg, string[] incomingCodes, string[] outgoingMaterials, uint16[] outgoingWeightsKg, string[] outgoingCodes, string productName, uint16 batchQuantity, string weightPerItemKg",
-  SCHEMA_UID:
-    "0xe087bb7707db4d063a9704af8e00f91715d1abd73d5ae3d63ee5ac1063604421",
-  PROVIDER_URLS: {
-    sepolia: process.env.EXPO_PUBLIC_EAS_SEPOLIA_PROVIDER_URL,
-    optimism: process.env.EXPO_PUBLIC_EAS_OPTIMISM_PROVIDER_URL,
-  },
-  SCAN_URLS: {
-    sepolia: "https://optimism-sepolia.easscan.org",
-    optimism: "https://optimism.easscan.org",
+  SCHEMA_UID: (() => {
+    const schemaUid = process.env.EXPO_PUBLIC_EAS_SCHEMA_UID;
+    if (!schemaUid) {
+      throw new Error('EAS Schema UID not found in environment variables');
+    }
+    return schemaUid;
+  })(),
+  getNetworkConfig: () => {
+    try {
+      const providerUrl = process.env.EXPO_PUBLIC_NETWORK_PROVIDER;
+      const scanUrl = process.env.EXPO_PUBLIC_NETWORK_SCAN;
+      
+      if (!providerUrl) {
+        throw new Error('Network provider URL not found in environment variables');
+      }
+      if (!scanUrl) {
+        throw new Error('Network scan URL not found in environment variables');
+      }
+      
+      return { providerUrl, scanUrl };
+    } catch (error) {
+      console.error('[EAS] Error getting network config:', error);
+      throw new Error('Network configuration not available');
+    }
   },
   MINIMUM_BALANCE: 0.0005,
-  getNetworkFromProviderUrl: (url: string): "sepolia" | "optimism" => {
-    return (
-      (Object.entries(EAS_CONSTANTS.PROVIDER_URLS).find(
-        ([_, providerUrl]) => providerUrl === url
-      )?.[0] as "sepolia" | "optimism") || "sepolia"
-    );
+  getAttestationUrl: (uid: string) => {
+    const { scanUrl } = EAS_CONSTANTS.getNetworkConfig();
+    return `${scanUrl}/attestation/view/${uid}`;
   },
-  getAttestationUrl: (
-    uid: string,
-    network: "sepolia" | "optimism" = "sepolia"
-  ) => `${EAS_CONSTANTS.SCAN_URLS[network]}/attestation/view/${uid}`,
 };
 
 export type EASAttestationResult = {
   uid: string;
-  network: "sepolia" | "optimism";
 };
 
 export class EASAttestationError extends Error {
@@ -42,13 +52,14 @@ export class EASAttestationError extends Error {
 
 export class EASService {
   private eas: EAS | null = null;
-  private network: "sepolia" | "optimism";
 
-  constructor(providerUrl: string, privateKey: string) {
-    if (!providerUrl || !privateKey) {
+  constructor(privateKey: string) {
+    if (!privateKey) {
       throw new EASAttestationError("Missing wallet credentials");
     }
-    this.network = EAS_CONSTANTS.getNetworkFromProviderUrl(providerUrl);
+    
+    const { providerUrl } = EAS_CONSTANTS.getNetworkConfig();
+    
     this.eas = new EAS(
       providerUrl,
       privateKey,
@@ -68,13 +79,11 @@ export class EASService {
       if (!uid) {
         throw new EASAttestationError("No transaction hash returned", schema);
       }
-      console.log("Attestation successful", uid);
-      return { uid, network: this.network };
+      return { uid };
     } catch (error) {
       if (error instanceof EASAttestationError) {
         throw error;
       }
-      console.error("Attestation failed", error);
       throw new EASAttestationError(
         `Attestation failed: ${
           error instanceof Error ? error.message : "Unknown error"

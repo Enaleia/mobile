@@ -1,79 +1,118 @@
 import { useBatchData } from "@/hooks/data/useBatchData";
 import { EAS_CONSTANTS } from "@/services/eas";
 import { Action } from "@/types/action";
-import { QueueItem, QueueItemStatus, ServiceStatus } from "@/types/queue";
+import { QueueItem, QueueItemStatus, ServiceStatus, PROCESSING_TIMEOUT, LIST_RETRY_INTERVAL, MAX_RETRIES } from "@/types/queue";
 import { isProcessingItem } from "@/utils/queue";
 import { Ionicons } from "@expo/vector-icons";
-import { Linking, Pressable, Text, View } from "react-native";
-import ProcessingPill from "./ProcessingPill";
+import { Linking, Pressable, Text, View, StyleSheet } from "react-native";
 import { router } from "expo-router";
+import { ServiceStatusIndicator } from "./ServiceStatusIndicator";
+import QueueStatusIndicator from "./QueueStatusIndicator";
+import { useEffect, useState } from "react";
+import { useDevMode } from "@/contexts/DevModeContext";
 
-interface QueuedActionProps {
+interface QueueActionProps {
   item: QueueItem;
+  isLastItem?: boolean;
+  isProcessing?: boolean;
 }
 
-const ServiceStatusIndicator = ({
-  status,
-  type,
-  extraClasses,
-}: {
-  status: ServiceStatus;
-  type: "directus" | "eas";
-  extraClasses?: string;
-}) => {
-  const getStatusColor = () => {
-    switch (status) {
-      case ServiceStatus.COMPLETED:
-        return "#10b981"; // green-500
-      case ServiceStatus.FAILED:
-        return "#f43f5e"; // red-500
-      case ServiceStatus.PROCESSING:
-        return "#f59e0b"; // yellow-500
-      case ServiceStatus.OFFLINE:
-        return "#a3a3a3"; // gray-500
-      case ServiceStatus.PENDING:
-        return type === "eas" ? "#f43f5e" : "#a3a3a3"; // red-500 for blockchain pending, gray-400 for others
-    }
-  };
-
-  const getStatusIcon = () => {
-    switch (status) {
-      case ServiceStatus.COMPLETED:
-        return "checkmark-circle";
-      case ServiceStatus.FAILED:
-        return "alert-circle";
-      case ServiceStatus.PROCESSING:
-        return "sync";
-      case ServiceStatus.OFFLINE:
-        return "cloud-offline";
-      case ServiceStatus.PENDING:
-        return type === "eas" ? "close-circle" : "time"; // close-circle for blockchain pending, time for others
-    }
-  };
-
-  return (
-    <View className={`flex-row items-center gap-1 ${extraClasses}`}>
-      <Ionicons name={getStatusIcon()} size={16} color={getStatusColor()} />
-      <Text className="text-xs text-grey-6">
-        {type === "directus" ? "Database" : "Blockchain"}
-      </Text>
-    </View>
-  );
-};
-
-const QueuedAction = ({ item }: QueuedActionProps) => {
+const QueueAction = ({ item, isLastItem = false, isProcessing = false }: QueueActionProps) => {
   const { actions } = useBatchData();
+  const { showTimers } = useDevMode();
   const action = actions?.find((a: Action) => a.id === item.actionId);
-  const timestamp = item.lastAttempt || item.date;
+  const timestamp = item.date;
   const formattedTime = new Intl.DateTimeFormat("en-US", {
-    month: "short",
+    month: "long",
     day: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  }).format(new Date(timestamp));
+    hour: "numeric",
+    minute: "numeric",
+    hour12: true
+  }).format(new Date(timestamp))
+    .replace(/(\d+)(?=(,))/, (match) => {
+      const num = parseInt(match);
+      const suffix = ["th", "st", "nd", "rd"][(num % 10 > 3 || num % 100 - num % 10 == 10) ? 0 : num % 10];
+      return num + suffix;
+    });
+
+  // Progress bar state
+  const [progress, setProgress] = useState(0);
+  const [timeRemaining, setTimeRemaining] = useState<string>('');
+
+  useEffect(() => {
+    let intervalId: NodeJS.Timeout;
+
+    if (item.status === QueueItemStatus.PROCESSING && item.lastAttempt) {
+      const startTime = new Date(item.lastAttempt).getTime();
+      const updateProgress = () => {
+        const now = Date.now();
+        const elapsed = now - startTime;
+        const newProgress = Math.min((elapsed / PROCESSING_TIMEOUT) * 100, 100);
+        setProgress(newProgress);
+
+        // Calculate time remaining
+        const remaining = PROCESSING_TIMEOUT - elapsed;
+        if (remaining > 0) {
+          const seconds = Math.floor(remaining / 1000);
+          setTimeRemaining(`${seconds}s`);
+        } else {
+          setTimeRemaining('0s');
+        }
+      };
+
+      // Update immediately and then every second
+      updateProgress();
+      intervalId = setInterval(updateProgress, 1);
+    } else if (item.status === QueueItemStatus.COMPLETED) {
+      setProgress(100);
+      setTimeRemaining('');
+    } else {
+      setProgress(0);
+      setTimeRemaining('');
+    }
+
+    return () => {
+      if (intervalId) {
+        clearInterval(intervalId);
+      }
+    };
+  }, [item.status, item.lastAttempt]);
+
+  // const styles = StyleSheet.create({
+  //   retryInfo: {
+  //     marginTop: 8,
+  //   },
+  //   retryText: {
+  //     fontSize: 12,
+  //     color: "#666",
+  //     marginBottom: 4,
+  //   },
+  //   progressContainer: {
+  //     flexDirection: 'row',
+  //     alignItems: 'center',
+  //     gap: 8,
+  //     marginTop: 4,
+  //   },
+  //   progressBar: {
+  //     flex: 1,
+  //     height: 4,
+  //     backgroundColor: "#EEEAE7", // sand beige color
+  //     borderRadius: 2,
+  //     overflow: 'hidden',
+  //   },
+  //   progressFill: {
+  //     height: '100%',
+  //     backgroundColor: '#007AFF',
+  //   },
+  //   timerText: {
+  //     fontSize: 12,
+  //     color: '#666',
+  //     minWidth: 40,
+  //     textAlign: 'right',
+  //   },
+  // });
 
   if (!action) return null;
-  const isProcessing = isProcessingItem(item);
 
   return (
     <Pressable
@@ -81,75 +120,73 @@ const QueuedAction = ({ item }: QueuedActionProps) => {
         console.log("Navigating to queue detail with id:", item.localId);
         router.push(`/queue/${item.localId}`);
       }}
-      className="bg-white px-6 py-4 border-b border-gray-200 active:opacity-70"
+      className={`relative ${!isLastItem ? 'border-b border-grey-3' : ''}`}
     >
-      <View className="flex-row justify-between items-start">
-        <View className="flex-1 flex-col gap-1">
-          <Text
-            className="font-dm-bold text-base tracking-tight"
-            numberOfLines={1}
-          >
-            {action.name}
-          </Text>
-          <Text className="text-gray-600 text-sm">{formattedTime}</Text>
+      <View className="w-full bg-white">
+        <View className="p-5 flex-col gap-0.5">
+          {/* Title and Status Container */}
+          <View className="flex-row justify-between items-center">
+            <Text className="text-xl font-dm-bold text-enaleia-black" numberOfLines={1}>
+              {action.name}
+            </Text>
+            <QueueStatusIndicator status={item.status} item={item} />
+          </View>
 
-          {/* Service Status Indicators */}
-          <View className="flex-row space-x-3">
-            <ServiceStatusIndicator
-              status={item.directus?.status || ServiceStatus.PENDING}
-              type="directus"
-              extraClasses="mr-3"
-            />
-            <ServiceStatusIndicator
-              status={item.eas?.status || ServiceStatus.PENDING}
-              type="eas"
-            />
+          {/* Date and Retry Counter Container */}
+          <View className="flex-row justify-between items-center pb-2">
+            <Text className="text-sm font-dm-medium text-grey-8">
+              {formattedTime}
+            </Text>
+            {showTimers && (
+              <Text className="text-xs font-dm-medium text-grey-6">
+                {item.totalRetryCount || 0}/{MAX_RETRIES} Retry
+              </Text>
+            )}
+          </View>
+
+          {/* Service Status Section */}
+          <View className="flex-col">
+            <View className="flex flex-row items-left">
+              <ServiceStatusIndicator
+                status={item.directus?.status || ServiceStatus.INCOMPLETE}
+                type="directus"    
+                extraClasses="mr-2"           
+              />
+              <ServiceStatusIndicator
+                status={item.eas?.status || ServiceStatus.INCOMPLETE}
+                type="eas"
+                extraClasses="mr-2" 
+              />
+              <ServiceStatusIndicator
+                status={item.linking?.status || ServiceStatus.INCOMPLETE}
+                type="linking"
+              />
+            </View>
+
+            {/* Progress bar and timer */}
+            {item.status === QueueItemStatus.PROCESSING && (
+              <View className="flex-row items-center gap-2 mt-1">
+                <View className="flex-1 h-2 bg-sand-beige rounded-full overflow-hidden">
+                  <View
+                    className="h-full bg-blue-ocean"
+                    style={{
+                      width: `${progress}%`,
+                    }}
+                  />
+                </View>
+                {/* Only show processing time in dev mode */}
+                {showTimers && (
+                  <Text className="text-sm font-dm-medium text-gray-500">
+                    {timeRemaining}
+                  </Text>
+                )}
+              </View>
+            )}
           </View>
         </View>
-        {isProcessing && <ProcessingPill />}
       </View>
-
-      {/* Error Messages */}
-      {(item.directus?.error || item.eas?.error) &&
-        item.status !== QueueItemStatus.COMPLETED && (
-          <View className="mt-2">
-            {item.directus?.error && (
-              <Text className="text-grey-6 text-sm" numberOfLines={2}>
-                Database: {item.directus.error}
-              </Text>
-            )}
-            {item.eas?.error && (
-              <Text className="text-grey-6 text-sm" numberOfLines={2}>
-                Blockchain: {item.eas.error}
-              </Text>
-            )}
-          </View>
-        )}
-
-      {/* EAS Transaction Hash */}
-      {item.eas?.txHash && (
-        <Pressable
-          onPress={(e) => {
-            e.stopPropagation();
-            item.eas?.txHash &&
-              Linking.openURL(
-                EAS_CONSTANTS.getAttestationUrl(
-                  item.eas.txHash,
-                  item.eas.network || "sepolia"
-                )
-              );
-          }}
-        >
-          <Text
-            className="text-xs text-blue-500 underline mt-1"
-            numberOfLines={1}
-          >
-            See the attestation on ({item.eas.network || "sepolia"})
-          </Text>
-        </Pressable>
-      )}
     </Pressable>
   );
 };
 
-export default QueuedAction;
+export default QueueAction;

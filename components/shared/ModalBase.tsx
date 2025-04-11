@@ -64,21 +64,6 @@ export default function ModalBase({
             }}
           >
             {children}
-
-            {canClose && (
-              <Pressable
-                onPress={onClose}
-                className={`h-10 w-10 absolute right-2 ${
-                  isIOS ? "top-4" : "top-3"
-                }`}
-                accessibilityRole="button"
-                accessibilityLabel="Close modal"
-                accessibilityHint="Double tap to close this dialog"
-                hitSlop={{ top: 10, right: 10, bottom: 10, left: 10 }}
-              >
-                <Ionicons name="close" size={24} color="gray" />
-              </Pressable>
-            )}
           </View>
         </ScrollView>
       </KeyboardAvoidingView>

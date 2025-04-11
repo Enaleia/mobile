@@ -77,7 +77,7 @@ export function LocationEducationalModal({
           {LOCATION_POINTS.map((point) => (
             <View className="flex-row items-start space-x-3" key={point.title}>
               <View className="bg-green-50 rounded-full p-2 mt-1">
-                <Ionicons name={point.icon as any} size={20} color="#10B981" />
+                <Ionicons name={point.icon as any} size={20} color="#059669" />
               </View>
               <View className="flex-1">
                 <Text className="text-base font-dm-medium text-enaleia-black mb-1">

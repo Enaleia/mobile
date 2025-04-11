@@ -2,13 +2,16 @@
   "expo": {
     "name": "Enaleia",
     "slug": "enaleia",
-    "version": "0.0.9",
+    "version": "0.1.1",
     "newArchEnabled": true,
     "owner": "pollen-labs",
     "orientation": "portrait",
-    "icon": "./assets/images/adaptive-icon.png",
+    "icon": "./assets/images/splash-icon.png",
     "scheme": "myapp",
     "userInterfaceStyle": "light",
+    "runtimeVersion": {
+      "policy": "sdkVersion"
+    },
     "ios": {
       "jsEngine": "jsc",
       "supportsTablet": true,
@@ -16,14 +19,12 @@
       "infoPlist": {
         "UIViewControllerBasedStatusBarAppearance": false,
         "UIBackgroundModes": [
-          "remote-notification",
-          "remote-notification"
         ],
         "NSCameraUsageDescription": "The app need access to your camera to scan QR codes.",
         "ITSAppUsesNonExemptEncryption": false
       },
       "userInterfaceStyle": "light",
-      "icon": "./assets/images/ios-light.png"
+      "icon": "./assets/images/splash-icon.png"
     },
     "android": {
       "adaptiveIcon": {
@@ -34,8 +35,7 @@
         "android.permission.ACCESS_COARSE_LOCATION",
         "android.permission.ACCESS_FINE_LOCATION",
         "android.permission.CAMERA",
-        "android.permission.RECORD_AUDIO",
-        "android.permission.POST_NOTIFICATIONS"
+        "android.permission.RECORD_AUDIO"
       ],
       "package": "com.anonymous.enaleia",
       "userInterfaceStyle": "light"
@@ -64,17 +64,6 @@
       [
         "expo-camera",
         {
-          "cameraPermission": "Allow $(PRODUCT_NAME) to access your camera."
-        }
-      ],
-      [
-        "expo-notifications",
-        {
-          "icon": "./assets/images/splash-icon.png",
-          "color": "#24548b",
-          "sounds": [
-            "./assets/sounds/notification.wav"
-          ]
         }
       ],
       "expo-font",

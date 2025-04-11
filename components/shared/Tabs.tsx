@@ -60,11 +60,11 @@ function Tabs({ tabs, activeTab, onTabChange }: TabsProps) {
             </Text>
             {tab.count && tab.label !== "Recent" && (
               <View
-                className={`rounded-full min-w-[18px] h-[18px] flex items-center justify-center ${
+                className={`rounded-full min-w-[20px] h-[20px] flex items-center justify-center px-2 ${
                   activeTab === tab.value ? "bg-white/30" : "bg-[#24548b]"
                 }`}
               >
-                <Text className="text-[10px] text-white font-bold px-1">
+                <Text className="text-[10px] text-white font-bold">
                   {tab.count}
                 </Text>
               </View>

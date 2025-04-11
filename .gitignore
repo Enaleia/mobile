@@ -136,6 +136,9 @@ shellAppWorkspaces
 .env.development.local
 .env.test.local
 .env.production.local
+.env.development
+.env.production
+.env.preview
 apps/bare-expo/deploy-url.txt
 
 # Expo Doc merging
@@ -153,3 +156,12 @@ docs/pages/versions/*/react-native/*.diff
 
 # Pods
 /ios/Pods
+
+# Environment files
+.env
+.env.development
+.env.preview
+.env.production
+.env.local
+.env.*.local
+.cursorignore

@@ -5,6 +5,7 @@ import {
   Image,
   ActivityIndicator,
   Alert,
+  Linking,
 } from "react-native";
 import { useCurrentLocation } from "@/hooks/useCurrentLocation";
 import { Ionicons } from "@expo/vector-icons";
@@ -70,7 +71,7 @@ export function LocationPermissionRequest({
             },
             {
               text: "Open Settings",
-              onPress: () => Location.openSettings(),
+              onPress: () => Linking.openSettings(),
             },
           ]
         );
@@ -206,6 +207,7 @@ export function LocationPermissionRequest({
           onClose={() => setShowEducationalModal(false)}
           onRequestLocation={handleRequestPermission}
           onSkip={() => setShowEducationalModal(false)}
+          permissionStatus={permissionStatus}
         />
 
         <SavedLocationsSelector
@@ -250,7 +252,7 @@ export function LocationPermissionRequest({
             className="flex-row items-center space-x-2"
             accessibilityRole="text"
           >
-            <Ionicons name="checkmark-circle" size={20} color="#10B981" />
+            <Ionicons name="checkmark-circle" size={20} color="#059669" />
             <Text className="text-sm font-dm-regular text-gray-700">
               Verify event location accuracy
             </Text>
@@ -259,7 +261,7 @@ export function LocationPermissionRequest({
             className="flex-row items-center space-x-2"
             accessibilityRole="text"
           >
-            <Ionicons name="checkmark-circle" size={20} color="#10B981" />
+            <Ionicons name="checkmark-circle" size={20} color="#059669" />
             <Text className="text-sm font-dm-regular text-gray-700">
               Works offline with location caching
             </Text>
@@ -268,12 +270,12 @@ export function LocationPermissionRequest({
             className="flex-row items-center space-x-2"
             accessibilityRole="text"
           >
-            <Ionicons name="checkmark-circle" size={20} color="#10B981" />
+            <Ionicons name="checkmark-circle" size={20} color="#059669" />
             <Text className="text-sm font-dm-regular text-gray-700">
               Battery efficient location updates
             </Text>
           </View>
-        </View> */}
+        </View>
 
         <View className="flex-row space-x-2">
           <Pressable
@@ -319,6 +321,7 @@ export function LocationPermissionRequest({
         onClose={() => setShowEducationalModal(false)}
         onRequestLocation={handleRequestPermission}
         onSkip={() => setShowEducationalModal(false)}
+        permissionStatus={permissionStatus}
       />
 
       <SavedLocationsSelector

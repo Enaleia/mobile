@@ -1,7 +1,7 @@
+import React from 'react';
 import { IncompleteAttestationModal } from "@/components/features/attest/IncompleteAttestationModal";
 import { LeaveAttestationModal } from "@/components/features/attest/LeaveAttestationModal";
 import MaterialSection from "@/components/features/attest/MaterialSection";
-import { SentToQueueModal } from "@/components/features/attest/SentToQueueModal";
 import { SubmitConfirmationModal } from "@/components/features/attest/SubmitConfirmationModal";
 
 import { BatchHelpModal } from "@/components/features/help/BatchHelpModal";
@@ -40,14 +40,17 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
   AppState,
+  BackHandler,
   GestureResponderEvent,
   Image,
   Keyboard,
+  KeyboardAvoidingView,
   Platform,
   Pressable,
   ScrollView,
   Text,
   View,
+  Alert,
 } from "react-native";
 import uuid from "react-native-uuid";
 import { z } from "zod";
@@ -143,6 +146,7 @@ const NewActionScreen = () => {
   const { updateQueueItems } = useQueue();
   const { data: locationData, isLoading: locationLoading } =
     useCurrentLocation();
+  const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const [isSentToQueue, setIsSentToQueue] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -186,6 +190,11 @@ const NewActionScreen = () => {
     return matchingAction;
   }, [actionsData, slug]);
 
+  // Clear form state when entering new form
+  useEffect(() => {
+    deleteFormState();
+  }, []);
+
   const form = useForm({
     defaultValues: {
       type: currentAction?.name as ActionTitle,
@@ -200,29 +209,27 @@ const NewActionScreen = () => {
         weightInKg: undefined,
       },
     },
+    onChange: ({ value }) => {
+      // This will help track form changes
+      return value;
+    },
     onSubmit: async ({ value }) => {
       setHasAttemptedSubmit(true);
       setSubmitError(null);
-      setIsSubmitting(true);
 
       try {
-        // Add runtime validation for collectorId
-        // NOTE: Comment out this section because we are not forcing the user to scan a collector ID card for collection actions
         const runtimeSchema = eventFormSchema.refine(
           (data) => {
-            // Remove collector ID validation
             return true;
           },
           {
             message: "Collector ID is required for Collection actions",
-            path: ["collectorId"], // Specify the field to attach the error to
+            path: ["collectorId"],
           }
         );
 
-        const { success: isValid, error: validationError } =
-          runtimeSchema.safeParse(value);
+        const { success: isValid, error: validationError } = runtimeSchema.safeParse(value);
         if (!isValid) {
-          // Set field-specific errors
           validationError.errors.forEach((error) => {
             const fieldPath = error.path.join(".") as keyof typeof value;
             form.setFieldMeta(fieldPath, (old) => ({
@@ -231,14 +238,8 @@ const NewActionScreen = () => {
             }));
           });
 
-          // Set general submit error
           setSubmitError("Please fill in all required fields");
           console.error("Form validation errors:", validationError);
-
-          // Scroll to the first error if possible
-          if (scrollViewRef.current && validationError.errors[0]?.path[0]) {
-            scrollViewRef.current.scrollTo({ y: 0, animated: true });
-          }
           return;
         }
 
@@ -248,25 +249,33 @@ const NewActionScreen = () => {
           throw new Error("Could not find matching action ID");
         }
 
+        // Extract only the form fields we need
+        const formData = {
+          type: value.type,
+          date: new Date().toISOString(),
+          location: value.location,
+          collectorId: value.collectorId,
+          incomingMaterials: value.incomingMaterials || [],
+          outgoingMaterials: value.outgoingMaterials || [],
+          manufacturing: value.manufacturing,
+        };
+
         const queueItem: QueueItem = {
-          ...value,
+          ...formData,
           actionId,
           actionName: currentAction.name,
           localId: uuid.v4() as string,
-          date: new Date().toISOString(),
           status: QueueItemStatus.PENDING,
-          retryCount: 0,
+          totalRetryCount: 0,
           directus: {
-            status: ServiceStatus.PENDING,
+            status: ServiceStatus.INCOMPLETE
           },
           eas: {
-            status: ServiceStatus.PENDING,
-            txHash: undefined,
-            verified: false,
+            status: ServiceStatus.INCOMPLETE
           },
-          incomingMaterials: value.incomingMaterials || [],
-          outgoingMaterials: value.outgoingMaterials || [],
-          location: value.location,
+          linking: {
+            status: ServiceStatus.INCOMPLETE
+          },
           company:
             typeof userData?.Company === "number"
               ? undefined
@@ -275,9 +284,13 @@ const NewActionScreen = () => {
 
         await addItemToQueue(queueItem);
         setSubmitError(null);
-        setIsSentToQueue(true);
+        
+        // Clear form state immediately after successful submission
+        await deleteFormState();
+        
+        // Reset form to default values
+        form.reset();
       } catch (error) {
-        setIsSentToQueue(false);
         const errorMsg =
           error instanceof Error && error.message.includes("Cache key")
             ? "Unable to access queue storage. Please try again or contact support"
@@ -286,7 +299,6 @@ const NewActionScreen = () => {
         console.error("Error adding to queue:", error);
       } finally {
         setIsSubmitting(false);
-        await deleteFormState();
       }
     },
     validatorAdapter: zodValidator(),
@@ -301,34 +313,7 @@ const NewActionScreen = () => {
     }
   }, [locationData]);
 
-  // Add keyboard handling effect
-  useEffect(() => {
-    const keyboardDidShowListener = Keyboard.addListener(
-      "keyboardDidShow",
-      (e) => {
-        if (Platform.OS === "ios") {
-          setTimeout(() => {
-            scrollViewRef.current?.scrollTo({ y: 100, animated: true });
-          }, 100);
-        }
-      }
-    );
-
-    const keyboardDidHideListener = Keyboard.addListener(
-      "keyboardDidHide",
-      () => {
-        if (Platform.OS === "ios") {
-          scrollViewRef.current?.scrollTo({ y: 0, animated: true });
-        }
-      }
-    );
-
-    return () => {
-      keyboardDidShowListener.remove();
-      keyboardDidHideListener.remove();
-    };
-  }, []);
-
+  // Reinstate useEffect to disable iOS swipe gesture
   useEffect(() => {
     const unsubscribe = navigation.addListener("focus", () => {
       navigation.setOptions({
@@ -339,45 +324,26 @@ const NewActionScreen = () => {
     return unsubscribe;
   }, [navigation]);
 
-  const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  // Add effect to disable Android hardware back button
   useEffect(() => {
-    const loadState = async () => {
-      const savedState = await loadFormState();
-      if (savedState) {
-        const formFields: Array<keyof EventFormType> = [
-          "type",
-          "date",
-          "location",
-          "collectorId",
-          "incomingMaterials",
-          "outgoingMaterials",
-          "manufacturing",
-        ];
-        formFields.forEach((key) => {
-          if (key in savedState) {
-            form.setFieldValue(key, savedState[key]);
-          }
-        });
+    const backHandlerSubscription = BackHandler.addEventListener(
+      'hardwareBackPress',
+      () => {
+        // Returning true prevents the default back button action
+        return true;
       }
-    };
-    loadState();
+    );
 
-    const saveState = () => {
-      if (saveTimeoutRef.current) {
-        clearTimeout(saveTimeoutRef.current);
-      }
+    // Clean up the subscription when the component unmounts
+    return () => backHandlerSubscription.remove();
+  }, []); // Empty dependency array ensures this runs only on mount and unmount
 
-      saveTimeoutRef.current = setTimeout(() => {
-        const formValues = form.store.state.values;
-        saveFormState(formValues);
-      }, 500);
-    };
-
-    const unsubscribe = form.store.subscribe(saveState);
-
+  // Remove the auto-save effect to prevent race conditions
+  useEffect(() => {
     const handleAppStateChange = (nextAppState: string) => {
       if (nextAppState === "active") {
-        loadState();
+        // Clear form state when app becomes active
+        deleteFormState();
       }
     };
 
@@ -387,14 +353,40 @@ const NewActionScreen = () => {
     );
 
     return () => {
+      subscription.remove();
+      // Clear form state on unmount
+      deleteFormState();
+    };
+  }, []);
+
+  // Handle back navigation
+  useEffect(() => {
+    if (saveTimeoutRef?.current) {
+      clearTimeout(saveTimeoutRef.current);
+    }
+    return () => {
       if (saveTimeoutRef?.current) {
         clearTimeout(saveTimeoutRef.current);
       }
-      unsubscribe();
-      deleteFormState();
-      subscription.remove();
     };
-  }, []);
+  }, [navigation]);
+
+  const hasAnyMaterials = (values: EventFormType | boolean | null | undefined) => {
+    // Initial check for invalid input types (related to linter errors)
+    if (!values || typeof values === 'boolean') return false; // Restored check
+
+    const incomingMaterials = values.incomingMaterials || [];
+    const outgoingMaterials = values.outgoingMaterials || [];
+
+    // Logic for all actions (including Manufacturing): check if any materials are present
+    return incomingMaterials.length > 0 || outgoingMaterials.length > 0;
+  };
+
+  // Add validation for manufacturing form
+  const isManufacturingFormValid = (values: EventFormType | boolean | null | undefined): boolean => {
+    if (!values || typeof values === 'boolean') return false; // Restored check
+    return Boolean(values.manufacturing?.product && values.manufacturing.product > 0);
+  };
 
   if (!actionsData?.length) return null;
   if (!currentAction) {
@@ -402,293 +394,326 @@ const NewActionScreen = () => {
     return null;
   }
 
-  const validateMaterials = (materials: MaterialDetail[]) => {
-    if (materials.length === 0) return false;
-    return materials.some(
+  const validateMaterials = (
+    incomingMaterials: MaterialDetail[],
+    outgoingMaterials: MaterialDetail[],
+    currentActionName: string | undefined,
+    isManufacturing: boolean = false,
+    manufacturingData?: { quantity?: number | undefined; weightInKg?: number | undefined }
+  ): boolean => {
+    const collectorActionsWithHiddenQR = [
+      "Fishing for litter",
+      "Prevention",
+      "Ad-hoc",
+      "Beach cleanup",
+    ];
+    const isCollectorAction = currentActionName ? collectorActionsWithHiddenQR.includes(currentActionName) : false;
+
+    // Check if any materials are provided
+    if (incomingMaterials.length === 0 && outgoingMaterials.length === 0) {
+      return false;
+    }
+
+    // --- Incoming Materials Validation ---
+    const hasInvalidIncoming = incomingMaterials.some(material => {
+      const isWeightMissing = !material.weight || material.weight <= 0;
+      // For collector actions without outgoing materials, only check weight
+      if (isCollectorAction && outgoingMaterials.length === 0) {
+        return isWeightMissing;
+      }
+      // Otherwise (or for non-collector actions), check both code and weight
+      const isCodeMissing = !material.code || material.code.trim() === "";
+      return isCodeMissing || isWeightMissing;
+    });
+
+    if (hasInvalidIncoming) return false;
+
+    // --- Outgoing Materials Validation ---
+    const hasInvalidOutgoing = outgoingMaterials.some(
       (material) =>
-        (material.code && material.code.trim() !== "") ||
-        (material.weight && material.weight > 0)
+        !material.code || material.code.trim() === "" ||
+        !material.weight || material.weight <= 0
     );
+
+    if (hasInvalidOutgoing) return false;
+
+    // --- Manufacturing Validation ---
+    if (isManufacturing) {
+      const hasMissingManufacturingDetails =
+        !manufacturingData?.quantity ||
+        manufacturingData.quantity <= 0 ||
+        !manufacturingData?.weightInKg ||
+        manufacturingData.weightInKg <= 0;
+      if (hasMissingManufacturingDetails) return false;
+    }
+
+    // All checks passed
+    return true;
   };
 
   const addItemToQueue = async (queueItem: QueueItem) => {
     try {
-      console.log("Adding queue item:", JSON.stringify(queueItem, null, 2));
-
-      // Get current items, defaulting to empty array if none exist
       const activeItems = (await getActiveQueue()) || [];
       const updatedItems = [...activeItems, queueItem];
 
-      // Use QueueContext to handle both storage and processing
-      await updateQueueItems(updatedItems);
+      // Process queue in background after navigation
+      setTimeout(() => {
+        updateQueueItems(updatedItems).catch(error => {
+          console.error("Background queue processing error:", error);
+        });
+      }, 500);
 
-      // Verify the item was saved by checking both active and completed queues
-      const [savedActiveItems, savedCompletedItems] = await Promise.all([
-        getActiveQueue(),
-        getCompletedQueue(),
-      ]);
-
-      const isInActiveQueue = savedActiveItems?.find(
-        (item) => item.localId === queueItem.localId
-      );
-      const isInCompletedQueue = savedCompletedItems?.find(
-        (item) => item.localId === queueItem.localId
-      );
-
-      if (!isInActiveQueue && !isInCompletedQueue) {
-        console.error(
-          "Failed to verify queue item was saved. Active items:",
-          savedActiveItems,
-          "Completed items:",
-          savedCompletedItems
-        );
-        throw new Error("Failed to verify queue item was saved");
-      }
-      console.log("save data verified");
-      // console.log("Verified saved data:", {
-      //   active: savedActiveItems,
-      //   completed: savedCompletedItems,
-      // });
     } catch (error) {
       console.error("Error in addItemToQueue:", error);
-
-      const errorMessage =
-        error instanceof Error && error.message.includes("Cache key")
-          ? "Queue functionality is not properly configured. Please contact support."
-          : "Failed to add item to queue. Please try again.";
-
-      setSubmitError(errorMessage);
       throw error;
     }
   };
 
-  const hasAnyMaterials = (values: EventFormType | boolean | null | undefined) => {
-    if (!values || typeof values === 'boolean') return false;
+  const handleProceedWithSubmission = async () => {
+    try {
+      // Show loading state
+      setIsSubmitting(true);
 
-    const incomingMaterials = values.incomingMaterials || [];
-    const outgoingMaterials = values.outgoingMaterials || [];
+      // Submit form and create queue item
+      await form.handleSubmit();
 
-    // For manufacturing, we need both materials and a product selected
-    if (currentAction?.name === "Manufacturing") {
-      const hasValidMaterials = incomingMaterials.length > 0 || outgoingMaterials.length > 0;
-      const hasProductSelected = values.manufacturing?.product !== undefined;
-      return hasValidMaterials && hasProductSelected;
+    } catch (error) {
+      // Just log the error, queue page will show appropriate status
+      console.error("Submission error:", error);
+    } finally {
+      // Always close modal and navigate to queue
+      setShowSubmitConfirmation(false);
+      router.push("/queue");
     }
-
-    return incomingMaterials.length > 0 || outgoingMaterials.length > 0;
   };
 
   return (
     <SafeAreaContent>
-      <View className="absolute top-20 right-[-30px] bg-white-sand opacity-60">
-        <Image
-          source={require("@/assets/images/animals/Turtle.png")}
-          className="w-[223px] h-[228px]"
-          accessibilityLabel="Decorative turtle illustration"
-          accessibilityRole="image"
-        />
-      </View>
-      <View className="flex-row items-center justify-between pb-4">
-        <form.Subscribe selector={(state) => state.values}>
-          {(values) => (
-            <Pressable
-              onPress={() => {
-                if (hasAnyMaterials(values)) {
-                  setShowLeaveModal(true);
-                } else {
-                  if (saveTimeoutRef?.current) {
-                    clearTimeout(saveTimeoutRef.current);
-                  }
-                  deleteFormState();
-                  router.back();
-                }
-              }}
-              className="flex-row items-center space-x-1"
-            >
-              <Ionicons name="chevron-back" size={24} color="#0D0D0D" />
-              <Text className="text-base font-dm-regular text-enaleia-black tracking-tighter">
-                Back
-              </Text>
-            </Pressable>
-          )}
-        </form.Subscribe>
-
-        <Pressable onPress={() => setIsTypeInformationModalVisible(true)}>
-          <Ionicons
-            name="information-circle-outline"
-            size={24}
-            color="#0D0D0D"
+      <KeyboardAvoidingView
+        behavior={Platform.OS === "ios" ? "padding" : undefined}
+        style={{ flex: 1 }}
+        contentContainerStyle={{ flex: 1 }}
+        keyboardVerticalOffset={Platform.OS === "ios" ? 0 : 0} // Account for header + status bar
+      >
+        <View className="absolute top-20 right-[-30px] bg-white-sand opacity-60">
+          <Image
+            source={require("@/assets/images/animals/Turtle.png")}
+            className="w-[223px] h-[228px]"
+            accessibilityLabel="Decorative turtle illustration"
+            accessibilityRole="image"
           />
-        </Pressable>
-      </View>
-      {currentAction?.name === "Batch" ? (
-        <BatchHelpModal
-          isVisible={isTypeInformationModalVisible}
-          onClose={() => setIsTypeInformationModalVisible(false)}
-        />
-      ) : currentAction?.name === "Fishing for litter" ||
-        currentAction?.name === "Prevention" ||
-        currentAction?.name === "Beach cleanup" ||
-        currentAction?.name === "Ad-hoc" ? (
-        <CollectionHelpModal
-          isVisible={isTypeInformationModalVisible}
-          onClose={() => setIsTypeInformationModalVisible(false)}
-        />
-      ) : currentAction?.name === "Manufacturing" ? (
-        <ManufacturingHelpModal
-          isVisible={isTypeInformationModalVisible}
-          onClose={() => setIsTypeInformationModalVisible(false)}
-        />
-      ) : currentAction?.name === "Pelletizing" ? (
-        <PelletizingHelpModal
-          isVisible={isTypeInformationModalVisible}
-          onClose={() => setIsTypeInformationModalVisible(false)}
-        />
-      ) : currentAction?.name === "Shredding" ? (
-        <ShreddingHelpModal
-          isVisible={isTypeInformationModalVisible}
-          onClose={() => setIsTypeInformationModalVisible(false)}
-        />
-      ) : currentAction?.name === "Sorting" ? (
-        <SortingHelpModal
-          isVisible={isTypeInformationModalVisible}
-          onClose={() => setIsTypeInformationModalVisible(false)}
-        />
-      ) : currentAction?.name === "Washing" ? (
-        <WashingHelpModal
-          isVisible={isTypeInformationModalVisible}
-          onClose={() => setIsTypeInformationModalVisible(false)}
-        />
-      ) : null}
-
-      <View className="flex-1">
-        <ScrollView
-          ref={scrollViewRef}
-          showsVerticalScrollIndicator={false}
-          keyboardShouldPersistTaps="handled"
-          keyboardDismissMode="on-drag"
-          contentContainerStyle={{
-            flexGrow: 0,
-            paddingBottom: 100,
-          }}
-        >
-          <Text className="text-3xl font-dm-bold text-enaleia-black tracking-[-1px] mb-2">
-            {currentAction?.name}
-          </Text>
-          <View className="flex-1">
-            <form.Subscribe selector={(state) => state.values}>
-              {(values) => (
-                <View className="mb-2 mt-4">
-                  <LocationPermissionHandler
-                    onPermissionGranted={() => {
-                      // Location will be automatically updated via the effect
-                    }}
-                    onPermissionDenied={() => {
-                      // Alert.alert(
-                      //   "Location Access",
-                      //   "Location helps verify where events take place. You can still use saved locations or change this later in settings."
-                      // );
-                    }}
-                  />
-                </View>
-              )}
-            </form.Subscribe>
-
-            {currentAction?.category === "Collection" && (
-              <View className="mb-12">
-                <Text className="text-[18px] font-dm-regular text-enaleia-black tracking-tighter mb-2">
-                  Collector
-                </Text>
-                <form.Field name="collectorId">
-                  {(field) => (
-                    <>
-                      <QRTextInput
-                        value={field.state.value || ""}
-                        onChangeText={field.handleChange}
-                        variant="standalone"
-                        label="Collector ID Card"
-                        error={field.state.meta.errors?.[0] || undefined}
-                      />
-                    </>
-                  )}
-                </form.Field>
-              </View>
-            )}
-            <form.Field name="incomingMaterials">
-              {(field) => (
-                <View className="mb-8">
-                  <MaterialSection
-                    materials={processedMaterials}
-                    category="incoming"
-                    isModalVisible={isIncomingMaterialsPickerVisible}
-                    setModalVisible={setIsIncomingMaterialsPickerVisible}
-                    selectedMaterials={field.state.value as MaterialDetail[]}
-                    setSelectedMaterials={(materials: MaterialDetail[]) =>
-                      field.handleChange(materials)
+        </View>
+        <View className="flex-row items-center justify-between pb-4">
+          <form.Subscribe selector={(state) => state.values}>
+            {(values) => {
+              const hasChanges = 
+                values.incomingMaterials?.length > 0 ||
+                values.outgoingMaterials?.length > 0 ||
+                values.collectorId !== "" ||
+                values.manufacturing?.product !== undefined ||
+                values.manufacturing?.quantity !== undefined ||
+                values.manufacturing?.weightInKg !== undefined;
+              
+              return (
+                <Pressable
+                  onPress={() => {
+                    if (hasChanges) {
+                      setShowLeaveModal(true);
+                    } else {
+                      if (saveTimeoutRef?.current) {
+                        clearTimeout(saveTimeoutRef.current);
+                      }
+                      deleteFormState();
+                      router.back();
                     }
-                    hideCodeInput={currentAction?.category === "Collection"}
-                  />
+                  }}
+                  className="flex-row items-center space-x-1"
+                >
+                  <Ionicons name="chevron-back" size={24} color={isSubmitting ? "#8E8E93" : "#0D0D0D"} />
+                  <Text className={`text-base font-dm-regular tracking-tighter ${isSubmitting ? 'text-grey-6' : 'text-enaleia-black'}`}>
+                    Home
+                  </Text>
+                </Pressable>
+              );
+            }}
+          </form.Subscribe>
+
+          <Pressable onPress={() => setIsTypeInformationModalVisible(true)}>
+            <Ionicons
+              name="information-circle-outline"
+              size={24}
+              color="#0D0D0D"
+            />
+          </Pressable>
+        </View>
+        {currentAction?.name === "Batch" ? (
+          <BatchHelpModal
+            isVisible={isTypeInformationModalVisible}
+            onClose={() => setIsTypeInformationModalVisible(false)}
+          />
+        ) : currentAction?.name === "Fishing for litter" ||
+          currentAction?.name === "Prevention" ||
+          currentAction?.name === "Beach cleanup" ||
+          currentAction?.name === "Ad-hoc" ? (
+          <CollectionHelpModal
+            isVisible={isTypeInformationModalVisible}
+            onClose={() => setIsTypeInformationModalVisible(false)}
+          />
+        ) : currentAction?.name === "Manufacturing" ? (
+          <ManufacturingHelpModal
+            isVisible={isTypeInformationModalVisible}
+            onClose={() => setIsTypeInformationModalVisible(false)}
+          />
+        ) : currentAction?.name === "Pelletizing" ? (
+          <PelletizingHelpModal
+            isVisible={isTypeInformationModalVisible}
+            onClose={() => setIsTypeInformationModalVisible(false)}
+          />
+        ) : currentAction?.name === "Shredding" ? (
+          <ShreddingHelpModal
+            isVisible={isTypeInformationModalVisible}
+            onClose={() => setIsTypeInformationModalVisible(false)}
+          />
+        ) : currentAction?.name === "Sorting" ? (
+          <SortingHelpModal
+            isVisible={isTypeInformationModalVisible}
+            onClose={() => setIsTypeInformationModalVisible(false)}
+          />
+        ) : currentAction?.name === "Washing" ? (
+          <WashingHelpModal
+            isVisible={isTypeInformationModalVisible}
+            onClose={() => setIsTypeInformationModalVisible(false)}
+          />
+        ) : null}
+
+        <View className="flex-1">
+          <ScrollView
+            ref={scrollViewRef}
+            showsVerticalScrollIndicator={false}
+            keyboardShouldPersistTaps="handled"
+            keyboardDismissMode="on-drag"
+            contentContainerStyle={{
+              flexGrow: 0,
+              paddingBottom: 100,
+            }}
+          >
+            <Text className="text-3xl font-dm-bold text-enaleia-black tracking-[-1px] mb-2">
+              {currentAction?.name}
+            </Text>
+            <View className="flex-1">
+              <form.Subscribe selector={(state) => state.values}>
+                {(values) => (
+                  <View className="mb-2 mt-4">
+                    <LocationPermissionHandler
+                      onPermissionGranted={() => {
+                        // Location will be automatically updated via the effect
+                      }}
+                      onPermissionDenied={() => {
+                        // Alert.alert(
+                        //   "Location Access",
+                        //   "Location helps verify where events take place. You can still use saved locations or change this later in settings."
+                        // );
+                      }}
+                    />
+                  </View>
+                )}
+              </form.Subscribe>
+
+              {currentAction?.category === "Collection" && (
+                <View className="mb-12">
+                  <Text className="text-[18px] font-dm-regular text-enaleia-black tracking-tighter mb-2">
+                    Collector
+                  </Text>
+                  <form.Field name="collectorId">
+                    {(field) => (
+                      <>
+                        <QRTextInput
+                          value={field.state.value || ""}
+                          onChangeText={field.handleChange}
+                          variant="standalone"
+                          label="Collector ID Card"
+                          keyboardType="default"
+                          error={field.state.meta.errors?.[0] || undefined}
+                        />
+                      </>
+                    )}
+                  </form.Field>
                 </View>
               )}
-            </form.Field>
-            {currentAction?.name !== "Manufacturing" && (
-              <form.Field name="outgoingMaterials">
+              <form.Field name="incomingMaterials">
                 {(field) => (
-                  <View className="mb-8 mt-8">
+                  <View className="mb-8">
                     <MaterialSection
                       materials={processedMaterials}
-                      category="outgoing"
-                      isModalVisible={isOutgoingMaterialsPickerVisible}
-                      setModalVisible={setIsOutgoingMaterialsPickerVisible}
+                      category="incoming"
+                      isModalVisible={isIncomingMaterialsPickerVisible}
+                      setModalVisible={setIsIncomingMaterialsPickerVisible}
                       selectedMaterials={field.state.value as MaterialDetail[]}
                       setSelectedMaterials={(materials: MaterialDetail[]) =>
                         field.handleChange(materials)
                       }
-                      hideCodeInput={false}
+                      hideCodeInput={currentAction?.category === "Collection"}
                     />
                   </View>
                 )}
               </form.Field>
-            )}
+              {currentAction?.name !== "Manufacturing" && (
+                <form.Field name="outgoingMaterials">
+                  {(field) => (
+                    <View className="mb-8 mt-8">
+                      <MaterialSection
+                        materials={processedMaterials}
+                        category="outgoing"
+                        isModalVisible={isOutgoingMaterialsPickerVisible}
+                        setModalVisible={setIsOutgoingMaterialsPickerVisible}
+                        selectedMaterials={field.state.value as MaterialDetail[]}
+                        setSelectedMaterials={(materials: MaterialDetail[]) =>
+                          field.handleChange(materials)
+                        }
+                        hideCodeInput={false}
+                      />
+                    </View>
+                  )}
+                </form.Field>
+              )}
 
-            {currentAction?.name === "Manufacturing" && (
-              <View className="mt-4">
-                <View className="flex-row items-center mb-4">
-                  <Text className="text-xl font-dm-regular text-enaleia-black tracking-tighter">
-                    Manufacturing information
-                  </Text>
-                  <View className="ml-2">
-                    <Ionicons name="cube-outline" size={24} color="#0D0D0D" />
+              {currentAction?.name === "Manufacturing" && (
+                <View className="mt-4">
+                  <View className="flex-row items-center mb-4">
+                    <Text className="text-xl font-dm-regular text-enaleia-black tracking-tighter">
+                      Manufacturing information
+                    </Text>
+                    <View className="ml-2">
+                      <Ionicons name="cube-outline" size={24} color="#8E8E93" />
+                    </View>
                   </View>
-                </View>
 
-                <View className="space-y-2">
-                  <form.Field name="manufacturing.product">
-                    {(field) => {
-                      const ProductField = () => (
-                        <SelectField
-                          value={field.state.value}
-                          onChange={(value) => field.handleChange(value)}
-                          options={
-                            productsData?.map((product) => ({
-                              label: product.product_name || "Unknown Product",
-                              value: product.product_id,
-                              type: product.manufactured_by?.name || "Other"
-                            })) || []
-                          }
-                          placeholder="Product"
-                          isLoading={!productsData}
-                          disabled={!productsData}
-                        />
-                      );
-                      return <ProductField />;
-                    }}
-                  </form.Field>
+                  <View className="space-y-2">
+                    <form.Field name="manufacturing.product">
+                      {(field: { state: { value: number | undefined }, handleChange: (value: number | undefined) => void }) => {
+                        const ProductField = () => (
+                          <SelectField
+                            value={field.state.value}
+                            onChange={(value) => field.handleChange(value)}
+                            options={
+                              productsData?.map((product) => ({
+                                label: product.product_name || "Unknown Product",
+                                value: product.product_id,
+                                type: product.manufactured_by?.name || "Other"
+                              })) || []
+                            }
+                            placeholder="Product"
+                            isLoading={!productsData}
+                            disabled={!productsData}
+                          />
+                        );
+                        return <ProductField />;
+                      }}
+                    </form.Field>
 
-                  <View className="flex-row gap-2 mb-4">
-                    <View className="flex-1 ">
+                    <View className="space-y-2">
                       <form.Field name="manufacturing.quantity">
-                        {(field) => {
+                        {(field: { state: { value: number | undefined }, handleChange: (value: number | undefined) => void }) => {
                           const QuantityField = () => (
                             <DecimalInput
                               field={field}
@@ -703,9 +728,9 @@ const NewActionScreen = () => {
                       </form.Field>
                     </View>
 
-                    <View className="flex-1">
+                    <View className="mb-4">
                       <form.Field name="manufacturing.weightInKg">
-                        {(field) => {
+                        {(field: { state: { value: number | undefined }, handleChange: (value: number | undefined) => void }) => {
                           const WeightField = () => (
                             <DecimalInput
                               field={field}
@@ -720,89 +745,117 @@ const NewActionScreen = () => {
                     </View>
                   </View>
                 </View>
-              </View>
-            )}
-          </View>
-          <View className="pt-3">
-            <form.Subscribe
-              selector={(state) => [
-                state.canSubmit,
-                state.isSubmitting,
-                state.values as EventFormType,
-              ]}
-            >
-              {([canSubmit, isSubmitting, values]) => {
-                const handleSubmitClick = (e: GestureResponderEvent) => {
-                  setSubmitError(null);
-                  e.preventDefault();
-                  e.stopPropagation();
-                  
-                  // First validate the form
-                  const hasValidIncoming = validateMaterials(
-                    values.incomingMaterials || []
-                  );
-                  const hasValidOutgoing = validateMaterials(
-                    values.outgoingMaterials || []
-                  );
-
-                  if (!hasValidIncoming && !hasValidOutgoing) {
-                    setShowIncompleteModal(true);
-                    return;
+              )}
+            </View>
+            <View className="pt-3">
+              <form.Subscribe
+                selector={(state) => [
+                  state.canSubmit,
+                  state.isSubmitting,
+                  state.values,
+                ]}
+              >
+                {([canSubmit, isSubmitting, values]) => {
+                  // Type guard to ensure values is the correct shape before proceeding
+                  if (typeof values !== 'object' || values === null || Array.isArray(values)) {
+                    // Render nothing or a placeholder if values is not the expected object
+                    return null; 
                   }
 
-                  // If validation passes, show the confirmation modal
-                  setShowSubmitConfirmation(true);
-                };
+                  const handleSubmitClick = (e: GestureResponderEvent) => {
+                    // Prevent submission if button is disabled
+                    if (isSubmitDisabled) return;
 
-                const handleProceedWithSubmission = () => {
-                  setShowSubmitConfirmation(false);
-                  form.handleSubmit();
-                };
+                    setSubmitError(null);
+                    e.preventDefault();
+                    e.stopPropagation();
 
-                return (
-                  <>
-                    <Pressable
-                      onPress={handleSubmitClick}
-                      disabled={!canSubmit || isSubmitting || !hasAnyMaterials(values)}
-                      className={`w-full flex-row items-center justify-center p-3 h-[60px] rounded-full ${
-                        !canSubmit || isSubmitting || !hasAnyMaterials(values)
-                          ? "bg-primary-dark-blue opacity-50"
-                          : "bg-blue-ocean"
-                      }`}
-                    >
-                      {isSubmitting ? (
-                        <ActivityIndicator color="white" className="mr-2" />
-                      ) : null}
-                      <Text className="text-lg font-dm-medium text-slate-50 tracking-tight">
-                        {isSubmitting ? "Preparing..." : "Submit Attestation"}
-                      </Text>
-                    </Pressable>
+                    const incomingMaterials = values.incomingMaterials || [];
+                    const outgoingMaterials = values.outgoingMaterials || [];
+                    const isManufacturing = currentAction?.name === "Manufacturing";
+                    const currentActionName = currentAction?.name; // Get current action name
 
-                    <SubmitConfirmationModal
-                      isVisible={showSubmitConfirmation}
-                      onClose={() => setShowSubmitConfirmation(false)}
-                      onProceed={handleProceedWithSubmission}
-                    />
+                    // Check if manufacturing form is valid when needed
+                    if (isManufacturing && !isManufacturingFormValid(values)) {
+                      Alert.alert(
+                        "Product Required",
+                        "Please select a product before submitting the manufacturing attestation.",
+                        [{ text: "OK" }]
+                      );
+                      return;
+                    }
 
-                    <IncompleteAttestationModal
-                      isVisible={showIncompleteModal}
-                      onClose={() => setShowIncompleteModal(false)}
-                      onSubmitAnyway={() => {
-                        setShowIncompleteModal(false);
-                        form.handleSubmit();
-                      }}
-                    />
-                  </>
-                );
-              }}
-            </form.Subscribe>
-          </View>
-        </ScrollView>
-      </View>
+                    // Show incomplete modal if validation fails
+                    const isValid = validateMaterials(
+                      incomingMaterials, // Pass incoming list
+                      outgoingMaterials, // Pass outgoing list
+                      currentActionName, // Pass action name
+                      isManufacturing,
+                      isManufacturing ? values.manufacturing : undefined
+                    );
 
-      {isSentToQueue && (
-        <SentToQueueModal isVisible={isSentToQueue} onClose={() => {}} />
-      )}
+                    if (!isValid) {
+                      setShowIncompleteModal(true);
+                      return;
+                    }
+
+                    // If validation passes, show the confirmation modal
+                    setShowSubmitConfirmation(true);
+                  };
+
+                  // Update the submit button disabled state
+                  const isValidValuesObject = typeof values === 'object' && values !== null && !Array.isArray(values);
+                  const hasMaterials = isValidValuesObject && hasAnyMaterials(values);
+                  const isMfgFormValid = isValidValuesObject && isManufacturingFormValid(values);
+
+                  const isSubmitDisabled = !canSubmit ||
+                    isSubmitting ||
+                    !hasMaterials ||
+                    (currentAction?.name === "Manufacturing" && !isMfgFormValid);
+
+                  return (
+                    <>
+                      <Pressable
+                        onPress={handleSubmitClick}
+                        disabled={isSubmitDisabled}
+                        className={`w-full flex-row items-center justify-center p-0 h-[60px] rounded-full ${
+                          isSubmitDisabled
+                            ? "bg-primary-dark-blue opacity-50"
+                            : "bg-blue-ocean"
+                        }`}
+                      >
+                        {isSubmitting ? (
+                          <ActivityIndicator color="white" className="mr-2" />
+                        ) : null}
+                        <Text className="text-lg font-dm-medium text-slate-50 tracking-tight">
+                          {isSubmitting ? "Preparing..." : "Submit Attestation"}
+                        </Text>
+                      </Pressable>
+
+                      <SubmitConfirmationModal
+                        isVisible={showSubmitConfirmation}
+                        onClose={() => setShowSubmitConfirmation(false)}
+                        onProceed={handleProceedWithSubmission}
+                        isSubmitting={isSubmitting}
+                      />
+
+                      <IncompleteAttestationModal
+                        isVisible={showIncompleteModal}
+                        onClose={() => setShowIncompleteModal(false)}
+                        onSubmitAnyway={() => {
+                          setShowIncompleteModal(false);
+                          setShowSubmitConfirmation(true);
+                        }}
+                      />
+                    </>
+                  );
+                }}
+              </form.Subscribe>
+            </View>
+          </ScrollView>
+        </View>
+      </KeyboardAvoidingView>
+
       <LeaveAttestationModal
         isVisible={showLeaveModal}
         onClose={() => setShowLeaveModal(false)}

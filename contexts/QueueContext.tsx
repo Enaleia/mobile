@@ -5,13 +5,13 @@ import {
   useState,
   useRef,
   useCallback,
+  useMemo,
 } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { MAX_RETRIES, QueueItem, QueueItemStatus, ServiceStatus } from "@/types/queue";
-import { processQueueItems } from "@/services/queueProcessor";
+import { MAX_RETRIES, QueueItem, QueueItemStatus, ServiceStatus, getOverallStatus, shouldProcessItem, determineItemStatus } from "@/types/queue";
+import { processQueueItems as processQueueItemsService } from "@/services/queueProcessor";
 import { QueueEvents, queueEventEmitter } from "@/services/events";
 import { useNetwork } from "./NetworkContext";
-import { BackgroundTaskManager } from "@/services/backgroundTaskManager";
 import { AppState } from "react-native";
 import * as SecureStore from "expo-secure-store";
 import { directus } from "@/utils/directus";
@@ -20,19 +20,30 @@ import {
   getCompletedQueue,
   updateActiveQueue,
   addToCompletedQueue,
-  cleanupExpiredItems,
   removeFromActiveQueue,
   CompletedQueueItem,
 } from "@/utils/queueStorage";
 import { useWallet } from "@/contexts/WalletContext";
 import { getBatchData } from "@/utils/batchStorage";
+import { getEvent } from "@/services/directus";
+import NetInfo from "@react-native-community/netinfo";
+import { updateItemInCache } from "@/services/queueProcessor";
+import { QueueDebugMonitor } from "@/services/queueDebugMonitor";
 
-interface QueueContextType {
+const queueDebugMonitor = QueueDebugMonitor.getInstance();
+
+export interface QueueContextType {
   queueItems: QueueItem[];
-  loadQueueItems: () => Promise<void>;
-  updateQueueItems: (items: QueueItem[]) => Promise<void>;
-  retryItems: (items: QueueItem[], service?: "directus" | "eas") => Promise<void>;
   completedCount: number;
+  loadQueueItems: () => Promise<void>;
+  updateQueueItem: (itemId: string, updates: Partial<QueueItem>) => Promise<void>;
+  updateQueueItems: (items: QueueItem[]) => Promise<void>;
+  retryItem: (itemId: string) => Promise<void>;
+  retryItems: (items: QueueItem[]) => Promise<void>;
+  deleteItem: (itemId: string) => Promise<void>;
+  processQueueItems: (items?: QueueItem[]) => Promise<void>;
+  isProcessing: boolean;
+  refreshQueueStatus: () => Promise<void>;
 }
 
 const QueueContext = createContext<QueueContextType | null>(null);
@@ -46,465 +57,397 @@ interface RetryResult {
   error?: string;
 }
 
-export function QueueProvider({ children }: { children: React.ReactNode }) {
+export const QueueProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [queueItems, setQueueItems] = useState<QueueItem[]>([]);
   const [completedCount, setCompletedCount] = useState(0);
-  const { isConnected, isInternetReachable, isMetered } = useNetwork();
-  const processingRef = useRef(false);
-  const isOnline = isConnected && isInternetReachable;
-  const backgroundManager = BackgroundTaskManager.getInstance();
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [isInitialized, setIsInitialized] = useState(false);
+  const network = useNetwork();
+  const isOnline = network.isConnected && network.isInternetReachable;
   const { wallet } = useWallet();
+  const isProcessingRef = useRef<boolean>(false);
 
-  // Load completed count on init
-  useEffect(() => {
-    AsyncStorage.getItem(COMPLETED_COUNT_KEY)
-      .then((value) => setCompletedCount(value ? parseInt(value, 10) : 0))
-      .catch(console.error);
-  }, []);
-
-  const updateCompletedCount = async (increment: number) => {
-    const newCount = completedCount + increment;
-    await AsyncStorage.setItem(COMPLETED_COUNT_KEY, newCount.toString());
-    setCompletedCount(newCount);
-  };
-
-  const loadQueueItems = async (): Promise<void> => {
+  // Load queue items
+  const loadQueueItems = useCallback(async () => {
     try {
-      // Load both active and completed queues
-      const [activeItems, completedItems] = await Promise.all([
+      const [active, completed] = await Promise.all([
         getActiveQueue(),
-        getCompletedQueue(),
+        getCompletedQueue()
       ]);
 
-      // Clean up expired completed items
-      await cleanupExpiredItems();
-
-      // Deduplicate items based on localId
-      const seenIds = new Set<string>();
-      const uniqueItems = [...activeItems, ...completedItems].filter(item => {
-        if (seenIds.has(item.localId)) {
-          return false;
+      // Ensure unique items by localId
+      const uniqueActive = active.reduce((acc, item) => {
+        if (!acc.find(i => i.localId === item.localId)) {
+          acc.push(item);
         }
-        seenIds.add(item.localId);
-        return true;
-      });
+        return acc;
+      }, [] as QueueItem[]);
 
-      // Set items with active items first, then completed items
-      setQueueItems(uniqueItems);
+      setQueueItems(uniqueActive);
+      setCompletedCount(completed.length);
     } catch (error) {
       console.error("Error loading queue items:", error);
-      setQueueItems([]);
     }
-  };
+  }, []);
 
-  const processItems = useCallback(
-    async (items: QueueItem[]) => {
-      try {
-        processingRef.current = true;
-        await processQueueItems(items, wallet);
-      } catch (error) {
-        console.error("Failed to process items:", error);
-      } finally {
-        processingRef.current = false;
-      }
-    },
-    [wallet]
-  );
+  // Process queue items
+  const processQueueItems = useCallback(async (itemsToTrigger?: QueueItem[]) => {
+    // Check if offline or already processing using a ref
+    if (!isOnline || isProcessingRef.current) {
+      return;
+    }
 
-  const processAllItems = useCallback(async () => {
+    let processedItemIds = new Set<string>(); // Keep track of processed item IDs
+
     try {
-      processingRef.current = true;
-      await backgroundManager.processQueueItems(wallet);
+      isProcessingRef.current = true;
+      setIsProcessing(true); // Update state for UI
+
+      // Determine items to process: either the triggered subset or all pending/failed
+      const allActiveItems = await getActiveQueue(); 
+      const itemsToConsider = itemsToTrigger || allActiveItems;
+      
+      // Filter for items that actually need processing (Pending/Failed & not max retries)
+      const itemsNeedingProcessing = itemsToConsider.filter(item => 
+        (item.status === QueueItemStatus.PENDING || item.status === QueueItemStatus.FAILED) &&
+        item.totalRetryCount < MAX_RETRIES &&
+        !item.deleted
+      );
+
+      if (!itemsNeedingProcessing.length) {
+        return; // Exit early if nothing to do
+      }
+      
+      // Store the IDs of the items being processed in this batch
+      processedItemIds = new Set(itemsNeedingProcessing.map(item => item.localId));
+
+      // Call the main service function ONCE with the filtered list
+      await processQueueItemsService(itemsNeedingProcessing, wallet);
+      
+      // Reload queue items once after the entire batch finishes (might be slightly early)
+      await loadQueueItems(); 
+
     } catch (error) {
-      console.error("Failed to process all items:", error);
+      // Log errors using console as a fallback
+      console.error("[QueueContext] Error during batch processing trigger:", error); 
     } finally {
-      processingRef.current = false;
+      isProcessingRef.current = false;
+      setIsProcessing(false); // Update state for UI
+
+      // Check if new items were added during processing
+      const currentActiveQueue = await getActiveQueue();
+      const newlyEligibleItems = currentActiveQueue.filter(item => 
+        (item.status === QueueItemStatus.PENDING || item.status === QueueItemStatus.FAILED) &&
+        item.totalRetryCount < MAX_RETRIES &&
+        !item.deleted &&
+        !processedItemIds.has(item.localId) // Check if it wasn't in the processed batch
+      );
+
+      if (newlyEligibleItems.length > 0) {
+        console.log(`[QueueContext] ${newlyEligibleItems.length} new eligible item(s) detected after batch, re-triggering processing.`);
+        // Use setTimeout to avoid potential deep recursion / stack issues
+        // and allow the current function context to fully unwind.
+        setTimeout(() => processQueueItems(), 0); 
+      }
     }
-  }, [wallet]);
+  }, [isOnline, wallet, loadQueueItems]);
 
-  const processItem = useCallback(
-    async (item: QueueItem) => {
-      try {
-        processingRef.current = true;
-        await processQueueItems([item], wallet);
-      } catch (error) {
-        console.error("Failed to process item:", error);
-      } finally {
-        processingRef.current = false;
-      }
-    },
-    [wallet]
-  );
-
-  // Add AppState listener for foreground/background detection
-  useEffect(() => {
-    const subscription = AppState.addEventListener(
-      "change",
-      async (nextAppState) => {
-        if (nextAppState === "active") {
-          // App came to foreground, process any pending items
-          const pendingItems = queueItems.filter(
-            (item) =>
-              item.status === QueueItemStatus.PENDING ||
-              item.status === QueueItemStatus.OFFLINE
-          );
-          if (pendingItems.length > 0 && isOnline) {
-            console.log("App active, processing pending items in foreground");
-            // Ensure batch data is loaded before processing
-            const batchData = await getBatchData();
-            if (batchData) {
-              processItems(pendingItems).catch((err) =>
-                console.error("Failed to process queue in foreground:", err)
-              );
-            } else {
-              console.warn(
-                "Batch data not available, skipping queue processing"
-              );
-            }
-          }
-        }
-      }
-    );
-
-    return () => {
-      subscription.remove();
-    };
-  }, [queueItems, isOnline, processItems]);
-
-  const updateQueueItems = async (items: QueueItem[]): Promise<void> => {
+  // Initialize queue state
+  const initializeQueue = useCallback(async () => {
     try {
-      // Deduplicate items based on localId
-      const seenIds = new Set<string>();
-      const uniqueItems = items.filter(item => {
-        if (seenIds.has(item.localId)) {
-          return false;
-        }
-        seenIds.add(item.localId);
-        return true;
-      });
-
-      // Separate active and completed items
-      const completedItems = uniqueItems.filter(
-        (item) => item.status === QueueItemStatus.COMPLETED
+      queueDebugMonitor.logQueueMetrics([]);  // Initialize metrics
+      queueDebugMonitor.logNetworkStatus(
+        network.isConnected ?? false,
+        network.isInternetReachable ?? false
       );
-      const activeItems = uniqueItems.filter(
-        (item) => item.status !== QueueItemStatus.COMPLETED
-      );
+      
+      const activeQueue = await getActiveQueue();
+      
+      // Check for any items in PROCESSING state at launch
+      const processingItems = activeQueue.filter(item => item.status === QueueItemStatus.PROCESSING);
+      
+      if (processingItems.length > 0) {
+        queueDebugMonitor.logQueueMetrics(processingItems);
+        
+        for (const item of processingItems) {
+          const allServicesCompleted = 
+            item.directus?.status === ServiceStatus.COMPLETED &&
+            item.eas?.status === ServiceStatus.COMPLETED &&
+            item.linking?.status === ServiceStatus.COMPLETED;
 
-      // Update active queue and verify
-      await updateActiveQueue(activeItems);
-      const savedItems = await getActiveQueue();
-      if (!savedItems.length && activeItems.length > 0) {
-        throw new Error("Failed to save active queue items");
-      }
-
-      // Move newly completed items to completed queue
-      for (const item of completedItems) {
-        if (!item.hasOwnProperty("completedAt")) {
-          await addToCompletedQueue(item);
-        }
-      }
-
-      // Update state with combined items
-      setQueueItems(uniqueItems);
-
-      const pendingItems = activeItems.filter(
-        (i) =>
-          i.status === QueueItemStatus.PENDING ||
-          i.status === QueueItemStatus.OFFLINE
-      );
-
-      if (pendingItems.length > 0) {
-        const appState = AppState.currentState;
-        console.log(
-          "Processing items in",
-          appState === "active" ? "foreground" : "background"
-        );
-
-        // Ensure batch data is loaded before processing
-        const batchData = await getBatchData();
-        if (!batchData) {
-          console.warn("Batch data not available, skipping queue processing");
-          return;
-        }
-
-        // Process items sequentially
-        for (const item of pendingItems) {
-          try {
-            if (appState === "active") {
-              await processItem(item);
-            } else {
-              await processAllItems();
-              break; // Only trigger background processing once
-            }
-            // Add delay between items
-            await new Promise((resolve) => setTimeout(resolve, 1000));
-          } catch (error) {
-            console.error(`Failed to process item ${item.localId}:`, error);
-            continue;
+          if (allServicesCompleted) {
+            queueDebugMonitor.logProcessingComplete(item, true);
+            // First update the item's status to COMPLETED
+            await updateItemInCache(item.localId, {
+              status: QueueItemStatus.COMPLETED
+            });
+            // Then move it to completed queue
+            await addToCompletedQueue(item);
+            await removeFromActiveQueue(item.localId);
+          } else {
+            queueDebugMonitor.logStuckItem(item);
+            await updateItemInCache(item.localId, {
+              status: QueueItemStatus.PENDING,
+              lastError: "Reset at launch - incomplete services",
+              lastAttempt: undefined,
+              // Reset service states while preserving completed ones
+              directus: item.directus?.status === ServiceStatus.COMPLETED ? 
+                item.directus : 
+                { ...item.directus, status: ServiceStatus.INCOMPLETE, error: undefined },
+              eas: item.eas?.status === ServiceStatus.COMPLETED ? 
+                item.eas : 
+                { ...item.eas, status: ServiceStatus.INCOMPLETE, error: undefined },
+              linking: item.linking?.status === ServiceStatus.COMPLETED ? 
+                item.linking : 
+                { ...item.linking, status: ServiceStatus.INCOMPLETE, error: undefined }
+            });
+            queueDebugMonitor.logItemStateChange(item, { status: QueueItemStatus.PENDING });
           }
         }
       }
+
+      // Load the queue after initialization
+      await loadQueueItems();
+      setIsInitialized(true);
+      queueDebugMonitor.logQueueMetrics(await getActiveQueue());
+
+      // Process pending items if online
+      if (isOnline) {
+        const pendingItems = activeQueue.filter(item => 
+          item.status === QueueItemStatus.PENDING || 
+          item.status === QueueItemStatus.FAILED
+        );
+        
+        if (pendingItems.length > 0) {
+          queueDebugMonitor.logQueueMetrics(pendingItems);
+          await processQueueItems(pendingItems);
+        }
+      }
+    } catch (error) {
+      if (error instanceof Error) {
+        queueDebugMonitor.logProcessingComplete({ localId: 'init' } as QueueItem, false, error.message);
+      }
+      // Still mark as initialized to prevent infinite retries
+      setIsInitialized(true);
+    }
+  }, [loadQueueItems, isOnline, network.isInternetReachable, processQueueItems]);
+
+  // Run initialization at app launch
+  useEffect(() => {
+    if (!isInitialized) {
+      initializeQueue();
+    }
+  }, [initializeQueue, isInitialized]);
+
+  // Update queue item
+  const updateQueueItem = useCallback(async (itemId: string, updates: Partial<QueueItem>) => {
+    try {
+      await updateItemInCache(itemId, updates);
+      // Force a queue refresh to update UI
+      queueEventEmitter.emit(QueueEvents.UPDATED);
+      await loadQueueItems();
+          } catch (error) {
+      console.error("Error updating queue item:", error);
+    }
+  }, [loadQueueItems]);
+
+  // Add batch update function
+  const updateQueueItems = useCallback(async (items: QueueItem[]) => {
+    if (!items.length) return;
+
+    try {
+      // Get existing items
+      const existingItems = await getActiveQueue();
+      
+      // Update or add each item
+      for (const item of items) {
+        const existingItem = existingItems.find(i => i.localId === item.localId);
+        if (existingItem) {
+          // Update existing item
+          await updateQueueItem(item.localId, item);
+        } else {
+          // Add new item to the beginning of the queue (most recent first)
+          const updatedItems = [item, ...existingItems];
+          // Sort by date, most recent first
+          updatedItems.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+          await updateActiveQueue(updatedItems);
+        }
+      }
+
+      // Reload queue items to get updated state
+      await loadQueueItems();
+
+      // Emit UPDATED event after potentially adding new items
+      queueEventEmitter.emit(QueueEvents.UPDATED);
+
+      // REMOVED: Explicit trigger after adding items - rely on event listener instead
+      // if (isOnline && !isProcessing) {
+      //   await processQueueItems(items);
+      // }
     } catch (error) {
       console.error("Error updating queue items:", error);
       throw error;
     }
-  };
+  }, [isOnline, updateQueueItem, loadQueueItems, processQueueItems]);
 
-  const retryItems = async (items: QueueItem[], service?: "directus" | "eas"): Promise<void> => {
-    console.log("Retrying items:", {
-      itemsToRetry: items.length,
-      itemIds: items.map((i) => i.localId),
-      service,
-    });
+  // Retry item
+  const retryItem = useCallback(async (itemId: string) => {
+    const item = queueItems.find(i => i.localId === itemId);
+    if (!item) return;
 
     try {
-      // Process items sequentially
-      for (const item of items) {
-        try {
-          // Reset only the specified service or both if none specified
-          const resetItem = {
-            ...item,
+      await updateQueueItem(itemId, {
             status: QueueItemStatus.PENDING,
-            retryCount: (item.retryCount || 0) + 1,
             lastError: undefined,
             lastAttempt: undefined,
-            directus: service === "eas" ? item.directus : { 
-              status: ServiceStatus.PENDING,
-              error: undefined 
-            },
-            eas: service === "directus" ? item.eas : { 
-              status: ServiceStatus.PENDING,
-              error: undefined 
-            },
-          };
-
-          // Update queue with reset item
-          const updatedItems = queueItems.map((qi) =>
-            qi.localId === item.localId ? resetItem : qi
-          );
-          await updateActiveQueue(updatedItems);
-          setQueueItems(updatedItems);
-
-          // Process the item
-          await processItem(resetItem);
-
-          // Add delay between items
-          await new Promise((resolve) => setTimeout(resolve, 1000));
+        // Only reset incomplete services
+        directus: item.directus?.status === ServiceStatus.INCOMPLETE ? {
+          ...item.directus,
+          error: undefined
+        } : item.directus,
+        eas: item.eas?.status === ServiceStatus.INCOMPLETE ? {
+          ...item.eas,
+          error: undefined
+        } : item.eas,
+        linking: item.linking?.status === ServiceStatus.INCOMPLETE ? {
+          ...item.linking,
+          error: undefined
+        } : item.linking
+      });
         } catch (error) {
-          console.error(`Failed to process item ${item.localId}:`, error);
-          const errorMessage = error instanceof Error ? error.message : "Unknown error";
+      console.error("Error retrying item:", error);
+    }
+  }, [queueItems, updateQueueItem]);
 
-          // Check if it's an auth error
-          const isAuthError =
-            errorMessage.toLowerCase().includes("token") ||
-            errorMessage.toLowerCase().includes("auth") ||
-            errorMessage.toLowerCase().includes("unauthorized");
+  // Delete item
+  const deleteItem = useCallback(async (itemId: string) => {
+    try {
+      await updateQueueItem(itemId, { deleted: true });
+    } catch (error) {
+      console.error("Error deleting item:", error);
+    }
+  }, [updateQueueItem]);
 
-          if (isAuthError) {
-            console.log("Auth error detected, stopping retry process");
-            break;
-          }
-
-          // Update item state to failed for the specified service with detailed error message
-          const updatedItems = queueItems.map((qi) =>
-            qi.localId === item.localId
-              ? {
-                  ...qi,
-                  status: QueueItemStatus.PENDING, // Keep in pending if not all services are complete
-                  lastError: errorMessage,
-                  lastAttempt: new Date(),
-                  directus: service === "eas" ? qi.directus : { 
-                    status: ServiceStatus.FAILED, 
-                    error: errorMessage 
-                  },
-                  eas: service === "directus" ? qi.eas : { 
-                    status: ServiceStatus.FAILED, 
-                    error: errorMessage 
-                  },
-                }
-              : qi
-          );
-          await updateActiveQueue(updatedItems);
-          setQueueItems(updatedItems);
+  // Listen for queue updates
+  useEffect(() => {
+    const handleQueueUpdate = async () => {
+      if (isInitialized) {
+        await loadQueueItems();
+        // If the queue is idle after an update, check if processing is needed
+        if (isOnline && !isProcessingRef.current) {
+          // Use setTimeout to avoid potential race conditions / deep calls
+          setTimeout(() => processQueueItems(), 0);
         }
       }
-    } catch (error) {
-      console.error("Error in retryItems:", error);
-      throw error;
-    }
-  };
-
-  useEffect(() => {
-    const handleQueueUpdate = () => {
-      console.log("Queue update event received");
-      loadQueueItems().catch((error) => {
-        console.error("Failed to load queue items after update:", error);
-      });
     };
 
     queueEventEmitter.addListener(QueueEvents.UPDATED, handleQueueUpdate);
     return () => {
-      queueEventEmitter.removeAllListeners(QueueEvents.UPDATED);
+      queueEventEmitter.removeListener(QueueEvents.UPDATED, handleQueueUpdate);
     };
-  }, [isOnline]);
+  }, [loadQueueItems, isInitialized, isOnline, processQueueItems]);
 
-  // Network recovery handler
+  // Handle app state changes
   useEffect(() => {
-    console.log("Network state changed:", {
-      isOnline,
-      queueItemsCount: queueItems.length,
-      processingRef: processingRef.current,
-      appState: AppState.currentState,
-      hasWallet: !!wallet,
-    });
-
-    if (!isOnline && queueItems.length > 0) {
-      console.log("Network offline, marking items as offline");
-      const updatedItems = queueItems.map((item) =>
-        item.status === QueueItemStatus.PROCESSING
-          ? { ...item, status: QueueItemStatus.OFFLINE }
-          : item
-      );
-      if (JSON.stringify(updatedItems) !== JSON.stringify(queueItems)) {
-        updateQueueItems(updatedItems).catch((error) => {
-          console.error("Failed to update items on network loss:", error);
-        });
-      }
-    } else if (
-      isOnline &&
-      queueItems.length > 0 &&
-      AppState.currentState === "active" &&
-      wallet
-    ) {
-      // Check token expiration before attempting reauthorization
-      const checkTokenAndProcess = async () => {
+    const subscription = AppState.addEventListener('change', async (nextAppState) => {
+      if (nextAppState === 'active') {
+        // When app becomes active, refresh network state and queue
         try {
-          // First check if we have a valid token
-          const token = await SecureStore.getItemAsync("auth_token");
-          if (token) {
-            // Set the token in directus client
-            directus.setToken(token);
-            console.log("Using existing valid token");
-          } else {
-            // If no token, check expiry and try to reauthorize
-            const expiryStr = await SecureStore.getItemAsync("token_expiry");
-            const now = new Date();
-
-            if (
-              !expiryStr ||
-              new Date(expiryStr).getTime() - now.getTime() <
-                24 * 24 * 60 * 60 * 1000
-            ) {
-              console.log(
-                "Token expired or near expiry, attempting reauthorization"
-              );
-              const reauthorized = await reauthorizeWithStoredCredentials();
-              if (!reauthorized) {
-                console.log("Failed to reauthorize, skipping queue processing");
-                return;
-              }
-            } else {
-              console.log(
-                "Token still valid, proceeding with queue processing"
-              );
+          const netInfo = await NetInfo.fetch();
+          if (netInfo.isConnected && netInfo.isInternetReachable) {
+            await loadQueueItems();
+            // Process any pending items
+            const activeQueue = await getActiveQueue();
+            const pendingItems = activeQueue.filter(item => 
+              item.status === QueueItemStatus.PENDING || 
+              item.status === QueueItemStatus.FAILED
+            );
+            if (pendingItems.length > 0) {
+              await processQueueItems(pendingItems);
             }
-          }
-
-          // Only process pending and offline items in foreground when network recovers
-          console.log(
-            "Network recovered, processing pending items in foreground"
-          );
-          const pendingItems = queueItems.filter(
-            (item) =>
-              (item.status === QueueItemStatus.PENDING ||
-                item.status === QueueItemStatus.OFFLINE) &&
-              (!item.lastAttempt ||
-                new Date(item.lastAttempt).getTime() < Date.now() - 30000) // Don't retry items attempted in last 30 seconds
-          );
-          if (pendingItems.length > 0) {
-            // Ensure batch data is available before processing
-            const batchData = await getBatchData();
-            if (!batchData) {
-              console.warn(
-                "Batch data not available, skipping queue processing"
-              );
-              return;
-            }
-            await processItems(pendingItems);
           }
         } catch (error) {
-          console.error("Error in network recovery handler:", error);
+          console.error('Error handling app state change:', error);
         }
-      };
+      }
+    });
 
-      checkTokenAndProcess();
-    }
-  }, [isOnline, wallet]);
+    return () => {
+      subscription.remove();
+    };
+  }, [loadQueueItems, processQueueItems]);
 
-  // Update completed count when items complete
+  // Add network state change listener
   useEffect(() => {
-    const completedItems = queueItems.filter(
-      (item) => item.status === QueueItemStatus.COMPLETED
-    );
-    if (completedItems.length !== completedCount) {
-      updateCompletedCount(completedItems.length - completedCount);
-    }
-  }, [queueItems]);
-
-  const reauthorizeWithStoredCredentials = async (): Promise<boolean> => {
-    try {
-      // First check if we have a valid token
-      const token = await SecureStore.getItemAsync("auth_token");
-      if (token) {
-        // Set the token in directus client
-        directus.setToken(token);
-        return true;
-      }
-
-      // If no valid token, try to login with stored credentials
-      const email = await SecureStore.getItemAsync("user_email");
-      const password = await SecureStore.getItemAsync("user_password");
-
-      if (!email || !password) {
-        console.log("No stored credentials found for reauthorization");
-        return false;
-      }
-
-      try {
-        const loginResult = await directus.login(email, password);
-        if (!loginResult.access_token) {
-          console.error("No access token in login result");
-          return false;
+    const unsubscribe = NetInfo.addEventListener(async (state) => {
+      if (state.isConnected && state.isInternetReachable) {
+        // Network is back online, process pending items
+        try {
+          const activeQueue = await getActiveQueue();
+          const pendingItems = activeQueue.filter(item => 
+            item.status === QueueItemStatus.PENDING || 
+            item.status === QueueItemStatus.FAILED
+          );
+          if (pendingItems.length > 0) {
+            await processQueueItems(pendingItems);
+          }
+        } catch (error) {
+          console.error('Error handling network state change:', error);
         }
-        return true;
-      } catch (error) {
-        console.error("Failed to reauthorize with stored credentials:", error);
-        // Clear stored credentials on auth failure
-        await SecureStore.deleteItemAsync("user_email");
-        await SecureStore.deleteItemAsync("user_password");
-        return false;
       }
-    } catch (error) {
-      console.error("Error in reauthorizeWithStoredCredentials:", error);
-      return false;
+    });
+
+    return () => {
+      unsubscribe();
+    };
+  }, [processQueueItems]);
+
+  // Initial load
+  useEffect(() => {
+    if (isInitialized) {
+      loadQueueItems();
     }
-  };
+  }, [loadQueueItems, isInitialized]);
+
+  // Retry multiple items
+  const retryItems = useCallback(async (items: QueueItem[]) => {
+    try {
+      // Process the items directly without resetting their status
+      await processQueueItems(items);
+    } catch (error) {
+      console.error("Error retrying items:", error);
+    }
+  }, [processQueueItems]);
+
+  // Refresh queue status
+  const refreshQueueStatus = useCallback(async () => {
+    try {
+      await loadQueueItems();
+    } catch (error) {
+      console.error("Error refreshing queue status:", error);
+    }
+  }, [loadQueueItems]);
+
+  const value = useMemo(() => ({
+    queueItems,
+    completedCount,
+    loadQueueItems,
+    updateQueueItem,
+    updateQueueItems,
+    retryItem,
+    retryItems,
+    deleteItem,
+    processQueueItems,
+    isProcessing,
+    refreshQueueStatus
+  }), [queueItems, completedCount, loadQueueItems, updateQueueItem, updateQueueItems, retryItem, retryItems, deleteItem, processQueueItems, isProcessing, refreshQueueStatus]);
 
   return (
-    <QueueContext.Provider
-      value={{
-        queueItems,
-        loadQueueItems,
-        updateQueueItems,
-        retryItems,
-        completedCount,
-      }}
-    >
+    <QueueContext.Provider value={value}>
       {children}
     </QueueContext.Provider>
   );
-}
+};
 
 export const useQueue = () => {
   const context = useContext(QueueContext);

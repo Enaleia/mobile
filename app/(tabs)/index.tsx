@@ -1,7 +1,6 @@
 import ActionSelection from "@/components/features/home/ActionSelect";
 import { InitializationModal } from "@/components/features/initialization/InitializationModal";
 import SafeAreaContent from "@/components/shared/SafeAreaContent";
-import { UserProfile } from "@/components/shared/UserProfile";
 import { useAuth } from "@/contexts/AuthContext";
 import { useNetwork } from "@/contexts/NetworkContext";
 import { groupActionsByCategory } from "@/types/action";
@@ -95,25 +94,20 @@ function Home() {
 
   return (
     <SafeAreaContent>
-      <InitializationModal
+      {/* <InitializationModal
         isVisible={showInitModal}
         progress={progress}
         error={error instanceof Error ? error : null}
         isAuthError={isAuthError}
-      />
-
-      {/* Header - Fixed at top */}
-      <View>
-        <UserProfile />
-      </View>
+      /> */}
 
       {/* Scrollable Content */}
       <ScrollView
         className="flex-1"
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ flexGrow: 1 }}
+        contentContainerStyle={{ flexGrow: 1, paddingBottom: 100 }}
       >
-        <View className="mt-4">
+        <View className="mt-2">
           <Text
             className="text-[33px] font-dm-bold tracking-[-1.5px] text-enaleia-black pt-1"
             style={{ marginBottom: 12, lineHeight: 33 }}

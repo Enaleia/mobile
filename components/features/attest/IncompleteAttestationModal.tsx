@@ -46,7 +46,7 @@ export const IncompleteAttestationModal = ({
             className="px-5 py-4 rounded-full bg-blue-ocean flex-1"
           >
             <Text className="text-base font-dm-medium text-white text-center">
-              Submit
+              Proceed
             </Text>
           </Pressable>
         </View>

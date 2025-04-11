@@ -38,7 +38,7 @@ const ErrorMessage: React.FC<ErrorMessageProps> = ({
     >
       <Text className="text-sm font-dm-medium text-red-700">{message}</Text>
       {!hideSecondaryMessage && secondaryMessage && (
-        <Text className="text-xs font-dm-regular text-red-600 mt-1">
+        <Text className="text-xs font-dm-regular text-red-500 mt-1">
           {secondaryMessage}
         </Text>
       )}

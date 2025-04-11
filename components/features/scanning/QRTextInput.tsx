@@ -6,6 +6,7 @@ import React, {
   useReducer,
   forwardRef,
   useImperativeHandle,
+  useEffect,
 } from "react";
 import { Alert, Linking, Modal, Pressable, Text, TextInput, View } from "react-native";
 
@@ -19,11 +20,15 @@ interface QRTextInputProps {
   label?: string;
   error?: string;
   editable?: boolean;
+  onScanComplete?: (scannedData: string) => void;
+  keyboardType?: "default" | "numeric" | "number-pad";
+  onBlur?: () => void;
 }
 
 export interface QRTextInputRef {
   focus: () => void;
   blur: () => void;
+  openScanner: () => void;
 }
 
 const scannerReducer = (state: any, action: any) => {
@@ -61,6 +66,9 @@ const QRTextInput = forwardRef<QRTextInputRef, QRTextInputProps>(
       label,
       error,
       editable = true,
+      onScanComplete,
+      keyboardType = variant === "embedded" ? "numeric" : "default",
+      onBlur,
     },
     ref
   ) => {
@@ -75,11 +83,55 @@ const QRTextInput = forwardRef<QRTextInputRef, QRTextInputProps>(
       blur: () => {
         inputRef.current?.blur();
       },
+      openScanner: async () => {
+        try {
+          // First check the current permission status
+          const { status } = await Camera.getCameraPermissionsAsync();
+          
+          if (status === 'granted') {
+            // Permission already granted, open scanner directly
+            setScanner(true);
+          } else if (status === 'denied') {
+            // Permission denied, show settings alert
+            Alert.alert(
+              "Camera Permission Required",
+              "This permission is required to scan QR codes, Please enable it in settings.",
+              [
+                { text: "Cancel", style: "cancel" },
+                { text: "Settings", onPress: () => Linking.openSettings() }
+              ]
+            );
+          } else if (status === 'undetermined') {
+            // Permission not determined yet, show alert with option to request
+            Alert.alert(
+              "Camera Permission Required",
+              "This app needs camera access to scan QR codes.",
+              [
+                { text: "Cancel", style: "cancel" },
+                { 
+                  text: "OK", 
+                  onPress: async () => {
+                    // User clicked OK, now request permission
+                    const { status: newStatus } = await Camera.requestCameraPermissionsAsync();
+                    if (newStatus === 'granted') {
+                      setScanner(true);
+                    }
+                  }
+                }
+              ]
+            );
+          }
+        } catch (error) {
+          console.error("Error checking camera permissions:", error);
+        }
+      }
     }));
 
     const currentState = scannerStates[id] || { isVisible: false, error: null };
+    console.log(`[QRTextInput ${id}] Render - isVisible: ${currentState.isVisible}`);
 
     const setScanner = (isVisible: boolean) => {
+      console.log(`[QRTextInput ${id}] setScanner called with: ${isVisible}`);
       dispatch({
         type: "SET_SCANNER",
         payload: {
@@ -123,6 +175,7 @@ const QRTextInput = forwardRef<QRTextInputRef, QRTextInputProps>(
           onChangeText(textValue.trim());
           setError(null);
           setScanner(false);
+          onScanComplete?.(textValue.trim());
         } catch (error) {
           dispatch({
             type: "SET_ERROR",
@@ -136,8 +189,13 @@ const QRTextInput = forwardRef<QRTextInputRef, QRTextInputProps>(
           });
         }
       },
-      [id, onChangeText]
+      [id, onChangeText, onScanComplete]
     );
+
+    // Log when the modal visibility *actually* changes based on state
+    useEffect(() => {
+      console.log(`[QRTextInput ${id}] Modal visibility state changed to: ${currentState.isVisible}`);
+    }, [currentState.isVisible, id]);
 
     const containerClass =
       variant === "standalone"
@@ -151,6 +209,8 @@ const QRTextInput = forwardRef<QRTextInputRef, QRTextInputProps>(
 
     return (
       <View className={containerClass}>
+        {/* Log props to see if value updates correctly */}
+        {/* console.log(`[QRTextInput ${id}] Value prop: ${value}`) */}
         {variant === "standalone" && label && (
           <Text className="text-sm font-dm-bold text-grey-6 tracking-tighter">
             {label}
@@ -162,6 +222,17 @@ const QRTextInput = forwardRef<QRTextInputRef, QRTextInputProps>(
               ref={inputRef}
               value={value}
               onChangeText={(text) => {
+                // For collector ID field (variant === "standalone")
+                if (variant === "standalone") {
+                  // Check for special characters
+                  if (/[^a-zA-Z0-9]/.test(text)) {
+                    Alert.alert(
+                      "Invalid Input",
+                      "Warning: Collector ID Field does not accept special characters, Please review your input."
+                    );
+                    return;
+                  }
+                }
                 onChangeText(text);
               }}
               autoCapitalize="characters"
@@ -179,7 +250,9 @@ const QRTextInput = forwardRef<QRTextInputRef, QRTextInputProps>(
                 paddingVertical: 0, // Removes default iOS padding
                 lineHeight: 26, // Ensures proper line height consistency
               }}
+              keyboardType={keyboardType}
               editable={editable}
+              onBlur={onBlur}
             />
           </View>
           <View className="w-6 h-6 justify-center items-center">
@@ -189,8 +262,9 @@ const QRTextInput = forwardRef<QRTextInputRef, QRTextInputProps>(
                 if (!editable) return;
                 try {
                   const { status } = await Camera.requestCameraPermissionsAsync();
- 
+   
                   if (status === 'granted') {
+                    console.log(`[QRTextInput ${id}] Permission granted, calling setScanner(true)`);
                     setScanner(true); // Open QR scanner
                   } else {
                     console.warn("Camera permission denied.");
@@ -225,13 +299,18 @@ const QRTextInput = forwardRef<QRTextInputRef, QRTextInputProps>(
 
         <Modal
           visible={currentState.isVisible}
-          animationType="slide"
+          animationType="fade"
+          onShow={() => console.log(`[QRTextInput ${id}] Modal onShow event fired`)}
           onRequestClose={() => setScanner(false)}
+          presentationStyle="overFullScreen"
+          statusBarTranslucent={true}
         >
-          <QRCodeScanner
-            onScan={handleQRScan}
-            onClose={() => setScanner(false)}
-          />
+          <View style={{ flex: 1, backgroundColor: 'black' }}>
+            <QRCodeScanner
+              onScan={handleQRScan}
+              onClose={() => setScanner(false)}
+            />
+          </View>
         </Modal>
       </View>
     );

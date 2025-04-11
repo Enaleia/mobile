@@ -1,71 +1,167 @@
-import { View, Text, Image, Pressable } from "react-native";
+import { View, Text, Image, Pressable, Linking, Alert } from "react-native";
 import React, { useState } from "react";
 import SafeAreaContent from "@/components/shared/SafeAreaContent";
 import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
 import { useWallet } from "@/contexts/WalletContext";
+import { useAuth } from "@/contexts/AuthContext";
 import * as Clipboard from "expo-clipboard";
 
 const WalletScreen = () => {
   const { wallet } = useWallet();
+  const { user } = useAuth();
   const [showCopied, setShowCopied] = useState(false);
+  const [showUserIdCopied, setShowUserIdCopied] = useState(false);
+
+  const userWalletAddress = user?.wallet_address;
+  const userId = user?.id;
 
   const copyAddress = async () => {
-    if (wallet?.address) {
-      await Clipboard.setStringAsync(wallet.address);
+    if (userWalletAddress) {
+      await Clipboard.setStringAsync(userWalletAddress);
       setShowCopied(true);
       setTimeout(() => setShowCopied(false), 2000);
+    } else {
+        Alert.alert("Error", "No wallet address found to copy.");
+    }
+  };
+
+  const copyUserId = async () => {
+    if (userId) {
+      await Clipboard.setStringAsync(userId);
+      setShowUserIdCopied(true);
+      setTimeout(() => setShowUserIdCopied(false), 2000);
+    } else {
+      Alert.alert("Error", "No User ID found to copy.");
+    }
+  };
+
+  const handleOpenExplorer = async () => {
+    if (!userWalletAddress) {
+      Alert.alert("Error", "No wallet address available.");
+      return;
+    }
+    const url = `https://optimistic.etherscan.io/address/${userWalletAddress}`;
+    try {
+      const canOpen = await Linking.canOpenURL(url);
+      if (canOpen) {
+        await Linking.openURL(url);
+      } else {
+        Alert.alert("Error", "Unable to open block explorer.");
+      }
+    } catch (error) {
+      console.error("Failed to open block explorer:", error);
+      Alert.alert("Error", "An error occurred while trying to open the block explorer.");
+    }
+  };
+
+  const handleViewAttestations = async () => {
+    const scanUrlPrefix = process.env.EXPO_PUBLIC_NETWORK_SCAN;
+
+    if (!scanUrlPrefix) {
+      console.error("EXPO_PUBLIC_NETWORK_SCAN environment variable is not set.");
+      Alert.alert("Configuration Error", "The network scan URL is not configured. Please contact support.");
+      return;
+    }
+
+    if (!userWalletAddress) {
+      Alert.alert("Error", "No wallet address available to view attestations.");
+      return;
+    }
+
+    const url = `${scanUrlPrefix}/address/${userWalletAddress}`;
+
+    try {
+      const canOpen = await Linking.canOpenURL(url);
+      if (canOpen) {
+        await Linking.openURL(url);
+      } else {
+        Alert.alert("Error", `Unable to open URL: ${url}`);
+      }
+    } catch (error) {
+      console.error("Failed to open attestation viewer:", error);
+      Alert.alert("Error", "An error occurred while trying to open the attestation viewer.");
     }
   };
 
   return (
-    <SafeAreaContent>
-      <View className="absolute bottom-20 right-[10px] bg-white-sand">
-        <Image
-          source={require("@/assets/images/animals/JellyFish.png")}
-          className="w-[223px] h-[228px]"
-          accessibilityLabel="Decorative jellyfish illustration"
-          accessibilityRole="image"
-        />
-      </View>
+    <SafeAreaContent className="bg-white-sand flex-1 relative">
       <View className="flex-row items-center justify-start pb-4">
         <Pressable
           onPress={() => router.back()}
           className="flex-row items-center space-x-1"
         >
           <Ionicons name="chevron-back" size={24} color="#0D0D0D" />
-          <Text className="text-base font-dm-regular text-enaleia-black tracking-tighter">
+          <Text className="text-base font-dm-regular text-enaleia-black tracking-tight">
             Settings
           </Text>
         </Pressable>
       </View>
-      <Text className="text-3xl font-dm-bold text-enaleia-black tracking-[-1px] mb-2">
-        Wallet address
-      </Text>
       <View className="flex-1">
-        <Text className="font-dm-regular text-base mb-4 leading-5">
-         This blockchain wallet address will be used by this account to submit data to the Ethereum Attestation Service.
+        <Text className="text-3xl font-dm-bold text-enaleia-black tracking-[-1px] mb-4">
+        Blockchain
         </Text>
-        <View className="bg-white rounded-2xl p-4 mb-2">
-          <Pressable
-            onPress={copyAddress}
-            className="flex-row items-center justify-between"
-          >
-            <Text className="font-dm-regular text-base text-grey-6 flex-1 mr-2">
-              {wallet?.address || "No wallet found"}
+        <Text className="text-base font-dm-regular text-enaleia-black tracking-tight mb-6">
+         The following address & it's public key will be used to attest data to the Ethereum Attestation Services, on Optimism, a layer-2 blockchain on Ethereum.
+        </Text>
+        <View className="p-4 bg-white rounded-2xl border border-grey-3 mb-6">
+          <View>
+            <Text className="text-grey-6 text-sm font-bold  mb-1">
+              Public Key
             </Text>
-            <View className="w-8 h-8 items-center justify-center">
-              {showCopied ? (
-                <Ionicons name="checkmark" size={20} color="#4CAF50" />
-              ) : (
-                <Ionicons name="copy-outline" size={20} color="#666" />
-              )}
-            </View>
-          </Pressable>
+            <Pressable
+              onPress={copyAddress}
+              className="flex-row items-start justify-between"
+            >
+              <Text className="flex-1 text-enaleia-black text-lg font-dm-bold leading-snug mr-4">
+                {userWalletAddress || "No wallet found"}
+              </Text>
+              <View className="w-6 h-6 items-center justify-center">
+                {showCopied ? (
+                  <Ionicons name="checkmark" size={24} color="#0d0d0d" />
+                ) : (
+                  <Ionicons name="copy-outline" size={24} color="#0d0d0d" />
+                )}
+              </View>
+            </Pressable>
+          </View>
         </View>
-        <Text className="font-dm-light text-sm text-grey-6">
-          Network: {wallet?.network || "Not connected"}
-        </Text>
+        <View className="gap-4">
+          <Pressable
+              onPress={handleViewAttestations}
+              className="p-4 rounded-full border border-grey-3 flex-row justify-center items-center">
+             <Text className="text-enaleia-black text-center font-dm-bold mr-2">
+               View all my attestations
+             </Text>
+             <Ionicons name="open-outline" size={16} color="#0D0D0D" />
+          </Pressable>
+          {userWalletAddress ? (
+            <Pressable
+              onPress={handleOpenExplorer}
+              className="p-4 rounded-full border border-grey-3 flex-row justify-center items-center">
+               <Text className="text-enaleia-black text-center font-dm-bold mr-2">
+                 View my address on block explorer
+               </Text>
+               <Ionicons name="open-outline" size={16} color="#0D0D0D" />
+            </Pressable>
+           ) : (
+             <View className="p-4 rounded-full border border-grey-3 flex-row justify-center items-center bg-gray-100 opacity-60">
+                <Text className="text-enaleia-black text-center font-dm-bold mr-2">
+                  View wallet on block explorer
+                </Text>
+                <Ionicons name="open-outline" size={16} color="#0D0D0D" />
+             </View>
+           )}
+        </View>
+      </View>
+
+      <View className="absolute bottom-3 left-0 right-0 items-center pointer-events-none">
+          <Image
+            source={require("@/assets/images/animals/JellyFish.png")}
+            className="w-full h-auto max-w-[241px] max-h-[172px]"
+            resizeMode="contain"
+            accessibilityLabel="Decorative wallet illustration"
+          />
       </View>
     </SafeAreaContent>
   );
