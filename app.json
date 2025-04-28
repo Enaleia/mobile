@@ -2,7 +2,7 @@
   "expo": {
     "name": "Enaleia",
     "slug": "enaleia",
-    "version": "0.1.1",
+    "version": "0.1.2",
     "newArchEnabled": true,
     "owner": "pollen-labs",
     "orientation": "portrait",
@@ -58,7 +58,7 @@
       [
         "expo-location",
         {
-          "locationWhenInUsePermission": "Allow $(PRODUCT_NAME) to use your location."
+          "locationWhenInUsePermission": "Your location is used to strengthen the authenticity of your action attestation."
         }
       ],
       [
