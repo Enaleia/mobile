@@ -58,7 +58,7 @@
       [
         "expo-location",
         {
-          "locationWhenInUsePermission": "Location data is used to confirm where marine waste is collected, recycled, or processed, adding transparency to blockchain-based traceability records."
+          "locationWhenInUsePermission": "Turning on location service allow us to trace where marine waste is collected, recycled and processed."
         }
       ],
       [
