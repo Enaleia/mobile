@@ -2,7 +2,7 @@
   "expo": {
     "name": "Enaleia",
     "slug": "enaleia",
-    "version": "0.1.2",
+    "version": "0.1.3",
     "newArchEnabled": true,
     "owner": "pollen-labs",
     "orientation": "portrait",
@@ -58,7 +58,7 @@
       [
         "expo-location",
         {
-          "locationWhenInUsePermission": "Your location is used to strengthen the authenticity of your action attestation."
+          "locationWhenInUsePermission": "Location data is used to confirm where marine waste is collected, recycled, or processed, adding transparency to blockchain-based traceability records."
         }
       ],
       [
