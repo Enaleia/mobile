@@ -27,7 +27,6 @@
     "preset": "jest-expo"
   },
   "dependencies": {
-    "@babel/plugin-proposal-export-namespace-from": "^7.18.9",
     "@directus/sdk": "^17.0.2",
     "@ethereum-attestation-service/eas-sdk": "^2.7.0",
     "@ethersproject/providers": "^5.7.2",
@@ -85,6 +84,7 @@
   },
   "devDependencies": {
     "@babel/core": "^7.26.10",
+    "@babel/plugin-transform-export-namespace-from": "^7.24.7",
     "@babel/plugin-transform-runtime": "^7.26.10",
     "@babel/runtime": "^7.27.0",
     "@expo/ngrok": "^4.1.3",
