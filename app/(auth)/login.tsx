@@ -69,16 +69,26 @@ export default function LoginScreen() {
             <LoginForm />
             <Text className="text-sm text-grey-8 font-dm-light mt-6 leading-[16.8px]">
               The Enaleia Hub is an invite-only application designed for
-              ecosystem partners to securely submit data to the blockchain. If
-              you have lost your login information, please{" "}
+              ecosystem partners to securely submit data to the blockchain.
+              Lost your login?{" "}
               <Link
-                href="mailto:app-support@enaleia.com"
+                href="mailto:app-support@enaleia.com,enaleia@pollenlabs.org"
                 className="text-blue-ocean font-dm-bold underline"
                 accessibilityLabel="Email support"
                 accessibilityRole="link"
               >
-                <Text>contact support</Text>
+                <Text>Contact support</Text>
               </Link>
+              . Curious to learn more?{" "}
+              <Link
+                href="https://enaleia-hub.com"
+                className="text-blue-ocean font-dm-bold underline"
+                accessibilityLabel="Visit Enaleia-Hub.com"
+                accessibilityRole="link"
+              >
+                <Text>Visit Enaleia-Hub.com</Text>
+              </Link>
+              .
             </Text>
           </View>
         </ScrollView>
