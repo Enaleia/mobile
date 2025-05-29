@@ -17,53 +17,59 @@ export const BatchHelpModal: React.FC<BatchHelpModalProps> = ({
       This attestation is used when shipping a container of waste collections.
       </Text>
 
-      {/* Section with subtitle and bullet points */}
+      {/* Incoming section as a short note */}
       <View className="mb-3 tighter-tracking">
         <Text className="text-lg font-dm-bold text-enaleia-black mb-1">
           Incoming
+        </Text>
+        <Text className="text-base font-dm-light text-enaleia-black">
+          A batch typically has no outgoing materials so do not add any unless instructed differently.
+        </Text>
+      </View>
+
+      {/* Outgoing section as a numbered list */}
+      <View className="mb-3 tighter-tracking">
+        <Text className="text-lg font-dm-bold text-enaleia-black mb-1">
+          Outgoing
         </Text>
         <View className="gap-0">
           <View className="flex-row">
             <Text className="text-base font-dm-light text-enaleia-black w-4">1.</Text>
             <Text className="text-base font-dm-light text-enaleia-black flex-1">
-            Tap <Text className="font-dm-bold">+Add</Text>
+              Tap <Text className="font-dm-bold">+Add</Text>
             </Text>
           </View>
           <View className="flex-row">
             <Text className="text-base font-dm-light text-enaleia-black w-4">2.</Text>
             <Text className="text-base font-dm-light text-enaleia-black flex-1">
-            Select a <Text className="font-dm-bold">material</Text>
+              Select a <Text className="font-dm-bold">material</Text>
             </Text>
           </View>
           <View className="flex-row">
             <Text className="text-base font-dm-light text-enaleia-black w-4">3.</Text>
             <Text className="text-base font-dm-light text-enaleia-black flex-1">
-            <Text className="font-dm-bold">Put a new QR</Text>code sticker on the container
+              <Text className="font-dm-bold">Put a new QR</Text> code sticker on the container
             </Text>
           </View>
           <View className="flex-row">
             <Text className="text-base font-dm-light text-enaleia-black w-4">4.</Text>
             <Text className="text-base font-dm-light text-enaleia-black flex-1">
-            Enter the <Text className="font-dm-bold">weight</Text>
+              <Text className="font-dm-bold">Scan the QR</Text> code or enter it manually
             </Text>
           </View>
           <View className="flex-row">
             <Text className="text-base font-dm-light text-enaleia-black w-4">5.</Text>
             <Text className="text-base font-dm-light text-enaleia-black flex-1">
-            <Text className="font-dm-bold">Repeat</Text> for each additional incoming materials, if applicable
+              If known, enter the <Text className="font-dm-bold">weight</Text>
+            </Text>
+          </View>
+          <View className="flex-row">
+            <Text className="text-base font-dm-light text-enaleia-black w-4">6.</Text>
+            <Text className="text-base font-dm-light text-enaleia-black flex-1">
+              Repeat for each outgoing containers, if applicable
             </Text>
           </View>
         </View>
-      </View>
-
-      {/* Section with mixed formatting */}
-      <View>
-        <Text className="text-lg font-dm-bold text-enaleia-black mb-1">
-          Outgoing
-        </Text>
-        <Text className="text-base font-dm-light text-enaleia-black">
-        A collection typically has <Text className="font-dm-bold">no outgoing materials</Text> so do not add any unless instructed differently.
-        </Text>
       </View>
     </>
   );
@@ -74,7 +80,7 @@ export const BatchHelpModal: React.FC<BatchHelpModalProps> = ({
       onClose={onClose}
       title="Batch"
       content={content}
-      importantNote="If a collector has multiple distinct materials, make sure that each materials have it's own incoming entry."
+      importantNote="If a batch has multiple containers, make sure each containers have it's own QR code stickers and outgoing entry."
       importantNoteBgColor="#9FD08B"
       categories={[
         {

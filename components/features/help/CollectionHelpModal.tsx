@@ -73,7 +73,7 @@ export const CollectionHelpModal: React.FC<CollectionHelpModalProps> = ({
       onClose={onClose}
       title="Collection"
       content={content}
-      importantNote="If a collector has multiple distinct materials, make sure that each materials have it's own incoming entry."
+      importantNote="If a collector has multiple distinct materials that can be weigthed individually, then all the materials can be entered into a single attestation. Just make sure that each materials have it's own incoming entry, material type and weight."
       importantNoteBgColor="#FABAA4"
       categories={[
         {
