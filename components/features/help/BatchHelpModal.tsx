@@ -23,7 +23,7 @@ export const BatchHelpModal: React.FC<BatchHelpModalProps> = ({
           Incoming
         </Text>
         <Text className="text-base font-dm-light text-enaleia-black">
-          A batch typically has no outgoing materials so do not add any unless instructed differently.
+          A batch typically has no incoming materials so do not add any unless instructed differently.
         </Text>
       </View>
 

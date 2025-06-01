@@ -14,7 +14,7 @@ export const ShreddingHelpModal: React.FC<ShreddingHelpModalProps> = ({
   const content = (
     <>
       <Text className="text-base font-dm-light text-enaleia-black mb-2">
-        This attestation is used when shredding materials.
+        This attestation is used when shredding materials. 
       </Text>
 
       <View className="mb-3 tighter-tracking">
@@ -107,7 +107,7 @@ export const ShreddingHelpModal: React.FC<ShreddingHelpModalProps> = ({
       onClose={onClose}
       title="Shredding"
       content={content}
-      importantNote="If the shredding action has multiple incoming containers, each should have it's own incoming entry. If the shredded outgoing material require 2 or more containers, make sure each materials have it's own QR code stickers and outgoing entry."
+      importantNote="If the shredding action has multiple incoming bags/containers, each should have it's own incoming entry. If the shredded outgoing material require 2 or more bags/containers, make sure each materials have it's own QR code stickers and outgoing entry."
       importantNoteBgColor="#EAD9B4"
       categories={[
         {

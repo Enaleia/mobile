@@ -107,7 +107,7 @@ export const WashingHelpModal: React.FC<WashingHelpModalProps> = ({
       onClose={onClose}
       title="Washing"
       content={content}
-      importantNote="If the washing action has multiple incoming containers, each should have it's own incoming entry. If the washed outgoing material require 2 or more containers, make sure each materials have it's own QR code stickers and outgoing entry."
+      importantNote="If the washing action has multiple incoming bags/containers, each should have it's own incoming entry. If the washed outgoing material require 2 or more bags/containers, make sure each materials have it's own QR code stickers and outgoing entry."
       importantNoteBgColor="#A7D4E2"
       categories={[
         {

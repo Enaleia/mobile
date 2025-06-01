@@ -14,7 +14,7 @@ export const SortingHelpModal: React.FC<SortingHelpModalProps> = ({
   const content = (
     <>
       <Text className="text-base font-dm-light text-enaleia-black mb-2">
-        This attestation is used when sorting waste collections.
+        This attestation is used when sorting waste collections. It can be used for record the weight bridge data.
       </Text>
 
       <View className="mb-3 tighter-tracking">
@@ -107,7 +107,7 @@ export const SortingHelpModal: React.FC<SortingHelpModalProps> = ({
       onClose={onClose}
       title="Sorting"
       content={content}
-      importantNote="If the sorting action has multiple incoming containers, each should have it's own incoming entry. If the sorted outgoing material require 2 or more containers, make sure each materials have it's own QR code stickers and outgoing entry."
+      importantNote="If the sorting action has multiple incoming containers, each should have it's own incoming entry. If the sorted outgoing material require 2 or more bags/containers, make sure each materials have it's own QR code stickers and outgoing entry."
       importantNoteBgColor="#82CC97"
       categories={[
         {

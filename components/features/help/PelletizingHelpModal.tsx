@@ -107,7 +107,7 @@ export const PelletizingHelpModal: React.FC<PelletizingHelpModalProps> = ({
       onClose={onClose}
       title="Pelletizing"
       content={content}
-      importantNote="If the pelletizing action has multiple incoming containers, each should have it's own incoming entry. If the pelletized outgoing material require 2 or more containers, make sure each materials have it's own QR code stickers and outgoing entry."
+      importantNote="If the pelletizing action has multiple incoming bags/containers, each should have it's own incoming entry. If the pelletized outgoing material require 2 or more bags/containers, make sure each materials have it's own QR code stickers and outgoing entry."
       importantNoteBgColor="#DCB093"
       categories={[
         {
