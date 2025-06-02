@@ -14,7 +14,7 @@ export const ManufacturingHelpModal: React.FC<ManufacturingHelpModalProps> = ({
   const content = (
     <>
       <Text className="text-base font-dm-light text-enaleia-black mb-2">
-        This attestation is used when manufacturing products using recycled materials.
+        This attestation is used when manufacturing products using recycled materials. The product must be pre-registered in the Enaleia Hub database.
       </Text>
 
       <View className="mb-3 tighter-tracking">
